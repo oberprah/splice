@@ -42,8 +42,8 @@ func main() {
 		message: "Hello World from Splice!",
 	}
 
-	// Start the Bubbletea program
-	p := tea.NewProgram(initialModel)
+	// Start the Bubbletea program with alternate screen (fullscreen mode)
+	p := tea.NewProgram(initialModel, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Error running program: %v\n", err)
 		os.Exit(1)
