@@ -1,9 +1,10 @@
 # ADR-001: Technology Stack Selection
 
-* **Status**: Accepted
+* **Status**: Superseded by ADR-002
 * **Date**: 2025-09-27
+* **Superseded**: 2025-10-15
 * **Problem**: We need to choose a technology stack for the project.
-* **Decision**: Use TypeScript + React + Ink as the primary technology stack
+* **Decision**: ~~Use TypeScript + React + Ink as the primary technology stack~~ (Superseded)
 
 ## Context
 
@@ -62,3 +63,7 @@ We will use the following technology stack (similar to what Claude code is using
 ### Neutral
 
 - Will require learning Ink-specific patterns for terminal UI development
+
+## Reason for Superseding
+
+After further analysis of distribution requirements and performance characteristics, the decision was reconsidered. See ADR-002 for the updated technology stack decision.
