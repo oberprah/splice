@@ -5,7 +5,8 @@ import (
 	"strings"
 
 	"github.com/oberprah/splice/internal/git"
-	"github.com/oberprah/splice/internal/styles"
+	"github.com/oberprah/splice/internal/ui/format"
+	"github.com/oberprah/splice/internal/ui/styles"
 )
 
 // View renders the UI based on the current model state
@@ -65,12 +66,12 @@ func (m Model) formatCommitLine(commit git.GitCommit, isSelected bool) string {
 	}
 
 	// Format the base components
-	hash := ToShortHash(commit.Hash)    // 7 chars
-	message := commit.Message           // Variable
-	separator := " - "                  // 3 chars
-	author := commit.Author             // Variable
-	timePrefix := " "                   // 1 char
-	time := ToRelativeTime(commit.Date) // Variable
+	hash := format.ToShortHash(commit.Hash)    // 7 chars
+	message := commit.Message                  // Variable
+	separator := " - "                         // 3 chars
+	author := commit.Author                    // Variable
+	timePrefix := " "                          // 1 char
+	time := format.ToRelativeTime(commit.Date) // Variable
 
 	// Calculate required space for fixed elements
 	fixedWidth := len(selectionIndicator) + len(hash) + 1 + len(separator) + len(timePrefix) + len(time)

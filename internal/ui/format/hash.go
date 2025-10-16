@@ -1,4 +1,4 @@
-package ui
+package format
 
 // ToShortHash returns the short version of a commit hash (7 chars)
 func ToShortHash(hash string) string {
