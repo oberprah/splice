@@ -1,46 +1,33 @@
 package ui
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/ui/format"
 	"github.com/oberprah/splice/internal/ui/styles"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
-// View renders the UI based on the current model state
-func (m Model) View() string {
-	switch m.state {
-	case LoadingView:
-		return "  Loading commits...\n"
-
-	case ErrorView:
-		return fmt.Sprintf("  Error: %v\n", m.err)
-
-	case ListView:
-		return m.renderListView()
-
-	default:
-		return ""
-	}
+// ListState represents the state when displaying a list of commits
+type ListState struct {
+	commits       []git.GitCommit
+	cursor        int
+	viewportStart int
 }
 
-// renderListView renders the list of commits
-func (m Model) renderListView() string {
-	if len(m.commits) == 0 {
-		return "  No commits found\n"
-	}
-
+// View renders the list of commits
+func (s ListState) View(m *Model) string {
 	var b strings.Builder
 
 	// Calculate the end of the viewport
-	viewportEnd := min(m.viewportStart+m.viewportHeight, len(m.commits))
+	viewportEnd := min(s.viewportStart+m.height, len(s.commits))
 
 	// Render only visible commits
-	for i := m.viewportStart; i < viewportEnd; i++ {
-		commit := m.commits[i]
-		line := m.formatCommitLine(commit, i == m.cursor)
+	for i := s.viewportStart; i < viewportEnd; i++ {
+		commit := s.commits[i]
+		line := s.formatCommitLine(commit, i == s.cursor, m.width)
 		b.WriteString(line)
 		b.WriteString("\n")
 	}
@@ -48,13 +35,68 @@ func (m Model) renderListView() string {
 	return b.String()
 }
 
+// Update handles messages in list view state
+func (s ListState) Update(msg tea.Msg, m *Model) (State, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "q", "ctrl+c":
+			return s, tea.Quit
+
+		case "j", "down":
+			if s.cursor < len(s.commits)-1 {
+				s.cursor++
+				s.updateViewport(m.height)
+			}
+			return s, nil
+
+		case "k", "up":
+			if s.cursor > 0 {
+				s.cursor--
+				s.updateViewport(m.height)
+			}
+			return s, nil
+
+		case "g":
+			s.cursor = 0
+			s.viewportStart = 0
+			return s, nil
+
+		case "G":
+			s.cursor = len(s.commits) - 1
+			s.updateViewport(m.height)
+			return s, nil
+		}
+	}
+
+	return s, nil
+}
+
+// updateViewport adjusts the viewport to keep the cursor visible
+func (s *ListState) updateViewport(height int) {
+	// Scroll down if cursor is below viewport
+	if s.cursor >= s.viewportStart+height {
+		s.viewportStart = s.cursor - height + 1
+	}
+
+	// Scroll up if cursor is above viewport
+	if s.cursor < s.viewportStart {
+		s.viewportStart = s.cursor
+	}
+
+	// Ensure viewport doesn't go negative
+	if s.viewportStart < 0 {
+		s.viewportStart = 0
+	}
+}
+
 // formatCommitLine formats a single commit line with proper styling
-func (m Model) formatCommitLine(commit git.GitCommit, isSelected bool) string {
+func (s ListState) formatCommitLine(commit git.GitCommit, isSelected bool, width int) string {
 	// Format: hash message - author (time ago)
 	// Example: a4c3a8a Fix memory leak in parser - John Doe (4 min ago)
 
 	// Determine available width (accounting for selection indicator and spacing)
-	availableWidth := m.width
+	availableWidth := width
 	if availableWidth <= 0 {
 		availableWidth = 80 // Default fallback
 	}
