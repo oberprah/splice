@@ -34,10 +34,7 @@ func (m Model) renderListView() string {
 	var b strings.Builder
 
 	// Calculate the end of the viewport
-	viewportEnd := m.viewportStart + m.viewportHeight
-	if viewportEnd > len(m.commits) {
-		viewportEnd = len(m.commits)
-	}
+	viewportEnd := min(m.viewportStart+m.viewportHeight, len(m.commits))
 
 	// Render only visible commits
 	for i := m.viewportStart; i < viewportEnd; i++ {
@@ -68,22 +65,20 @@ func (m Model) formatCommitLine(commit git.GitCommit, isSelected bool) string {
 	}
 
 	// Format the base components
-	hash := ToShortHash(commit.Hash)                      // 7 chars
-	message := commit.Message                             // Variable
-	separator := " - "                                    // 3 chars
-	author := commit.Author                               // Variable
-	timePrefix := " "                                     // 1 char
-	time := ToRelativeTime(commit.Date)               // Variable
+	hash := ToShortHash(commit.Hash)    // 7 chars
+	message := commit.Message           // Variable
+	separator := " - "                  // 3 chars
+	author := commit.Author             // Variable
+	timePrefix := " "                   // 1 char
+	time := ToRelativeTime(commit.Date) // Variable
 
 	// Calculate required space for fixed elements
 	fixedWidth := len(selectionIndicator) + len(hash) + 1 + len(separator) + len(timePrefix) + len(time)
 
 	// Calculate remaining space for message and author
-	remainingWidth := availableWidth - fixedWidth
-	if remainingWidth < 10 {
+	remainingWidth := max(availableWidth-fixedWidth,
 		// Terminal too narrow, show minimal format
-		remainingWidth = 10
-	}
+		10)
 
 	// Truncate message and author to fit remaining space
 	messageMaxWidth := remainingWidth * 2 / 3 // Give 2/3 to message
