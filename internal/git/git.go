@@ -16,6 +16,46 @@ type GitCommit struct {
 	Date    time.Time // Commit timestamp
 }
 
+// ParseGitLogOutput parses git log output into GitCommit structs.
+// Input format: "hash|author|date|message" (one commit per line).
+func ParseGitLogOutput(output string) ([]GitCommit, error) {
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	commits := make([]GitCommit, 0, len(lines))
+
+	for i, line := range lines {
+		if line == "" {
+			continue
+		}
+
+		parts := strings.SplitN(line, "|", 4)
+		if len(parts) != 4 {
+			return nil, fmt.Errorf("malformed line %d: expected 4 pipe-separated fields, got %d: %q", i+1, len(parts), line)
+		}
+
+		hash := parts[0]
+		author := parts[1]
+		dateStr := parts[2]
+		message := parts[3]
+
+		// Parse the date
+		date, err := time.Parse(time.RFC3339, dateStr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse date %q: %w", dateStr, err)
+		}
+
+		commit := GitCommit{
+			Hash:    hash,
+			Message: message,
+			Author:  author,
+			Date:    date,
+		}
+
+		commits = append(commits, commit)
+	}
+
+	return commits, nil
+}
+
 // FetchCommits executes git log and returns a slice of commits
 func FetchCommits(limit int) ([]GitCommit, error) {
 	// Use git log with custom format: hash|author|date|message
@@ -38,41 +78,5 @@ func FetchCommits(limit int) ([]GitCommit, error) {
 		return nil, fmt.Errorf("git log failed: %v - %s", err, stderr.String())
 	}
 
-	// Parse the output
-	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
-	commits := make([]GitCommit, 0, len(lines))
-
-	for _, line := range lines {
-		if line == "" {
-			continue
-		}
-
-		parts := strings.SplitN(line, "|", 4)
-		if len(parts) != 4 {
-			continue // Skip malformed lines
-		}
-
-		hash := parts[0]
-		author := parts[1]
-		dateStr := parts[2]
-		message := parts[3]
-
-		// Parse the date
-		date, err := time.Parse(time.RFC3339, dateStr)
-		if err != nil {
-			// If parsing fails, use current time as fallback
-			date = time.Now()
-		}
-
-		commit := GitCommit{
-			Hash:    hash,
-			Message: message,
-			Author:  author,
-			Date:    date,
-		}
-
-		commits = append(commits, commit)
-	}
-
-	return commits, nil
+	return ParseGitLogOutput(out.String())
 }
