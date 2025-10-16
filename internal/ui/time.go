@@ -5,9 +5,9 @@ import (
 	"time"
 )
 
-// ToRelativeTime converts a timestamp into a human-readable relative time
-func ToRelativeTime(t time.Time) string {
-	now := time.Now()
+// ToRelativeTimeFrom converts a timestamp into a human-readable relative time
+// relative to the provided "now" time. This is useful for testing.
+func ToRelativeTimeFrom(t, now time.Time) string {
 	diff := now.Sub(t)
 
 	seconds := int(diff.Seconds())
@@ -53,4 +53,10 @@ func ToRelativeTime(t time.Time) string {
 		// For old commits, show absolute date
 		return t.Format("Jan 2, 2006")
 	}
+}
+
+// ToRelativeTime converts a timestamp into a human-readable relative time
+// relative to the current time.
+func ToRelativeTime(t time.Time) string {
+	return ToRelativeTimeFrom(t, time.Now())
 }
