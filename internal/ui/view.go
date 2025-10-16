@@ -73,7 +73,7 @@ func (m Model) formatCommitLine(commit git.GitCommit, isSelected bool) string {
 	separator := " - "                                    // 3 chars
 	author := commit.Author                               // Variable
 	timePrefix := " "                                     // 1 char
-	time := commit.RelativeTime                           // Variable
+	time := ToRelativeTime(commit.Date)               // Variable
 
 	// Calculate required space for fixed elements
 	fixedWidth := len(selectionIndicator) + len(hash) + 1 + len(separator) + len(timePrefix) + len(time)

@@ -10,12 +10,11 @@ import (
 
 // GitCommit represents a single git commit with all necessary display information
 type GitCommit struct {
-	Hash         string    // Full 40-char hash
-	ShortHash    string    // First 7 chars
-	Message      string    // First line of commit message
-	Author       string    // Author name (not email)
-	Date         time.Time // Commit timestamp
-	RelativeTime string    // "4 min ago", computed
+	Hash      string    // Full 40-char hash
+	ShortHash string    // First 7 chars
+	Message   string    // First line of commit message
+	Author    string    // Author name (not email)
+	Date      time.Time // Commit timestamp
 }
 
 // FetchCommits executes git log and returns a slice of commits
@@ -66,67 +65,22 @@ func FetchCommits(limit int) ([]GitCommit, error) {
 			date = time.Now()
 		}
 
+		// Create short hash (7 chars, or full hash if shorter)
+		shortHash := hash
+		if len(hash) >= 7 {
+			shortHash = hash[:7]
+		}
+
 		commit := GitCommit{
-			Hash:         hash,
-			ShortHash:    hash[:7],
-			Message:      message,
-			Author:       author,
-			Date:         date,
-			RelativeTime: FormatRelativeTime(date),
+			Hash:      hash,
+			ShortHash: shortHash,
+			Message:   message,
+			Author:    author,
+			Date:      date,
 		}
 
 		commits = append(commits, commit)
 	}
 
 	return commits, nil
-}
-
-// FormatRelativeTime converts a timestamp into a human-readable relative time
-func FormatRelativeTime(t time.Time) string {
-	now := time.Now()
-	diff := now.Sub(t)
-
-	seconds := int(diff.Seconds())
-	minutes := seconds / 60
-	hours := minutes / 60
-	days := hours / 24
-	weeks := days / 7
-	months := days / 30
-	years := days / 365
-
-	switch {
-	case seconds < 60:
-		return "just now"
-	case minutes < 60:
-		if minutes == 1 {
-			return "1 min ago"
-		}
-		return fmt.Sprintf("%d mins ago", minutes)
-	case hours < 24:
-		if hours == 1 {
-			return "1 hour ago"
-		}
-		return fmt.Sprintf("%d hours ago", hours)
-	case days < 7:
-		if days == 1 {
-			return "1 day ago"
-		}
-		return fmt.Sprintf("%d days ago", days)
-	case days < 30:
-		if weeks == 1 {
-			return "1 week ago"
-		}
-		return fmt.Sprintf("%d weeks ago", weeks)
-	case days < 365:
-		if months == 1 {
-			return "1 month ago"
-		}
-		return fmt.Sprintf("%d months ago", months)
-	default:
-		if years == 1 {
-			return "1 year ago"
-		}
-		// For old commits, show absolute date
-		return t.Format("Jan 2, 2006")
-	}
 }
