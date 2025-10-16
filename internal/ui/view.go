@@ -68,7 +68,7 @@ func (m Model) formatCommitLine(commit git.GitCommit, isSelected bool) string {
 	}
 
 	// Format the base components
-	hash := commit.ShortHash                              // 7 chars
+	hash := ToShortHash(commit.Hash)                      // 7 chars
 	message := commit.Message                             // Variable
 	separator := " - "                                    // 3 chars
 	author := commit.Author                               // Variable

@@ -10,11 +10,10 @@ import (
 
 // GitCommit represents a single git commit with all necessary display information
 type GitCommit struct {
-	Hash      string    // Full 40-char hash
-	ShortHash string    // First 7 chars
-	Message   string    // First line of commit message
-	Author    string    // Author name (not email)
-	Date      time.Time // Commit timestamp
+	Hash    string    // Full 40-char hash
+	Message string    // First line of commit message
+	Author  string    // Author name (not email)
+	Date    time.Time // Commit timestamp
 }
 
 // FetchCommits executes git log and returns a slice of commits
@@ -65,18 +64,11 @@ func FetchCommits(limit int) ([]GitCommit, error) {
 			date = time.Now()
 		}
 
-		// Create short hash (7 chars, or full hash if shorter)
-		shortHash := hash
-		if len(hash) >= 7 {
-			shortHash = hash[:7]
-		}
-
 		commit := GitCommit{
-			Hash:      hash,
-			ShortHash: shortHash,
-			Message:   message,
-			Author:    author,
-			Date:      date,
+			Hash:    hash,
+			Message: message,
+			Author:  author,
+			Date:    date,
 		}
 
 		commits = append(commits, commit)
