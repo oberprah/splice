@@ -16,7 +16,12 @@ See `docs/adr/adr-002-acc-go-bubbletea-stack.md` for the rationale behind this s
 
 ## Project Structure
 
-The project uses a simplified structure with `main.go` at the root and `/internal` for private application code. Use standard Bubbletea patterns (Model-Update-View) for UI components.
+The project uses a simplified structure with `main.go` at the root and `/internal` for private application code.
+
+UI components follow the Elm Architecture (Model-Update-View) with states organized into subpackages:
+- Each state (loading, list, error) has its own package under `internal/ui/state/`
+- Within each state package: `state.go` (struct), `view.go` (rendering), `update.go` (event handling)
+- States implement the `state.State` interface and receive a `state.Context` for accessing model properties
 
 ## Development Commands
 
