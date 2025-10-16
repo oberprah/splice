@@ -2,3 +2,6 @@
 
 # Build artifacts
 /splice
+
+# Test coverage
+coverage.out
