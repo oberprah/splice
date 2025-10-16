@@ -1,11 +1,11 @@
-package main
+package ui
 
 import (
 	"fmt"
 	"strings"
 
-	"github.com/oberprah/splice/git"
-	"github.com/oberprah/splice/styles"
+	"github.com/oberprah/splice/internal/git"
+	"github.com/oberprah/splice/internal/styles"
 )
 
 // View renders the UI based on the current model state

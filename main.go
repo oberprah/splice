@@ -4,21 +4,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/oberprah/splice/git"
+	"github.com/oberprah/splice/internal/ui"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 func main() {
 	// Create the initial model
-	initialModel := Model{
-		state:          LoadingView,
-		loading:        true,
-		cursor:         0,
-		viewportStart:  0,
-		viewportHeight: 0,
-		commits:        []git.GitCommit{},
-	}
+	initialModel := ui.NewModel()
 
 	// Start the Bubbletea program with alternate screen (fullscreen mode)
 	p := tea.NewProgram(initialModel, tea.WithAltScreen())

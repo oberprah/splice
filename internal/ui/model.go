@@ -1,7 +1,7 @@
-package main
+package ui
 
 import (
-	"github.com/oberprah/splice/git"
+	"github.com/oberprah/splice/internal/git"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -33,6 +33,18 @@ type Model struct {
 	// Status
 	loading bool
 	err     error
+}
+
+// NewModel creates a new Model with initial state
+func NewModel() Model {
+	return Model{
+		state:          LoadingView,
+		loading:        true,
+		cursor:         0,
+		viewportStart:  0,
+		viewportHeight: 0,
+		commits:        []git.GitCommit{},
+	}
 }
 
 // commitsLoadedMsg is sent when commits have been loaded

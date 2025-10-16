@@ -14,14 +14,18 @@ Splice is a terminal-based git diff viewer built with Go and Bubbletea. The goal
 
 See `docs/adr/adr-002-acc-go-bubbletea-stack.md` for the rationale behind this stack choice.
 
+## Project Structure
+
+The project uses a simplified structure with `main.go` at the root and `/internal` for private application code. Use standard Bubbletea patterns (Model-Update-View) for UI components.
+
 ## Development Commands
 
 ```bash
 # Run the application
-go run main.go
+go run .
 
 # Build binary
-go build -o splice main.go
+go build -o splice .
 
 # Add dependencies
 go get <package>
@@ -29,13 +33,3 @@ go get <package>
 # Update dependencies
 go mod tidy
 ```
-
-## Architecture
-
-The application follows the Bubbletea (Elm Architecture) pattern:
-- **Model**: Application state
-- **Init**: Initialize the program
-- **Update**: Handle messages (keyboard input, events) and update state
-- **View**: Render the UI based on current state
-
-Currently, the codebase contains a minimal hello world implementation in `main.go` that demonstrates this pattern.
