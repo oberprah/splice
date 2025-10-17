@@ -7,17 +7,37 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// NewModel creates a new Model with initial loading state
-func NewModel() Model {
-	return Model{
-		currentState: loading.State{},
+// FetchCommitsFunc is a function type for fetching git commits
+type FetchCommitsFunc func(limit int) ([]git.GitCommit, error)
+
+// ModelOption is a functional option for configuring a Model
+type ModelOption func(*Model)
+
+// WithFetchCommits allows injecting a custom commit fetcher for testing
+func WithFetchCommits(fn FetchCommitsFunc) ModelOption {
+	return func(m *Model) {
+		m.fetchCommits = fn
 	}
+}
+
+// NewModel creates a new Model with initial loading state
+func NewModel(opts ...ModelOption) Model {
+	m := Model{
+		currentState: loading.State{},
+		fetchCommits: git.FetchCommits, // Default to real git command
+	}
+
+	for _, opt := range opts {
+		opt(&m)
+	}
+
+	return m
 }
 
 // Init initializes the model and starts loading commits
 func (m Model) Init() tea.Cmd {
 	return func() tea.Msg {
-		commits, err := git.FetchCommits(500)
+		commits, err := m.fetchCommits(500)
 		return loading.CommitsLoadedMsg{Commits: commits, Err: err}
 	}
 }

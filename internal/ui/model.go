@@ -7,6 +7,7 @@ type Model struct {
 	currentState state.State
 	width        int
 	height       int
+	fetchCommits FetchCommitsFunc
 }
 
 // Width returns the terminal width

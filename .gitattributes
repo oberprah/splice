@@ -1,0 +1,2 @@
+# Golden test files should use LF line endings and not be treated as text by git
+testdata/*.golden -text eol=lf
