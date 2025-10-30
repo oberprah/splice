@@ -51,4 +51,43 @@ var (
 		Light: "240", // Dark gray (#585858)
 		Dark:  "250", // Lighter gray (#bcbcbc)
 	}).Bold(true)
+
+	// File path styles
+	FilePathStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
+		Light: "237",
+		Dark:  "252",
+	})
+
+	SelectedFilePathStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
+		Light: "16",
+		Dark:  "231",
+	}).Bold(true)
+
+	// Addition count style (green)
+	AdditionsStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
+		Light: "28",  // Dark green
+		Dark:  "46",  // Bright green
+	})
+
+	SelectedAdditionsStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
+		Light: "22",  // Darker green
+		Dark:  "82",  // Brighter green
+	}).Bold(true)
+
+	// Deletion count style (red)
+	DeletionsStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
+		Light: "124", // Dark red
+		Dark:  "196", // Bright red
+	})
+
+	SelectedDeletionsStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
+		Light: "88",  // Darker red
+		Dark:  "9",   // Brighter red
+	}).Bold(true)
+
+	// Header styles for commit info
+	HeaderStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
+		Light: "243",
+		Dark:  "248",
+	})
 )

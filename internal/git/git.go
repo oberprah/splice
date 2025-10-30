@@ -16,6 +16,14 @@ type GitCommit struct {
 	Date    time.Time // Commit timestamp
 }
 
+// FileChange represents a file that was changed in a commit
+type FileChange struct {
+	Path      string // File path relative to repository root
+	Additions int    // Number of lines added
+	Deletions int    // Number of lines deleted
+	IsBinary  bool   // True if the file is binary
+}
+
 // ParseGitLogOutput parses git log output into GitCommit structs.
 // Input format: "hash|author|date|message" (one commit per line).
 func ParseGitLogOutput(output string) ([]GitCommit, error) {
@@ -79,4 +87,89 @@ func FetchCommits(limit int) ([]GitCommit, error) {
 	}
 
 	return ParseGitLogOutput(out.String())
+}
+
+// ParseFileChangesOutput parses git diff output into FileChange structs.
+// Input format: "additions\tdeletions\tfilepath" (one file per line).
+func ParseFileChangesOutput(output string) ([]FileChange, error) {
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	changes := make([]FileChange, 0, len(lines))
+
+	for i, line := range lines {
+		if line == "" {
+			continue
+		}
+
+		parts := strings.SplitN(line, "\t", 3)
+		if len(parts) != 3 {
+			return nil, fmt.Errorf("malformed line %d: expected 3 tab-separated fields, got %d: %q", i+1, len(parts), line)
+		}
+
+		additionsStr := parts[0]
+		deletionsStr := parts[1]
+		path := parts[2]
+
+		var additions, deletions int
+		var isBinary bool
+
+		// Check if this is a binary file (git shows "-" for both additions and deletions)
+		if additionsStr == "-" && deletionsStr == "-" {
+			isBinary = true
+			additions = 0
+			deletions = 0
+		} else {
+			// Parse additions
+			var err error
+			_, err = fmt.Sscanf(additionsStr, "%d", &additions)
+			if err != nil {
+				return nil, fmt.Errorf("invalid additions count on line %d: %q", i+1, additionsStr)
+			}
+
+			// Parse deletions
+			_, err = fmt.Sscanf(deletionsStr, "%d", &deletions)
+			if err != nil {
+				return nil, fmt.Errorf("invalid deletions count on line %d: %q", i+1, deletionsStr)
+			}
+		}
+
+		change := FileChange{
+			Path:      path,
+			Additions: additions,
+			Deletions: deletions,
+			IsBinary:  isBinary,
+		}
+
+		changes = append(changes, change)
+	}
+
+	return changes, nil
+}
+
+// FetchFileChanges executes git diff and returns a slice of file changes for a commit
+func FetchFileChanges(commitHash string) ([]FileChange, error) {
+	// Use git diff-tree to get file statistics for a specific commit
+	// --no-commit-id: Suppress the commit ID output
+	// --numstat: Show number of added and deleted lines in decimal notation
+	// -r: Recurse into sub-trees
+	cmd := exec.Command("git", "diff-tree", "--no-commit-id", "--numstat", "-r", commitHash)
+
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		// Check for common error conditions
+		stderrStr := stderr.String()
+		if strings.Contains(stderrStr, "not a git repository") {
+			return nil, fmt.Errorf("not a git repository")
+		}
+		if strings.Contains(stderrStr, "unknown revision") || strings.Contains(stderrStr, "bad revision") {
+			return nil, fmt.Errorf("invalid commit: %s", commitHash)
+		}
+		return nil, fmt.Errorf("git diff-tree failed: %v - %s", err, stderrStr)
+	}
+
+	return ParseFileChangesOutput(out.String())
 }
