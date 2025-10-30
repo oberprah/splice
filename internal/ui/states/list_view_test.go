@@ -1,4 +1,4 @@
-package list
+package states
 
 import (
 	"strings"
@@ -14,7 +14,7 @@ func TestListState_View_RendersCommits(t *testing.T) {
 		{Hash: "def456", Message: "Second commit", Author: "Bob", Date: time.Now()},
 	}
 
-	s := State{
+	s := ListState{
 		Commits:       commits,
 		Cursor:        0,
 		ViewportStart: 0,
@@ -53,7 +53,7 @@ func TestListState_View_SelectionIndicator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := State{
+			s := ListState{
 				Commits:       commits,
 				Cursor:        tt.cursor,
 				ViewportStart: 0,
@@ -77,7 +77,7 @@ func TestListState_View_SelectionIndicator(t *testing.T) {
 func TestListState_View_ViewportLimits(t *testing.T) {
 	commits := createTestCommits(20)
 
-	s := State{
+	s := ListState{
 		Commits:       commits,
 		Cursor:        10,
 		ViewportStart: 5,
@@ -102,7 +102,7 @@ func TestListState_View_EmptyViewport(t *testing.T) {
 	// Edge case: viewportStart beyond commits (shouldn't happen in practice)
 	commits := createTestCommits(5)
 
-	s := State{
+	s := ListState{
 		Commits:       commits,
 		Cursor:        0,
 		ViewportStart: 10, // Beyond end
@@ -128,7 +128,7 @@ func TestListState_View_LineTruncation(t *testing.T) {
 		},
 	}
 
-	s := State{
+	s := ListState{
 		Commits:       commits,
 		Cursor:        0,
 		ViewportStart: 0,

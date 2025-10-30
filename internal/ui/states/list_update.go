@@ -1,12 +1,11 @@
-package list
+package states
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/oberprah/splice/internal/ui/state"
 )
 
 // Update handles messages in list view state
-func (s State) Update(msg tea.Msg, ctx state.Context) (state.State, tea.Cmd) {
+func (s ListState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -43,7 +42,7 @@ func (s State) Update(msg tea.Msg, ctx state.Context) (state.State, tea.Cmd) {
 }
 
 // updateViewport adjusts the viewport to keep the cursor visible
-func (s *State) updateViewport(height int) {
+func (s *ListState) updateViewport(height int) {
 	// Scroll down if cursor is below viewport
 	if s.Cursor >= s.ViewportStart+height {
 		s.ViewportStart = s.Cursor - height + 1

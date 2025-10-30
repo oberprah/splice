@@ -1,16 +1,9 @@
-package error
+package states
 
 import (
 	"fmt"
 	"testing"
 )
-
-type mockContext struct {
-	width, height int
-}
-
-func (m mockContext) Width() int  { return m.width }
-func (m mockContext) Height() int { return m.height }
 
 func TestErrorState_View(t *testing.T) {
 	tests := []struct {
@@ -37,7 +30,7 @@ func TestErrorState_View(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := State{Err: tt.err}
+			s := ErrorState{Err: tt.err}
 			ctx := mockContext{width: 80, height: 24}
 
 			result := s.View(ctx)

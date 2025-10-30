@@ -1,4 +1,4 @@
-package loading
+package states
 
 import (
 	"fmt"
@@ -7,8 +7,6 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/oberprah/splice/internal/git"
-	errorstate "github.com/oberprah/splice/internal/ui/state/error"
-	"github.com/oberprah/splice/internal/ui/state/list"
 )
 
 func TestLoadingState_Update_CommitsLoaded(t *testing.T) {
@@ -27,11 +25,11 @@ func TestLoadingState_Update_CommitsLoaded(t *testing.T) {
 				},
 				Err: nil,
 			},
-			expectedStateType: "list.State",
+			expectedStateType: "ListState",
 			checkState: func(t *testing.T, s any) {
-				listState, ok := s.(list.State)
+				listState, ok := s.(*ListState)
 				if !ok {
-					t.Fatal("Expected list.State")
+					t.Fatal("Expected *ListState")
 				}
 				if len(listState.Commits) != 2 {
 					t.Errorf("Expected 2 commits, got %d", len(listState.Commits))
@@ -50,11 +48,11 @@ func TestLoadingState_Update_CommitsLoaded(t *testing.T) {
 				Commits: nil,
 				Err:     fmt.Errorf("not a git repository"),
 			},
-			expectedStateType: "error.State",
+			expectedStateType: "ErrorState",
 			checkState: func(t *testing.T, s any) {
-				errorState, ok := s.(errorstate.State)
+				errorState, ok := s.(*ErrorState)
 				if !ok {
-					t.Fatal("Expected error.State")
+					t.Fatal("Expected *ErrorState")
 				}
 				if errorState.Err == nil {
 					t.Error("Expected error to be set")
@@ -70,11 +68,11 @@ func TestLoadingState_Update_CommitsLoaded(t *testing.T) {
 				Commits: []git.GitCommit{},
 				Err:     nil,
 			},
-			expectedStateType: "error.State",
+			expectedStateType: "ErrorState",
 			checkState: func(t *testing.T, s any) {
-				errorState, ok := s.(errorstate.State)
+				errorState, ok := s.(*ErrorState)
 				if !ok {
-					t.Fatal("Expected error.State")
+					t.Fatal("Expected *ErrorState")
 				}
 				if errorState.Err == nil {
 					t.Error("Expected error to be set for empty repository")
@@ -85,7 +83,7 @@ func TestLoadingState_Update_CommitsLoaded(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := State{}
+			s := LoadingState{}
 			ctx := mockContext{width: 80, height: 24}
 
 			newState, cmd := s.Update(tt.msg, ctx)
@@ -102,7 +100,7 @@ func TestLoadingState_Update_CommitsLoaded(t *testing.T) {
 }
 
 func TestLoadingState_Update_OtherMessages(t *testing.T) {
-	s := State{}
+	s := LoadingState{}
 	ctx := mockContext{width: 80, height: 24}
 
 	// Test that other message types don't change the state
@@ -113,7 +111,7 @@ func TestLoadingState_Update_OtherMessages(t *testing.T) {
 	}
 
 	// Should return the same loading state
-	if _, ok := newState.(State); !ok {
-		t.Error("Expected state to remain as loading.State")
+	if _, ok := newState.(LoadingState); !ok {
+		t.Error("Expected state to remain as LoadingState")
 	}
 }

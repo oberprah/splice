@@ -1,16 +1,15 @@
-package list
+package states
 
 import (
 	"strings"
 
 	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/ui/format"
-	"github.com/oberprah/splice/internal/ui/state"
 	"github.com/oberprah/splice/internal/ui/styles"
 )
 
 // View renders the list of commits
-func (s State) View(ctx state.Context) string {
+func (s ListState) View(ctx Context) string {
 	var b strings.Builder
 
 	// Calculate the end of the viewport
@@ -28,7 +27,7 @@ func (s State) View(ctx state.Context) string {
 }
 
 // formatCommitLine formats a single commit line with proper styling
-func (s State) formatCommitLine(commit git.GitCommit, isSelected bool, width int) string {
+func (s ListState) formatCommitLine(commit git.GitCommit, isSelected bool, width int) string {
 	// Format: hash message - author (time ago)
 	// Example: a4c3a8a Fix memory leak in parser - John Doe (4 min ago)
 

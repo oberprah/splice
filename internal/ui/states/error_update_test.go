@@ -1,4 +1,4 @@
-package error
+package states
 
 import (
 	"fmt"
@@ -18,7 +18,7 @@ func TestErrorState_Update_QuitKeys(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := State{Err: fmt.Errorf("test error")}
+			s := ErrorState{Err: fmt.Errorf("test error")}
 			ctx := mockContext{width: 80, height: 24}
 
 			msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(tt.key)}
@@ -41,8 +41,8 @@ func TestErrorState_Update_QuitKeys(t *testing.T) {
 			}
 
 			// State should be unchanged
-			if errorState, ok := newState.(State); !ok {
-				t.Error("Expected state to remain as error.State")
+			if errorState, ok := newState.(ErrorState); !ok {
+				t.Error("Expected state to remain as ErrorState")
 			} else if errorState.Err.Error() != "test error" {
 				t.Error("Error message should be unchanged")
 			}
@@ -51,7 +51,7 @@ func TestErrorState_Update_QuitKeys(t *testing.T) {
 }
 
 func TestErrorState_Update_OtherKeys(t *testing.T) {
-	s := State{Err: fmt.Errorf("test error")}
+	s := ErrorState{Err: fmt.Errorf("test error")}
 	ctx := mockContext{width: 80, height: 24}
 
 	// Test various other keys that should do nothing
@@ -69,8 +69,8 @@ func TestErrorState_Update_OtherKeys(t *testing.T) {
 			}
 
 			// State should be unchanged
-			if errorState, ok := newState.(State); !ok {
-				t.Error("Expected state to remain as error.State")
+			if errorState, ok := newState.(ErrorState); !ok {
+				t.Error("Expected state to remain as ErrorState")
 			} else if errorState.Err.Error() != "test error" {
 				t.Error("Error message should be unchanged")
 			}

@@ -2,7 +2,7 @@ package ui
 
 import (
 	"github.com/oberprah/splice/internal/git"
-	"github.com/oberprah/splice/internal/ui/state/loading"
+	"github.com/oberprah/splice/internal/ui/states"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -23,7 +23,7 @@ func WithFetchCommits(fn FetchCommitsFunc) ModelOption {
 // NewModel creates a new Model with initial loading state
 func NewModel(opts ...ModelOption) Model {
 	m := Model{
-		currentState: loading.State{},
+		currentState: states.LoadingState{},
 		fetchCommits: git.FetchCommits, // Default to real git command
 	}
 
@@ -38,7 +38,7 @@ func NewModel(opts ...ModelOption) Model {
 func (m Model) Init() tea.Cmd {
 	return func() tea.Msg {
 		commits, err := m.fetchCommits(500)
-		return loading.CommitsLoadedMsg{Commits: commits, Err: err}
+		return states.CommitsLoadedMsg{Commits: commits, Err: err}
 	}
 }
 

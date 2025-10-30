@@ -1,4 +1,4 @@
-package state
+package states
 
 import tea "github.com/charmbracelet/bubbletea"
 

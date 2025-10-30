@@ -1,10 +1,10 @@
 package ui
 
-import "github.com/oberprah/splice/internal/ui/state"
+import "github.com/oberprah/splice/internal/ui/states"
 
 // Model represents the application model using the state pattern
 type Model struct {
-	currentState state.State
+	currentState states.State
 	width        int
 	height       int
 	fetchCommits FetchCommitsFunc
