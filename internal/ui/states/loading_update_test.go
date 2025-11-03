@@ -20,8 +20,8 @@ func TestLoadingState_Update_CommitsLoaded(t *testing.T) {
 			name: "successful load with commits",
 			msg: CommitsLoadedMsg{
 				Commits: []git.GitCommit{
-					{Hash: "abc123", Message: "Test", Author: "Author", Date: time.Now()},
-					{Hash: "def456", Message: "Test2", Author: "Author2", Date: time.Now()},
+					{Hash: "abc123", Message: "Test", Body: "", Author: "Author", Date: time.Now()},
+					{Hash: "def456", Message: "Test2", Body: "", Author: "Author2", Date: time.Now()},
 				},
 				Err: nil,
 			},

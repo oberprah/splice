@@ -16,39 +16,41 @@ func TestParseGitLogOutput(t *testing.T) {
 	}{
 		{
 			name:  "single commit",
-			input: "abc123def456789012345678901234567890abcd|John Doe|2024-01-15T10:00:00Z|Fix memory leak",
+			input: "abc123def456789012345678901234567890abcd\x00John Doe\x002024-01-15T10:00:00Z\x00Fix memory leak\x00\x1e",
 			expected: []GitCommit{
 				{
 					Hash:    "abc123def456789012345678901234567890abcd",
 					Author:  "John Doe",
 					Date:    time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC),
 					Message: "Fix memory leak",
+					Body:    "",
 				},
 			},
 		},
 		{
-			name: "multiple commits",
-			input: `hash1|Author One|2024-01-01T10:00:00Z|First commit
-hash2|Author Two|2024-01-02T11:30:00Z|Second commit
-hash3|Author Three|2024-01-03T15:45:00Z|Third commit`,
+			name:  "multiple commits",
+			input: "hash1\x00Author One\x002024-01-01T10:00:00Z\x00First commit\x00\x1ehash2\x00Author Two\x002024-01-02T11:30:00Z\x00Second commit\x00\x1ehash3\x00Author Three\x002024-01-03T15:45:00Z\x00Third commit\x00\x1e",
 			expected: []GitCommit{
 				{
 					Hash:    "hash1",
 					Author:  "Author One",
 					Date:    time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 					Message: "First commit",
+					Body:    "",
 				},
 				{
 					Hash:    "hash2",
 					Author:  "Author Two",
 					Date:    time.Date(2024, 1, 2, 11, 30, 0, 0, time.UTC),
 					Message: "Second commit",
+					Body:    "",
 				},
 				{
 					Hash:    "hash3",
 					Author:  "Author Three",
 					Date:    time.Date(2024, 1, 3, 15, 45, 0, 0, time.UTC),
 					Message: "Third commit",
+					Body:    "",
 				},
 			},
 		},
@@ -63,79 +65,81 @@ hash3|Author Three|2024-01-03T15:45:00Z|Third commit`,
 			expected: []GitCommit{},
 		},
 		{
-			name:  "pipe in commit message preserved",
-			input: "hash|Author|2024-01-01T10:00:00Z|Fix | handling in parser",
+			name:  "commit with body",
+			input: "hash\x00Author\x002024-01-01T10:00:00Z\x00Fix memory leak\x00This commit fixes a critical memory leak.\n\nThe issue was in the cleanup code.\x1e",
 			expected: []GitCommit{
 				{
 					Hash:    "hash",
 					Author:  "Author",
 					Date:    time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
-					Message: "Fix | handling in parser",
+					Message: "Fix memory leak",
+					Body:    "This commit fixes a critical memory leak.\n\nThe issue was in the cleanup code.",
 				},
 			},
 		},
 		{
-			name:  "multiple pipes in message",
-			input: "hash|Author|2024-01-01T10:00:00Z|Fix A | B | C issue",
+			name:  "pipes and special chars in message",
+			input: "hash\x00Author\x002024-01-01T10:00:00Z\x00Fix A | B | C issue\x00\x1e",
 			expected: []GitCommit{
 				{
 					Hash:    "hash",
 					Author:  "Author",
 					Date:    time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 					Message: "Fix A | B | C issue",
+					Body:    "",
 				},
 			},
 		},
 		{
-			name: "empty lines between commits ignored",
-			input: `hash1|Author|2024-01-01T10:00:00Z|First
-
-hash2|Author|2024-01-02T10:00:00Z|Second
-
-
-hash3|Author|2024-01-03T10:00:00Z|Third`,
+			name:  "multiple commits with bodies",
+			input: "hash1\x00Author\x002024-01-01T10:00:00Z\x00First\x00Body 1\x1ehash2\x00Author\x002024-01-02T10:00:00Z\x00Second\x00Body 2\x1ehash3\x00Author\x002024-01-03T10:00:00Z\x00Third\x00\x1e",
 			expected: []GitCommit{
 				{
 					Hash:    "hash1",
 					Author:  "Author",
 					Date:    time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 					Message: "First",
+					Body:    "Body 1",
 				},
 				{
 					Hash:    "hash2",
 					Author:  "Author",
 					Date:    time.Date(2024, 1, 2, 10, 0, 0, 0, time.UTC),
 					Message: "Second",
+					Body:    "Body 2",
 				},
 				{
 					Hash:    "hash3",
 					Author:  "Author",
 					Date:    time.Date(2024, 1, 3, 10, 0, 0, 0, time.UTC),
 					Message: "Third",
+					Body:    "",
 				},
 			},
 		},
 		{
 			name:  "author with special characters",
-			input: "hash|José García-López|2024-01-01T10:00:00Z|Add feature",
+			input: "hash\x00José García-López\x002024-01-01T10:00:00Z\x00Add feature\x00\x1e",
 			expected: []GitCommit{
 				{
 					Hash:    "hash",
 					Author:  "José García-López",
 					Date:    time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 					Message: "Add feature",
+					Body:    "",
 				},
 			},
 		},
 		{
 			name:  "empty message",
-			input: "hash|Author|2024-01-01T10:00:00Z|",
+			input: "hash\x00Author\x002024-01-01T10:00:00Z\x00\x00\x1e",
 			expected: []GitCommit{
 				{
 					Hash:    "hash",
 					Author:  "Author",
 					Date:    time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 					Message: "",
+					Body:    "",
 				},
 			},
 		},
@@ -157,7 +161,7 @@ hash3|Author|2024-01-03T10:00:00Z|Third`,
 }
 
 func TestParseGitLogOutput_InvalidDate(t *testing.T) {
-	input := "hash|Author|INVALID_DATE|Message"
+	input := "hash\x00Author\x00INVALID_DATE\x00Message\x00\x1e"
 
 	commits, err := ParseGitLogOutput(input)
 
@@ -176,38 +180,29 @@ func TestParseGitLogOutput_InvalidDate(t *testing.T) {
 	}
 }
 
-func TestParseGitLogOutput_MalformedInput(t *testing.T) {
+func TestParseGitLogOutput_IncompleteData(t *testing.T) {
 	tests := []struct {
-		name              string
-		input             string
-		expectedErrSubstr string
+		name     string
+		input    string
+		expected []GitCommit
 	}{
 		{
-			name:              "line without pipes",
-			input:             "MALFORMED_LINE_WITHOUT_PIPES",
-			expectedErrSubstr: "malformed line",
+			name:     "incomplete commit with 3 fields only",
+			input:    "hash\x00Author\x00Date",
+			expected: []GitCommit{},
 		},
 		{
-			name: "line with only 3 parts",
-			input: `hash1|Author|2024-01-01T10:00:00Z|Valid
-incomplete|line|only`,
-			expectedErrSubstr: "malformed line",
-		},
-		{
-			name: "malformed line after valid commit",
-			input: `hash1|Author|2024-01-01T10:00:00Z|Valid commit
-MALFORMED_LINE_WITHOUT_PIPES`,
-			expectedErrSubstr: "malformed line",
-		},
-		{
-			name:              "line with only 1 field",
-			input:             "onlyonefield",
-			expectedErrSubstr: "malformed line",
-		},
-		{
-			name:              "line with 2 fields",
-			input:             "field1|field2",
-			expectedErrSubstr: "malformed line",
+			name:  "valid commit followed by incomplete data",
+			input: "hash1\x00Author\x002024-01-01T10:00:00Z\x00Message\x00Body\x1eincomplete\x00data",
+			expected: []GitCommit{
+				{
+					Hash:    "hash1",
+					Author:  "Author",
+					Date:    time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
+					Message: "Message",
+					Body:    "Body",
+				},
+			},
 		},
 	}
 
@@ -215,16 +210,12 @@ MALFORMED_LINE_WITHOUT_PIPES`,
 		t.Run(tt.name, func(t *testing.T) {
 			commits, err := ParseGitLogOutput(tt.input)
 
-			if err == nil {
-				t.Fatal("ParseGitLogOutput() expected error for malformed input, got nil")
+			if err != nil {
+				t.Fatalf("ParseGitLogOutput() unexpected error: %v", err)
 			}
 
-			if commits != nil {
-				t.Errorf("ParseGitLogOutput() expected nil commits on error, got %d commits", len(commits))
-			}
-
-			if !strings.Contains(err.Error(), tt.expectedErrSubstr) {
-				t.Errorf("Error message %q should contain %q", err.Error(), tt.expectedErrSubstr)
+			if !reflect.DeepEqual(commits, tt.expected) {
+				t.Errorf("ParseGitLogOutput() mismatch:\ngot:  %+v\nwant: %+v", commits, tt.expected)
 			}
 		})
 	}

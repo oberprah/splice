@@ -14,6 +14,7 @@ func createTestCommits(count int) []git.GitCommit {
 		commits[i] = git.GitCommit{
 			Hash:    string(rune('a' + i)),
 			Message: "Commit " + string(rune('0'+i)),
+			Body:    "",
 			Author:  "Author",
 			Date:    time.Now(),
 		}

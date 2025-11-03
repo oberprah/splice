@@ -10,8 +10,8 @@ import (
 
 func TestListState_View_RendersCommits(t *testing.T) {
 	commits := []git.GitCommit{
-		{Hash: "abc123", Message: "First commit", Author: "Alice", Date: time.Now()},
-		{Hash: "def456", Message: "Second commit", Author: "Bob", Date: time.Now()},
+		{Hash: "abc123", Message: "First commit", Body: "", Author: "Alice", Date: time.Now()},
+		{Hash: "def456", Message: "Second commit", Body: "", Author: "Bob", Date: time.Now()},
 	}
 
 	s := ListState{
@@ -123,6 +123,7 @@ func TestListState_View_LineTruncation(t *testing.T) {
 		{
 			Hash:    "abc123def456",
 			Message: "This is a very long commit message that should be truncated when the terminal is narrow",
+			Body:    "",
 			Author:  "VeryLongAuthorNameThatShouldAlsoGetTruncated",
 			Date:    time.Now(),
 		},

@@ -11,7 +11,8 @@ import (
 // GitCommit represents a single git commit with all necessary display information
 type GitCommit struct {
 	Hash    string    // Full 40-char hash
-	Message string    // First line of commit message
+	Message string    // First line of commit message (subject)
+	Body    string    // Commit message body (everything after subject line)
 	Author  string    // Author name (not email)
 	Date    time.Time // Commit timestamp
 }
@@ -26,25 +27,40 @@ type FileChange struct {
 }
 
 // ParseGitLogOutput parses git log output into GitCommit structs.
-// Input format: "hash|author|date|message" (one commit per line).
+// Input format: "hash\0author\0date\0subject\0body\x1e" (NULL-separated fields, record separator between commits).
 func ParseGitLogOutput(output string) ([]GitCommit, error) {
-	lines := strings.Split(strings.TrimSpace(output), "\n")
-	commits := make([]GitCommit, 0, len(lines))
+	output = strings.TrimSpace(output)
+	if output == "" {
+		return []GitCommit{}, nil
+	}
 
-	for i, line := range lines {
-		if line == "" {
+	// Split by record separator to get individual commits
+	commitRecords := strings.Split(output, "\x1e")
+
+	commits := make([]GitCommit, 0, len(commitRecords))
+
+	for _, record := range commitRecords {
+		record = strings.TrimSpace(record)
+		if record == "" {
 			continue
 		}
 
-		parts := strings.SplitN(line, "|", 4)
-		if len(parts) != 4 {
-			return nil, fmt.Errorf("malformed line %d: expected 4 pipe-separated fields, got %d: %q", i+1, len(parts), line)
+		// Split each commit by single NULL to get fields
+		fields := strings.SplitN(record, "\x00", 5)
+		if len(fields) != 5 {
+			continue // Skip malformed records
 		}
 
-		hash := parts[0]
-		author := parts[1]
-		dateStr := parts[2]
-		message := parts[3]
+		hash := fields[0]
+		author := fields[1]
+		dateStr := fields[2]
+		message := fields[3]
+		body := strings.TrimSpace(fields[4])
+
+		// Skip empty commits
+		if hash == "" {
+			continue
+		}
 
 		// Parse the date
 		date, err := time.Parse(time.RFC3339, dateStr)
@@ -55,6 +71,7 @@ func ParseGitLogOutput(output string) ([]GitCommit, error) {
 		commit := GitCommit{
 			Hash:    hash,
 			Message: message,
+			Body:    body,
 			Author:  author,
 			Date:    date,
 		}
@@ -67,9 +84,11 @@ func ParseGitLogOutput(output string) ([]GitCommit, error) {
 
 // FetchCommits executes git log and returns a slice of commits
 func FetchCommits(limit int) ([]GitCommit, error) {
-	// Use git log with custom format: hash|author|date|message
+	// Use git log with custom format using NULL separator: hash\0author\0date\0subject\0body
+	// NULL character is used as field delimiter since it won't appear in commit messages
+	// ASCII Record Separator (0x1e) is used as commit record separator
 	cmd := exec.Command("git", "log",
-		"--pretty=format:%H|%an|%ad|%s",
+		"--pretty=format:%H%x00%an%x00%ad%x00%s%x00%b%x1e",
 		"--date=iso-strict",
 		fmt.Sprintf("-n %d", limit))
 

@@ -12,6 +12,7 @@ func createTestCommit() git.GitCommit {
 	return git.GitCommit{
 		Hash:    "abc123def456789012345678901234567890abcd",
 		Message: "Add automatic light/dark theme support",
+		Body:    "",
 		Author:  "John Doe",
 		Date:    time.Date(2024, 10, 15, 10, 0, 0, 0, time.UTC),
 	}

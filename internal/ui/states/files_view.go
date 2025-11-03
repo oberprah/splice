@@ -14,8 +14,8 @@ func (s *FilesState) View(ctx Context) string {
 	var b strings.Builder
 
 	// Render header with commit info
-	b.WriteString(s.renderHeader())
-	b.WriteString("\n")
+	header := s.renderHeader()
+	b.WriteString(header)
 
 	// Render separator
 	separator := strings.Repeat("─", min(ctx.Width(), 80))
@@ -23,7 +23,8 @@ func (s *FilesState) View(ctx Context) string {
 	b.WriteString("\n")
 
 	// Calculate available height for file list (subtract header lines)
-	headerLines := 2 // commit info + separator
+	// Count actual header lines (including body if present)
+	headerLines := strings.Count(header, "\n") + 1 // +1 for separator
 	availableHeight := max(ctx.Height()-headerLines, 1)
 
 	// Calculate the end of the viewport
@@ -41,35 +42,50 @@ func (s *FilesState) View(ctx Context) string {
 }
 
 // renderHeader formats the commit information header
-func (s *FilesState)renderHeader() string {
-	// Format: Commit: abc123d Add feature
-	// Author: John Doe
-	// Date:   2 hours ago
-	// Files:  3 changed, 45 insertions(+), 12 deletions(-)
+func (s *FilesState) renderHeader() string {
+	// Format:
+	// abc123d · John Doe committed 2 hours ago · 3 files · +45 -12
+	//
+	// Subject line
+	//
+	// Body paragraph 1...
+	// Body paragraph 2...
 
 	var b strings.Builder
 
-	// Commit line
-	b.WriteString(styles.HeaderStyle.Render("Commit: "))
+	// First line: hash · author committed time ago · X files · +Y -Z
+	totalAdditions, totalDeletions := s.calculateTotalStats()
+
 	b.WriteString(styles.HashStyle.Render(format.ToShortHash(s.Commit.Hash)))
-	b.WriteString(" ")
+	b.WriteString(styles.HeaderStyle.Render(" · "))
+	b.WriteString(styles.AuthorStyle.Render(s.Commit.Author))
+	b.WriteString(styles.HeaderStyle.Render(" committed "))
+	b.WriteString(styles.TimeStyle.Render(format.ToRelativeTime(s.Commit.Date)))
+	b.WriteString(styles.HeaderStyle.Render(" · "))
+
+	// File stats
+	fileCount := len(s.Files)
+	fileWord := "file"
+	if fileCount != 1 {
+		fileWord = "files"
+	}
+	b.WriteString(styles.HeaderStyle.Render(fmt.Sprintf("%d %s", fileCount, fileWord)))
+	b.WriteString(styles.HeaderStyle.Render(" · "))
+	b.WriteString(styles.AdditionsStyle.Render(fmt.Sprintf("+%d", totalAdditions)))
+	b.WriteString(styles.HeaderStyle.Render(" "))
+	b.WriteString(styles.DeletionsStyle.Render(fmt.Sprintf("-%d", totalDeletions)))
+	b.WriteString("\n\n")
+
+	// Subject line
 	b.WriteString(styles.MessageStyle.Render(s.Commit.Message))
 	b.WriteString("\n")
 
-	// Author line
-	b.WriteString(styles.HeaderStyle.Render("Author: "))
-	b.WriteString(styles.AuthorStyle.Render(s.Commit.Author))
-	b.WriteString("\n")
-
-	// Date line
-	b.WriteString(styles.HeaderStyle.Render("Date:   "))
-	b.WriteString(styles.TimeStyle.Render(format.ToRelativeTime(s.Commit.Date)))
-	b.WriteString("\n")
-
-	// Files summary line
-	totalAdditions, totalDeletions := s.calculateTotalStats()
-	b.WriteString(styles.HeaderStyle.Render(fmt.Sprintf("Files:  %d changed, %d insertions(+), %d deletions(-)",
-		len(s.Files), totalAdditions, totalDeletions)))
+	// Body (if exists)
+	if s.Commit.Body != "" {
+		b.WriteString("\n")
+		b.WriteString(styles.MessageStyle.Render(s.Commit.Body))
+		b.WriteString("\n")
+	}
 
 	return b.String()
 }

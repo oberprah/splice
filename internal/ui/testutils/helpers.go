@@ -16,6 +16,7 @@ func CreateTestCommits(count int) []git.GitCommit {
 		commits[i] = git.GitCommit{
 			Hash:    fmt.Sprintf("%040d", i), // Full 40-char hash
 			Message: fmt.Sprintf("Commit message %d", i),
+			Body:    "",
 			Author:  fmt.Sprintf("Author %d", i%3), // Vary authors
 			Date:    baseTime.Add(time.Duration(-i) * time.Hour), // Reverse chronological
 		}
@@ -33,6 +34,7 @@ func CreateTestCommitsWithMessages(messages []string) []git.GitCommit {
 		commits[i] = git.GitCommit{
 			Hash:    fmt.Sprintf("%040d", i),
 			Message: msg,
+			Body:    "",
 			Author:  "Test Author",
 			Date:    baseTime.Add(time.Duration(-i) * time.Hour),
 		}
