@@ -25,11 +25,11 @@ func TestLoadingState_Update_CommitsLoaded(t *testing.T) {
 				},
 				Err: nil,
 			},
-			expectedStateType: "ListState",
+			expectedStateType: "LogState",
 			checkState: func(t *testing.T, s any) {
-				listState, ok := s.(*ListState)
+				listState, ok := s.(*LogState)
 				if !ok {
-					t.Fatal("Expected *ListState")
+					t.Fatal("Expected *LogState")
 				}
 				if len(listState.Commits) != 2 {
 					t.Errorf("Expected 2 commits, got %d", len(listState.Commits))

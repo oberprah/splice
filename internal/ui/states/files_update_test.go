@@ -238,10 +238,10 @@ func TestFilesState_Update_BackNavigation(t *testing.T) {
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}}
 	newState, cmd := s.Update(msg, ctx)
 
-	// Should transition to ListState
-	listState, ok := newState.(*ListState)
+	// Should transition to LogState
+	listState, ok := newState.(*LogState)
 	if !ok {
-		t.Fatalf("Expected to transition to ListState, got %T", newState)
+		t.Fatalf("Expected to transition to LogState, got %T", newState)
 	}
 
 	// Should not return a command (direct state transition)

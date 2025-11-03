@@ -2,8 +2,8 @@ package states
 
 import "github.com/oberprah/splice/internal/git"
 
-// State represents the state when displaying a list of commits
-type ListState struct {
+// LogState represents the state when displaying the commit log
+type LogState struct {
 	Commits       []git.GitCommit
 	Cursor        int
 	ViewportStart int

@@ -22,9 +22,9 @@ func createTestCommits(count int) []git.GitCommit {
 	return commits
 }
 
-func TestListState_Update_NavigationDown(t *testing.T) {
+func TestLogState_Update_NavigationDown(t *testing.T) {
 	commits := createTestCommits(10)
-	s := ListState{
+	s := LogState{
 		Commits:       commits,
 		Cursor:        0,
 		ViewportStart: 0,
@@ -39,15 +39,15 @@ func TestListState_Update_NavigationDown(t *testing.T) {
 		t.Error("Expected nil command")
 	}
 
-	listState := newState.(ListState)
+	listState := newState.(LogState)
 	if listState.Cursor != 1 {
 		t.Errorf("Expected cursor at 1, got %d", listState.Cursor)
 	}
 }
 
-func TestListState_Update_NavigationUp(t *testing.T) {
+func TestLogState_Update_NavigationUp(t *testing.T) {
 	commits := createTestCommits(10)
-	s := ListState{
+	s := LogState{
 		Commits:       commits,
 		Cursor:        5,
 		ViewportStart: 0,
@@ -62,13 +62,13 @@ func TestListState_Update_NavigationUp(t *testing.T) {
 		t.Error("Expected nil command")
 	}
 
-	listState := newState.(ListState)
+	listState := newState.(LogState)
 	if listState.Cursor != 4 {
 		t.Errorf("Expected cursor at 4, got %d", listState.Cursor)
 	}
 }
 
-func TestListState_Update_CursorBoundaries(t *testing.T) {
+func TestLogState_Update_CursorBoundaries(t *testing.T) {
 	commits := createTestCommits(5)
 
 	tests := []struct {
@@ -85,7 +85,7 @@ func TestListState_Update_CursorBoundaries(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := ListState{
+			s := LogState{
 				Commits:       commits,
 				Cursor:        tt.initialCursor,
 				ViewportStart: 0,
@@ -103,7 +103,7 @@ func TestListState_Update_CursorBoundaries(t *testing.T) {
 		}
 
 			newState, _ := s.Update(msg, ctx)
-			listState := newState.(ListState)
+			listState := newState.(LogState)
 
 			if listState.Cursor != tt.expectedCursor {
 				t.Errorf("Expected cursor at %d, got %d", tt.expectedCursor, listState.Cursor)
@@ -112,9 +112,9 @@ func TestListState_Update_CursorBoundaries(t *testing.T) {
 	}
 }
 
-func TestListState_Update_JumpToTop(t *testing.T) {
+func TestLogState_Update_JumpToTop(t *testing.T) {
 	commits := createTestCommits(10)
-	s := ListState{
+	s := LogState{
 		Commits:       commits,
 		Cursor:        5,
 		ViewportStart: 3,
@@ -129,7 +129,7 @@ func TestListState_Update_JumpToTop(t *testing.T) {
 		t.Error("Expected nil command")
 	}
 
-	listState := newState.(ListState)
+	listState := newState.(LogState)
 	if listState.Cursor != 0 {
 		t.Errorf("Expected cursor at 0, got %d", listState.Cursor)
 	}
@@ -138,9 +138,9 @@ func TestListState_Update_JumpToTop(t *testing.T) {
 	}
 }
 
-func TestListState_Update_JumpToBottom(t *testing.T) {
+func TestLogState_Update_JumpToBottom(t *testing.T) {
 	commits := createTestCommits(10)
-	s := ListState{
+	s := LogState{
 		Commits:       commits,
 		Cursor:        0,
 		ViewportStart: 0,
@@ -155,15 +155,15 @@ func TestListState_Update_JumpToBottom(t *testing.T) {
 		t.Error("Expected nil command")
 	}
 
-	listState := newState.(ListState)
+	listState := newState.(LogState)
 	if listState.Cursor != 9 {
 		t.Errorf("Expected cursor at 9, got %d", listState.Cursor)
 	}
 }
 
-func TestListState_Update_ViewportScrolling(t *testing.T) {
+func TestLogState_Update_ViewportScrolling(t *testing.T) {
 	commits := createTestCommits(30)
-	s := ListState{
+	s := LogState{
 		Commits:       commits,
 		Cursor:        0,
 		ViewportStart: 0,
@@ -174,7 +174,7 @@ func TestListState_Update_ViewportScrolling(t *testing.T) {
 	for range 15 {
 		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")}
 		newState, _ := s.Update(msg, ctx)
-		s = newState.(ListState)
+		s = newState.(LogState)
 	}
 
 	// Cursor should be at 15
@@ -189,9 +189,9 @@ func TestListState_Update_ViewportScrolling(t *testing.T) {
 	}
 }
 
-func TestListState_Update_QuitKeys(t *testing.T) {
+func TestLogState_Update_QuitKeys(t *testing.T) {
 	commits := createTestCommits(5)
-	s := ListState{
+	s := LogState{
 		Commits:       commits,
 		Cursor:        0,
 		ViewportStart: 0,

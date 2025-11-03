@@ -11,7 +11,7 @@ func (s *FilesState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 		switch msg.String() {
 		case "q":
 			// Go back to the previous list state
-			return &ListState{
+			return &LogState{
 				Commits:       s.ListCommits,
 				Cursor:        s.ListCursor,
 				ViewportStart: s.ListViewportStart,

@@ -7,7 +7,7 @@ import (
 )
 
 // Update handles messages in list view state
-func (s ListState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
+func (s LogState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 	switch msg := msg.(type) {
 	case messages.FilesLoadedMsg:
 		// Handle file loading result
@@ -81,7 +81,7 @@ func (s ListState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 }
 
 // updateViewport adjusts the viewport to keep the cursor visible
-func (s *ListState) updateViewport(height int) {
+func (s *LogState) updateViewport(height int) {
 	// Scroll down if cursor is below viewport
 	if s.Cursor >= s.ViewportStart+height {
 		s.ViewportStart = s.Cursor - height + 1

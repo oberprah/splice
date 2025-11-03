@@ -28,7 +28,7 @@ func (s LoadingState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 		}
 
 		// Successfully loaded commits - transition to list view
-		return &ListState{
+		return &LogState{
 			Commits:       msg.Commits,
 			Cursor:        0,
 			ViewportStart: 0,

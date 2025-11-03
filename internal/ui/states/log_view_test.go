@@ -8,13 +8,13 @@ import (
 	"github.com/oberprah/splice/internal/git"
 )
 
-func TestListState_View_RendersCommits(t *testing.T) {
+func TestLogState_View_RendersCommits(t *testing.T) {
 	commits := []git.GitCommit{
 		{Hash: "abc123", Message: "First commit", Body: "", Author: "Alice", Date: time.Now()},
 		{Hash: "def456", Message: "Second commit", Body: "", Author: "Bob", Date: time.Now()},
 	}
 
-	s := ListState{
+	s := LogState{
 		Commits:       commits,
 		Cursor:        0,
 		ViewportStart: 0,
@@ -38,7 +38,7 @@ func TestListState_View_RendersCommits(t *testing.T) {
 	}
 }
 
-func TestListState_View_SelectionIndicator(t *testing.T) {
+func TestLogState_View_SelectionIndicator(t *testing.T) {
 	commits := createTestCommits(3)
 
 	tests := []struct {
@@ -53,7 +53,7 @@ func TestListState_View_SelectionIndicator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := ListState{
+			s := LogState{
 				Commits:       commits,
 				Cursor:        tt.cursor,
 				ViewportStart: 0,
@@ -74,10 +74,10 @@ func TestListState_View_SelectionIndicator(t *testing.T) {
 	}
 }
 
-func TestListState_View_ViewportLimits(t *testing.T) {
+func TestLogState_View_ViewportLimits(t *testing.T) {
 	commits := createTestCommits(20)
 
-	s := ListState{
+	s := LogState{
 		Commits:       commits,
 		Cursor:        10,
 		ViewportStart: 5,
@@ -98,11 +98,11 @@ func TestListState_View_ViewportLimits(t *testing.T) {
 	// Note: We can't easily check exact commit due to styling, but we can check line count
 }
 
-func TestListState_View_EmptyViewport(t *testing.T) {
+func TestLogState_View_EmptyViewport(t *testing.T) {
 	// Edge case: viewportStart beyond commits (shouldn't happen in practice)
 	commits := createTestCommits(5)
 
-	s := ListState{
+	s := LogState{
 		Commits:       commits,
 		Cursor:        0,
 		ViewportStart: 10, // Beyond end
@@ -118,7 +118,7 @@ func TestListState_View_EmptyViewport(t *testing.T) {
 	}
 }
 
-func TestListState_View_LineTruncation(t *testing.T) {
+func TestLogState_View_LineTruncation(t *testing.T) {
 	commits := []git.GitCommit{
 		{
 			Hash:    "abc123def456",
@@ -129,7 +129,7 @@ func TestListState_View_LineTruncation(t *testing.T) {
 		},
 	}
 
-	s := ListState{
+	s := LogState{
 		Commits:       commits,
 		Cursor:        0,
 		ViewportStart: 0,
