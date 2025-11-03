@@ -19,6 +19,7 @@ type GitCommit struct {
 // FileChange represents a file that was changed in a commit
 type FileChange struct {
 	Path      string // File path relative to repository root
+	Status    string // Git status: M (modified), A (added), D (deleted), R (renamed), etc.
 	Additions int    // Number of lines added
 	Deletions int    // Number of lines deleted
 	IsBinary  bool   // True if the file is binary
@@ -147,20 +148,49 @@ func ParseFileChangesOutput(output string) ([]FileChange, error) {
 
 // FetchFileChanges executes git diff and returns a slice of file changes for a commit
 func FetchFileChanges(commitHash string) ([]FileChange, error) {
-	// Use git diff-tree to get file statistics for a specific commit
-	// --no-commit-id: Suppress the commit ID output
-	// --numstat: Show number of added and deleted lines in decimal notation
-	// -r: Recurse into sub-trees
-	cmd := exec.Command("git", "diff-tree", "--no-commit-id", "--numstat", "-r", commitHash)
+	// First, get file statuses (A/M/D/R)
+	statusCmd := exec.Command("git", "diff-tree", "--no-commit-id", "--name-status", "-r", commitHash)
+	var statusOut bytes.Buffer
+	var statusErr bytes.Buffer
+	statusCmd.Stdout = &statusOut
+	statusCmd.Stderr = &statusErr
 
+	err := statusCmd.Run()
+	if err != nil {
+		stderrStr := statusErr.String()
+		if strings.Contains(stderrStr, "not a git repository") {
+			return nil, fmt.Errorf("not a git repository")
+		}
+		if strings.Contains(stderrStr, "unknown revision") || strings.Contains(stderrStr, "bad revision") {
+			return nil, fmt.Errorf("invalid commit: %s", commitHash)
+		}
+		return nil, fmt.Errorf("git diff-tree failed: %v - %s", err, stderrStr)
+	}
+
+	// Parse status information into a map
+	statusMap := make(map[string]string)
+	statusLines := strings.Split(strings.TrimSpace(statusOut.String()), "\n")
+	for _, line := range statusLines {
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, "\t", 2)
+		if len(parts) == 2 {
+			status := parts[0]
+			path := parts[1]
+			statusMap[path] = status
+		}
+	}
+
+	// Now get numstat information
+	cmd := exec.Command("git", "diff-tree", "--no-commit-id", "--numstat", "-r", commitHash)
 	var out bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &stderr
 
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
-		// Check for common error conditions
 		stderrStr := stderr.String()
 		if strings.Contains(stderrStr, "not a git repository") {
 			return nil, fmt.Errorf("not a git repository")
@@ -171,5 +201,20 @@ func FetchFileChanges(commitHash string) ([]FileChange, error) {
 		return nil, fmt.Errorf("git diff-tree failed: %v - %s", err, stderrStr)
 	}
 
-	return ParseFileChangesOutput(out.String())
+	// Parse file changes and add status
+	changes, err := ParseFileChangesOutput(out.String())
+	if err != nil {
+		return nil, err
+	}
+
+	// Add status to each change
+	for i := range changes {
+		if status, ok := statusMap[changes[i].Path]; ok {
+			changes[i].Status = status
+		} else {
+			changes[i].Status = "M" // Default to modified if not found
+		}
+	}
+
+	return changes, nil
 }

@@ -474,6 +474,23 @@ func TestFetchFileChanges_Integration(t *testing.T) {
 		if change.Deletions < 0 {
 			t.Errorf("Change %d (%s) has negative deletions: %d", i, change.Path, change.Deletions)
 		}
+		// Validate Status field is populated
+		if change.Status == "" {
+			t.Errorf("Change %d (%s) has empty Status field", i, change.Path)
+		}
+		// Status should be one of the valid git status codes
+		validStatuses := []string{"M", "A", "D", "R", "C", "T", "U", "X"}
+		validStatus := false
+		for _, valid := range validStatuses {
+			if strings.HasPrefix(change.Status, valid) {
+				validStatus = true
+				break
+			}
+		}
+		if !validStatus {
+			t.Errorf("Change %d (%s) has invalid Status: %q (expected one of M/A/D/R/C/T/U/X)",
+				i, change.Path, change.Status)
+		}
 	}
 }
 

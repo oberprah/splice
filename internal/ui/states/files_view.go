@@ -84,93 +84,79 @@ func (s *FilesState)calculateTotalStats() (int, int) {
 	return totalAdditions, totalDeletions
 }
 
+// calculateMaxStatWidth calculates the maximum width needed for additions and deletions
+func (s *FilesState) calculateMaxStatWidth() (int, int) {
+	maxAddWidth := 2 // Minimum: +0
+	maxDelWidth := 2 // Minimum: -0
+
+	for _, file := range s.Files {
+		if !file.IsBinary {
+			// Calculate width: sign (1) + digits
+			addWidth := len(fmt.Sprintf("%d", file.Additions)) + 1
+			delWidth := len(fmt.Sprintf("%d", file.Deletions)) + 1
+
+			if addWidth > maxAddWidth {
+				maxAddWidth = addWidth
+			}
+			if delWidth > maxDelWidth {
+				maxDelWidth = delWidth
+			}
+		}
+	}
+
+	return maxAddWidth, maxDelWidth
+}
+
 // formatFileLine formats a single file line with proper styling
 func (s *FilesState)formatFileLine(file git.FileChange, isSelected bool, width int) string {
-	// Format: > path/to/file.go         (+45, -12)
-	// or:       path/to/file.go         (+3, -1)
+	// Format: > M +17 -13  src/components/App.tsx
+	// or:       A +130 -0  src/components/FileList.tsx
 
-	availableWidth := width
-	if availableWidth <= 0 {
-		availableWidth = 80 // Default fallback
-	}
-
-	// Selection indicator (2 chars: "> " or "  ")
-	selectionIndicator := "  "
-	if isSelected {
-		selectionIndicator = "> "
-	}
-
-	// Format the stats
-	var stats string
-	if file.IsBinary {
-		stats = "(binary)"
-	} else {
-		stats = fmt.Sprintf("(+%d, -%d)", file.Additions, file.Deletions)
-	}
-
-	// Calculate spacing
-	fixedWidth := len(selectionIndicator) + len(stats) + 2 // +2 for spacing
-	pathMaxWidth := max(availableWidth-fixedWidth, 20)
-
-	// Truncate path if necessary
-	path := file.Path
-	if len(path) > pathMaxWidth && pathMaxWidth > 3 {
-		path = path[:pathMaxWidth-3] + "..."
-	}
-
-	// Build the line with styling
 	var line strings.Builder
 
-	line.WriteString(selectionIndicator)
-
+	// Selection indicator (1 char: ">" or " ")
 	if isSelected {
-		// Selected line styles
-		line.WriteString(styles.SelectedFilePathStyle.Render(path))
-
-		// Pad with spaces to align stats
-		padding := availableWidth - len(selectionIndicator) - len(path) - len(stats) - 1
-		if padding > 0 {
-			line.WriteString(strings.Repeat(" ", padding))
-		} else {
-			line.WriteString(" ")
-		}
-
-		if file.IsBinary {
-			line.WriteString(styles.SelectedTimeStyle.Render(stats))
-		} else {
-			// Format stats with colors
-			addStr := fmt.Sprintf("+%d", file.Additions)
-			delStr := fmt.Sprintf("-%d", file.Deletions)
-			line.WriteString("(")
-			line.WriteString(styles.SelectedAdditionsStyle.Render(addStr))
-			line.WriteString(", ")
-			line.WriteString(styles.SelectedDeletionsStyle.Render(delStr))
-			line.WriteString(")")
-		}
+		line.WriteString(">")
 	} else {
-		// Unselected line styles
-		line.WriteString(styles.FilePathStyle.Render(path))
+		line.WriteString(" ")
+	}
 
-		// Pad with spaces to align stats
-		padding := availableWidth - len(selectionIndicator) - len(path) - len(stats) - 1
-		if padding > 0 {
-			line.WriteString(strings.Repeat(" ", padding))
-		} else {
-			line.WriteString(" ")
-		}
+	// Status letter (1 char, padded)
+	status := file.Status
+	if status == "" {
+		status = "M" // Default to modified
+	}
+	line.WriteString(" ")
+	line.WriteString(status)
 
+	// Calculate dynamic widths based on all files
+	maxAddWidth, maxDelWidth := s.calculateMaxStatWidth()
+
+	// Apply styling based on selection
+	if isSelected {
+		// Color the additions and deletions separately for selected line
 		if file.IsBinary {
-			line.WriteString(styles.TimeStyle.Render(stats))
+			line.WriteString(styles.SelectedTimeStyle.Render(" (binary)"))
 		} else {
-			// Format stats with colors
-			addStr := fmt.Sprintf("+%d", file.Additions)
-			delStr := fmt.Sprintf("-%d", file.Deletions)
-			line.WriteString("(")
-			line.WriteString(styles.AdditionsStyle.Render(addStr))
-			line.WriteString(", ")
-			line.WriteString(styles.DeletionsStyle.Render(delStr))
-			line.WriteString(")")
+			// Split the stats to color them separately with dynamic width
+			addStr := fmt.Sprintf(" %+*d", maxAddWidth, file.Additions)
+			delStr := fmt.Sprintf(" %+*d", maxDelWidth, -file.Deletions)
+			line.WriteString(styles.SelectedAdditionsStyle.Render(addStr))
+			line.WriteString(styles.SelectedDeletionsStyle.Render(delStr))
 		}
+		line.WriteString(styles.SelectedFilePathStyle.Render("  " + file.Path))
+	} else {
+		// Color the additions and deletions separately
+		if file.IsBinary {
+			line.WriteString(styles.TimeStyle.Render(" (binary)"))
+		} else {
+			// Split the stats to color them separately with dynamic width
+			addStr := fmt.Sprintf(" %+*d", maxAddWidth, file.Additions)
+			delStr := fmt.Sprintf(" %+*d", maxDelWidth, -file.Deletions)
+			line.WriteString(styles.AdditionsStyle.Render(addStr))
+			line.WriteString(styles.DeletionsStyle.Render(delStr))
+		}
+		line.WriteString(styles.FilePathStyle.Render("  " + file.Path))
 	}
 
 	return line.String()

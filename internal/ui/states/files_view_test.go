@@ -19,9 +19,15 @@ func createTestCommit() git.GitCommit {
 
 func createTestFileChanges(count int) []git.FileChange {
 	changes := make([]git.FileChange, count)
+	statuses := []string{"M", "A", "D", "M", "M"} // Cycle through some statuses
 	for i := range count {
+		status := "M"
+		if i < len(statuses) {
+			status = statuses[i]
+		}
 		changes[i] = git.FileChange{
 			Path:      "file" + string(rune('0'+i)) + ".go",
+			Status:    status,
 			Additions: i * 10,
 			Deletions: i * 2,
 		}
@@ -267,4 +273,173 @@ func TestFilesState_View_FileStatsSummary(t *testing.T) {
 	if !strings.Contains(result, "3") {
 		t.Error("Expected output to mention 3 files")
 	}
+}
+
+func TestFilesState_CalculateMaxStatWidth(t *testing.T) {
+	tests := []struct {
+		name            string
+		files           []git.FileChange
+		expectedAddW    int
+		expectedDelW    int
+	}{
+		{
+			name: "small numbers",
+			files: []git.FileChange{
+				{Path: "a.go", Additions: 1, Deletions: 2},
+				{Path: "b.go", Additions: 9, Deletions: 8},
+			},
+			expectedAddW: 2, // +9 = 2 chars
+			expectedDelW: 2, // -8 = 2 chars
+		},
+		{
+			name: "large numbers",
+			files: []git.FileChange{
+				{Path: "a.go", Additions: 93, Deletions: 0},
+				{Path: "b.go", Additions: 267, Deletions: 12},
+				{Path: "c.go", Additions: 1234, Deletions: 567},
+			},
+			expectedAddW: 5, // +1234 = 5 chars (sign + 4 digits)
+			expectedDelW: 4, // -567 = 4 chars (sign + 3 digits)
+		},
+		{
+			name: "with binary files",
+			files: []git.FileChange{
+				{Path: "a.png", IsBinary: true},
+				{Path: "b.go", Additions: 10, Deletions: 5},
+			},
+			expectedAddW: 3, // +10 = 3 chars
+			expectedDelW: 2, // -5 = 2 chars
+		},
+		{
+			name: "only zeros",
+			files: []git.FileChange{
+				{Path: "a.go", Additions: 0, Deletions: 0},
+			},
+			expectedAddW: 2, // +0 = 2 chars (minimum)
+			expectedDelW: 2, // -0 = 2 chars (minimum)
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &FilesState{Files: tt.files}
+			addW, delW := s.calculateMaxStatWidth()
+
+			if addW != tt.expectedAddW {
+				t.Errorf("Addition width = %d, want %d", addW, tt.expectedAddW)
+			}
+			if delW != tt.expectedDelW {
+				t.Errorf("Deletion width = %d, want %d", delW, tt.expectedDelW)
+			}
+		})
+	}
+}
+
+func TestFilesState_View_StatusDisplay(t *testing.T) {
+	commit := createTestCommit()
+	files := []git.FileChange{
+		{Path: "modified.go", Status: "M", Additions: 10, Deletions: 5},
+		{Path: "added.go", Status: "A", Additions: 50, Deletions: 0},
+		{Path: "deleted.go", Status: "D", Additions: 0, Deletions: 30},
+	}
+
+	s := FilesState{
+		Commit:        commit,
+		Files:         files,
+		Cursor:        0,
+		ViewportStart: 0,
+	}
+	ctx := mockContext{width: 80, height: 24}
+
+	result := s.View(ctx)
+
+	// Strip ANSI codes for easier testing
+	cleanResult := stripANSI(result)
+
+	// Check that status letters appear
+	if !strings.Contains(cleanResult, " M ") {
+		t.Error("Expected output to contain 'M' status for modified file")
+	}
+	if !strings.Contains(cleanResult, " A ") {
+		t.Error("Expected output to contain 'A' status for added file")
+	}
+	if !strings.Contains(cleanResult, " D ") {
+		t.Error("Expected output to contain 'D' status for deleted file")
+	}
+
+	// Check that file paths appear
+	if !strings.Contains(cleanResult, "modified.go") {
+		t.Error("Expected output to contain modified.go")
+	}
+	if !strings.Contains(cleanResult, "added.go") {
+		t.Error("Expected output to contain added.go")
+	}
+	if !strings.Contains(cleanResult, "deleted.go") {
+		t.Error("Expected output to contain deleted.go")
+	}
+}
+
+func TestFilesState_View_DynamicAlignment(t *testing.T) {
+	commit := createTestCommit()
+	files := []git.FileChange{
+		{Path: "small.go", Status: "M", Additions: 5, Deletions: 2},
+		{Path: "large.go", Status: "M", Additions: 1234, Deletions: 567},
+	}
+
+	s := FilesState{
+		Commit:        commit,
+		Files:         files,
+		Cursor:        0,
+		ViewportStart: 0,
+	}
+	ctx := mockContext{width: 80, height: 24}
+
+	result := s.View(ctx)
+	cleanResult := stripANSI(result)
+
+	lines := strings.Split(cleanResult, "\n")
+
+	// Find the file lines (skip header)
+	var fileLines []string
+	for _, line := range lines {
+		if strings.Contains(line, ".go") {
+			fileLines = append(fileLines, line)
+		}
+	}
+
+	if len(fileLines) < 2 {
+		t.Fatal("Expected at least 2 file lines in output")
+	}
+
+	// Both lines should have stats at the same column position
+	// Check that the file paths start at the same position
+	// This is a rough check - in practice the numbers should be right-aligned
+	smallIdx := strings.Index(fileLines[0], "small.go")
+	largeIdx := strings.Index(fileLines[1], "large.go")
+
+	if smallIdx != largeIdx {
+		t.Errorf("File paths not aligned: small.go at %d, large.go at %d", smallIdx, largeIdx)
+	}
+}
+
+// Helper function to strip ANSI escape codes
+func stripANSI(str string) string {
+	// Simple ANSI code stripper - removes escape sequences
+	result := ""
+	inEscape := false
+	for i := 0; i < len(str); i++ {
+		if str[i] == '\x1b' && i+1 < len(str) && str[i+1] == '[' {
+			inEscape = true
+			i++ // Skip the '['
+			continue
+		}
+		if inEscape {
+			if (str[i] >= 'A' && str[i] <= 'Z') || (str[i] >= 'a' && str[i] <= 'z') {
+				inEscape = false
+			}
+			continue
+		}
+		result += string(str[i])
+	}
+	return result
 }
