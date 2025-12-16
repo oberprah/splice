@@ -563,3 +563,173 @@ func TestFetchFileDiff_InvalidCommit(t *testing.T) {
 		t.Errorf("FetchFileDiff() expected empty diff on error, got: %s", diff)
 	}
 }
+
+func TestFetchFileContent_Integration(t *testing.T) {
+	// This test requires a git repository
+	cmd := exec.Command("git", "rev-parse", "--git-dir")
+	if err := cmd.Run(); err != nil {
+		t.Skip("Not in a git repository, skipping integration test")
+	}
+
+	// Get the latest commit hash
+	cmd = exec.Command("git", "rev-parse", "HEAD")
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("Failed to get HEAD commit: %v", err)
+	}
+	commitHash := strings.TrimSpace(string(out))
+
+	// Test fetching content for a known file (main.go should exist)
+	content, err := FetchFileContent(commitHash, "main.go")
+	if err != nil {
+		t.Fatalf("FetchFileContent() error = %v", err)
+	}
+
+	// Content should not be empty for main.go
+	if content == "" {
+		t.Error("FetchFileContent() returned empty content for main.go")
+	}
+
+	// Content should contain expected Go code
+	if !strings.Contains(content, "package main") {
+		t.Error("FetchFileContent() main.go should contain 'package main'")
+	}
+}
+
+func TestFetchFileContent_NonExistentFile(t *testing.T) {
+	// This test requires a git repository
+	cmd := exec.Command("git", "rev-parse", "--git-dir")
+	if err := cmd.Run(); err != nil {
+		t.Skip("Not in a git repository, skipping integration test")
+	}
+
+	// Get the latest commit hash
+	cmd = exec.Command("git", "rev-parse", "HEAD")
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("Failed to get HEAD commit: %v", err)
+	}
+	commitHash := strings.TrimSpace(string(out))
+
+	// Test fetching content for a non-existent file
+	content, err := FetchFileContent(commitHash, "non_existent_file_12345.xyz")
+
+	// Should return empty string without error for non-existent file
+	if err != nil {
+		t.Fatalf("FetchFileContent() should not error for non-existent file, got: %v", err)
+	}
+	if content != "" {
+		t.Errorf("FetchFileContent() expected empty content for non-existent file, got: %s", content)
+	}
+}
+
+func TestFetchFileContent_InvalidCommit(t *testing.T) {
+	cmd := exec.Command("git", "rev-parse", "--git-dir")
+	if err := cmd.Run(); err != nil {
+		t.Skip("Not in a git repository, skipping integration test")
+	}
+
+	content, err := FetchFileContent("invalid_commit_hash_12345", "main.go")
+
+	if err == nil {
+		t.Fatal("FetchFileContent() expected error for invalid commit, got nil")
+	}
+
+	if content != "" {
+		t.Errorf("FetchFileContent() expected empty content on error, got: %s", content)
+	}
+}
+
+func TestFetchFullFileDiff_Integration(t *testing.T) {
+	// This test requires a git repository with at least one commit that modifies a file
+	cmd := exec.Command("git", "rev-parse", "--git-dir")
+	if err := cmd.Run(); err != nil {
+		t.Skip("Not in a git repository, skipping integration test")
+	}
+
+	// Get the latest commit hash
+	cmd = exec.Command("git", "rev-parse", "HEAD")
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("Failed to get HEAD commit: %v", err)
+	}
+	commitHash := strings.TrimSpace(string(out))
+
+	// Get file changes for this commit
+	changes, err := FetchFileChanges(commitHash)
+	if err != nil {
+		t.Fatalf("FetchFileChanges() error = %v", err)
+	}
+
+	if len(changes) == 0 {
+		t.Skip("No file changes in HEAD commit, skipping test")
+	}
+
+	// Test FetchFullFileDiff for the first changed file
+	result, err := FetchFullFileDiff(commitHash, changes[0])
+	if err != nil {
+		t.Fatalf("FetchFullFileDiff() error = %v", err)
+	}
+
+	// Result should not be nil
+	if result == nil {
+		t.Fatal("FetchFullFileDiff() returned nil result")
+	}
+
+	// DiffOutput should contain diff markers
+	if !strings.Contains(result.DiffOutput, "diff --git") && result.DiffOutput != "" {
+		t.Error("FetchFullFileDiff() DiffOutput should contain 'diff --git' header")
+	}
+}
+
+func TestFetchFullFileDiff_NewFile(t *testing.T) {
+	// This test requires finding a commit that adds a new file
+	// For now, we'll test with a synthetic scenario using a commit that adds files
+	cmd := exec.Command("git", "rev-parse", "--git-dir")
+	if err := cmd.Run(); err != nil {
+		t.Skip("Not in a git repository, skipping integration test")
+	}
+
+	// Find a commit that adds a file
+	cmd = exec.Command("git", "log", "--diff-filter=A", "--pretty=format:%H", "-n", "1")
+	out, err := cmd.Output()
+	if err != nil || strings.TrimSpace(string(out)) == "" {
+		t.Skip("No commits with added files found, skipping test")
+	}
+	commitHash := strings.TrimSpace(string(out))
+
+	// Get file changes for this commit
+	changes, err := FetchFileChanges(commitHash)
+	if err != nil {
+		t.Fatalf("FetchFileChanges() error = %v", err)
+	}
+
+	// Find an added file
+	var addedFile *FileChange
+	for i := range changes {
+		if changes[i].Status == "A" {
+			addedFile = &changes[i]
+			break
+		}
+	}
+
+	if addedFile == nil {
+		t.Skip("No added file found in commit, skipping test")
+	}
+
+	result, err := FetchFullFileDiff(commitHash, *addedFile)
+	if err != nil {
+		t.Fatalf("FetchFullFileDiff() error = %v", err)
+	}
+
+	// For a new file, OldContent should be empty
+	if result.OldContent != "" {
+		t.Errorf("FetchFullFileDiff() for new file: OldContent should be empty, got %d bytes", len(result.OldContent))
+	}
+
+	// NewContent should not be empty (unless it's an empty file)
+	// We just verify the result is valid
+	if result == nil {
+		t.Error("FetchFullFileDiff() returned nil for new file")
+	}
+}

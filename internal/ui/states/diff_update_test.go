@@ -9,20 +9,21 @@ import (
 )
 
 func createTestDiffState(numLines int) *DiffState {
-	lines := make([]diff.Line, numLines)
+	lines := make([]diff.FullFileLine, numLines)
 	for i := 0; i < numLines; i++ {
-		lines[i] = diff.Line{
-			Type:      diff.Context,
-			Content:   "test line",
-			OldLineNo: i + 1,
-			NewLineNo: i + 1,
+		lines[i] = diff.FullFileLine{
+			LeftLineNo:   i + 1,
+			RightLineNo:  i + 1,
+			LeftContent:  "test line",
+			RightContent: "test line",
+			Change:       diff.Unchanged,
 		}
 	}
 
 	return &DiffState{
 		Commit: git.GitCommit{Hash: "abc123"},
 		File:   git.FileChange{Path: "file.go", Additions: 5, Deletions: 3},
-		Diff: diff.FileDiff{
+		Diff: &diff.FullFileDiff{
 			OldPath: "file.go",
 			NewPath: "file.go",
 			Lines:   lines,
@@ -258,5 +259,120 @@ func TestDiffState_Update_EmptyDiff(t *testing.T) {
 
 	if diffState.ViewportStart != 0 {
 		t.Errorf("Expected ViewportStart to stay at 0 for empty diff, got %d", diffState.ViewportStart)
+	}
+}
+
+func TestDiffState_Update_JumpToNextChange(t *testing.T) {
+	// Create a diff with changes at specific positions
+	s := createTestDiffStateWithChanges(50, []int{5, 15, 30, 45})
+	s.ViewportStart = 0
+	ctx := &mockContext{width: 80, height: 20}
+
+	// Press "n" to jump to next change
+	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}}
+	newState, _ := s.Update(msg, ctx)
+
+	diffState, ok := newState.(*DiffState)
+	if !ok {
+		t.Fatal("Expected state to remain DiffState")
+	}
+
+	// Should jump to first change at index 5
+	if diffState.ViewportStart != 5 {
+		t.Errorf("Expected ViewportStart to be 5 (first change), got %d", diffState.ViewportStart)
+	}
+
+	// Press "n" again to jump to next change
+	newState, _ = diffState.Update(msg, ctx)
+	diffState = newState.(*DiffState)
+
+	// Should jump to second change at index 15
+	if diffState.ViewportStart != 15 {
+		t.Errorf("Expected ViewportStart to be 15 (second change), got %d", diffState.ViewportStart)
+	}
+}
+
+func TestDiffState_Update_JumpToPreviousChange(t *testing.T) {
+	// Create a diff with changes at specific positions
+	s := createTestDiffStateWithChanges(50, []int{5, 15, 30, 45})
+	s.ViewportStart = 30
+	ctx := &mockContext{width: 80, height: 20}
+
+	// Press "N" to jump to previous change
+	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'N'}}
+	newState, _ := s.Update(msg, ctx)
+
+	diffState, ok := newState.(*DiffState)
+	if !ok {
+		t.Fatal("Expected state to remain DiffState")
+	}
+
+	// Should jump to previous change at index 15
+	if diffState.ViewportStart != 15 {
+		t.Errorf("Expected ViewportStart to be 15 (previous change), got %d", diffState.ViewportStart)
+	}
+}
+
+func TestDiffState_Update_NoChanges(t *testing.T) {
+	// Create a diff with no changes
+	s := createTestDiffState(50)
+	s.ViewportStart = 10
+	ctx := &mockContext{width: 80, height: 20}
+
+	// Press "n" - should stay at current position
+	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}}
+	newState, _ := s.Update(msg, ctx)
+
+	diffState, ok := newState.(*DiffState)
+	if !ok {
+		t.Fatal("Expected state to remain DiffState")
+	}
+
+	// Should stay at current position
+	if diffState.ViewportStart != 10 {
+		t.Errorf("Expected ViewportStart to stay at 10 (no changes), got %d", diffState.ViewportStart)
+	}
+}
+
+// Helper function to create a test diff state with changes at specific positions
+func createTestDiffStateWithChanges(numLines int, changeIndices []int) *DiffState {
+	lines := make([]diff.FullFileLine, numLines)
+	changeSet := make(map[int]bool)
+	for _, idx := range changeIndices {
+		changeSet[idx] = true
+	}
+
+	for i := 0; i < numLines; i++ {
+		change := diff.Unchanged
+		if changeSet[i] {
+			change = diff.Added
+		}
+		lines[i] = diff.FullFileLine{
+			LeftLineNo:   i + 1,
+			RightLineNo:  i + 1,
+			LeftContent:  "test line",
+			RightContent: "test line",
+			Change:       change,
+		}
+	}
+
+	return &DiffState{
+		Commit: git.GitCommit{Hash: "abc123"},
+		File:   git.FileChange{Path: "file.go", Additions: 5, Deletions: 3},
+		Diff: &diff.FullFileDiff{
+			OldPath:       "file.go",
+			NewPath:       "file.go",
+			Lines:         lines,
+			ChangeIndices: changeIndices,
+		},
+		ViewportStart:          0,
+		CurrentChangeIdx:       0,
+		FilesCommit:            git.GitCommit{Hash: "abc123"},
+		FilesFiles:             []git.FileChange{{Path: "file.go"}},
+		FilesCursor:            0,
+		FilesViewportStart:     0,
+		FilesListCommits:       []git.GitCommit{{Hash: "abc123"}},
+		FilesListCursor:        0,
+		FilesListViewportStart: 0,
 	}
 }

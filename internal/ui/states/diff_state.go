@@ -10,10 +10,11 @@ type DiffState struct {
 	// Current diff data
 	Commit git.GitCommit
 	File   git.FileChange
-	Diff   diff.FileDiff
+	Diff   *diff.FullFileDiff
 
 	// Viewport control
-	ViewportStart int
+	ViewportStart    int
+	CurrentChangeIdx int // Index into Diff.ChangeIndices for navigation
 
 	// Preserved FilesState data for back navigation
 	FilesCommit            git.GitCommit

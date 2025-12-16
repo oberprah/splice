@@ -383,10 +383,10 @@ func TestFilesState_Update_DiffLoadedMsgSuccess(t *testing.T) {
 	msg := messages.DiffLoadedMsg{
 		Commit: commit,
 		File:   files[2],
-		Diff: diff.FileDiff{
+		Diff: &diff.FullFileDiff{
 			OldPath: "file.go",
 			NewPath: "file.go",
-			Lines:   []diff.Line{{Type: diff.Context, Content: "test", OldLineNo: 1, NewLineNo: 1}},
+			Lines:   []diff.FullFileLine{{LeftLineNo: 1, RightLineNo: 1, LeftContent: "test", RightContent: "test", Change: diff.Unchanged}},
 		},
 		Err:                    nil,
 		FilesCommit:            commit,

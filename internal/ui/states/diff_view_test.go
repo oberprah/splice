@@ -18,8 +18,8 @@ func TestDiffState_View_Header(t *testing.T) {
 			Additions: 15,
 			Deletions: 8,
 		},
-		Diff: diff.FileDiff{
-			Lines: []diff.Line{},
+		Diff: &diff.FullFileDiff{
+			Lines: []diff.FullFileLine{},
 		},
 	}
 
@@ -51,7 +51,7 @@ func TestDiffState_View_EmptyDiff(t *testing.T) {
 	state := &DiffState{
 		Commit: git.GitCommit{Hash: "abc123"},
 		File:   git.FileChange{Path: "file.go"},
-		Diff:   diff.FileDiff{Lines: []diff.Line{}},
+		Diff:   &diff.FullFileDiff{Lines: []diff.FullFileLine{}},
 	}
 
 	ctx := &mockContext{width: 80, height: 24}
@@ -62,13 +62,13 @@ func TestDiffState_View_EmptyDiff(t *testing.T) {
 	}
 }
 
-func TestDiffState_View_ContextLines(t *testing.T) {
+func TestDiffState_View_UnchangedLines(t *testing.T) {
 	state := &DiffState{
 		Commit: git.GitCommit{Hash: "abc123"},
 		File:   git.FileChange{Path: "file.go"},
-		Diff: diff.FileDiff{
-			Lines: []diff.Line{
-				{Type: diff.Context, Content: "context line", OldLineNo: 1, NewLineNo: 1},
+		Diff: &diff.FullFileDiff{
+			Lines: []diff.FullFileLine{
+				{LeftLineNo: 1, RightLineNo: 1, LeftContent: "unchanged line", RightContent: "unchanged line", Change: diff.Unchanged},
 			},
 		},
 	}
@@ -76,9 +76,9 @@ func TestDiffState_View_ContextLines(t *testing.T) {
 	ctx := &mockContext{width: 80, height: 24}
 	view := state.View(ctx)
 
-	// Context lines should appear (shown on both sides)
-	if !strings.Contains(view, "context line") {
-		t.Error("View should contain context line content")
+	// Unchanged lines should appear (shown on both sides)
+	if !strings.Contains(view, "unchanged line") {
+		t.Error("View should contain unchanged line content")
 	}
 
 	// Line numbers should appear
@@ -87,13 +87,13 @@ func TestDiffState_View_ContextLines(t *testing.T) {
 	}
 }
 
-func TestDiffState_View_RemoveLines(t *testing.T) {
+func TestDiffState_View_RemovedLines(t *testing.T) {
 	state := &DiffState{
 		Commit: git.GitCommit{Hash: "abc123"},
 		File:   git.FileChange{Path: "file.go"},
-		Diff: diff.FileDiff{
-			Lines: []diff.Line{
-				{Type: diff.Remove, Content: "removed line", OldLineNo: 5, NewLineNo: 0},
+		Diff: &diff.FullFileDiff{
+			Lines: []diff.FullFileLine{
+				{LeftLineNo: 5, RightLineNo: 0, LeftContent: "removed line", RightContent: "", Change: diff.Removed},
 			},
 		},
 	}
@@ -117,13 +117,13 @@ func TestDiffState_View_RemoveLines(t *testing.T) {
 	}
 }
 
-func TestDiffState_View_AddLines(t *testing.T) {
+func TestDiffState_View_AddedLines(t *testing.T) {
 	state := &DiffState{
 		Commit: git.GitCommit{Hash: "abc123"},
 		File:   git.FileChange{Path: "file.go"},
-		Diff: diff.FileDiff{
-			Lines: []diff.Line{
-				{Type: diff.Add, Content: "added line", OldLineNo: 0, NewLineNo: 7},
+		Diff: &diff.FullFileDiff{
+			Lines: []diff.FullFileLine{
+				{LeftLineNo: 0, RightLineNo: 7, LeftContent: "", RightContent: "added line", Change: diff.Added},
 			},
 		},
 	}
@@ -151,9 +151,9 @@ func TestDiffState_View_SideBySideSeparator(t *testing.T) {
 	state := &DiffState{
 		Commit: git.GitCommit{Hash: "abc123"},
 		File:   git.FileChange{Path: "file.go"},
-		Diff: diff.FileDiff{
-			Lines: []diff.Line{
-				{Type: diff.Context, Content: "line", OldLineNo: 1, NewLineNo: 1},
+		Diff: &diff.FullFileDiff{
+			Lines: []diff.FullFileLine{
+				{LeftLineNo: 1, RightLineNo: 1, LeftContent: "line", RightContent: "line", Change: diff.Unchanged},
 			},
 		},
 	}
@@ -194,20 +194,21 @@ func TestTruncateWithEllipsis(t *testing.T) {
 
 func TestDiffState_View_Viewport(t *testing.T) {
 	// Create a diff with many lines
-	lines := make([]diff.Line, 100)
+	lines := make([]diff.FullFileLine, 100)
 	for i := 0; i < 100; i++ {
-		lines[i] = diff.Line{
-			Type:      diff.Context,
-			Content:   "line content",
-			OldLineNo: i + 1,
-			NewLineNo: i + 1,
+		lines[i] = diff.FullFileLine{
+			LeftLineNo:   i + 1,
+			RightLineNo:  i + 1,
+			LeftContent:  "line content",
+			RightContent: "line content",
+			Change:       diff.Unchanged,
 		}
 	}
 
 	state := &DiffState{
 		Commit:        git.GitCommit{Hash: "abc123"},
 		File:          git.FileChange{Path: "file.go"},
-		Diff:          diff.FileDiff{Lines: lines},
+		Diff:          &diff.FullFileDiff{Lines: lines},
 		ViewportStart: 50, // Start at line 50
 	}
 

@@ -20,7 +20,7 @@ type FilesLoadedMsg struct {
 type DiffLoadedMsg struct {
 	Commit git.GitCommit
 	File   git.FileChange
-	Diff   diff.FileDiff
+	Diff   *diff.FullFileDiff
 	Err    error
 	// Store original FilesState data to return to
 	FilesCommit            git.GitCommit

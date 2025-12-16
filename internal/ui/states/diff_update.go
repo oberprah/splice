@@ -26,7 +26,7 @@ func (s *DiffState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 
 		case "j", "down":
 			// Scroll down
-			if len(s.Diff.Lines) > 0 {
+			if s.Diff != nil && len(s.Diff.Lines) > 0 {
 				maxViewportStart := s.calculateMaxViewportStart(ctx.Height())
 				if s.ViewportStart < maxViewportStart {
 					s.ViewportStart++
@@ -43,7 +43,7 @@ func (s *DiffState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 
 		case "ctrl+d":
 			// Scroll down half page
-			if len(s.Diff.Lines) > 0 {
+			if s.Diff != nil && len(s.Diff.Lines) > 0 {
 				headerLines := 2
 				availableHeight := max(ctx.Height()-headerLines, 1)
 				halfPage := availableHeight / 2
@@ -67,9 +67,19 @@ func (s *DiffState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 
 		case "G":
 			// Jump to bottom
-			if len(s.Diff.Lines) > 0 {
+			if s.Diff != nil && len(s.Diff.Lines) > 0 {
 				s.ViewportStart = s.calculateMaxViewportStart(ctx.Height())
 			}
+			return s, nil
+
+		case "n":
+			// Jump to next change
+			s.jumpToNextChange(ctx.Height())
+			return s, nil
+
+		case "N":
+			// Jump to previous change
+			s.jumpToPreviousChange(ctx.Height())
 			return s, nil
 		}
 	}
@@ -77,8 +87,56 @@ func (s *DiffState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 	return s, nil
 }
 
+// jumpToNextChange scrolls to the next change after the current viewport
+func (s *DiffState) jumpToNextChange(height int) {
+	if s.Diff == nil || len(s.Diff.ChangeIndices) == 0 {
+		return
+	}
+
+	// Find the next change index after the current viewport position
+	for i, changeIdx := range s.Diff.ChangeIndices {
+		if changeIdx > s.ViewportStart {
+			s.CurrentChangeIdx = i
+			s.ViewportStart = changeIdx
+			// Clamp to max viewport
+			maxViewport := s.calculateMaxViewportStart(height)
+			if s.ViewportStart > maxViewport {
+				s.ViewportStart = maxViewport
+			}
+			return
+		}
+	}
+
+	// If no change found after current position, optionally wrap to first
+	// For now, stay at current position (no wrap)
+}
+
+// jumpToPreviousChange scrolls to the previous change before the current viewport
+func (s *DiffState) jumpToPreviousChange(height int) {
+	if s.Diff == nil || len(s.Diff.ChangeIndices) == 0 {
+		return
+	}
+
+	// Find the previous change index before the current viewport position
+	for i := len(s.Diff.ChangeIndices) - 1; i >= 0; i-- {
+		changeIdx := s.Diff.ChangeIndices[i]
+		if changeIdx < s.ViewportStart {
+			s.CurrentChangeIdx = i
+			s.ViewportStart = changeIdx
+			return
+		}
+	}
+
+	// If no change found before current position, optionally wrap to last
+	// For now, stay at current position (no wrap)
+}
+
 // calculateMaxViewportStart returns the maximum valid viewport start position
 func (s *DiffState) calculateMaxViewportStart(height int) int {
+	if s.Diff == nil {
+		return 0
+	}
+
 	// Account for header lines
 	headerLines := 2 // header + separator
 	availableHeight := max(height-headerLines, 1)

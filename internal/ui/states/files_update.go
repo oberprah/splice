@@ -19,12 +19,19 @@ func (s *FilesState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 			return s, nil
 		}
 
+		// Calculate initial viewport position - scroll to first change
+		viewportStart := 0
+		if msg.Diff != nil && len(msg.Diff.ChangeIndices) > 0 {
+			viewportStart = msg.Diff.ChangeIndices[0]
+		}
+
 		// Transition to diff state
 		return &DiffState{
 			Commit:                 msg.Commit,
 			File:                   msg.File,
 			Diff:                   msg.Diff,
-			ViewportStart:          0,
+			ViewportStart:          viewportStart,
+			CurrentChangeIdx:       0,
 			FilesCommit:            msg.FilesCommit,
 			FilesFiles:             msg.FilesFiles,
 			FilesCursor:            msg.FilesCursor,
@@ -119,8 +126,8 @@ func (s *FilesState) loadDiff(file git.FileChange) tea.Cmd {
 	listViewportStart := s.ListViewportStart
 
 	return func() tea.Msg {
-		// Fetch the raw diff
-		rawDiff, err := git.FetchFileDiff(commit.Hash, file.Path)
+		// Fetch full file content and diff
+		fullDiffResult, err := git.FetchFullFileDiff(commit.Hash, file)
 		if err != nil {
 			return messages.DiffLoadedMsg{
 				Commit:                 commit,
@@ -137,7 +144,7 @@ func (s *FilesState) loadDiff(file git.FileChange) tea.Cmd {
 		}
 
 		// Parse the diff
-		parsed, err := diff.ParseUnifiedDiff(rawDiff)
+		parsedDiff, err := diff.ParseUnifiedDiff(fullDiffResult.DiffOutput)
 		if err != nil {
 			return messages.DiffLoadedMsg{
 				Commit:                 commit,
@@ -153,10 +160,13 @@ func (s *FilesState) loadDiff(file git.FileChange) tea.Cmd {
 			}
 		}
 
+		// Merge full file content with diff information
+		fullFileDiff := diff.MergeFullFile(fullDiffResult.OldContent, fullDiffResult.NewContent, &parsedDiff)
+
 		return messages.DiffLoadedMsg{
 			Commit:                 commit,
 			File:                   file,
-			Diff:                   parsed,
+			Diff:                   fullFileDiff,
 			Err:                    nil,
 			FilesCommit:            commit,
 			FilesFiles:             files,

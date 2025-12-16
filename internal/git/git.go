@@ -238,6 +238,99 @@ func FetchFileChanges(commitHash string) ([]FileChange, error) {
 	return changes, nil
 }
 
+// FullFileDiffResult contains the full file content before and after a change
+type FullFileDiffResult struct {
+	OldContent string // Content of the file before the change (empty for new files)
+	NewContent string // Content of the file after the change (empty for deleted files)
+	DiffOutput string // Raw unified diff output
+	OldPath    string // Path of the file before the change (for renames)
+	NewPath    string // Path of the file after the change
+}
+
+// FetchFileContent retrieves the content of a file at a specific commit.
+// Returns empty string without error if the file doesn't exist at that commit.
+func FetchFileContent(commitHash, filePath string) (string, error) {
+	cmd := exec.Command("git", "show", commitHash+":"+filePath)
+
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		stderrStr := stderr.String()
+		// Check if this is a "file not found" error - return empty string, no error
+		if strings.Contains(stderrStr, "does not exist") ||
+			strings.Contains(stderrStr, "exists on disk, but not in") ||
+			strings.Contains(stderrStr, "fatal: path") {
+			return "", nil
+		}
+		// Check for invalid commit
+		if strings.Contains(stderrStr, "unknown revision") ||
+			strings.Contains(stderrStr, "bad revision") ||
+			strings.Contains(stderrStr, "not a valid object name") {
+			return "", fmt.Errorf("invalid commit: %s", commitHash)
+		}
+		if strings.Contains(stderrStr, "not a git repository") {
+			return "", fmt.Errorf("not a git repository")
+		}
+		return "", fmt.Errorf("git show failed: %v - %s", err, stderrStr)
+	}
+
+	return out.String(), nil
+}
+
+// FetchFullFileDiff fetches the complete file content before and after a change,
+// along with the diff output. This enables showing the full file with changes highlighted.
+func FetchFullFileDiff(commitHash string, change FileChange) (*FullFileDiffResult, error) {
+	result := &FullFileDiffResult{
+		NewPath: change.Path,
+		OldPath: change.Path,
+	}
+
+	// Determine old path (for renames, status starts with "R")
+	if strings.HasPrefix(change.Status, "R") {
+		// For renames, the path contains "old -> new" format, but we get OldPath from git
+		// Actually in our FileChange struct, we only have Path (the new path)
+		// We need to handle this differently - for now assume same path
+		// TODO: Handle renames properly if needed
+	}
+
+	// Fetch new content (at commitHash)
+	switch change.Status {
+	case "D": // Deleted file - no new content
+		result.NewContent = ""
+	default:
+		newContent, err := FetchFileContent(commitHash, change.Path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch new content: %w", err)
+		}
+		result.NewContent = newContent
+	}
+
+	// Fetch old content (at commitHash^, the parent commit)
+	switch change.Status {
+	case "A": // Added file - no old content
+		result.OldContent = ""
+	default:
+		oldContent, err := FetchFileContent(commitHash+"^", result.OldPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch old content: %w", err)
+		}
+		result.OldContent = oldContent
+	}
+
+	// Fetch the diff
+	diffOutput, err := FetchFileDiff(commitHash, change.Path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch diff: %w", err)
+	}
+	result.DiffOutput = diffOutput
+
+	return result, nil
+}
+
 // FetchFileDiff retrieves the unified diff for a specific file in a commit.
 // The filePath should be relative to the repository root.
 func FetchFileDiff(commitHash, filePath string) (string, error) {

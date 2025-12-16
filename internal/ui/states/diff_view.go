@@ -27,8 +27,8 @@ func (s *DiffState) View(ctx Context) string {
 	headerLines := strings.Count(header, "\n") + 1 // +1 for separator
 	availableHeight := max(ctx.Height()-headerLines, 1)
 
-	// Render diff content
-	if len(s.Diff.Lines) == 0 {
+	// Handle nil or empty diff
+	if s.Diff == nil || len(s.Diff.Lines) == 0 {
 		b.WriteString(styles.TimeStyle.Render("No changes"))
 		b.WriteString("\n")
 		return b.String()
@@ -54,7 +54,7 @@ func (s *DiffState) View(ctx Context) string {
 	// Render visible diff lines
 	for i := s.ViewportStart; i < viewportEnd; i++ {
 		line := s.Diff.Lines[i]
-		left, right := s.renderDiffLineParts(line, columnWidth, lineNoWidth)
+		left, right := s.renderFullFileLine(line, columnWidth, lineNoWidth)
 
 		// Use Lip Gloss to join columns - it handles width properly with ANSI codes
 		row := lipgloss.JoinHorizontal(
@@ -89,13 +89,17 @@ func (s *DiffState) renderHeader() string {
 
 // calculateLineNoWidth returns the width needed for line numbers
 func (s *DiffState) calculateLineNoWidth() int {
+	if s.Diff == nil {
+		return 3
+	}
+
 	maxLineNo := 0
 	for _, line := range s.Diff.Lines {
-		if line.OldLineNo > maxLineNo {
-			maxLineNo = line.OldLineNo
+		if line.LeftLineNo > maxLineNo {
+			maxLineNo = line.LeftLineNo
 		}
-		if line.NewLineNo > maxLineNo {
-			maxLineNo = line.NewLineNo
+		if line.RightLineNo > maxLineNo {
+			maxLineNo = line.RightLineNo
 		}
 	}
 	width := len(fmt.Sprintf("%d", maxLineNo))
@@ -105,27 +109,27 @@ func (s *DiffState) calculateLineNoWidth() int {
 	return width
 }
 
-// renderDiffLineParts returns the left and right column content for a diff line
-func (s *DiffState) renderDiffLineParts(line diff.Line, columnWidth, lineNoWidth int) (string, string) {
+// renderFullFileLine returns the left and right column content for a full file diff line
+func (s *DiffState) renderFullFileLine(line diff.FullFileLine, columnWidth, lineNoWidth int) (string, string) {
 	// Calculate content width (column width - lineNo - space - indicator - space)
 	contentWidth := columnWidth - lineNoWidth - 4 // "123 - " = lineNo + space + indicator + space
 	if contentWidth < 5 {
 		contentWidth = 5
 	}
 
-	switch line.Type {
-	case diff.Context:
-		// Context: show on both sides
-		left := s.formatColumnContent(line.OldLineNo, " ", line.Content, lineNoWidth, contentWidth, styles.TimeStyle)
-		right := s.formatColumnContent(line.NewLineNo, " ", line.Content, lineNoWidth, contentWidth, styles.TimeStyle)
+	switch line.Change {
+	case diff.Unchanged:
+		// Unchanged: show on both sides with normal styling
+		left := s.formatColumnContent(line.LeftLineNo, " ", line.LeftContent, lineNoWidth, contentWidth, styles.TimeStyle)
+		right := s.formatColumnContent(line.RightLineNo, " ", line.RightContent, lineNoWidth, contentWidth, styles.TimeStyle)
 		return left, right
-	case diff.Remove:
-		// Remove: show on left only
-		left := s.formatColumnContent(line.OldLineNo, "-", line.Content, lineNoWidth, contentWidth, styles.DeletionsStyle)
+	case diff.Removed:
+		// Removed: show on left only with deletion style
+		left := s.formatColumnContent(line.LeftLineNo, "-", line.LeftContent, lineNoWidth, contentWidth, styles.DeletionsStyle)
 		return left, ""
-	case diff.Add:
-		// Add: show on right only
-		right := s.formatColumnContent(line.NewLineNo, "+", line.Content, lineNoWidth, contentWidth, styles.AdditionsStyle)
+	case diff.Added:
+		// Added: show on right only with addition style
+		right := s.formatColumnContent(line.RightLineNo, "+", line.RightContent, lineNoWidth, contentWidth, styles.AdditionsStyle)
 		return "", right
 	}
 
@@ -134,8 +138,13 @@ func (s *DiffState) renderDiffLineParts(line diff.Line, columnWidth, lineNoWidth
 
 // formatColumnContent formats a single column with line number, indicator, and content
 func (s *DiffState) formatColumnContent(lineNo int, indicator, content string, lineNoWidth, contentWidth int, style lipgloss.Style) string {
-	// Format line number
-	lineNoStr := fmt.Sprintf("%*d", lineNoWidth, lineNo)
+	// Format line number (blank if 0)
+	var lineNoStr string
+	if lineNo == 0 {
+		lineNoStr = strings.Repeat(" ", lineNoWidth)
+	} else {
+		lineNoStr = fmt.Sprintf("%*d", lineNoWidth, lineNo)
+	}
 
 	// Convert tabs to spaces for consistent width
 	expandedContent := expandTabs(content, 4)
