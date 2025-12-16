@@ -41,6 +41,25 @@ func (s *DiffState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 			}
 			return s, nil
 
+		case "ctrl+d":
+			// Scroll down half page
+			if len(s.Diff.Lines) > 0 {
+				headerLines := 2
+				availableHeight := max(ctx.Height()-headerLines, 1)
+				halfPage := availableHeight / 2
+				maxViewportStart := s.calculateMaxViewportStart(ctx.Height())
+				s.ViewportStart = min(s.ViewportStart+halfPage, maxViewportStart)
+			}
+			return s, nil
+
+		case "ctrl+u":
+			// Scroll up half page
+			headerLines := 2
+			availableHeight := max(ctx.Height()-headerLines, 1)
+			halfPage := availableHeight / 2
+			s.ViewportStart = max(s.ViewportStart-halfPage, 0)
+			return s, nil
+
 		case "g":
 			// Jump to top
 			s.ViewportStart = 0
