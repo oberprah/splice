@@ -2,11 +2,38 @@ package states
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/oberprah/splice/internal/diff"
+	"github.com/oberprah/splice/internal/git"
+	"github.com/oberprah/splice/internal/ui/messages"
 )
 
 // Update handles messages for the files state
 func (s *FilesState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 	switch msg := msg.(type) {
+	case messages.DiffLoadedMsg:
+		// Handle diff loading result
+		if msg.Err != nil {
+			// For now, just stay in files state on error
+			// In the future, we could show an error message
+			return s, nil
+		}
+
+		// Transition to diff state
+		return &DiffState{
+			Commit:                 msg.Commit,
+			File:                   msg.File,
+			Diff:                   msg.Diff,
+			ViewportStart:          0,
+			FilesCommit:            msg.FilesCommit,
+			FilesFiles:             msg.FilesFiles,
+			FilesCursor:            msg.FilesCursor,
+			FilesViewportStart:     msg.FilesViewportStart,
+			FilesListCommits:       msg.FilesListCommits,
+			FilesListCursor:        msg.FilesListCursor,
+			FilesListViewportStart: msg.FilesListViewportStart,
+		}, nil
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q":
@@ -19,6 +46,14 @@ func (s *FilesState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 
 		case "ctrl+c", "Q":
 			return s, tea.Quit
+
+		case "enter":
+			// Load diff for selected file
+			if len(s.Files) > 0 && s.Cursor < len(s.Files) {
+				file := s.Files[s.Cursor]
+				return s, s.loadDiff(file)
+			}
+			return s, nil
 
 		case "j", "down":
 			if len(s.Files) > 0 && s.Cursor < len(s.Files)-1 {
@@ -70,6 +105,67 @@ func (s *FilesState) updateViewport(height int) {
 	// Ensure viewport doesn't go negative
 	if s.ViewportStart < 0 {
 		s.ViewportStart = 0
+	}
+}
+
+// loadDiff creates a command to fetch and parse the diff for a file
+func (s *FilesState) loadDiff(file git.FileChange) tea.Cmd {
+	commit := s.Commit
+	files := s.Files
+	cursor := s.Cursor
+	viewportStart := s.ViewportStart
+	listCommits := s.ListCommits
+	listCursor := s.ListCursor
+	listViewportStart := s.ListViewportStart
+
+	return func() tea.Msg {
+		// Fetch the raw diff
+		rawDiff, err := git.FetchFileDiff(commit.Hash, file.Path)
+		if err != nil {
+			return messages.DiffLoadedMsg{
+				Commit:                 commit,
+				File:                   file,
+				Err:                    err,
+				FilesCommit:            commit,
+				FilesFiles:             files,
+				FilesCursor:            cursor,
+				FilesViewportStart:     viewportStart,
+				FilesListCommits:       listCommits,
+				FilesListCursor:        listCursor,
+				FilesListViewportStart: listViewportStart,
+			}
+		}
+
+		// Parse the diff
+		parsed, err := diff.ParseUnifiedDiff(rawDiff)
+		if err != nil {
+			return messages.DiffLoadedMsg{
+				Commit:                 commit,
+				File:                   file,
+				Err:                    err,
+				FilesCommit:            commit,
+				FilesFiles:             files,
+				FilesCursor:            cursor,
+				FilesViewportStart:     viewportStart,
+				FilesListCommits:       listCommits,
+				FilesListCursor:        listCursor,
+				FilesListViewportStart: listViewportStart,
+			}
+		}
+
+		return messages.DiffLoadedMsg{
+			Commit:                 commit,
+			File:                   file,
+			Diff:                   parsed,
+			Err:                    nil,
+			FilesCommit:            commit,
+			FilesFiles:             files,
+			FilesCursor:            cursor,
+			FilesViewportStart:     viewportStart,
+			FilesListCommits:       listCommits,
+			FilesListCursor:        listCursor,
+			FilesListViewportStart: listViewportStart,
+		}
 	}
 }
 

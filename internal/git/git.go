@@ -237,3 +237,29 @@ func FetchFileChanges(commitHash string) ([]FileChange, error) {
 
 	return changes, nil
 }
+
+// FetchFileDiff retrieves the unified diff for a specific file in a commit.
+// The filePath should be relative to the repository root.
+func FetchFileDiff(commitHash, filePath string) (string, error) {
+	// Use :(top) pathspec to ensure path is relative to repo root regardless of cwd
+	cmd := exec.Command("git", "show", commitHash, "--format=", "--", ":(top)"+filePath)
+
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		stderrStr := stderr.String()
+		if strings.Contains(stderrStr, "not a git repository") {
+			return "", fmt.Errorf("not a git repository")
+		}
+		if strings.Contains(stderrStr, "unknown revision") || strings.Contains(stderrStr, "bad revision") {
+			return "", fmt.Errorf("invalid commit: %s", commitHash)
+		}
+		return "", fmt.Errorf("git show failed: %v - %s", err, stderrStr)
+	}
+
+	return out.String(), nil
+}

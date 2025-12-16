@@ -1,6 +1,9 @@
 package messages
 
-import "github.com/oberprah/splice/internal/git"
+import (
+	"github.com/oberprah/splice/internal/diff"
+	"github.com/oberprah/splice/internal/git"
+)
 
 // FilesLoadedMsg is sent when files for a commit have been loaded
 type FilesLoadedMsg struct {
@@ -11,4 +14,20 @@ type FilesLoadedMsg struct {
 	ListCommits       []git.GitCommit
 	ListCursor        int
 	ListViewportStart int
+}
+
+// DiffLoadedMsg is sent when diff content for a file has been loaded
+type DiffLoadedMsg struct {
+	Commit git.GitCommit
+	File   git.FileChange
+	Diff   diff.FileDiff
+	Err    error
+	// Store original FilesState data to return to
+	FilesCommit            git.GitCommit
+	FilesFiles             []git.FileChange
+	FilesCursor            int
+	FilesViewportStart     int
+	FilesListCommits       []git.GitCommit
+	FilesListCursor        int
+	FilesListViewportStart int
 }

@@ -1,10 +1,13 @@
 package states
 
 import (
+	"fmt"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/oberprah/splice/internal/diff"
 	"github.com/oberprah/splice/internal/git"
+	"github.com/oberprah/splice/internal/ui/messages"
 )
 
 func TestFilesState_Update_NavigationDown(t *testing.T) {
@@ -308,5 +311,131 @@ func TestFilesState_Update_EmptyFileList(t *testing.T) {
 
 	if filesState.Cursor != 0 {
 		t.Errorf("Expected cursor to stay at 0 with empty files, got %d", filesState.Cursor)
+	}
+}
+
+func TestFilesState_Update_EnterKeyReturnsCommand(t *testing.T) {
+	commit := createTestCommit()
+	files := createTestFileChanges(5)
+	s := FilesState{
+		Commit:        commit,
+		Files:         files,
+		Cursor:        2,
+		ViewportStart: 0,
+	}
+	ctx := mockContext{width: 80, height: 24}
+
+	// Press "enter" to select a file
+	msg := tea.KeyMsg{Type: tea.KeyEnter}
+	newState, cmd := s.Update(msg, ctx)
+
+	// Should stay in FilesState while loading
+	if _, ok := newState.(*FilesState); !ok {
+		t.Fatalf("Expected to stay in FilesState while loading, got %T", newState)
+	}
+
+	// Should return a command to load the diff
+	if cmd == nil {
+		t.Error("Expected a command to load the diff")
+	}
+}
+
+func TestFilesState_Update_EnterOnEmptyFiles(t *testing.T) {
+	commit := createTestCommit()
+	files := []git.FileChange{}
+	s := FilesState{
+		Commit: commit,
+		Files:  files,
+		Cursor: 0,
+	}
+	ctx := mockContext{width: 80, height: 24}
+
+	// Press "enter" with no files
+	msg := tea.KeyMsg{Type: tea.KeyEnter}
+	newState, cmd := s.Update(msg, ctx)
+
+	// Should stay in FilesState
+	if _, ok := newState.(*FilesState); !ok {
+		t.Fatalf("Expected to stay in FilesState, got %T", newState)
+	}
+
+	// Should NOT return a command
+	if cmd != nil {
+		t.Error("Expected no command when files list is empty")
+	}
+}
+
+func TestFilesState_Update_DiffLoadedMsgSuccess(t *testing.T) {
+	commit := createTestCommit()
+	files := createTestFileChanges(5)
+	s := FilesState{
+		Commit:            commit,
+		Files:             files,
+		Cursor:            2,
+		ViewportStart:     1,
+		ListCommits:       []git.GitCommit{commit},
+		ListCursor:        0,
+		ListViewportStart: 0,
+	}
+	ctx := mockContext{width: 80, height: 24}
+
+	// Simulate DiffLoadedMsg with success
+	msg := messages.DiffLoadedMsg{
+		Commit: commit,
+		File:   files[2],
+		Diff: diff.FileDiff{
+			OldPath: "file.go",
+			NewPath: "file.go",
+			Lines:   []diff.Line{{Type: diff.Context, Content: "test", OldLineNo: 1, NewLineNo: 1}},
+		},
+		Err:                    nil,
+		FilesCommit:            commit,
+		FilesFiles:             files,
+		FilesCursor:            2,
+		FilesViewportStart:     1,
+		FilesListCommits:       []git.GitCommit{commit},
+		FilesListCursor:        0,
+		FilesListViewportStart: 0,
+	}
+	newState, _ := s.Update(msg, ctx)
+
+	// Should transition to DiffState
+	diffState, ok := newState.(*DiffState)
+	if !ok {
+		t.Fatalf("Expected to transition to DiffState, got %T", newState)
+	}
+
+	// Verify diff state has correct data
+	if len(diffState.Diff.Lines) != 1 {
+		t.Errorf("Expected 1 diff line, got %d", len(diffState.Diff.Lines))
+	}
+
+	// Verify preserved FilesState data
+	if diffState.FilesCursor != 2 {
+		t.Errorf("Expected FilesCursor to be 2, got %d", diffState.FilesCursor)
+	}
+}
+
+func TestFilesState_Update_DiffLoadedMsgError(t *testing.T) {
+	commit := createTestCommit()
+	files := createTestFileChanges(5)
+	s := FilesState{
+		Commit: commit,
+		Files:  files,
+		Cursor: 2,
+	}
+	ctx := mockContext{width: 80, height: 24}
+
+	// Simulate DiffLoadedMsg with error
+	msg := messages.DiffLoadedMsg{
+		Commit: commit,
+		File:   files[2],
+		Err:    fmt.Errorf("failed to load diff"),
+	}
+	newState, _ := s.Update(msg, ctx)
+
+	// Should stay in FilesState on error
+	if _, ok := newState.(*FilesState); !ok {
+		t.Fatalf("Expected to stay in FilesState on error, got %T", newState)
 	}
 }

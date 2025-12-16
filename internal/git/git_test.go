@@ -503,3 +503,63 @@ func TestFetchFileChanges_InvalidCommit(t *testing.T) {
 		t.Errorf("FetchFileChanges() expected nil changes on error, got %d changes", len(changes))
 	}
 }
+
+func TestFetchFileDiff_Integration(t *testing.T) {
+	// This test requires a git repository with at least one commit
+	cmd := exec.Command("git", "rev-parse", "--git-dir")
+	if err := cmd.Run(); err != nil {
+		t.Skip("Not in a git repository, skipping integration test")
+	}
+
+	// Get the latest commit hash
+	cmd = exec.Command("git", "rev-parse", "HEAD")
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("Failed to get HEAD commit: %v", err)
+	}
+	commitHash := strings.TrimSpace(string(out))
+
+	// Get file changes for this commit to find a file to test
+	changes, err := FetchFileChanges(commitHash)
+	if err != nil {
+		t.Fatalf("FetchFileChanges() error = %v", err)
+	}
+
+	if len(changes) == 0 {
+		t.Skip("No file changes in HEAD commit, skipping test")
+	}
+
+	// Fetch diff for the first file
+	filePath := changes[0].Path
+	diff, err := FetchFileDiff(commitHash, filePath)
+	if err != nil {
+		t.Fatalf("FetchFileDiff() error = %v", err)
+	}
+
+	// Basic validation - diff should contain the file path
+	if !strings.Contains(diff, filePath) {
+		t.Errorf("FetchFileDiff() output should contain file path %q", filePath)
+	}
+
+	// Diff should contain diff header markers
+	if !strings.Contains(diff, "diff --git") {
+		t.Error("FetchFileDiff() output should contain 'diff --git' header")
+	}
+}
+
+func TestFetchFileDiff_InvalidCommit(t *testing.T) {
+	cmd := exec.Command("git", "rev-parse", "--git-dir")
+	if err := cmd.Run(); err != nil {
+		t.Skip("Not in a git repository, skipping integration test")
+	}
+
+	diff, err := FetchFileDiff("invalid_commit_hash_12345", "some/file.go")
+
+	if err == nil {
+		t.Fatal("FetchFileDiff() expected error for invalid commit, got nil")
+	}
+
+	if diff != "" {
+		t.Errorf("FetchFileDiff() expected empty diff on error, got: %s", diff)
+	}
+}
