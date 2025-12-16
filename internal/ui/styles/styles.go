@@ -69,6 +69,12 @@ var (
 		Dark:  "46",  // Bright green
 	})
 
+	// Diff line addition style (green background)
+	DiffAdditionsStyle = lipgloss.NewStyle().Background(lipgloss.AdaptiveColor{
+		Light: "#e8f5e9", // Very subtle pale green
+		Dark:  "#1e3a1e", // Very subtle dark green
+	})
+
 	SelectedAdditionsStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
 		Light: "22",  // Darker green
 		Dark:  "82",  // Brighter green
@@ -78,6 +84,12 @@ var (
 	DeletionsStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
 		Light: "124", // Dark red
 		Dark:  "196", // Bright red
+	})
+
+	// Diff line deletion style (red background)
+	DiffDeletionsStyle = lipgloss.NewStyle().Background(lipgloss.AdaptiveColor{
+		Light: "#ffebee", // Very subtle pale pink
+		Dark:  "#3a1e1e", // Very subtle dark red
 	})
 
 	SelectedDeletionsStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{

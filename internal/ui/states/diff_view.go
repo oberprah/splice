@@ -125,11 +125,11 @@ func (s *DiffState) renderFullFileLine(line diff.FullFileLine, columnWidth, line
 		return left, right
 	case diff.Removed:
 		// Removed: show on left only with deletion style
-		left := s.formatColumnContent(line.LeftLineNo, "-", line.LeftContent, lineNoWidth, contentWidth, styles.DeletionsStyle)
+		left := s.formatColumnContent(line.LeftLineNo, "-", line.LeftContent, lineNoWidth, contentWidth, styles.DiffDeletionsStyle)
 		return left, ""
 	case diff.Added:
 		// Added: show on right only with addition style
-		right := s.formatColumnContent(line.RightLineNo, "+", line.RightContent, lineNoWidth, contentWidth, styles.AdditionsStyle)
+		right := s.formatColumnContent(line.RightLineNo, "+", line.RightContent, lineNoWidth, contentWidth, styles.DiffAdditionsStyle)
 		return "", right
 	}
 
