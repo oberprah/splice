@@ -23,6 +23,36 @@ UI components follow the Elm Architecture (Model-Update-View) with states organi
 - Within each state package: `state.go` (struct), `view.go` (rendering), `update.go` (event handling)
 - States implement the `state.State` interface and receive a `state.Context` for accessing model properties
 
+## Architecture & Data Flow
+
+The app is a state machine where each screen (loading, log, files, diff) is a separate state:
+
+```
+LoadingState → LogState → FilesState → DiffState
+                  ↑______________|          |
+                  |_________________________|
+```
+
+**State file organization** (`internal/ui/states/`):
+- `*_state.go` - State struct definition
+- `*_view.go` - Rendering logic (View method)
+- `*_update.go` - Event handling (Update method)
+
+**Async data loading pattern**:
+1. User action triggers `tea.Cmd` (e.g., `loadDiff()` in `files_update.go`)
+2. Cmd executes async, returns a message (e.g., `DiffLoadedMsg`)
+3. Message routed to current state's `Update()` method
+4. Update returns new state + optional new command
+
+**Message definitions**: `internal/ui/messages/messages.go`
+
+When modifying a state's data structure, typically need to update:
+- The message struct in `messages.go`
+- The state struct in `*_state.go`
+- View rendering in `*_view.go`
+- The code that creates the message (e.g., `loadDiff()`)
+- Corresponding `*_test.go` files
+
 ## Development Commands
 
 ```bash
