@@ -67,7 +67,7 @@ Stay at the architectural level:
 | WHY this approach | WHICH files and lines |
 | Interface contracts | Method signatures |
 
-Design docs should remain valid even if code is refactored.
+Design docs should remain valid even if code is refactored. This means **no implementation code**—if you're writing code blocks, you've gone too deep. The exception: brief snippets for critical interfaces or non-obvious algorithms where prose would be less clear.
 
 ### What to Cover
 
