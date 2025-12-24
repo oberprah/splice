@@ -1,4 +1,7 @@
-.claude/
+# Claude Code
+.claude/settings.local.json
+
+# Jetbrains
 .idea/
 
 # Build artifacts
