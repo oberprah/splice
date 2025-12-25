@@ -1,104 +1,108 @@
 # Phase 2: Design
 
 > **Workflow:** 1. Clarify → 2. **Design** → 3. Implement
-> See [overview](00-overview.md) for details.
+> See [overview](00-overview.md) for full context.
 
 ## Purpose
 
-This phase is a **checkpoint**. The AI works autonomously to propose a solution, then the developer reviews and approves before any code is written.
+Create a design document that lets the developer review and approve the approach before any code is written. Reviewing a design doc is much faster than reviewing a PR, and catching issues here saves significant rework.
 
-Why a design doc instead of jumping to code?
-- Reviewing a design doc is much easier than reviewing a PR.
-- Decisions and tradeoffs are documented so the developer can evaluate the approach.
-- Catching issues here saves significant rework later.
+**The core question:** "What solution did I choose and why?" — not "How will I build this?"
 
-**How it works:** The AI proposes, the developer validates. The AI makes decisions and documents rationale. The developer approves, redirects, or rejects. This keeps momentum while maintaining oversight.
+| Design Is | Design Is Not |
+|-----------|---------------|
+| Exploring solution space | Describing THE solution in implementation detail |
+| Making and documenting decisions | Documenting architecture without rationale |
+| Why this approach over alternatives | How the pieces connect at code level |
+| Risks and unknowns | Implementation order or file-by-file changes |
 
 **After approval:** Proceed to [Phase 3: Implement](03-implement.md).
 
-## The Work
+## Workflow
 
 The AI works autonomously through these steps:
 
-### Understand
+### 1. Understand Requirements
 
-- Read `01-requirements.md` and any research documents from phase 1.
-- Research the codebase: existing patterns, integration points, constraints.
+Read `01-requirements.md` and any research documents from Phase 1. Be clear on what problem we're solving and what success looks like.
 
-Do the homework. A great solution requires fully understanding the problem and codebase. Use subagents for research to keep context clean, and document findings in `research/` folder.
+### 2. Research the Codebase
 
-### Design
+Use subagents to explore the current codebase. Each subagent investigates a specific area and documents findings in the `research/` folder.
 
-Start from the user-facing layer and work down:
-- What does the user see/do?
-- What API serves that?
-- What services/logic support that API?
-- What data structures are needed?
+Why subagents?
+- Clean context produces better analysis
+- Each research doc is focused and coherent
+- Main agent synthesizes without getting lost in details
 
-For significant decisions: consider alternatives, choose the best approach, document why.
+Example research tasks:
+- "How does the current X system work?"
+- "What patterns does this codebase use for Y?"
+- "What are the integration points for Z?"
 
-### Validate
+### 3. Explore Solution Space
 
-Use a subagent to review the design. A fresh perspective catches issues that accumulated context blinds you to.
+Use subagents to explore different approaches. Each subagent can investigate one potential solution direction and document pros/cons.
 
-The subagent should evaluate:
+The main agent then synthesizes: compare approaches, make decisions, document rationale.
 
-| Test | Question |
-|------|----------|
-| **Fitness Test** | Is this the right solution for the problem? Would a simpler approach work? Are we working with the codebase or fighting it? |
-| **Vacation Test** | Could a teammate understand and evaluate this approach without contacting you? |
-| **Skeptic Test** | Have you addressed likely objections? |
-| **Scope Test** | Does this solve the requirements without gold-plating? |
+This works better than a single agent iteratively updating a document — fresh context with complete information produces more coherent output.
 
-If validation reveals requirement gaps, return to [Phase 1: Clarify](01-clarify.md) before proceeding.
+### 4. Write the Design Document
 
-## The Design Document
+Create `02-design.md` in the feature folder using the template below.
 
-Create `02-design.md` in the feature folder.
+## Design Document Template
 
-### Level of Detail
+The document should flow naturally — the reader should never be surprised. Every sentence should follow obviously from the previous ones.
 
-Stay at the architectural level:
+### Executive Summary
 
-| Design (this phase) | Implementation (next phase) |
-|---------------------|----------------------------|
-| WHAT components interact | WHERE in the codebase |
-| HOW data flows | WHAT order to code |
-| WHY this approach | WHICH files and lines |
-| Interface contracts | Method signatures |
+*Write this section last.*
 
-Design docs should remain valid even if code is refactored. This means **no implementation code**—if you're writing code blocks, you've gone too deep. The exception: brief snippets for critical interfaces or non-obvious algorithms where prose would be less clear.
+2-3 paragraphs maximum. A developer should be able to read this and decide whether they need to read the full document or can approve based on the summary.
 
-### What to Cover
+### Context & Problem Statement
 
-**Context**
-- What problem are we solving? Why now?
-- Goals: what success looks like
-- Non-goals: what we're explicitly not doing
+What problem are we solving? Why now?
 
-**Current State**
-- How things work today (if relevant to understanding the change)
+Include scope boundaries if there's risk of confusion: "This design covers X. It does not cover Y."
 
-**Solution**
-The proposed design. Structure flexibly based on the problem, but cover these areas as applicable:
-- Architecture overview
-- Components and interfaces
-- Data flow
-- Data models
-- Error handling
+### Current State
 
-Document decisions and tradeoffs inline as they arise—why this approach over alternatives.
+How things work today. Important for understanding what changes and why.
 
-**Verification**
-- How we'll test it works
+### Solution
 
-**Open Questions** (if any)
-- Decisions that need human input before implementation
+Structure this section to best match the problem. The goal is clear communication, not filling in a template.
 
-### Writing for Reviewability
+**Requirements:**
 
-- Good flow: if the reader is surprised by a conclusion, you skipped a step.
-- Diagrams for anything with multiple components interacting.
-- Verified metrics only, or explicitly marked as estimates.
+- **Good flow.** The reader should think "this is entirely straightforward" by the end.
+- **Decisions marked clearly.** Use this pattern so reviewers can spot decisions quickly:
 
-The document must be standalone. The reviewer shouldn't need prior context.
+  > **Decision:** We chose X over Y because Z. The tradeoff is...
+
+- **Visual representations.** Diagrams for component interactions, data flow, state changes. A picture often communicates better than paragraphs.
+
+**Areas to cover** (as relevant):
+
+- How do the major components interact? (high-level diagram)
+- How does data flow through the system? What state changes?
+- What data models or interfaces are involved? (types/schemas are fine — they clarify the design)
+
+**Stay at the right level:** Data models and interfaces are design. Implementation details (which files to change, what order to code things, method bodies) belong in Phase 3.
+
+### Open Questions
+
+Decisions that need developer input before implementation can proceed. These are blockers — the developer must answer them as part of approval.
+
+If there are no open questions, state that explicitly.
+
+## Principles
+
+- **Decide, don't defer.** The AI makes decisions and documents rationale. The developer validates, redirects, or approves — but shouldn't have to make every decision.
+- **Mark decisions clearly.** The developer reviewing should be able to scan for decision points and evaluate the reasoning.
+- **Stay autonomous.** Don't ask the developer for input on every question. Research, decide, document. The review is where feedback happens.
+- **No implementation planning.** That's Phase 3. Focus on what the solution is and why, not how to build it.
+- **Document stands alone.** The reviewer shouldn't need prior context or conversation history.
