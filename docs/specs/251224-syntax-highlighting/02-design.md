@@ -2,38 +2,32 @@
 
 ## Executive Summary
 
-This design adds syntax highlighting to the diff view by integrating the Chroma library for tokenization and ANSI output. Chroma outputs foreground colors for syntax tokens, and Lip Gloss applies background colors for change indicators—these work independently in ANSI, so both display correctly together.
+This design adds syntax highlighting to the diff view using Chroma for tokenization and styling. The entire file is tokenized once when loading the diff, then tokens are stored per line. During rendering, we look up colors from Chroma's built-in styles (monokai/github) and apply them via Lip Gloss, giving us control over both foreground (syntax) and background (diff changes) colors.
 
-The integration point is `formatColumnContent()` in `diff_view.go`. Before rendering, content is passed through a new highlighter module that uses Chroma with terminal256 output. Language detection uses file extension matching. A new `highlight` package provides a simple API: `Highlight(content, filename) string`.
-
-Light/dark theme adaptation uses two Chroma styles selected based on Lip Gloss's color profile detection, coordinated with existing Splice color palette.
+Key insight: By using Chroma's token output rather than its ANSI output, we avoid conflicts between Chroma's color resets and our diff background colors. Chroma handles lexing and provides color schemes, we handle the actual ANSI rendering.
 
 ## Context & Problem Statement
 
-The diff view displays file content without syntax highlighting. All code appears in a single color (gray for unchanged, with subtle green/red backgrounds for changes), making it harder to read and understand code structure. Developers expect language-aware coloring similar to their editors.
+The diff view displays file content without syntax highlighting. All code appears in a single color (gray for unchanged, with subtle green/red backgrounds for changes), making it harder to read and understand code structure.
 
-**Scope:** This design covers syntax highlighting in the diff view only. It does not cover the log list or file list views.
+**Scope:** Syntax highlighting in the diff view only. Does not cover log list or file list views.
 
 ## Current State
 
-The diff view (`internal/ui/states/diff_view.go`) renders side-by-side columns:
+The diff view renders side-by-side columns showing the entire file:
 
 ```
   1   func main() {        │   1   func main() {
-  2 - 	oldCode()          │
-                           │   2 + 	newCode()
+  2 -     oldCode()        │
+                           │   2 +     newCode()
   3   }                    │   3   }
 ```
 
-**Rendering flow:**
-1. `renderFullFileLine()` calls `formatColumnContent()` for each column
-2. `formatColumnContent()` builds string: `lineNo + indicator + content`
-3. Entire string receives one Lip Gloss style (background color for changes)
-
-**Current styles** (`internal/ui/styles/styles.go`):
-- `DiffAdditionsStyle`: Very subtle green background (`#e8f5e9` light / `#1e3a1e` dark)
-- `DiffDeletionsStyle`: Very subtle red background (`#ffebee` light / `#3a1e1e` dark)
-- `TimeStyle`: Gray foreground for unchanged lines
+**Data flow:**
+1. `MergeFullFile(oldContent, newContent, parsedDiff)` → `FullFileDiff`
+2. `FullFileDiff.Lines` contains `FullFileLine` structs with `LeftContent`/`RightContent`
+3. `renderFullFileLine()` calls `formatColumnContent()` for each column
+4. `formatColumnContent()` truncates content and applies Lip Gloss style
 
 ## Solution
 
@@ -41,177 +35,222 @@ The diff view (`internal/ui/states/diff_view.go`) renders side-by-side columns:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        diff_view.go                             │
+│  Load Diff                                                      │
 │                                                                 │
-│  formatColumnContent(lineNo, indicator, content, ...)           │
-│         │                                                       │
-│         ▼                                                       │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │  highlight.Highlight(content, filepath)                  │   │
-│  │  └─> Returns ANSI-colored string (foreground only)       │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│         │                                                       │
-│         ▼                                                       │
-│  lineNo + indicator + highlightedContent                        │
-│         │                                                       │
-│         ▼                                                       │
-│  style.Render(...)  ← Lip Gloss adds background color           │
-│         │                                                       │
-│         ▼                                                       │
-│  Final output: syntax colors + change background                │
+│  oldContent, newContent ──► MergeFullFile() ──► FullFileDiff    │
+│                                                     │           │
+│                                                     ▼           │
+│                            ApplySyntaxHighlighting(diff, path)  │
+│                                                     │           │
+│                              ┌──────────────────────┴─────┐     │
+│                              ▼                            ▼     │
+│                    Tokenize(oldContent)      Tokenize(newContent)
+│                              │                            │     │
+│                              ▼                            ▼     │
+│                    Split tokens by line      Split tokens by line
+│                              │                            │     │
+│                              └────────────┬───────────────┘     │
+│                                           ▼                     │
+│                           Store in FullFileLine structs         │
+└─────────────────────────────────────────────────────────────────┘
+                                            │
+                                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Render (diff_view.go)                                          │
+│                                                                 │
+│  formatColumnContent()                                          │
+│       │                                                         │
+│       ├─► Render tokens with syntax styles (foreground)         │
+│       ├─► Truncate if needed (track visible width)              │
+│       └─► Apply diff background style                           │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Component Design
+### Why Per-File Tokenization
 
-#### New Package: `internal/highlight`
+Tokenizing line-by-line would fail for multi-line constructs:
+- Block comments: `/* ... */` spanning lines
+- Multi-line strings: Go backtick strings, Python triple quotes
 
-A focused module for syntax highlighting with a minimal API:
+A line containing `continued comment */` needs context from previous lines. Per-file tokenization provides this.
 
+### Why Token Output (Not ANSI)
+
+Chroma can output ANSI-colored strings directly, but those include reset codes (`\033[0m`) that would clear our diff background colors mid-line. By using token output:
+- Chroma handles lexing (the hard part)
+- We look up colors from Chroma styles, apply them via Lip Gloss
+- Full control over foreground + background together
+
+### Data Model Changes
+
+**Token type:**
 ```go
-// Highlight returns the content with ANSI syntax highlighting.
-// If the language cannot be detected or highlighting fails, returns content unchanged.
-func Highlight(content, filename string) string
-
-// SetDarkMode configures whether to use dark or light theme.
-// Should be called once at startup based on terminal background detection.
-func SetDarkMode(dark bool)
-```
-
-**Internal structure:**
-- Uses Chroma's `lexers.Match(filename)` for language detection by extension
-- Uses Chroma's `terminal256` formatter for ANSI output
-- Caches formatter and style instances (they're reusable)
-- Falls back to unmodified content on any error
-
-> **Decision:** Create a new `internal/highlight` package rather than adding Chroma calls directly to `diff_view.go`. This keeps the diff view focused on layout/rendering and makes the highlighting logic testable in isolation.
-
-#### Integration in diff_view.go
-
-Modify `formatColumnContent()` to highlight content before applying background style:
-
-```go
-func (s *DiffState) formatColumnContent(lineNo int, indicator, content string,
-    lineNoWidth, contentWidth int, style lipgloss.Style) string {
-
-    // ... existing line number formatting ...
-
-    expandedContent := expandTabs(content, 4)
-    truncated := truncateWithEllipsis(expandedContent, contentWidth)
-
-    // NEW: Apply syntax highlighting to content only
-    highlighted := highlight.Highlight(truncated, s.File.Path)
-
-    // Build column with highlighted content
-    columnStr := lineNoStr + " " + indicator + " " + highlighted
-
-    // Lip Gloss background wraps the whole thing
-    return style.Render(columnStr)
+// Token represents a syntax-highlighted token
+type Token struct {
+    Type  chroma.TokenType // e.g., chroma.Keyword, chroma.String, chroma.Text
+    Value string           // the actual text
 }
 ```
 
-> **Decision:** Highlight after truncation, not before. Truncation operates on visible characters and would corrupt ANSI escape sequences if applied to already-highlighted content. Chroma handles short content efficiently.
+**Extended FullFileLine:**
+```go
+type FullFileLine struct {
+    LeftLineNo   int
+    RightLineNo  int
+    LeftTokens   []highlight.Token  // Syntax tokens (always populated)
+    RightTokens  []highlight.Token  // Syntax tokens (always populated)
+    Change       ChangeType
+}
+```
 
-### Why ANSI Foreground + Lip Gloss Background Works
+> **Decision:** Store only tokens, not plain text. For unsupported languages, tokens contain a single `Text` token per line. This gives one data representation and one rendering path.
 
-ANSI escape codes support independent foreground and background colors:
-- Chroma outputs: `\033[38;5;123mfunc\033[0m` (foreground color for "func")
-- Lip Gloss adds: `\033[48;5;22m...\033[0m` (background color wrapping content)
+### New Package: `internal/highlight`
 
-Terminal displays both: blue "func" text on green background. Lip Gloss is ANSI-aware and preserves existing escape sequences when applying new styles.
+```go
+package highlight
+
+// TokenizeFile tokenizes file content and returns tokens grouped by line.
+// Always returns valid tokens - uses Text tokens for unsupported languages.
+func TokenizeFile(content, filename string) [][]Token
+```
+
+**Internal behavior:**
+- Uses `lexers.Match(filename)` for language detection
+- Iterates Chroma's token stream, splitting on newlines
+- For unrecognized file types: returns `Text` tokens (one per line)
+
+### Syntax Styles
+
+Use Chroma's built-in styles rather than defining our own. The highlight package manages the active style:
+
+```go
+package highlight
+
+var activeStyle *chroma.Style
+
+func init() {
+    // Select style based on terminal background
+    if isDarkTerminal() {
+        activeStyle = styles.Get("monokai")
+    } else {
+        activeStyle = styles.Get("github")
+    }
+}
+
+// StyleForToken returns a Lip Gloss style for the given token type.
+func StyleForToken(tokenType chroma.TokenType) lipgloss.Style {
+    entry := activeStyle.Get(tokenType)
+    style := lipgloss.NewStyle()
+    if entry.Colour.IsSet() {
+        style = style.Foreground(lipgloss.Color(entry.Colour.String()))
+    }
+    return style
+}
+```
+
+> **Decision:** Use Chroma's built-in styles (monokai for dark, github for light). These are battle-tested color schemes. We can customize later if they don't match Splice's aesthetic.
+
+Chroma styles handle token type hierarchy automatically - if `KeywordDeclaration` has no entry, it inherits from `Keyword`.
+
+### Integration: ApplySyntaxHighlighting
+
+```go
+// ApplySyntaxHighlighting adds tokens to a FullFileDiff.
+// Called after MergeFullFile(), before rendering.
+func ApplySyntaxHighlighting(diff *FullFileDiff, oldContent, newContent, filepath string)
+```
+
+**Process:**
+1. `highlight.TokenizeFile(oldContent, filepath)` → `[][]Token` (tokens per line)
+2. `highlight.TokenizeFile(newContent, filepath)` → `[][]Token`
+3. For each `FullFileLine`, set `LeftTokens`/`RightTokens` by line number
+
+### Rendering Changes
+
+Modify `formatColumnContent()` to accept tokens instead of plain string content:
+
+1. Iterate tokens, applying `highlight.StyleForToken(tok.Type)` to each
+2. Track visible width, truncate with "…" if exceeds column width
+3. Concatenate styled tokens into `renderedContent`
+4. Build line: `lineNo + indicator + renderedContent`
+5. Wrap with `bgStyle.Render()` for diff background
 
 ### Theme Selection
 
-> **Decision:** Use Chroma's built-in `monokai` (dark) and `github` (light) styles. These are well-tested, widely recognized, and provide good contrast. Custom themes add complexity without clear benefit given the non-goal of user-configurable themes.
-
-**Light/dark detection:**
-```go
-func init() {
-    // Lip Gloss uses termenv which detects terminal background
-    profile := lipgloss.DefaultRenderer().ColorProfile()
-    // Use light theme if terminal reports light background
-    // This integrates with existing Splice adaptive color patterns
-}
-```
-
-The `SetDarkMode()` function allows explicit override if detection is unreliable.
-
-### Color Palette Considerations
-
-Syntax colors must remain readable on the diff backgrounds:
-- Green background (`#1e3a1e` dark / `#e8f5e9` light) — avoid green syntax colors
-- Red background (`#3a1e1e` dark / `#ffebee` light) — avoid red syntax colors
-
-Monokai and GitHub styles use blue, purple, orange, and yellow for most tokens, which have good contrast against both backgrounds.
-
-> **Decision:** Accept standard Chroma themes without modification. The diff backgrounds are subtle enough that standard syntax colors remain readable. If specific colors prove problematic in practice, we can create custom Chroma styles in a future iteration.
+> **Decision:** Use `monokai` for dark terminals, `github` for light terminals. Detect terminal background using Lip Gloss/termenv. These are widely used, well-tested themes.
 
 ### Language Detection
 
 Chroma's `lexers.Match(filename)` handles extension mapping:
-- `.go` → Go lexer
-- `.js`, `.mjs` → JavaScript lexer
-- `.ts`, `.tsx` → TypeScript lexer
-- `.py` → Python lexer
-- `.rs` → Rust lexer
-- `.java` → Java lexer
-- `.c`, `.h` → C lexer
-- `.cpp`, `.hpp`, `.cc` → C++ lexer
-- 200+ other languages
+- `.go` → Go, `.js` → JavaScript, `.py` → Python, etc.
+- 200+ languages supported
+- Unknown extensions → `Text` tokens (plain rendering)
 
-**Fallback:** If no lexer matches, return content unchanged (current behavior).
+### Error Handling
 
-### Data Flow Diagram
+The highlight module never causes rendering failures:
+- Lexer not found → return `Text` tokens
+- Tokenization error → return `Text` tokens
+
+No errors shown for unsupported file types.
+
+## Data Flow Diagram
 
 ```
 User opens diff for "main.go"
            │
            ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│ DiffState.View()                                                 │
-│   for each visible line:                                         │
-│     renderFullFileLine(line, ...)                                │
-│       │                                                          │
-│       ▼                                                          │
-│     formatColumnContent(lineNo=5, indicator="+",                 │
-│                         content="func main() {", ...)            │
-│       │                                                          │
-│       ├─1─▶ expandTabs + truncate                                │
-│       │       content = "func main() {"                          │
-│       │                                                          │
-│       ├─2─▶ highlight.Highlight(content, "main.go")              │
-│       │       │                                                  │
-│       │       ├─▶ lexers.Match("main.go") → Go lexer             │
-│       │       ├─▶ lexer.Tokenise(content)                        │
-│       │       ├─▶ formatter.Format(tokens, style)                │
-│       │       └─▶ "[blue]func[reset] main() {"                   │
-│       │                                                          │
-│       ├─3─▶ columnStr = "  5 + [blue]func[reset] main() {"       │
-│       │                                                          │
-│       └─4─▶ DiffAdditionsStyle.Render(columnStr)                 │
-│               → "[green-bg][blue]func[reset] main() {[reset]"    │
+│ loadDiff()                                                       │
+│                                                                  │
+│   fullDiff = diff.MergeFullFile(oldContent, newContent, parsed)  │
+│                       │                                          │
+│                       ▼                                          │
+│   diff.ApplySyntaxHighlighting(fullDiff, old, new, "main.go")    │
+│         │                                                        │
+│         ├──► highlight.TokenizeFile(oldContent, "main.go")       │
+│         │      └──► [line1: [{chroma.Keyword,"func"},...]]       │
+│         │                                                        │
+│         └──► Populate LeftTokens/RightTokens per line            │
 └──────────────────────────────────────────────────────────────────┘
            │
            ▼
-    Terminal renders: blue "func" on green background
+┌──────────────────────────────────────────────────────────────────┐
+│ DiffState.View()                                                 │
+│                                                                  │
+│   formatColumnContent(tokens=[{chroma.Keyword,"func"},...], ...) │
+│         │                                                        │
+│         ├──► renderTokens() applies syntax styles (foreground)   │
+│         │      └──► highlight.StyleForToken(tok.Type).Render()   │
+│         │                                                        │
+│         └──► bgStyle.Render() applies diff background            │
+│               └──► Green background wraps entire line            │
+└──────────────────────────────────────────────────────────────────┘
+           │
+           ▼
+    Terminal: "func" in purple on green background
 ```
 
-### Error Handling
+## New Dependencies
 
-The highlight module should never cause rendering failures:
-- Lexer not found → return original content
-- Tokenization error → return original content
-- Formatter error → return original content
+```go
+import (
+    "github.com/alecthomas/chroma/v2"
+    "github.com/alecthomas/chroma/v2/lexers"
+    "github.com/alecthomas/chroma/v2/styles"
+)
+```
 
-No errors or warnings displayed to users for unsupported file types.
+Note: We use Chroma's styles for colors but not its formatters - we handle ANSI rendering ourselves via Lip Gloss.
 
 ## Open Questions
 
-None. All decisions have been made based on research findings.
+None. All design decisions have been made.
 
 **Decisions summary:**
-1. **Library:** Chroma (proven in production, excellent language/theme support)
-2. **Integration point:** After truncation in `formatColumnContent()`
-3. **Package structure:** New `internal/highlight` package
-4. **Themes:** Monokai (dark) / GitHub (light), no customization
-5. **Detection:** File extension via Chroma's lexer matching
+1. **Per-file tokenization** - Preserves context for multi-line constructs
+2. **Token output** - We control rendering, avoids ANSI reset conflicts
+3. **Data model** - Store `[]Token` per line, no plain text (Text tokens for unsupported languages)
+4. **Styles** - Use Chroma's built-in styles (monokai/github), customize later if needed
+5. **Integration** - After `MergeFullFile()`, before rendering
