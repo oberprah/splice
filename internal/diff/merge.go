@@ -5,6 +5,8 @@ package diff
 
 import (
 	"strings"
+
+	"github.com/oberprah/splice/internal/highlight"
 )
 
 // ChangeType represents the type of change for a line in the full file diff
@@ -18,11 +20,11 @@ const (
 
 // FullFileLine represents a single line in the merged full file view
 type FullFileLine struct {
-	LeftLineNo   int        // Line number in old file (0 if not present)
-	RightLineNo  int        // Line number in new file (0 if not present)
-	LeftContent  string     // Content from old file (empty if added)
-	RightContent string     // Content from new file (empty if removed)
-	Change       ChangeType // Type of change for this line
+	LeftLineNo  int                   // Line number in old file (0 if not present)
+	RightLineNo int                   // Line number in new file (0 if not present)
+	LeftTokens  []highlight.Token     // Syntax tokens for left side (always populated)
+	RightTokens []highlight.Token     // Syntax tokens for right side (always populated)
+	Change      ChangeType            // Type of change for this line
 }
 
 // FullFileDiff represents a complete file with all lines and change information
@@ -73,11 +75,9 @@ func MergeFullFile(oldContent, newContent string, parsedDiff *FileDiff) *FullFil
 		if oldIdx < len(oldLines) {
 			if _, isRemoved := removedLines[oldLineNo]; isRemoved {
 				result.Lines = append(result.Lines, FullFileLine{
-					LeftLineNo:   oldLineNo,
-					RightLineNo:  0,
-					LeftContent:  oldLines[oldIdx],
-					RightContent: "",
-					Change:       Removed,
+					LeftLineNo:  oldLineNo,
+					RightLineNo: 0,
+					Change:      Removed,
 				})
 				result.ChangeIndices = append(result.ChangeIndices, len(result.Lines)-1)
 				oldIdx++
@@ -89,11 +89,9 @@ func MergeFullFile(oldContent, newContent string, parsedDiff *FileDiff) *FullFil
 		if newIdx < len(newLines) {
 			if _, isAdded := addedLines[newLineNo]; isAdded {
 				result.Lines = append(result.Lines, FullFileLine{
-					LeftLineNo:   0,
-					RightLineNo:  newLineNo,
-					LeftContent:  "",
-					RightContent: newLines[newIdx],
-					Change:       Added,
+					LeftLineNo:  0,
+					RightLineNo: newLineNo,
+					Change:      Added,
 				})
 				result.ChangeIndices = append(result.ChangeIndices, len(result.Lines)-1)
 				newIdx++
@@ -104,33 +102,27 @@ func MergeFullFile(oldContent, newContent string, parsedDiff *FileDiff) *FullFil
 		// Otherwise it's an unchanged line - advance both pointers
 		if oldIdx < len(oldLines) && newIdx < len(newLines) {
 			result.Lines = append(result.Lines, FullFileLine{
-				LeftLineNo:   oldLineNo,
-				RightLineNo:  newLineNo,
-				LeftContent:  oldLines[oldIdx],
-				RightContent: newLines[newIdx],
-				Change:       Unchanged,
+				LeftLineNo:  oldLineNo,
+				RightLineNo: newLineNo,
+				Change:      Unchanged,
 			})
 			oldIdx++
 			newIdx++
 		} else if oldIdx < len(oldLines) {
 			// Only old lines left - these should be removed
 			result.Lines = append(result.Lines, FullFileLine{
-				LeftLineNo:   oldLineNo,
-				RightLineNo:  0,
-				LeftContent:  oldLines[oldIdx],
-				RightContent: "",
-				Change:       Removed,
+				LeftLineNo:  oldLineNo,
+				RightLineNo: 0,
+				Change:      Removed,
 			})
 			result.ChangeIndices = append(result.ChangeIndices, len(result.Lines)-1)
 			oldIdx++
 		} else if newIdx < len(newLines) {
 			// Only new lines left - these should be added
 			result.Lines = append(result.Lines, FullFileLine{
-				LeftLineNo:   0,
-				RightLineNo:  newLineNo,
-				LeftContent:  "",
-				RightContent: newLines[newIdx],
-				Change:       Added,
+				LeftLineNo:  0,
+				RightLineNo: newLineNo,
+				Change:      Added,
 			})
 			result.ChangeIndices = append(result.ChangeIndices, len(result.Lines)-1)
 			newIdx++
@@ -153,4 +145,46 @@ func splitLines(content string) []string {
 	}
 
 	return strings.Split(content, "\n")
+}
+
+// ApplySyntaxHighlighting adds syntax highlighting tokens to a FullFileDiff.
+// Called after MergeFullFile(), before rendering.
+// Tokenizes the old and new content and populates LeftTokens/RightTokens for each line.
+func ApplySyntaxHighlighting(diff *FullFileDiff, oldContent, newContent, filepath string) {
+	// Tokenize the full file content
+	oldTokens := highlight.TokenizeFile(oldContent, filepath)
+	newTokens := highlight.TokenizeFile(newContent, filepath)
+
+	// Populate tokens for each line in the diff
+	for i := range diff.Lines {
+		line := &diff.Lines[i]
+
+		// Populate left tokens (from old content)
+		if line.LeftLineNo > 0 {
+			lineIdx := line.LeftLineNo - 1 // Convert to 0-indexed
+			if lineIdx < len(oldTokens) {
+				line.LeftTokens = oldTokens[lineIdx]
+			} else {
+				// Line number out of range - use empty tokens
+				line.LeftTokens = []highlight.Token{}
+			}
+		} else {
+			// No left line (added line) - use empty tokens
+			line.LeftTokens = []highlight.Token{}
+		}
+
+		// Populate right tokens (from new content)
+		if line.RightLineNo > 0 {
+			lineIdx := line.RightLineNo - 1 // Convert to 0-indexed
+			if lineIdx < len(newTokens) {
+				line.RightTokens = newTokens[lineIdx]
+			} else {
+				// Line number out of range - use empty tokens
+				line.RightTokens = []highlight.Token{}
+			}
+		} else {
+			// No right line (removed line) - use empty tokens
+			line.RightTokens = []highlight.Token{}
+		}
+	}
 }

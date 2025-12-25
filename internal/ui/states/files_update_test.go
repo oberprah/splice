@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/alecthomas/chroma/v2"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/oberprah/splice/internal/diff"
 	"github.com/oberprah/splice/internal/git"
+	"github.com/oberprah/splice/internal/highlight"
 	"github.com/oberprah/splice/internal/ui/messages"
 )
 
@@ -386,7 +388,7 @@ func TestFilesState_Update_DiffLoadedMsgSuccess(t *testing.T) {
 		Diff: &diff.FullFileDiff{
 			OldPath: "file.go",
 			NewPath: "file.go",
-			Lines:   []diff.FullFileLine{{LeftLineNo: 1, RightLineNo: 1, LeftContent: "test", RightContent: "test", Change: diff.Unchanged}},
+			Lines:   []diff.FullFileLine{{LeftLineNo: 1, RightLineNo: 1, LeftTokens: []highlight.Token{{Type: chroma.Text, Value: "test"}}, RightTokens: []highlight.Token{{Type: chroma.Text, Value: "test"}}, Change: diff.Unchanged}},
 		},
 		Err:                    nil,
 		FilesCommit:            commit,

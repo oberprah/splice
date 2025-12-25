@@ -249,21 +249,30 @@ func TestMergeFullFile_LineNumbers(t *testing.T) {
 
 	result := MergeFullFile(oldContent, newContent, parsedDiff)
 
-	expected := []FullFileLine{
-		{LeftLineNo: 1, RightLineNo: 1, LeftContent: "a", RightContent: "a", Change: Unchanged},
-		{LeftLineNo: 2, RightLineNo: 0, LeftContent: "b", RightContent: "", Change: Removed},
-		{LeftLineNo: 0, RightLineNo: 2, LeftContent: "", RightContent: "X", Change: Added},
-		{LeftLineNo: 3, RightLineNo: 3, LeftContent: "c", RightContent: "c", Change: Unchanged},
+	// Verify line count
+	if len(result.Lines) != 4 {
+		t.Fatalf("Lines count = %d, want 4", len(result.Lines))
 	}
 
-	if len(result.Lines) != len(expected) {
-		t.Fatalf("Lines count = %d, want %d", len(result.Lines), len(expected))
+	// Verify each line's structure (line numbers and change type)
+	tests := []struct {
+		idx         int
+		leftLineNo  int
+		rightLineNo int
+		change      ChangeType
+	}{
+		{0, 1, 1, Unchanged},
+		{1, 2, 0, Removed},
+		{2, 0, 2, Added},
+		{3, 3, 3, Unchanged},
 	}
 
-	for i, want := range expected {
-		got := result.Lines[i]
-		if !reflect.DeepEqual(got, want) {
-			t.Errorf("Line[%d] = %+v, want %+v", i, got, want)
+	for _, tt := range tests {
+		got := result.Lines[tt.idx]
+		if got.LeftLineNo != tt.leftLineNo || got.RightLineNo != tt.rightLineNo || got.Change != tt.change {
+			t.Errorf("Line[%d] = {LeftLineNo: %d, RightLineNo: %d, Change: %v}, want {LeftLineNo: %d, RightLineNo: %d, Change: %v}",
+				tt.idx, got.LeftLineNo, got.RightLineNo, got.Change,
+				tt.leftLineNo, tt.rightLineNo, tt.change)
 		}
 	}
 }

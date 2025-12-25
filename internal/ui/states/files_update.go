@@ -163,6 +163,9 @@ func (s *FilesState) loadDiff(file git.FileChange) tea.Cmd {
 		// Merge full file content with diff information
 		fullFileDiff := diff.MergeFullFile(fullDiffResult.OldContent, fullDiffResult.NewContent, &parsedDiff)
 
+		// Apply syntax highlighting to the diff
+		diff.ApplySyntaxHighlighting(fullFileDiff, fullDiffResult.OldContent, fullDiffResult.NewContent, file.Path)
+
 		return messages.DiffLoadedMsg{
 			Commit:                 commit,
 			File:                   file,

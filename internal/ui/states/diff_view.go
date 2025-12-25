@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/oberprah/splice/internal/diff"
+	"github.com/oberprah/splice/internal/highlight"
 	"github.com/oberprah/splice/internal/ui/format"
 	"github.com/oberprah/splice/internal/ui/styles"
 )
@@ -120,24 +121,26 @@ func (s *DiffState) renderFullFileLine(line diff.FullFileLine, columnWidth, line
 	switch line.Change {
 	case diff.Unchanged:
 		// Unchanged: show on both sides with normal styling
-		left := s.formatColumnContent(line.LeftLineNo, " ", line.LeftContent, lineNoWidth, contentWidth, styles.TimeStyle)
-		right := s.formatColumnContent(line.RightLineNo, " ", line.RightContent, lineNoWidth, contentWidth, styles.TimeStyle)
+		left := s.formatColumnContent(line.LeftLineNo, " ", line.LeftTokens, lineNoWidth, contentWidth, columnWidth, styles.TimeStyle)
+		right := s.formatColumnContent(line.RightLineNo, " ", line.RightTokens, lineNoWidth, contentWidth, columnWidth, styles.TimeStyle)
 		return left, right
 	case diff.Removed:
 		// Removed: show on left only with deletion style
-		left := s.formatColumnContent(line.LeftLineNo, "-", line.LeftContent, lineNoWidth, contentWidth, styles.DiffDeletionsStyle)
+		left := s.formatColumnContent(line.LeftLineNo, "-", line.LeftTokens, lineNoWidth, contentWidth, columnWidth, styles.DiffDeletionsStyle)
 		return left, ""
 	case diff.Added:
 		// Added: show on right only with addition style
-		right := s.formatColumnContent(line.RightLineNo, "+", line.RightContent, lineNoWidth, contentWidth, styles.DiffAdditionsStyle)
+		right := s.formatColumnContent(line.RightLineNo, "+", line.RightTokens, lineNoWidth, contentWidth, columnWidth, styles.DiffAdditionsStyle)
 		return "", right
 	}
 
 	return "", ""
 }
 
-// formatColumnContent formats a single column with line number, indicator, and content
-func (s *DiffState) formatColumnContent(lineNo int, indicator, content string, lineNoWidth, contentWidth int, style lipgloss.Style) string {
+// formatColumnContent formats a single column with line number, indicator, and tokens
+// Tokens are rendered with syntax highlighting (foreground colors) and then wrapped
+// with the background style for diff changes.
+func (s *DiffState) formatColumnContent(lineNo int, indicator string, tokens []highlight.Token, lineNoWidth, contentWidth, columnWidth int, bgStyle lipgloss.Style) string {
 	// Format line number (blank if 0)
 	var lineNoStr string
 	if lineNo == 0 {
@@ -146,17 +149,57 @@ func (s *DiffState) formatColumnContent(lineNo int, indicator, content string, l
 		lineNoStr = fmt.Sprintf("%*d", lineNoWidth, lineNo)
 	}
 
-	// Convert tabs to spaces for consistent width
-	expandedContent := expandTabs(content, 4)
-
-	// Truncate content if needed
-	truncated := truncateWithEllipsis(expandedContent, contentWidth)
+	// Render tokens with syntax highlighting (foreground) and diff background
+	// The background is applied to each character during rendering
+	renderedContent := s.renderTokens(tokens, contentWidth, bgStyle)
 
 	// Build the column string: "123 - content"
-	columnStr := lineNoStr + " " + indicator + " " + truncated
+	// Line number and indicator need background too
+	styledLineNo := bgStyle.Render(lineNoStr)
+	styledIndicator := bgStyle.Render(" " + indicator + " ")
+	columnStr := styledLineNo + styledIndicator + renderedContent
 
-	// Apply styling
-	return style.Render(columnStr)
+	// Apply full width styling to pad the column
+	return bgStyle.Width(columnWidth).Render(columnStr)
+}
+
+// renderTokens renders tokens with syntax highlighting and truncates to maxWidth if needed.
+// Applies both foreground (syntax) and background (diff) colors to each character.
+// Returns the concatenated, styled tokens.
+func (s *DiffState) renderTokens(tokens []highlight.Token, maxWidth int, bgStyle lipgloss.Style) string {
+	if len(tokens) == 0 {
+		return ""
+	}
+
+	var result strings.Builder
+	visibleWidth := 0
+
+	for _, token := range tokens {
+		// Expand tabs to spaces before processing
+		expandedValue := expandTabs(token.Value, 4)
+
+		// Convert to runes for proper width calculation
+		runes := []rune(expandedValue)
+
+		for _, r := range runes {
+			if visibleWidth >= maxWidth {
+				// We've reached the max width, append ellipsis and stop
+				if visibleWidth == maxWidth {
+					result.WriteString("…")
+				}
+				return result.String()
+			}
+
+			// Apply syntax highlighting style (foreground) with diff background
+			syntaxStyle := highlight.StyleForToken(token.Type)
+			// Combine: copy syntax foreground, then apply diff background
+			combinedStyle := syntaxStyle.Copy().Inherit(bgStyle)
+			result.WriteString(combinedStyle.Render(string(r)))
+			visibleWidth++
+		}
+	}
+
+	return result.String()
 }
 
 // truncateWithEllipsis truncates a string and adds ellipsis if too long

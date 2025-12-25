@@ -4,8 +4,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alecthomas/chroma/v2"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/oberprah/splice/internal/diff"
 	"github.com/oberprah/splice/internal/git"
+	"github.com/oberprah/splice/internal/highlight"
 )
 
 func TestDiffState_View_Header(t *testing.T) {
@@ -68,7 +71,13 @@ func TestDiffState_View_UnchangedLines(t *testing.T) {
 		File:   git.FileChange{Path: "file.go"},
 		Diff: &diff.FullFileDiff{
 			Lines: []diff.FullFileLine{
-				{LeftLineNo: 1, RightLineNo: 1, LeftContent: "unchanged line", RightContent: "unchanged line", Change: diff.Unchanged},
+				{
+					LeftLineNo:   1,
+					RightLineNo:  1,
+					LeftTokens:   []highlight.Token{{Type: chroma.Text, Value: "unchanged line"}},
+					RightTokens:  []highlight.Token{{Type: chroma.Text, Value: "unchanged line"}},
+					Change:       diff.Unchanged,
+				},
 			},
 		},
 	}
@@ -93,7 +102,13 @@ func TestDiffState_View_RemovedLines(t *testing.T) {
 		File:   git.FileChange{Path: "file.go"},
 		Diff: &diff.FullFileDiff{
 			Lines: []diff.FullFileLine{
-				{LeftLineNo: 5, RightLineNo: 0, LeftContent: "removed line", RightContent: "", Change: diff.Removed},
+				{
+					LeftLineNo:   5,
+					RightLineNo:  0,
+					LeftTokens:   []highlight.Token{{Type: chroma.Text, Value: "removed line"}},
+					RightTokens:  []highlight.Token{},
+					Change:       diff.Removed,
+				},
 			},
 		},
 	}
@@ -123,7 +138,13 @@ func TestDiffState_View_AddedLines(t *testing.T) {
 		File:   git.FileChange{Path: "file.go"},
 		Diff: &diff.FullFileDiff{
 			Lines: []diff.FullFileLine{
-				{LeftLineNo: 0, RightLineNo: 7, LeftContent: "", RightContent: "added line", Change: diff.Added},
+				{
+					LeftLineNo:   0,
+					RightLineNo:  7,
+					LeftTokens:   []highlight.Token{},
+					RightTokens:  []highlight.Token{{Type: chroma.Text, Value: "added line"}},
+					Change:       diff.Added,
+				},
 			},
 		},
 	}
@@ -153,7 +174,13 @@ func TestDiffState_View_SideBySideSeparator(t *testing.T) {
 		File:   git.FileChange{Path: "file.go"},
 		Diff: &diff.FullFileDiff{
 			Lines: []diff.FullFileLine{
-				{LeftLineNo: 1, RightLineNo: 1, LeftContent: "line", RightContent: "line", Change: diff.Unchanged},
+				{
+					LeftLineNo:   1,
+					RightLineNo:  1,
+					LeftTokens:   []highlight.Token{{Type: chroma.Text, Value: "line"}},
+					RightTokens:  []highlight.Token{{Type: chroma.Text, Value: "line"}},
+					Change:       diff.Unchanged,
+				},
 			},
 		},
 	}
@@ -199,8 +226,8 @@ func TestDiffState_View_Viewport(t *testing.T) {
 		lines[i] = diff.FullFileLine{
 			LeftLineNo:   i + 1,
 			RightLineNo:  i + 1,
-			LeftContent:  "line content",
-			RightContent: "line content",
+			LeftTokens:   []highlight.Token{{Type: chroma.Text, Value: "line content"}},
+			RightTokens:  []highlight.Token{{Type: chroma.Text, Value: "line content"}},
 			Change:       diff.Unchanged,
 		}
 	}
@@ -222,4 +249,115 @@ func TestDiffState_View_Viewport(t *testing.T) {
 
 	// Should NOT contain line 1 (before viewport)
 	// This is tricky to test since "1" appears in many places, so we skip this check
+}
+
+func TestDiffState_View_SyntaxHighlightedTokens(t *testing.T) {
+	state := &DiffState{
+		Commit: git.GitCommit{Hash: "abc123"},
+		File:   git.FileChange{Path: "file.go"},
+		Diff: &diff.FullFileDiff{
+			Lines: []diff.FullFileLine{
+				{
+					LeftLineNo: 1,
+					RightLineNo: 1,
+					LeftTokens: []highlight.Token{
+						{Type: chroma.Keyword, Value: "package"},
+						{Type: chroma.Text, Value: " "},
+						{Type: chroma.NameNamespace, Value: "main"},
+					},
+					RightTokens: []highlight.Token{
+						{Type: chroma.Keyword, Value: "package"},
+						{Type: chroma.Text, Value: " "},
+						{Type: chroma.NameNamespace, Value: "main"},
+					},
+					Change: diff.Unchanged,
+				},
+			},
+		},
+	}
+
+	ctx := &mockContext{width: 80, height: 24}
+	view := state.View(ctx)
+
+	// Should contain the token content
+	if !strings.Contains(view, "package") {
+		t.Error("View should contain 'package' keyword")
+	}
+	if !strings.Contains(view, "main") {
+		t.Error("View should contain 'main' identifier")
+	}
+}
+
+func TestRenderTokens_MultipleTokens(t *testing.T) {
+	state := &DiffState{}
+	tokens := []highlight.Token{
+		{Type: chroma.Keyword, Value: "func"},
+		{Type: chroma.Text, Value: " "},
+		{Type: chroma.NameFunction, Value: "main"},
+		{Type: chroma.Punctuation, Value: "()"},
+	}
+
+	bgStyle := lipgloss.NewStyle() // Empty style for testing
+	result := state.renderTokens(tokens, 100, bgStyle)
+
+	// Should contain all token values
+	if !strings.Contains(result, "func") {
+		t.Error("Result should contain 'func'")
+	}
+	if !strings.Contains(result, "main") {
+		t.Error("Result should contain 'main'")
+	}
+	if !strings.Contains(result, "()") {
+		t.Error("Result should contain '()'")
+	}
+}
+
+func TestRenderTokens_Truncation(t *testing.T) {
+	state := &DiffState{}
+	tokens := []highlight.Token{
+		{Type: chroma.Text, Value: "this is a very long line that should be truncated"},
+	}
+
+	bgStyle := lipgloss.NewStyle() // Empty style for testing
+	result := state.renderTokens(tokens, 10, bgStyle)
+
+	// Should be truncated to approximately 10 characters plus ellipsis
+	// We check that it's shorter than the original and contains ellipsis
+	if len([]rune(result)) > 50 {
+		t.Error("Result should be truncated")
+	}
+	if !strings.Contains(result, "…") {
+		t.Error("Truncated result should contain ellipsis")
+	}
+}
+
+func TestRenderTokens_EmptyTokens(t *testing.T) {
+	state := &DiffState{}
+	tokens := []highlight.Token{}
+
+	bgStyle := lipgloss.NewStyle() // Empty style for testing
+	result := state.renderTokens(tokens, 100, bgStyle)
+
+	if result != "" {
+		t.Error("Empty tokens should produce empty result")
+	}
+}
+
+func TestRenderTokens_TabExpansion(t *testing.T) {
+	state := &DiffState{}
+	tokens := []highlight.Token{
+		{Type: chroma.Text, Value: "hello\tworld"},
+	}
+
+	bgStyle := lipgloss.NewStyle() // Empty style for testing
+	result := state.renderTokens(tokens, 100, bgStyle)
+
+	// Should not contain tab character after expansion
+	if strings.Contains(result, "\t") {
+		t.Error("Result should not contain tab characters")
+	}
+	// Should contain the text
+	if !strings.Contains(result, "hello") || !strings.Contains(result, "world") {
+		t.Error("Result should contain expanded tab content")
+	}
 }

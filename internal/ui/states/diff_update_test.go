@@ -3,9 +3,11 @@ package states
 import (
 	"testing"
 
+	"github.com/alecthomas/chroma/v2"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/oberprah/splice/internal/diff"
 	"github.com/oberprah/splice/internal/git"
+	"github.com/oberprah/splice/internal/highlight"
 )
 
 func createTestDiffState(numLines int) *DiffState {
@@ -14,8 +16,8 @@ func createTestDiffState(numLines int) *DiffState {
 		lines[i] = diff.FullFileLine{
 			LeftLineNo:   i + 1,
 			RightLineNo:  i + 1,
-			LeftContent:  "test line",
-			RightContent: "test line",
+			LeftTokens:   []highlight.Token{{Type: chroma.Text, Value: "test line"}},
+			RightTokens:  []highlight.Token{{Type: chroma.Text, Value: "test line"}},
 			Change:       diff.Unchanged,
 		}
 	}
@@ -350,8 +352,8 @@ func createTestDiffStateWithChanges(numLines int, changeIndices []int) *DiffStat
 		lines[i] = diff.FullFileLine{
 			LeftLineNo:   i + 1,
 			RightLineNo:  i + 1,
-			LeftContent:  "test line",
-			RightContent: "test line",
+			LeftTokens:   []highlight.Token{{Type: chroma.Text, Value: "test line"}},
+			RightTokens:  []highlight.Token{{Type: chroma.Text, Value: "test line"}},
 			Change:       change,
 		}
 	}
