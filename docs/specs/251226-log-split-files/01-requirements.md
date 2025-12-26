@@ -49,7 +49,7 @@ Users with wide terminals will see a panel on the right side of the log view dis
 
 1. **Non-blocking loading**: File data is fetched eagerly when the cursor moves, but fetching must not block navigation. Users can continue moving through commits; the panel updates when data arrives.
 
-2. **Width threshold**: The split view only appears when there's enough width for the log to display comfortably. The log has priority for space; the panel uses remaining width.
+2. **Width threshold**: The split view only appears when there's enough width for the log to display comfortably. The panel has a fixed width; the log uses remaining width.
 
 3. **Graceful degradation**: On narrow terminals, the view behaves exactly as it does today (no panel)
 
