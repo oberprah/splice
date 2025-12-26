@@ -20,6 +20,7 @@ Implementing line pairing and inline highlighting for the diff view. The design 
 - `0bb0124` - Implement alignment building pipeline
 - `2c2bb56` - Update diff rendering to use aligned structure
 - `72a4a98` - Update DiffState tests to use AlignedFileDiff data structure
+- `0813a36` - Remove old diff data structures and add implementation doc
 
 ## Progress
 
@@ -52,6 +53,11 @@ Notes: Updated all DiffState tests to use AlignedFileDiff structure. Migrated di
 Status: ✅ Complete
 Notes: All automated tests pass (89 total tests across all packages). Application builds successfully. Ready for manual testing by developer.
 
+### Cleanup: Remove old data structures
+Status: ✅ Complete
+Commits: 0813a36
+Notes: Removed 792 lines of dead code from the old implementation. Deleted internal/diff/merge.go (FullFileLine, FullFileDiff, MergeFullFile, ApplySyntaxHighlighting), internal/diff/merge_test.go, and internal/diff/highlight_test.go. Verified no references to old types remain in production code. The new AlignedFileDiff architecture is now the only implementation. All 89 tests still pass after cleanup.
+
 ## Discoveries
 
 1. **"Aligned" Naming Convention**: Used "Aligned" prefix (AlignedLine, AlignedFileDiff) to avoid conflicts with existing types during implementation. This allows clean coexistence of old and new data models.
@@ -81,19 +87,21 @@ Notes: All automated tests pass (89 total tests across all packages). Applicatio
 
 ## Summary for Developer
 
-The implementation is complete and ready for manual testing. All five implementation steps have been successfully completed:
+The implementation is complete and ready for manual testing. All implementation steps have been successfully completed:
 
 1. ✅ Added `sergi/go-diff` dependency and created new data structures
 2. ✅ Implemented token-based Dice coefficient similarity and greedy line pairing algorithm
 3. ✅ Built the alignment pipeline (BuildFileContent, BuildAlignments) with full test coverage
 4. ✅ Updated DiffState rendering with inline highlighting support
 5. ✅ Updated and fixed all tests to use the new data model
+6. ✅ Removed old data structures (792 lines of dead code)
 
 **Key Features Implemented:**
 - Side-by-side line pairing using similarity matching (0.5 threshold)
 - Character-level inline highlighting with 1.3× brighter backgrounds
 - Clean separation of content (FileContent) and layout (Alignment types)
 - Full test coverage with 89 passing tests
+- Clean codebase with no lingering old implementation
 
 **To Test Manually:**
 1. Run `./splice` in a git repository with modified files
