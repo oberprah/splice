@@ -21,8 +21,16 @@ func TestDiffState_View_Header(t *testing.T) {
 			Additions: 15,
 			Deletions: 8,
 		},
-		Diff: &diff.FullFileDiff{
-			Lines: []diff.FullFileLine{},
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path:  "internal/ui/states/diff_view.go",
+				Lines: []diff.AlignedLine{},
+			},
+			Right: diff.FileContent{
+				Path:  "internal/ui/states/diff_view.go",
+				Lines: []diff.AlignedLine{},
+			},
+			Alignments: []diff.Alignment{},
 		},
 	}
 
@@ -54,7 +62,17 @@ func TestDiffState_View_EmptyDiff(t *testing.T) {
 	state := &DiffState{
 		Commit: git.GitCommit{Hash: "abc123"},
 		File:   git.FileChange{Path: "file.go"},
-		Diff:   &diff.FullFileDiff{Lines: []diff.FullFileLine{}},
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path:  "file.go",
+				Lines: []diff.AlignedLine{},
+			},
+			Right: diff.FileContent{
+				Path:  "file.go",
+				Lines: []diff.AlignedLine{},
+			},
+			Alignments: []diff.Alignment{},
+		},
 	}
 
 	ctx := &mockContext{width: 80, height: 24}
@@ -69,14 +87,23 @@ func TestDiffState_View_UnchangedLines(t *testing.T) {
 	state := &DiffState{
 		Commit: git.GitCommit{Hash: "abc123"},
 		File:   git.FileChange{Path: "file.go"},
-		Diff: &diff.FullFileDiff{
-			Lines: []diff.FullFileLine{
-				{
-					LeftLineNo:   1,
-					RightLineNo:  1,
-					LeftTokens:   []highlight.Token{{Type: chroma.Text, Value: "unchanged line"}},
-					RightTokens:  []highlight.Token{{Type: chroma.Text, Value: "unchanged line"}},
-					Change:       diff.Unchanged,
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path: "file.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "unchanged line"}}},
+				},
+			},
+			Right: diff.FileContent{
+				Path: "file.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "unchanged line"}}},
+				},
+			},
+			Alignments: []diff.Alignment{
+				diff.UnchangedAlignment{
+					LeftIdx:  0,
+					RightIdx: 0,
 				},
 			},
 		},
@@ -100,14 +127,24 @@ func TestDiffState_View_RemovedLines(t *testing.T) {
 	state := &DiffState{
 		Commit: git.GitCommit{Hash: "abc123"},
 		File:   git.FileChange{Path: "file.go"},
-		Diff: &diff.FullFileDiff{
-			Lines: []diff.FullFileLine{
-				{
-					LeftLineNo:   5,
-					RightLineNo:  0,
-					LeftTokens:   []highlight.Token{{Type: chroma.Text, Value: "removed line"}},
-					RightTokens:  []highlight.Token{},
-					Change:       diff.Removed,
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path: "file.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "removed line"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "removed line"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "removed line"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "removed line"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "removed line"}}},
+				},
+			},
+			Right: diff.FileContent{
+				Path:  "file.go",
+				Lines: []diff.AlignedLine{},
+			},
+			Alignments: []diff.Alignment{
+				diff.RemovedAlignment{
+					LeftIdx: 4, // 5th line (0-indexed)
 				},
 			},
 		},
@@ -136,14 +173,26 @@ func TestDiffState_View_AddedLines(t *testing.T) {
 	state := &DiffState{
 		Commit: git.GitCommit{Hash: "abc123"},
 		File:   git.FileChange{Path: "file.go"},
-		Diff: &diff.FullFileDiff{
-			Lines: []diff.FullFileLine{
-				{
-					LeftLineNo:   0,
-					RightLineNo:  7,
-					LeftTokens:   []highlight.Token{},
-					RightTokens:  []highlight.Token{{Type: chroma.Text, Value: "added line"}},
-					Change:       diff.Added,
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path:  "file.go",
+				Lines: []diff.AlignedLine{},
+			},
+			Right: diff.FileContent{
+				Path: "file.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "added line"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "added line"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "added line"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "added line"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "added line"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "added line"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "added line"}}},
+				},
+			},
+			Alignments: []diff.Alignment{
+				diff.AddedAlignment{
+					RightIdx: 6, // 7th line (0-indexed)
 				},
 			},
 		},
@@ -172,14 +221,23 @@ func TestDiffState_View_SideBySideSeparator(t *testing.T) {
 	state := &DiffState{
 		Commit: git.GitCommit{Hash: "abc123"},
 		File:   git.FileChange{Path: "file.go"},
-		Diff: &diff.FullFileDiff{
-			Lines: []diff.FullFileLine{
-				{
-					LeftLineNo:   1,
-					RightLineNo:  1,
-					LeftTokens:   []highlight.Token{{Type: chroma.Text, Value: "line"}},
-					RightTokens:  []highlight.Token{{Type: chroma.Text, Value: "line"}},
-					Change:       diff.Unchanged,
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path: "file.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "line"}}},
+				},
+			},
+			Right: diff.FileContent{
+				Path: "file.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "line"}}},
+				},
+			},
+			Alignments: []diff.Alignment{
+				diff.UnchangedAlignment{
+					LeftIdx:  0,
+					RightIdx: 0,
 				},
 			},
 		},
@@ -194,48 +252,38 @@ func TestDiffState_View_SideBySideSeparator(t *testing.T) {
 	}
 }
 
-func TestTruncateWithEllipsis(t *testing.T) {
-	tests := []struct {
-		input    string
-		maxWidth int
-		expected string
-	}{
-		{"short", 10, "short"},
-		{"this is a long string", 10, "this is a…"},
-		{"exact", 5, "exact"},
-		{"toolong", 5, "tool…"},
-		{"", 5, ""},
-		{"test", 0, ""},
-		{"test", 1, "…"},
-		{"ab", 2, "ab"},
-		{"abc", 2, "a…"},
-	}
-
-	for _, tt := range tests {
-		result := truncateWithEllipsis(tt.input, tt.maxWidth)
-		if result != tt.expected {
-			t.Errorf("truncateWithEllipsis(%q, %d) = %q, want %q", tt.input, tt.maxWidth, result, tt.expected)
-		}
-	}
-}
-
 func TestDiffState_View_Viewport(t *testing.T) {
 	// Create a diff with many lines
-	lines := make([]diff.FullFileLine, 100)
+	leftLines := make([]diff.AlignedLine, 100)
+	rightLines := make([]diff.AlignedLine, 100)
+	alignments := make([]diff.Alignment, 100)
 	for i := 0; i < 100; i++ {
-		lines[i] = diff.FullFileLine{
-			LeftLineNo:   i + 1,
-			RightLineNo:  i + 1,
-			LeftTokens:   []highlight.Token{{Type: chroma.Text, Value: "line content"}},
-			RightTokens:  []highlight.Token{{Type: chroma.Text, Value: "line content"}},
-			Change:       diff.Unchanged,
+		leftLines[i] = diff.AlignedLine{
+			Tokens: []highlight.Token{{Type: chroma.Text, Value: "line content"}},
+		}
+		rightLines[i] = diff.AlignedLine{
+			Tokens: []highlight.Token{{Type: chroma.Text, Value: "line content"}},
+		}
+		alignments[i] = diff.UnchangedAlignment{
+			LeftIdx:  i,
+			RightIdx: i,
 		}
 	}
 
 	state := &DiffState{
-		Commit:        git.GitCommit{Hash: "abc123"},
-		File:          git.FileChange{Path: "file.go"},
-		Diff:          &diff.FullFileDiff{Lines: lines},
+		Commit: git.GitCommit{Hash: "abc123"},
+		File:   git.FileChange{Path: "file.go"},
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path:  "file.go",
+				Lines: leftLines,
+			},
+			Right: diff.FileContent{
+				Path:  "file.go",
+				Lines: rightLines,
+			},
+			Alignments: alignments,
+		},
 		ViewportStart: 50, // Start at line 50
 	}
 
@@ -255,22 +303,35 @@ func TestDiffState_View_SyntaxHighlightedTokens(t *testing.T) {
 	state := &DiffState{
 		Commit: git.GitCommit{Hash: "abc123"},
 		File:   git.FileChange{Path: "file.go"},
-		Diff: &diff.FullFileDiff{
-			Lines: []diff.FullFileLine{
-				{
-					LeftLineNo: 1,
-					RightLineNo: 1,
-					LeftTokens: []highlight.Token{
-						{Type: chroma.Keyword, Value: "package"},
-						{Type: chroma.Text, Value: " "},
-						{Type: chroma.NameNamespace, Value: "main"},
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path: "file.go",
+				Lines: []diff.AlignedLine{
+					{
+						Tokens: []highlight.Token{
+							{Type: chroma.Keyword, Value: "package"},
+							{Type: chroma.Text, Value: " "},
+							{Type: chroma.NameNamespace, Value: "main"},
+						},
 					},
-					RightTokens: []highlight.Token{
-						{Type: chroma.Keyword, Value: "package"},
-						{Type: chroma.Text, Value: " "},
-						{Type: chroma.NameNamespace, Value: "main"},
+				},
+			},
+			Right: diff.FileContent{
+				Path: "file.go",
+				Lines: []diff.AlignedLine{
+					{
+						Tokens: []highlight.Token{
+							{Type: chroma.Keyword, Value: "package"},
+							{Type: chroma.Text, Value: " "},
+							{Type: chroma.NameNamespace, Value: "main"},
+						},
 					},
-					Change: diff.Unchanged,
+				},
+			},
+			Alignments: []diff.Alignment{
+				diff.UnchangedAlignment{
+					LeftIdx:  0,
+					RightIdx: 0,
 				},
 			},
 		},

@@ -385,11 +385,24 @@ func TestFilesState_Update_DiffLoadedMsgSuccess(t *testing.T) {
 	msg := messages.DiffLoadedMsg{
 		Commit: commit,
 		File:   files[2],
-		Diff: &diff.FullFileDiff{
-			OldPath: "file.go",
-			NewPath: "file.go",
-			Lines:   []diff.FullFileLine{{LeftLineNo: 1, RightLineNo: 1, LeftTokens: []highlight.Token{{Type: chroma.Text, Value: "test"}}, RightTokens: []highlight.Token{{Type: chroma.Text, Value: "test"}}, Change: diff.Unchanged}},
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path: "file.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "test"}}},
+				},
+			},
+			Right: diff.FileContent{
+				Path: "file.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "test"}}},
+				},
+			},
+			Alignments: []diff.Alignment{
+				diff.UnchangedAlignment{LeftIdx: 0, RightIdx: 0},
+			},
 		},
+		ChangeIndices:          []int{},
 		Err:                    nil,
 		FilesCommit:            commit,
 		FilesFiles:             files,
@@ -408,8 +421,8 @@ func TestFilesState_Update_DiffLoadedMsgSuccess(t *testing.T) {
 	}
 
 	// Verify diff state has correct data
-	if len(diffState.Diff.Lines) != 1 {
-		t.Errorf("Expected 1 diff line, got %d", len(diffState.Diff.Lines))
+	if len(diffState.Diff.Alignments) != 1 {
+		t.Errorf("Expected 1 diff alignment, got %d", len(diffState.Diff.Alignments))
 	}
 
 	// Verify preserved FilesState data

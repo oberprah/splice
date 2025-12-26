@@ -11,26 +11,43 @@ import (
 )
 
 func createTestDiffState(numLines int) *DiffState {
-	lines := make([]diff.FullFileLine, numLines)
+	// Create left and right file content with identical lines
+	leftLines := make([]diff.AlignedLine, numLines)
+	rightLines := make([]diff.AlignedLine, numLines)
 	for i := 0; i < numLines; i++ {
-		lines[i] = diff.FullFileLine{
-			LeftLineNo:   i + 1,
-			RightLineNo:  i + 1,
-			LeftTokens:   []highlight.Token{{Type: chroma.Text, Value: "test line"}},
-			RightTokens:  []highlight.Token{{Type: chroma.Text, Value: "test line"}},
-			Change:       diff.Unchanged,
+		leftLines[i] = diff.AlignedLine{
+			Tokens: []highlight.Token{{Type: chroma.Text, Value: "test line"}},
+		}
+		rightLines[i] = diff.AlignedLine{
+			Tokens: []highlight.Token{{Type: chroma.Text, Value: "test line"}},
+		}
+	}
+
+	// Create alignments - all unchanged
+	alignments := make([]diff.Alignment, numLines)
+	for i := 0; i < numLines; i++ {
+		alignments[i] = diff.UnchangedAlignment{
+			LeftIdx:  i,
+			RightIdx: i,
 		}
 	}
 
 	return &DiffState{
 		Commit: git.GitCommit{Hash: "abc123"},
 		File:   git.FileChange{Path: "file.go", Additions: 5, Deletions: 3},
-		Diff: &diff.FullFileDiff{
-			OldPath: "file.go",
-			NewPath: "file.go",
-			Lines:   lines,
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path:  "file.go",
+				Lines: leftLines,
+			},
+			Right: diff.FileContent{
+				Path:  "file.go",
+				Lines: rightLines,
+			},
+			Alignments: alignments,
 		},
 		ViewportStart:          0,
+		ChangeIndices:          []int{},
 		FilesCommit:            git.GitCommit{Hash: "abc123"},
 		FilesFiles:             []git.FileChange{{Path: "file.go"}},
 		FilesCursor:            0,
@@ -338,37 +355,56 @@ func TestDiffState_Update_NoChanges(t *testing.T) {
 
 // Helper function to create a test diff state with changes at specific positions
 func createTestDiffStateWithChanges(numLines int, changeIndices []int) *DiffState {
-	lines := make([]diff.FullFileLine, numLines)
 	changeSet := make(map[int]bool)
 	for _, idx := range changeIndices {
 		changeSet[idx] = true
 	}
 
+	// Create left and right file content
+	leftLines := make([]diff.AlignedLine, numLines)
+	rightLines := make([]diff.AlignedLine, numLines)
 	for i := 0; i < numLines; i++ {
-		change := diff.Unchanged
-		if changeSet[i] {
-			change = diff.Added
+		leftLines[i] = diff.AlignedLine{
+			Tokens: []highlight.Token{{Type: chroma.Text, Value: "test line"}},
 		}
-		lines[i] = diff.FullFileLine{
-			LeftLineNo:   i + 1,
-			RightLineNo:  i + 1,
-			LeftTokens:   []highlight.Token{{Type: chroma.Text, Value: "test line"}},
-			RightTokens:  []highlight.Token{{Type: chroma.Text, Value: "test line"}},
-			Change:       change,
+		rightLines[i] = diff.AlignedLine{
+			Tokens: []highlight.Token{{Type: chroma.Text, Value: "test line"}},
+		}
+	}
+
+	// Create alignments - unchanged for most lines, added for change indices
+	alignments := make([]diff.Alignment, numLines)
+	for i := 0; i < numLines; i++ {
+		if changeSet[i] {
+			// Represent changes as added lines
+			alignments[i] = diff.AddedAlignment{
+				RightIdx: i,
+			}
+		} else {
+			alignments[i] = diff.UnchangedAlignment{
+				LeftIdx:  i,
+				RightIdx: i,
+			}
 		}
 	}
 
 	return &DiffState{
 		Commit: git.GitCommit{Hash: "abc123"},
 		File:   git.FileChange{Path: "file.go", Additions: 5, Deletions: 3},
-		Diff: &diff.FullFileDiff{
-			OldPath:       "file.go",
-			NewPath:       "file.go",
-			Lines:         lines,
-			ChangeIndices: changeIndices,
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path:  "file.go",
+				Lines: leftLines,
+			},
+			Right: diff.FileContent{
+				Path:  "file.go",
+				Lines: rightLines,
+			},
+			Alignments: alignments,
 		},
 		ViewportStart:          0,
 		CurrentChangeIdx:       0,
+		ChangeIndices:          changeIndices,
 		FilesCommit:            git.GitCommit{Hash: "abc123"},
 		FilesFiles:             []git.FileChange{{Path: "file.go"}},
 		FilesCursor:            0,
