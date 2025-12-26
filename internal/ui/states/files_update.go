@@ -21,8 +21,8 @@ func (s *FilesState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 
 		// Calculate initial viewport position - scroll to first change
 		viewportStart := 0
-		if msg.Diff != nil && len(msg.Diff.ChangeIndices) > 0 {
-			viewportStart = msg.Diff.ChangeIndices[0]
+		if msg.Diff != nil && len(msg.ChangeIndices) > 0 {
+			viewportStart = msg.ChangeIndices[0]
 		}
 
 		// Transition to diff state
@@ -30,6 +30,7 @@ func (s *FilesState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 			Commit:                 msg.Commit,
 			File:                   msg.File,
 			Diff:                   msg.Diff,
+			ChangeIndices:          msg.ChangeIndices,
 			ViewportStart:          viewportStart,
 			CurrentChangeIdx:       0,
 			FilesCommit:            msg.FilesCommit,
@@ -143,8 +144,13 @@ func (s *FilesState) loadDiff(file git.FileChange) tea.Cmd {
 			}
 		}
 
-		// Parse the diff
-		parsedDiff, err := diff.ParseUnifiedDiff(fullDiffResult.DiffOutput)
+		// Build the complete aligned diff with change indices
+		alignedDiff, changeIndices, err := diff.BuildAlignedFileDiff(
+			file.Path,
+			fullDiffResult.OldContent,
+			fullDiffResult.NewContent,
+			fullDiffResult.DiffOutput,
+		)
 		if err != nil {
 			return messages.DiffLoadedMsg{
 				Commit:                 commit,
@@ -160,16 +166,11 @@ func (s *FilesState) loadDiff(file git.FileChange) tea.Cmd {
 			}
 		}
 
-		// Merge full file content with diff information
-		fullFileDiff := diff.MergeFullFile(fullDiffResult.OldContent, fullDiffResult.NewContent, &parsedDiff)
-
-		// Apply syntax highlighting to the diff
-		diff.ApplySyntaxHighlighting(fullFileDiff, fullDiffResult.OldContent, fullDiffResult.NewContent, file.Path)
-
 		return messages.DiffLoadedMsg{
 			Commit:                 commit,
 			File:                   file,
-			Diff:                   fullFileDiff,
+			Diff:                   alignedDiff,
+			ChangeIndices:          changeIndices,
 			Err:                    nil,
 			FilesCommit:            commit,
 			FilesFiles:             files,

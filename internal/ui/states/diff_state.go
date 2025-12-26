@@ -10,11 +10,12 @@ type DiffState struct {
 	// Current diff data
 	Commit git.GitCommit
 	File   git.FileChange
-	Diff   *diff.FullFileDiff
+	Diff   *diff.AlignedFileDiff
 
 	// Viewport control
 	ViewportStart    int
-	CurrentChangeIdx int // Index into Diff.ChangeIndices for navigation
+	CurrentChangeIdx int // Index into ChangeIndices for navigation
+	ChangeIndices    []int // Indices of alignments that have changes (for navigation)
 
 	// Preserved FilesState data for back navigation
 	FilesCommit            git.GitCommit

@@ -9,6 +9,7 @@ import (
 	"github.com/oberprah/splice/internal/diff"
 	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/highlight"
+	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 func TestDiffState_View_Header(t *testing.T) {
@@ -21,8 +22,16 @@ func TestDiffState_View_Header(t *testing.T) {
 			Additions: 15,
 			Deletions: 8,
 		},
-		Diff: &diff.FullFileDiff{
-			Lines: []diff.FullFileLine{},
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path:  "internal/ui/states/diff_view.go",
+				Lines: []diff.AlignedLine{},
+			},
+			Right: diff.FileContent{
+				Path:  "internal/ui/states/diff_view.go",
+				Lines: []diff.AlignedLine{},
+			},
+			Alignments: []diff.Alignment{},
 		},
 	}
 
@@ -54,7 +63,17 @@ func TestDiffState_View_EmptyDiff(t *testing.T) {
 	state := &DiffState{
 		Commit: git.GitCommit{Hash: "abc123"},
 		File:   git.FileChange{Path: "file.go"},
-		Diff:   &diff.FullFileDiff{Lines: []diff.FullFileLine{}},
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path:  "file.go",
+				Lines: []diff.AlignedLine{},
+			},
+			Right: diff.FileContent{
+				Path:  "file.go",
+				Lines: []diff.AlignedLine{},
+			},
+			Alignments: []diff.Alignment{},
+		},
 	}
 
 	ctx := &mockContext{width: 80, height: 24}
@@ -69,14 +88,23 @@ func TestDiffState_View_UnchangedLines(t *testing.T) {
 	state := &DiffState{
 		Commit: git.GitCommit{Hash: "abc123"},
 		File:   git.FileChange{Path: "file.go"},
-		Diff: &diff.FullFileDiff{
-			Lines: []diff.FullFileLine{
-				{
-					LeftLineNo:   1,
-					RightLineNo:  1,
-					LeftTokens:   []highlight.Token{{Type: chroma.Text, Value: "unchanged line"}},
-					RightTokens:  []highlight.Token{{Type: chroma.Text, Value: "unchanged line"}},
-					Change:       diff.Unchanged,
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path: "file.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "unchanged line"}}},
+				},
+			},
+			Right: diff.FileContent{
+				Path: "file.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "unchanged line"}}},
+				},
+			},
+			Alignments: []diff.Alignment{
+				diff.UnchangedAlignment{
+					LeftIdx:  0,
+					RightIdx: 0,
 				},
 			},
 		},
@@ -100,14 +128,24 @@ func TestDiffState_View_RemovedLines(t *testing.T) {
 	state := &DiffState{
 		Commit: git.GitCommit{Hash: "abc123"},
 		File:   git.FileChange{Path: "file.go"},
-		Diff: &diff.FullFileDiff{
-			Lines: []diff.FullFileLine{
-				{
-					LeftLineNo:   5,
-					RightLineNo:  0,
-					LeftTokens:   []highlight.Token{{Type: chroma.Text, Value: "removed line"}},
-					RightTokens:  []highlight.Token{},
-					Change:       diff.Removed,
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path: "file.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "removed line"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "removed line"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "removed line"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "removed line"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "removed line"}}},
+				},
+			},
+			Right: diff.FileContent{
+				Path:  "file.go",
+				Lines: []diff.AlignedLine{},
+			},
+			Alignments: []diff.Alignment{
+				diff.RemovedAlignment{
+					LeftIdx: 4, // 5th line (0-indexed)
 				},
 			},
 		},
@@ -136,14 +174,26 @@ func TestDiffState_View_AddedLines(t *testing.T) {
 	state := &DiffState{
 		Commit: git.GitCommit{Hash: "abc123"},
 		File:   git.FileChange{Path: "file.go"},
-		Diff: &diff.FullFileDiff{
-			Lines: []diff.FullFileLine{
-				{
-					LeftLineNo:   0,
-					RightLineNo:  7,
-					LeftTokens:   []highlight.Token{},
-					RightTokens:  []highlight.Token{{Type: chroma.Text, Value: "added line"}},
-					Change:       diff.Added,
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path:  "file.go",
+				Lines: []diff.AlignedLine{},
+			},
+			Right: diff.FileContent{
+				Path: "file.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "added line"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "added line"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "added line"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "added line"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "added line"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "added line"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "added line"}}},
+				},
+			},
+			Alignments: []diff.Alignment{
+				diff.AddedAlignment{
+					RightIdx: 6, // 7th line (0-indexed)
 				},
 			},
 		},
@@ -172,14 +222,23 @@ func TestDiffState_View_SideBySideSeparator(t *testing.T) {
 	state := &DiffState{
 		Commit: git.GitCommit{Hash: "abc123"},
 		File:   git.FileChange{Path: "file.go"},
-		Diff: &diff.FullFileDiff{
-			Lines: []diff.FullFileLine{
-				{
-					LeftLineNo:   1,
-					RightLineNo:  1,
-					LeftTokens:   []highlight.Token{{Type: chroma.Text, Value: "line"}},
-					RightTokens:  []highlight.Token{{Type: chroma.Text, Value: "line"}},
-					Change:       diff.Unchanged,
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path: "file.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "line"}}},
+				},
+			},
+			Right: diff.FileContent{
+				Path: "file.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "line"}}},
+				},
+			},
+			Alignments: []diff.Alignment{
+				diff.UnchangedAlignment{
+					LeftIdx:  0,
+					RightIdx: 0,
 				},
 			},
 		},
@@ -194,48 +253,38 @@ func TestDiffState_View_SideBySideSeparator(t *testing.T) {
 	}
 }
 
-func TestTruncateWithEllipsis(t *testing.T) {
-	tests := []struct {
-		input    string
-		maxWidth int
-		expected string
-	}{
-		{"short", 10, "short"},
-		{"this is a long string", 10, "this is a…"},
-		{"exact", 5, "exact"},
-		{"toolong", 5, "tool…"},
-		{"", 5, ""},
-		{"test", 0, ""},
-		{"test", 1, "…"},
-		{"ab", 2, "ab"},
-		{"abc", 2, "a…"},
-	}
-
-	for _, tt := range tests {
-		result := truncateWithEllipsis(tt.input, tt.maxWidth)
-		if result != tt.expected {
-			t.Errorf("truncateWithEllipsis(%q, %d) = %q, want %q", tt.input, tt.maxWidth, result, tt.expected)
-		}
-	}
-}
-
 func TestDiffState_View_Viewport(t *testing.T) {
 	// Create a diff with many lines
-	lines := make([]diff.FullFileLine, 100)
+	leftLines := make([]diff.AlignedLine, 100)
+	rightLines := make([]diff.AlignedLine, 100)
+	alignments := make([]diff.Alignment, 100)
 	for i := 0; i < 100; i++ {
-		lines[i] = diff.FullFileLine{
-			LeftLineNo:   i + 1,
-			RightLineNo:  i + 1,
-			LeftTokens:   []highlight.Token{{Type: chroma.Text, Value: "line content"}},
-			RightTokens:  []highlight.Token{{Type: chroma.Text, Value: "line content"}},
-			Change:       diff.Unchanged,
+		leftLines[i] = diff.AlignedLine{
+			Tokens: []highlight.Token{{Type: chroma.Text, Value: "line content"}},
+		}
+		rightLines[i] = diff.AlignedLine{
+			Tokens: []highlight.Token{{Type: chroma.Text, Value: "line content"}},
+		}
+		alignments[i] = diff.UnchangedAlignment{
+			LeftIdx:  i,
+			RightIdx: i,
 		}
 	}
 
 	state := &DiffState{
-		Commit:        git.GitCommit{Hash: "abc123"},
-		File:          git.FileChange{Path: "file.go"},
-		Diff:          &diff.FullFileDiff{Lines: lines},
+		Commit: git.GitCommit{Hash: "abc123"},
+		File:   git.FileChange{Path: "file.go"},
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path:  "file.go",
+				Lines: leftLines,
+			},
+			Right: diff.FileContent{
+				Path:  "file.go",
+				Lines: rightLines,
+			},
+			Alignments: alignments,
+		},
 		ViewportStart: 50, // Start at line 50
 	}
 
@@ -255,22 +304,35 @@ func TestDiffState_View_SyntaxHighlightedTokens(t *testing.T) {
 	state := &DiffState{
 		Commit: git.GitCommit{Hash: "abc123"},
 		File:   git.FileChange{Path: "file.go"},
-		Diff: &diff.FullFileDiff{
-			Lines: []diff.FullFileLine{
-				{
-					LeftLineNo: 1,
-					RightLineNo: 1,
-					LeftTokens: []highlight.Token{
-						{Type: chroma.Keyword, Value: "package"},
-						{Type: chroma.Text, Value: " "},
-						{Type: chroma.NameNamespace, Value: "main"},
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path: "file.go",
+				Lines: []diff.AlignedLine{
+					{
+						Tokens: []highlight.Token{
+							{Type: chroma.Keyword, Value: "package"},
+							{Type: chroma.Text, Value: " "},
+							{Type: chroma.NameNamespace, Value: "main"},
+						},
 					},
-					RightTokens: []highlight.Token{
-						{Type: chroma.Keyword, Value: "package"},
-						{Type: chroma.Text, Value: " "},
-						{Type: chroma.NameNamespace, Value: "main"},
+				},
+			},
+			Right: diff.FileContent{
+				Path: "file.go",
+				Lines: []diff.AlignedLine{
+					{
+						Tokens: []highlight.Token{
+							{Type: chroma.Keyword, Value: "package"},
+							{Type: chroma.Text, Value: " "},
+							{Type: chroma.NameNamespace, Value: "main"},
+						},
 					},
-					Change: diff.Unchanged,
+				},
+			},
+			Alignments: []diff.Alignment{
+				diff.UnchangedAlignment{
+					LeftIdx:  0,
+					RightIdx: 0,
 				},
 			},
 		},
@@ -359,5 +421,124 @@ func TestRenderTokens_TabExpansion(t *testing.T) {
 	// Should contain the text
 	if !strings.Contains(result, "hello") || !strings.Contains(result, "world") {
 		t.Error("Result should contain expanded tab content")
+	}
+}
+
+func TestRenderTokensWithInlineDiff_TabsInModifiedLines(t *testing.T) {
+	// Import diffmatchpatch for creating inline diffs
+	dmp := diffmatchpatch.New()
+
+	// Test case: A line with tabs where the change happens after a tab
+	// Old: "func\tmain() {"
+	// New: "func\tMain() {"
+	// The 'm' changes to 'M' after the tab
+
+	state := &DiffState{}
+
+	// Left side (old): "func\tmain() {"
+	leftTokens := []highlight.Token{
+		{Type: chroma.Keyword, Value: "func"},
+		{Type: chroma.Text, Value: "\t"}, // Tab character
+		{Type: chroma.NameFunction, Value: "main"},
+		{Type: chroma.Punctuation, Value: "() {"},
+	}
+
+	// Right side (new): "func\tMain() {"
+	rightTokens := []highlight.Token{
+		{Type: chroma.Keyword, Value: "func"},
+		{Type: chroma.Text, Value: "\t"}, // Tab character
+		{Type: chroma.NameFunction, Value: "Main"}, // Changed to uppercase M
+		{Type: chroma.Punctuation, Value: "() {"},
+	}
+
+	// Create inline diff between the two lines
+	leftText := "func\tmain() {"
+	rightText := "func\tMain() {"
+	inlineDiff := dmp.DiffMain(leftText, rightText, false)
+
+	bgStyle := lipgloss.NewStyle()
+
+	// Render left side (should highlight 'm' in 'main')
+	leftResult := state.renderTokensWithInlineDiff(leftTokens, 100, bgStyle, inlineDiff, false)
+
+	// Render right side (should highlight 'M' in 'Main')
+	rightResult := state.renderTokensWithInlineDiff(rightTokens, 100, bgStyle, inlineDiff, true)
+
+	// Basic sanity checks
+	if strings.Contains(leftResult, "\t") {
+		t.Error("Left result should not contain tab characters (should be expanded)")
+	}
+	if strings.Contains(rightResult, "\t") {
+		t.Error("Right result should not contain tab characters (should be expanded)")
+	}
+
+	// Should contain the text content
+	if !strings.Contains(leftResult, "func") || !strings.Contains(leftResult, "main") {
+		t.Error("Left result should contain 'func' and 'main'")
+	}
+	if !strings.Contains(rightResult, "func") || !strings.Contains(rightResult, "Main") {
+		t.Error("Right result should contain 'func' and 'Main'")
+	}
+
+	// The test passes if no panic occurs and content is rendered
+	// The exact styling is hard to test due to ANSI codes, but we've verified:
+	// 1. Tabs are expanded
+	// 2. Content is present
+	// 3. No crashes due to position misalignment
+}
+
+func TestRenderTokensWithInlineDiff_MultipleTabsWithChanges(t *testing.T) {
+	dmp := diffmatchpatch.New()
+
+	// Test with multiple tabs to ensure alignment is correct
+	// Old: "if\t\tx\t==\t1"
+	// New: "if\t\ty\t==\t1"
+
+	state := &DiffState{}
+
+	leftTokens := []highlight.Token{
+		{Type: chroma.Keyword, Value: "if"},
+		{Type: chroma.Text, Value: "\t\t"}, // Two tabs
+		{Type: chroma.Name, Value: "x"},
+		{Type: chroma.Text, Value: "\t"},
+		{Type: chroma.Operator, Value: "=="},
+		{Type: chroma.Text, Value: "\t"},
+		{Type: chroma.Number, Value: "1"},
+	}
+
+	rightTokens := []highlight.Token{
+		{Type: chroma.Keyword, Value: "if"},
+		{Type: chroma.Text, Value: "\t\t"}, // Two tabs
+		{Type: chroma.Name, Value: "y"}, // Changed from x to y
+		{Type: chroma.Text, Value: "\t"},
+		{Type: chroma.Operator, Value: "=="},
+		{Type: chroma.Text, Value: "\t"},
+		{Type: chroma.Number, Value: "1"},
+	}
+
+	leftText := "if\t\tx\t==\t1"
+	rightText := "if\t\ty\t==\t1"
+	inlineDiff := dmp.DiffMain(leftText, rightText, false)
+
+	bgStyle := lipgloss.NewStyle()
+
+	// Render both sides
+	leftResult := state.renderTokensWithInlineDiff(leftTokens, 100, bgStyle, inlineDiff, false)
+	rightResult := state.renderTokensWithInlineDiff(rightTokens, 100, bgStyle, inlineDiff, true)
+
+	// Verify no tabs remain
+	if strings.Contains(leftResult, "\t") {
+		t.Error("Left result should not contain tab characters")
+	}
+	if strings.Contains(rightResult, "\t") {
+		t.Error("Right result should not contain tab characters")
+	}
+
+	// Verify content is present
+	if !strings.Contains(leftResult, "if") || !strings.Contains(leftResult, "x") {
+		t.Error("Left result should contain 'if' and 'x'")
+	}
+	if !strings.Contains(rightResult, "if") || !strings.Contains(rightResult, "y") {
+		t.Error("Right result should contain 'if' and 'y'")
 	}
 }

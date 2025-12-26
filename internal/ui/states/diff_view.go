@@ -9,6 +9,7 @@ import (
 	"github.com/oberprah/splice/internal/highlight"
 	"github.com/oberprah/splice/internal/ui/format"
 	"github.com/oberprah/splice/internal/ui/styles"
+	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 // View renders the diff state
@@ -29,7 +30,7 @@ func (s *DiffState) View(ctx Context) string {
 	availableHeight := max(ctx.Height()-headerLines, 1)
 
 	// Handle nil or empty diff
-	if s.Diff == nil || len(s.Diff.Lines) == 0 {
+	if s.Diff == nil || len(s.Diff.Alignments) == 0 {
 		b.WriteString(styles.TimeStyle.Render("No changes"))
 		b.WriteString("\n")
 		return b.String()
@@ -45,17 +46,17 @@ func (s *DiffState) View(ctx Context) string {
 	lineNoWidth := s.calculateLineNoWidth()
 
 	// Calculate the end of the viewport
-	viewportEnd := min(s.ViewportStart+availableHeight, len(s.Diff.Lines))
+	viewportEnd := min(s.ViewportStart+availableHeight, len(s.Diff.Alignments))
 
 	// Create styles for fixed-width columns
 	leftColStyle := lipgloss.NewStyle().Width(columnWidth)
 	rightColStyle := lipgloss.NewStyle().Width(columnWidth)
 	separatorStyle := styles.HeaderStyle
 
-	// Render visible diff lines
+	// Render visible alignments
 	for i := s.ViewportStart; i < viewportEnd; i++ {
-		line := s.Diff.Lines[i]
-		left, right := s.renderFullFileLine(line, columnWidth, lineNoWidth)
+		alignment := s.Diff.Alignments[i]
+		left, right := s.renderAlignment(alignment, columnWidth, lineNoWidth)
 
 		// Use Lip Gloss to join columns - it handles width properly with ANSI codes
 		row := lipgloss.JoinHorizontal(
@@ -95,12 +96,36 @@ func (s *DiffState) calculateLineNoWidth() int {
 	}
 
 	maxLineNo := 0
-	for _, line := range s.Diff.Lines {
-		if line.LeftLineNo > maxLineNo {
-			maxLineNo = line.LeftLineNo
-		}
-		if line.RightLineNo > maxLineNo {
-			maxLineNo = line.RightLineNo
+	for _, alignment := range s.Diff.Alignments {
+		switch a := alignment.(type) {
+		case diff.UnchangedAlignment:
+			leftNo := s.Diff.Left.LineNo(a.LeftIdx)
+			rightNo := s.Diff.Right.LineNo(a.RightIdx)
+			if leftNo > maxLineNo {
+				maxLineNo = leftNo
+			}
+			if rightNo > maxLineNo {
+				maxLineNo = rightNo
+			}
+		case diff.ModifiedAlignment:
+			leftNo := s.Diff.Left.LineNo(a.LeftIdx)
+			rightNo := s.Diff.Right.LineNo(a.RightIdx)
+			if leftNo > maxLineNo {
+				maxLineNo = leftNo
+			}
+			if rightNo > maxLineNo {
+				maxLineNo = rightNo
+			}
+		case diff.RemovedAlignment:
+			leftNo := s.Diff.Left.LineNo(a.LeftIdx)
+			if leftNo > maxLineNo {
+				maxLineNo = leftNo
+			}
+		case diff.AddedAlignment:
+			rightNo := s.Diff.Right.LineNo(a.RightIdx)
+			if rightNo > maxLineNo {
+				maxLineNo = rightNo
+			}
 		}
 	}
 	width := len(fmt.Sprintf("%d", maxLineNo))
@@ -110,27 +135,47 @@ func (s *DiffState) calculateLineNoWidth() int {
 	return width
 }
 
-// renderFullFileLine returns the left and right column content for a full file diff line
-func (s *DiffState) renderFullFileLine(line diff.FullFileLine, columnWidth, lineNoWidth int) (string, string) {
+// renderAlignment returns the left and right column content for an alignment using type switch
+func (s *DiffState) renderAlignment(alignment diff.Alignment, columnWidth, lineNoWidth int) (string, string) {
 	// Calculate content width (column width - lineNo - space - indicator - space)
 	contentWidth := columnWidth - lineNoWidth - 4 // "123 - " = lineNo + space + indicator + space
 	if contentWidth < 5 {
 		contentWidth = 5
 	}
 
-	switch line.Change {
-	case diff.Unchanged:
+	switch a := alignment.(type) {
+	case diff.UnchangedAlignment:
 		// Unchanged: show on both sides with normal styling
-		left := s.formatColumnContent(line.LeftLineNo, " ", line.LeftTokens, lineNoWidth, contentWidth, columnWidth, styles.TimeStyle)
-		right := s.formatColumnContent(line.RightLineNo, " ", line.RightTokens, lineNoWidth, contentWidth, columnWidth, styles.TimeStyle)
+		leftLine := s.Diff.Left.Lines[a.LeftIdx]
+		rightLine := s.Diff.Right.Lines[a.RightIdx]
+		leftNo := s.Diff.Left.LineNo(a.LeftIdx)
+		rightNo := s.Diff.Right.LineNo(a.RightIdx)
+		left := s.formatColumnContent(leftNo, " ", leftLine.Tokens, lineNoWidth, contentWidth, columnWidth, styles.TimeStyle, nil)
+		right := s.formatColumnContent(rightNo, " ", rightLine.Tokens, lineNoWidth, contentWidth, columnWidth, styles.TimeStyle, nil)
 		return left, right
-	case diff.Removed:
+
+	case diff.ModifiedAlignment:
+		// Modified: show on both sides with inline diff highlighting
+		leftLine := s.Diff.Left.Lines[a.LeftIdx]
+		rightLine := s.Diff.Right.Lines[a.RightIdx]
+		leftNo := s.Diff.Left.LineNo(a.LeftIdx)
+		rightNo := s.Diff.Right.LineNo(a.RightIdx)
+		left := s.formatColumnContent(leftNo, "-", leftLine.Tokens, lineNoWidth, contentWidth, columnWidth, styles.DiffDeletionsStyle, a.InlineDiff)
+		right := s.formatColumnContent(rightNo, "+", rightLine.Tokens, lineNoWidth, contentWidth, columnWidth, styles.DiffAdditionsStyle, a.InlineDiff)
+		return left, right
+
+	case diff.RemovedAlignment:
 		// Removed: show on left only with deletion style
-		left := s.formatColumnContent(line.LeftLineNo, "-", line.LeftTokens, lineNoWidth, contentWidth, columnWidth, styles.DiffDeletionsStyle)
+		leftLine := s.Diff.Left.Lines[a.LeftIdx]
+		leftNo := s.Diff.Left.LineNo(a.LeftIdx)
+		left := s.formatColumnContent(leftNo, "-", leftLine.Tokens, lineNoWidth, contentWidth, columnWidth, styles.DiffDeletionsStyle, nil)
 		return left, ""
-	case diff.Added:
+
+	case diff.AddedAlignment:
 		// Added: show on right only with addition style
-		right := s.formatColumnContent(line.RightLineNo, "+", line.RightTokens, lineNoWidth, contentWidth, columnWidth, styles.DiffAdditionsStyle)
+		rightLine := s.Diff.Right.Lines[a.RightIdx]
+		rightNo := s.Diff.Right.LineNo(a.RightIdx)
+		right := s.formatColumnContent(rightNo, "+", rightLine.Tokens, lineNoWidth, contentWidth, columnWidth, styles.DiffAdditionsStyle, nil)
 		return "", right
 	}
 
@@ -140,7 +185,8 @@ func (s *DiffState) renderFullFileLine(line diff.FullFileLine, columnWidth, line
 // formatColumnContent formats a single column with line number, indicator, and tokens
 // Tokens are rendered with syntax highlighting (foreground colors) and then wrapped
 // with the background style for diff changes.
-func (s *DiffState) formatColumnContent(lineNo int, indicator string, tokens []highlight.Token, lineNoWidth, contentWidth, columnWidth int, bgStyle lipgloss.Style) string {
+// If inlineDiff is provided, it applies inline highlighting for modified lines.
+func (s *DiffState) formatColumnContent(lineNo int, indicator string, tokens []highlight.Token, lineNoWidth, contentWidth, columnWidth int, bgStyle lipgloss.Style, inlineDiff []diffmatchpatch.Diff) string {
 	// Format line number (blank if 0)
 	var lineNoStr string
 	if lineNo == 0 {
@@ -151,7 +197,14 @@ func (s *DiffState) formatColumnContent(lineNo int, indicator string, tokens []h
 
 	// Render tokens with syntax highlighting (foreground) and diff background
 	// The background is applied to each character during rendering
-	renderedContent := s.renderTokens(tokens, contentWidth, bgStyle)
+	var renderedContent string
+	if inlineDiff != nil {
+		// Modified line: apply inline highlighting
+		renderedContent = s.renderTokensWithInlineDiff(tokens, contentWidth, bgStyle, inlineDiff, indicator == "+")
+	} else {
+		// Unchanged, pure added, or pure removed: normal rendering
+		renderedContent = s.renderTokens(tokens, contentWidth, bgStyle)
+	}
 
 	// Build the column string: "123 - content"
 	// Line number and indicator need background too
@@ -202,23 +255,138 @@ func (s *DiffState) renderTokens(tokens []highlight.Token, maxWidth int, bgStyle
 	return result.String()
 }
 
-// truncateWithEllipsis truncates a string and adds ellipsis if too long
-func truncateWithEllipsis(s string, maxWidth int) string {
-	if maxWidth <= 0 {
+// renderTokensWithInlineDiff renders tokens with inline diff highlighting for modified lines.
+// It breaks syntax tokens at inline diff boundaries and applies brighter backgrounds for changed portions.
+// isRightSide determines whether we're rendering the left (removed) or right (added) side.
+func (s *DiffState) renderTokensWithInlineDiff(tokens []highlight.Token, maxWidth int, bgStyle lipgloss.Style, inlineDiff []diffmatchpatch.Diff, isRightSide bool) string {
+	if len(tokens) == 0 {
 		return ""
 	}
 
-	// Convert to runes to handle unicode properly
-	runes := []rune(s)
-	if len(runes) <= maxWidth {
-		return s
+	// Get the brighter style for changed portions
+	var brightStyle lipgloss.Style
+	if isRightSide {
+		brightStyle = styles.DiffAdditionsBrightStyle
+	} else {
+		brightStyle = styles.DiffDeletionsBrightStyle
 	}
 
-	if maxWidth <= 1 {
-		return "…"
+	// Build highlight map from inline diff
+	// We need to account for tab expansion when building the map, since tabs
+	// in the inline diff text will be expanded to 4 spaces during rendering.
+	highlightMap := make(map[int]bool) // position -> isHighlighted
+	currentPos := 0
+	for _, diff := range inlineDiff {
+		if isRightSide {
+			// Right side: highlight DiffInsert, show DiffEqual normally, skip DiffDelete
+			switch diff.Type {
+			case diffmatchpatch.DiffEqual:
+				// Iterate through runes, expanding tabs
+				for _, r := range diff.Text {
+					if r == '\t' {
+						// Tab expands to 4 spaces
+						for i := 0; i < 4; i++ {
+							highlightMap[currentPos] = false
+							currentPos++
+						}
+					} else {
+						highlightMap[currentPos] = false
+						currentPos++
+					}
+				}
+			case diffmatchpatch.DiffInsert:
+				// Iterate through runes, expanding tabs
+				for _, r := range diff.Text {
+					if r == '\t' {
+						// Tab expands to 4 spaces
+						for i := 0; i < 4; i++ {
+							highlightMap[currentPos] = true
+							currentPos++
+						}
+					} else {
+						highlightMap[currentPos] = true
+						currentPos++
+					}
+				}
+			case diffmatchpatch.DiffDelete:
+				// Skip deleted text on right side
+			}
+		} else {
+			// Left side: highlight DiffDelete, show DiffEqual normally, skip DiffInsert
+			switch diff.Type {
+			case diffmatchpatch.DiffEqual:
+				// Iterate through runes, expanding tabs
+				for _, r := range diff.Text {
+					if r == '\t' {
+						// Tab expands to 4 spaces
+						for i := 0; i < 4; i++ {
+							highlightMap[currentPos] = false
+							currentPos++
+						}
+					} else {
+						highlightMap[currentPos] = false
+						currentPos++
+					}
+				}
+			case diffmatchpatch.DiffDelete:
+				// Iterate through runes, expanding tabs
+				for _, r := range diff.Text {
+					if r == '\t' {
+						// Tab expands to 4 spaces
+						for i := 0; i < 4; i++ {
+							highlightMap[currentPos] = true
+							currentPos++
+						}
+					} else {
+						highlightMap[currentPos] = true
+						currentPos++
+					}
+				}
+			case diffmatchpatch.DiffInsert:
+				// Skip inserted text on left side
+			}
+		}
 	}
 
-	return string(runes[:maxWidth-1]) + "…"
+	// Now render tokens with inline highlighting
+	var result strings.Builder
+	visibleWidth := 0
+	charPos := 0
+
+	for _, token := range tokens {
+		// Expand tabs to spaces before processing
+		expandedValue := expandTabs(token.Value, 4)
+
+		// Convert to runes for proper width calculation
+		runes := []rune(expandedValue)
+
+		for _, r := range runes {
+			if visibleWidth >= maxWidth {
+				// We've reached the max width, append ellipsis and stop
+				if visibleWidth == maxWidth {
+					result.WriteString("…")
+				}
+				return result.String()
+			}
+
+			// Determine which background to use
+			var charBgStyle lipgloss.Style
+			if highlighted, exists := highlightMap[charPos]; exists && highlighted {
+				charBgStyle = brightStyle
+			} else {
+				charBgStyle = bgStyle
+			}
+
+			// Apply syntax highlighting style (foreground) with appropriate background
+			syntaxStyle := highlight.StyleForToken(token.Type)
+			combinedStyle := syntaxStyle.Copy().Inherit(charBgStyle)
+			result.WriteString(combinedStyle.Render(string(r)))
+			visibleWidth++
+			charPos++
+		}
+	}
+
+	return result.String()
 }
 
 // expandTabs replaces tab characters with spaces

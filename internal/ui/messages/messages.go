@@ -20,7 +20,8 @@ type FilesLoadedMsg struct {
 type DiffLoadedMsg struct {
 	Commit git.GitCommit
 	File   git.FileChange
-	Diff   *diff.FullFileDiff
+	Diff   *diff.AlignedFileDiff
+	ChangeIndices []int // Indices of alignments that have changes (for navigation)
 	Err    error
 	// Store original FilesState data to return to
 	FilesCommit            git.GitCommit

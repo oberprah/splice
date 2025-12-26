@@ -92,10 +92,23 @@ var (
 		Dark:  "#3a1e1e", // Very subtle dark red
 	})
 
+	// Brighter deletion style for inline highlighting (1.3× brighter)
+	DiffDeletionsBrightStyle = lipgloss.NewStyle().Background(lipgloss.AdaptiveColor{
+		Light: "#ffcdd2", // Brighter pale pink (1.3× brighter)
+		Dark:  "#4d2626", // Brighter dark red (1.3× brighter)
+	})
+
 	SelectedDeletionsStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
 		Light: "88",  // Darker red
 		Dark:  "9",   // Brighter red
 	}).Bold(true)
+
+	// Diff line addition style (green background) - moved here for inline bright version
+	// Brighter addition style for inline highlighting (1.3× brighter)
+	DiffAdditionsBrightStyle = lipgloss.NewStyle().Background(lipgloss.AdaptiveColor{
+		Light: "#c8e6c9", // Brighter pale green (1.3× brighter)
+		Dark:  "#264d26", // Brighter dark green (1.3× brighter)
+	})
 
 	// Header styles for commit info
 	HeaderStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
