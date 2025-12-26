@@ -32,6 +32,7 @@ func (s LoadingState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 			Commits:       msg.Commits,
 			Cursor:        0,
 			ViewportStart: 0,
+			Preview:       PreviewNone{},
 		}, nil
 	}
 

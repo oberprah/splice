@@ -18,6 +18,7 @@ func TestLogState_View_RendersCommits(t *testing.T) {
 		Commits:       commits,
 		Cursor:        0,
 		ViewportStart: 0,
+		Preview:       PreviewNone{},
 	}
 	ctx := mockContext{width: 80, height: 24}
 
@@ -57,6 +58,7 @@ func TestLogState_View_SelectionIndicator(t *testing.T) {
 				Commits:       commits,
 				Cursor:        tt.cursor,
 				ViewportStart: 0,
+				Preview:       PreviewNone{},
 			}
 			ctx := mockContext{width: 80, height: 24}
 
@@ -81,6 +83,7 @@ func TestLogState_View_ViewportLimits(t *testing.T) {
 		Commits:       commits,
 		Cursor:        10,
 		ViewportStart: 5,
+		Preview:       PreviewNone{},
 	}
 	ctx := mockContext{width: 80, height: 10}
 
@@ -106,6 +109,7 @@ func TestLogState_View_EmptyViewport(t *testing.T) {
 		Commits:       commits,
 		Cursor:        0,
 		ViewportStart: 10, // Beyond end
+		Preview:       PreviewNone{},
 	}
 	ctx := mockContext{width: 80, height: 10}
 
@@ -133,6 +137,7 @@ func TestLogState_View_LineTruncation(t *testing.T) {
 		Commits:       commits,
 		Cursor:        0,
 		ViewportStart: 0,
+		Preview:       PreviewNone{},
 	}
 
 	// Test with narrow terminal

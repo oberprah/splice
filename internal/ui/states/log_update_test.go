@@ -28,6 +28,7 @@ func TestLogState_Update_NavigationDown(t *testing.T) {
 		Commits:       commits,
 		Cursor:        0,
 		ViewportStart: 0,
+		Preview:       PreviewNone{},
 	}
 	ctx := mockContext{width: 80, height: 24}
 
@@ -51,6 +52,7 @@ func TestLogState_Update_NavigationUp(t *testing.T) {
 		Commits:       commits,
 		Cursor:        5,
 		ViewportStart: 0,
+		Preview:       PreviewNone{},
 	}
 	ctx := mockContext{width: 80, height: 24}
 
@@ -89,6 +91,7 @@ func TestLogState_Update_CursorBoundaries(t *testing.T) {
 				Commits:       commits,
 				Cursor:        tt.initialCursor,
 				ViewportStart: 0,
+				Preview:       PreviewNone{},
 			}
 			ctx := mockContext{width: 80, height: 24}
 
@@ -118,6 +121,7 @@ func TestLogState_Update_JumpToTop(t *testing.T) {
 		Commits:       commits,
 		Cursor:        5,
 		ViewportStart: 3,
+		Preview:       PreviewNone{},
 	}
 	ctx := mockContext{width: 80, height: 24}
 
@@ -144,6 +148,7 @@ func TestLogState_Update_JumpToBottom(t *testing.T) {
 		Commits:       commits,
 		Cursor:        0,
 		ViewportStart: 0,
+		Preview:       PreviewNone{},
 	}
 	ctx := mockContext{width: 80, height: 24}
 
@@ -167,6 +172,7 @@ func TestLogState_Update_ViewportScrolling(t *testing.T) {
 		Commits:       commits,
 		Cursor:        0,
 		ViewportStart: 0,
+		Preview:       PreviewNone{},
 	}
 	ctx := mockContext{width: 80, height: 10}
 
@@ -195,6 +201,7 @@ func TestLogState_Update_QuitKeys(t *testing.T) {
 		Commits:       commits,
 		Cursor:        0,
 		ViewportStart: 0,
+		Preview:       PreviewNone{},
 	}
 	ctx := mockContext{width: 80, height: 24}
 

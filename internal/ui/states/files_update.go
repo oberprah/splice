@@ -50,6 +50,7 @@ func (s *FilesState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 				Commits:       s.ListCommits,
 				Cursor:        s.ListCursor,
 				ViewportStart: s.ListViewportStart,
+				Preview:       PreviewNone{},
 			}, nil
 
 		case "ctrl+c", "Q":
