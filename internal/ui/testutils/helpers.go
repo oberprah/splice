@@ -55,3 +55,13 @@ func MockFetchCommits(commits []git.GitCommit, err error) func(int) ([]git.GitCo
 		return commits, nil
 	}
 }
+
+// MockFetchFileChanges creates a mock function that returns file changes for a commit
+func MockFetchFileChanges(files []git.FileChange, err error) func(string) ([]git.FileChange, error) {
+	return func(commitHash string) ([]git.FileChange, error) {
+		if err != nil {
+			return nil, err
+		}
+		return files, nil
+	}
+}

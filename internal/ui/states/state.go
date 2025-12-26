@@ -1,11 +1,18 @@
 package states
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/oberprah/splice/internal/git"
+)
+
+// FetchFileChangesFunc is a function type for fetching file changes for a commit
+type FetchFileChangesFunc func(commitHash string) ([]git.FileChange, error)
 
 // Context is the interface that states use to access what they need from the model
 type Context interface {
 	Width() int
 	Height() int
+	FetchFileChanges() FetchFileChangesFunc
 }
 
 // State represents the current state of the application.

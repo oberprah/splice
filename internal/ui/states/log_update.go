@@ -2,7 +2,6 @@ package states
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/ui/messages"
 )
 
@@ -59,8 +58,9 @@ func (s LogState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 			// Load files for the selected commit
 			if len(s.Commits) > 0 {
 				selectedCommit := s.Commits[s.Cursor]
+				fetchFileChanges := ctx.FetchFileChanges()
 				return s, func() tea.Msg {
-					fileChanges, err := git.FetchFileChanges(selectedCommit.Hash)
+					fileChanges, err := fetchFileChanges(selectedCommit.Hash)
 					return messages.FilesLoadedMsg{
 						Commit:            selectedCommit,
 						Files:             fileChanges,
@@ -80,7 +80,7 @@ func (s LogState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 				// Trigger preview loading for the new cursor position
 				commitHash := s.Commits[s.Cursor].Hash
 				s.Preview = PreviewLoading{ForHash: commitHash}
-				return s, loadPreview(commitHash)
+				return s, loadPreview(commitHash, ctx.FetchFileChanges())
 			}
 			return s, nil
 
@@ -91,7 +91,7 @@ func (s LogState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 				// Trigger preview loading for the new cursor position
 				commitHash := s.Commits[s.Cursor].Hash
 				s.Preview = PreviewLoading{ForHash: commitHash}
-				return s, loadPreview(commitHash)
+				return s, loadPreview(commitHash, ctx.FetchFileChanges())
 			}
 			return s, nil
 
@@ -102,7 +102,7 @@ func (s LogState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 			if len(s.Commits) > 0 {
 				commitHash := s.Commits[s.Cursor].Hash
 				s.Preview = PreviewLoading{ForHash: commitHash}
-				return s, loadPreview(commitHash)
+				return s, loadPreview(commitHash, ctx.FetchFileChanges())
 			}
 			return s, nil
 
@@ -113,7 +113,7 @@ func (s LogState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 			if len(s.Commits) > 0 {
 				commitHash := s.Commits[s.Cursor].Hash
 				s.Preview = PreviewLoading{ForHash: commitHash}
-				return s, loadPreview(commitHash)
+				return s, loadPreview(commitHash, ctx.FetchFileChanges())
 			}
 			return s, nil
 		}
@@ -141,9 +141,9 @@ func (s *LogState) updateViewport(height int) {
 }
 
 // loadPreview returns a command that loads file changes for the preview panel
-func loadPreview(commitHash string) tea.Cmd {
+func loadPreview(commitHash string, fetchFileChanges FetchFileChangesFunc) tea.Cmd {
 	return func() tea.Msg {
-		files, err := git.FetchFileChanges(commitHash)
+		files, err := fetchFileChanges(commitHash)
 		return messages.FilesPreviewLoadedMsg{
 			ForHash: commitHash,
 			Files:   files,
