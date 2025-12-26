@@ -272,6 +272,8 @@ func (s *DiffState) renderTokensWithInlineDiff(tokens []highlight.Token, maxWidt
 	}
 
 	// Build highlight map from inline diff
+	// We need to account for tab expansion when building the map, since tabs
+	// in the inline diff text will be expanded to 4 spaces during rendering.
 	highlightMap := make(map[int]bool) // position -> isHighlighted
 	currentPos := 0
 	for _, diff := range inlineDiff {
@@ -279,14 +281,32 @@ func (s *DiffState) renderTokensWithInlineDiff(tokens []highlight.Token, maxWidt
 			// Right side: highlight DiffInsert, show DiffEqual normally, skip DiffDelete
 			switch diff.Type {
 			case diffmatchpatch.DiffEqual:
-				for i := 0; i < len(diff.Text); i++ {
-					highlightMap[currentPos] = false
-					currentPos++
+				// Iterate through runes, expanding tabs
+				for _, r := range diff.Text {
+					if r == '\t' {
+						// Tab expands to 4 spaces
+						for i := 0; i < 4; i++ {
+							highlightMap[currentPos] = false
+							currentPos++
+						}
+					} else {
+						highlightMap[currentPos] = false
+						currentPos++
+					}
 				}
 			case diffmatchpatch.DiffInsert:
-				for i := 0; i < len(diff.Text); i++ {
-					highlightMap[currentPos] = true
-					currentPos++
+				// Iterate through runes, expanding tabs
+				for _, r := range diff.Text {
+					if r == '\t' {
+						// Tab expands to 4 spaces
+						for i := 0; i < 4; i++ {
+							highlightMap[currentPos] = true
+							currentPos++
+						}
+					} else {
+						highlightMap[currentPos] = true
+						currentPos++
+					}
 				}
 			case diffmatchpatch.DiffDelete:
 				// Skip deleted text on right side
@@ -295,14 +315,32 @@ func (s *DiffState) renderTokensWithInlineDiff(tokens []highlight.Token, maxWidt
 			// Left side: highlight DiffDelete, show DiffEqual normally, skip DiffInsert
 			switch diff.Type {
 			case diffmatchpatch.DiffEqual:
-				for i := 0; i < len(diff.Text); i++ {
-					highlightMap[currentPos] = false
-					currentPos++
+				// Iterate through runes, expanding tabs
+				for _, r := range diff.Text {
+					if r == '\t' {
+						// Tab expands to 4 spaces
+						for i := 0; i < 4; i++ {
+							highlightMap[currentPos] = false
+							currentPos++
+						}
+					} else {
+						highlightMap[currentPos] = false
+						currentPos++
+					}
 				}
 			case diffmatchpatch.DiffDelete:
-				for i := 0; i < len(diff.Text); i++ {
-					highlightMap[currentPos] = true
-					currentPos++
+				// Iterate through runes, expanding tabs
+				for _, r := range diff.Text {
+					if r == '\t' {
+						// Tab expands to 4 spaces
+						for i := 0; i < 4; i++ {
+							highlightMap[currentPos] = true
+							currentPos++
+						}
+					} else {
+						highlightMap[currentPos] = true
+						currentPos++
+					}
 				}
 			case diffmatchpatch.DiffInsert:
 				// Skip inserted text on left side

@@ -9,6 +9,7 @@ import (
 	"github.com/oberprah/splice/internal/diff"
 	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/highlight"
+	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 func TestDiffState_View_Header(t *testing.T) {
@@ -420,5 +421,124 @@ func TestRenderTokens_TabExpansion(t *testing.T) {
 	// Should contain the text
 	if !strings.Contains(result, "hello") || !strings.Contains(result, "world") {
 		t.Error("Result should contain expanded tab content")
+	}
+}
+
+func TestRenderTokensWithInlineDiff_TabsInModifiedLines(t *testing.T) {
+	// Import diffmatchpatch for creating inline diffs
+	dmp := diffmatchpatch.New()
+
+	// Test case: A line with tabs where the change happens after a tab
+	// Old: "func\tmain() {"
+	// New: "func\tMain() {"
+	// The 'm' changes to 'M' after the tab
+
+	state := &DiffState{}
+
+	// Left side (old): "func\tmain() {"
+	leftTokens := []highlight.Token{
+		{Type: chroma.Keyword, Value: "func"},
+		{Type: chroma.Text, Value: "\t"}, // Tab character
+		{Type: chroma.NameFunction, Value: "main"},
+		{Type: chroma.Punctuation, Value: "() {"},
+	}
+
+	// Right side (new): "func\tMain() {"
+	rightTokens := []highlight.Token{
+		{Type: chroma.Keyword, Value: "func"},
+		{Type: chroma.Text, Value: "\t"}, // Tab character
+		{Type: chroma.NameFunction, Value: "Main"}, // Changed to uppercase M
+		{Type: chroma.Punctuation, Value: "() {"},
+	}
+
+	// Create inline diff between the two lines
+	leftText := "func\tmain() {"
+	rightText := "func\tMain() {"
+	inlineDiff := dmp.DiffMain(leftText, rightText, false)
+
+	bgStyle := lipgloss.NewStyle()
+
+	// Render left side (should highlight 'm' in 'main')
+	leftResult := state.renderTokensWithInlineDiff(leftTokens, 100, bgStyle, inlineDiff, false)
+
+	// Render right side (should highlight 'M' in 'Main')
+	rightResult := state.renderTokensWithInlineDiff(rightTokens, 100, bgStyle, inlineDiff, true)
+
+	// Basic sanity checks
+	if strings.Contains(leftResult, "\t") {
+		t.Error("Left result should not contain tab characters (should be expanded)")
+	}
+	if strings.Contains(rightResult, "\t") {
+		t.Error("Right result should not contain tab characters (should be expanded)")
+	}
+
+	// Should contain the text content
+	if !strings.Contains(leftResult, "func") || !strings.Contains(leftResult, "main") {
+		t.Error("Left result should contain 'func' and 'main'")
+	}
+	if !strings.Contains(rightResult, "func") || !strings.Contains(rightResult, "Main") {
+		t.Error("Right result should contain 'func' and 'Main'")
+	}
+
+	// The test passes if no panic occurs and content is rendered
+	// The exact styling is hard to test due to ANSI codes, but we've verified:
+	// 1. Tabs are expanded
+	// 2. Content is present
+	// 3. No crashes due to position misalignment
+}
+
+func TestRenderTokensWithInlineDiff_MultipleTabsWithChanges(t *testing.T) {
+	dmp := diffmatchpatch.New()
+
+	// Test with multiple tabs to ensure alignment is correct
+	// Old: "if\t\tx\t==\t1"
+	// New: "if\t\ty\t==\t1"
+
+	state := &DiffState{}
+
+	leftTokens := []highlight.Token{
+		{Type: chroma.Keyword, Value: "if"},
+		{Type: chroma.Text, Value: "\t\t"}, // Two tabs
+		{Type: chroma.Name, Value: "x"},
+		{Type: chroma.Text, Value: "\t"},
+		{Type: chroma.Operator, Value: "=="},
+		{Type: chroma.Text, Value: "\t"},
+		{Type: chroma.Number, Value: "1"},
+	}
+
+	rightTokens := []highlight.Token{
+		{Type: chroma.Keyword, Value: "if"},
+		{Type: chroma.Text, Value: "\t\t"}, // Two tabs
+		{Type: chroma.Name, Value: "y"}, // Changed from x to y
+		{Type: chroma.Text, Value: "\t"},
+		{Type: chroma.Operator, Value: "=="},
+		{Type: chroma.Text, Value: "\t"},
+		{Type: chroma.Number, Value: "1"},
+	}
+
+	leftText := "if\t\tx\t==\t1"
+	rightText := "if\t\ty\t==\t1"
+	inlineDiff := dmp.DiffMain(leftText, rightText, false)
+
+	bgStyle := lipgloss.NewStyle()
+
+	// Render both sides
+	leftResult := state.renderTokensWithInlineDiff(leftTokens, 100, bgStyle, inlineDiff, false)
+	rightResult := state.renderTokensWithInlineDiff(rightTokens, 100, bgStyle, inlineDiff, true)
+
+	// Verify no tabs remain
+	if strings.Contains(leftResult, "\t") {
+		t.Error("Left result should not contain tab characters")
+	}
+	if strings.Contains(rightResult, "\t") {
+		t.Error("Right result should not contain tab characters")
+	}
+
+	// Verify content is present
+	if !strings.Contains(leftResult, "if") || !strings.Contains(leftResult, "x") {
+		t.Error("Left result should contain 'if' and 'x'")
+	}
+	if !strings.Contains(rightResult, "if") || !strings.Contains(rightResult, "y") {
+		t.Error("Right result should contain 'if' and 'y'")
 	}
 }
