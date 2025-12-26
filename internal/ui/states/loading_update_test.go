@@ -14,7 +14,7 @@ func TestLoadingState_Update_CommitsLoaded(t *testing.T) {
 		name              string
 		msg               CommitsLoadedMsg
 		expectedStateType string
-		checkState func(t *testing.T, s any)
+		checkState        func(t *testing.T, s any)
 	}{
 		{
 			name: "successful load with commits",

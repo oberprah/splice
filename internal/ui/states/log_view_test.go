@@ -42,9 +42,9 @@ func TestLogState_View_SelectionIndicator(t *testing.T) {
 	commits := createTestCommits(3)
 
 	tests := []struct {
-		name           string
-		cursor         int
-		shouldContain  string
+		name            string
+		cursor          int
+		shouldContain   string
 		checkUnselected bool
 	}{
 		{"first commit selected", 0, "> ", true},

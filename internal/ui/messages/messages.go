@@ -18,11 +18,11 @@ type FilesLoadedMsg struct {
 
 // DiffLoadedMsg is sent when diff content for a file has been loaded
 type DiffLoadedMsg struct {
-	Commit git.GitCommit
-	File   git.FileChange
-	Diff   *diff.AlignedFileDiff
+	Commit        git.GitCommit
+	File          git.FileChange
+	Diff          *diff.AlignedFileDiff
 	ChangeIndices []int // Indices of alignments that have changes (for navigation)
-	Err    error
+	Err           error
 	// Store original FilesState data to return to
 	FilesCommit            git.GitCommit
 	FilesFiles             []git.FileChange

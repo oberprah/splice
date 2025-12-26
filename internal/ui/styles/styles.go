@@ -43,8 +43,8 @@ var (
 	}).Bold(true)
 
 	SelectedAuthorStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
-		Light: "30",  // Darker bright cyan (#008787)
-		Dark:  "51",  // Bright cyan (#00ffff)
+		Light: "30", // Darker bright cyan (#008787)
+		Dark:  "51", // Bright cyan (#00ffff)
 	}).Bold(true)
 
 	SelectedTimeStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
@@ -65,8 +65,8 @@ var (
 
 	// Addition count style (green)
 	AdditionsStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
-		Light: "28",  // Dark green
-		Dark:  "46",  // Bright green
+		Light: "28", // Dark green
+		Dark:  "46", // Bright green
 	})
 
 	// Diff line addition style (green background)
@@ -76,8 +76,8 @@ var (
 	})
 
 	SelectedAdditionsStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
-		Light: "22",  // Darker green
-		Dark:  "82",  // Brighter green
+		Light: "22", // Darker green
+		Dark:  "82", // Brighter green
 	}).Bold(true)
 
 	// Deletion count style (red)
@@ -99,8 +99,8 @@ var (
 	})
 
 	SelectedDeletionsStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
-		Light: "88",  // Darker red
-		Dark:  "9",   // Brighter red
+		Light: "88", // Darker red
+		Dark:  "9",  // Brighter red
 	}).Bold(true)
 
 	// Diff line addition style (green background) - moved here for inline bright version

@@ -91,7 +91,7 @@ func (s *FilesState) renderHeader() string {
 }
 
 // calculateTotalStats calculates total additions and deletions across all files
-func (s *FilesState)calculateTotalStats() (int, int) {
+func (s *FilesState) calculateTotalStats() (int, int) {
 	var totalAdditions, totalDeletions int
 	for _, file := range s.Files {
 		totalAdditions += file.Additions
@@ -124,7 +124,7 @@ func (s *FilesState) calculateMaxStatWidth() (int, int) {
 }
 
 // formatFileLine formats a single file line with proper styling
-func (s *FilesState)formatFileLine(file git.FileChange, isSelected bool, width int) string {
+func (s *FilesState) formatFileLine(file git.FileChange, isSelected bool, width int) string {
 	// Format: > M +17 -13  src/components/App.tsx
 	// or:       A +130 -0  src/components/FileList.tsx
 
@@ -177,4 +177,3 @@ func (s *FilesState)formatFileLine(file git.FileChange, isSelected bool, width i
 
 	return line.String()
 }
-

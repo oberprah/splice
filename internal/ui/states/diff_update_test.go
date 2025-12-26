@@ -233,10 +233,10 @@ func TestDiffState_Update_QuitKeys(t *testing.T) {
 
 func TestDiffState_Update_ArrowKeys(t *testing.T) {
 	tests := []struct {
-		name          string
-		keyType       tea.KeyType
-		initialVP     int
-		expectedVP    int
+		name       string
+		keyType    tea.KeyType
+		initialVP  int
+		expectedVP int
 	}{
 		{"down arrow scrolls down", tea.KeyDown, 0, 1},
 		{"up arrow scrolls up", tea.KeyUp, 10, 9},
