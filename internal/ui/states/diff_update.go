@@ -26,7 +26,7 @@ func (s *DiffState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 
 		case "j", "down":
 			// Scroll down
-			if s.Diff != nil && len(s.Diff.Lines) > 0 {
+			if s.Diff != nil && len(s.Diff.Alignments) > 0 {
 				maxViewportStart := s.calculateMaxViewportStart(ctx.Height())
 				if s.ViewportStart < maxViewportStart {
 					s.ViewportStart++
@@ -43,7 +43,7 @@ func (s *DiffState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 
 		case "ctrl+d":
 			// Scroll down half page
-			if s.Diff != nil && len(s.Diff.Lines) > 0 {
+			if s.Diff != nil && len(s.Diff.Alignments) > 0 {
 				headerLines := 2
 				availableHeight := max(ctx.Height()-headerLines, 1)
 				halfPage := availableHeight / 2
@@ -67,7 +67,7 @@ func (s *DiffState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 
 		case "G":
 			// Jump to bottom
-			if s.Diff != nil && len(s.Diff.Lines) > 0 {
+			if s.Diff != nil && len(s.Diff.Alignments) > 0 {
 				s.ViewportStart = s.calculateMaxViewportStart(ctx.Height())
 			}
 			return s, nil
@@ -89,12 +89,12 @@ func (s *DiffState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 
 // jumpToNextChange scrolls to the next change after the current viewport
 func (s *DiffState) jumpToNextChange(height int) {
-	if s.Diff == nil || len(s.Diff.ChangeIndices) == 0 {
+	if s.Diff == nil || len(s.ChangeIndices) == 0 {
 		return
 	}
 
 	// Find the next change index after the current viewport position
-	for i, changeIdx := range s.Diff.ChangeIndices {
+	for i, changeIdx := range s.ChangeIndices {
 		if changeIdx > s.ViewportStart {
 			s.CurrentChangeIdx = i
 			s.ViewportStart = changeIdx
@@ -113,13 +113,13 @@ func (s *DiffState) jumpToNextChange(height int) {
 
 // jumpToPreviousChange scrolls to the previous change before the current viewport
 func (s *DiffState) jumpToPreviousChange(height int) {
-	if s.Diff == nil || len(s.Diff.ChangeIndices) == 0 {
+	if s.Diff == nil || len(s.ChangeIndices) == 0 {
 		return
 	}
 
 	// Find the previous change index before the current viewport position
-	for i := len(s.Diff.ChangeIndices) - 1; i >= 0; i-- {
-		changeIdx := s.Diff.ChangeIndices[i]
+	for i := len(s.ChangeIndices) - 1; i >= 0; i-- {
+		changeIdx := s.ChangeIndices[i]
 		if changeIdx < s.ViewportStart {
 			s.CurrentChangeIdx = i
 			s.ViewportStart = changeIdx
@@ -141,7 +141,7 @@ func (s *DiffState) calculateMaxViewportStart(height int) int {
 	headerLines := 2 // header + separator
 	availableHeight := max(height-headerLines, 1)
 
-	maxStart := len(s.Diff.Lines) - availableHeight
+	maxStart := len(s.Diff.Alignments) - availableHeight
 	if maxStart < 0 {
 		maxStart = 0
 	}

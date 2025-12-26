@@ -21,8 +21,8 @@ func (s *FilesState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 
 		// Calculate initial viewport position - scroll to first change
 		viewportStart := 0
-		if msg.Diff != nil && len(msg.Diff.ChangeIndices) > 0 {
-			viewportStart = msg.Diff.ChangeIndices[0]
+		if msg.Diff != nil && len(msg.ChangeIndices) > 0 {
+			viewportStart = msg.ChangeIndices[0]
 		}
 
 		// Transition to diff state
@@ -30,6 +30,7 @@ func (s *FilesState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 			Commit:                 msg.Commit,
 			File:                   msg.File,
 			Diff:                   msg.Diff,
+			ChangeIndices:          msg.ChangeIndices,
 			ViewportStart:          viewportStart,
 			CurrentChangeIdx:       0,
 			FilesCommit:            msg.FilesCommit,
@@ -160,16 +161,64 @@ func (s *FilesState) loadDiff(file git.FileChange) tea.Cmd {
 			}
 		}
 
-		// Merge full file content with diff information
-		fullFileDiff := diff.MergeFullFile(fullDiffResult.OldContent, fullDiffResult.NewContent, &parsedDiff)
+		// Build file content with syntax highlighting for both sides
+		leftContent, err := diff.BuildFileContent(file.Path, fullDiffResult.OldContent)
+		if err != nil {
+			return messages.DiffLoadedMsg{
+				Commit:                 commit,
+				File:                   file,
+				Err:                    err,
+				FilesCommit:            commit,
+				FilesFiles:             files,
+				FilesCursor:            cursor,
+				FilesViewportStart:     viewportStart,
+				FilesListCommits:       listCommits,
+				FilesListCursor:        listCursor,
+				FilesListViewportStart: listViewportStart,
+			}
+		}
 
-		// Apply syntax highlighting to the diff
-		diff.ApplySyntaxHighlighting(fullFileDiff, fullDiffResult.OldContent, fullDiffResult.NewContent, file.Path)
+		rightContent, err := diff.BuildFileContent(file.Path, fullDiffResult.NewContent)
+		if err != nil {
+			return messages.DiffLoadedMsg{
+				Commit:                 commit,
+				File:                   file,
+				Err:                    err,
+				FilesCommit:            commit,
+				FilesFiles:             files,
+				FilesCursor:            cursor,
+				FilesViewportStart:     viewportStart,
+				FilesListCommits:       listCommits,
+				FilesListCursor:        listCursor,
+				FilesListViewportStart: listViewportStart,
+			}
+		}
+
+		// Build alignments with line pairing and inline diffs
+		alignments := diff.BuildAlignments(leftContent, rightContent, &parsedDiff)
+
+		// Build the aligned file diff
+		alignedDiff := &diff.AlignedFileDiff{
+			Left:       leftContent,
+			Right:      rightContent,
+			Alignments: alignments,
+		}
+
+		// Calculate change indices for navigation
+		changeIndices := make([]int, 0)
+		for i, alignment := range alignments {
+			switch alignment.(type) {
+			case diff.ModifiedAlignment, diff.RemovedAlignment, diff.AddedAlignment:
+				// This is a change - add to indices
+				changeIndices = append(changeIndices, i)
+			}
+		}
 
 		return messages.DiffLoadedMsg{
 			Commit:                 commit,
 			File:                   file,
-			Diff:                   fullFileDiff,
+			Diff:                   alignedDiff,
+			ChangeIndices:          changeIndices,
 			Err:                    nil,
 			FilesCommit:            commit,
 			FilesFiles:             files,
