@@ -21,6 +21,7 @@ Implementing line pairing and inline highlighting for the diff view. The design 
 - `2c2bb56` - Update diff rendering to use aligned structure
 - `72a4a98` - Update DiffState tests to use AlignedFileDiff data structure
 - `0813a36` - Remove old diff data structures and add implementation doc
+- `60c226b` - Fix inline diff highlighting with tab characters
 
 ## Progress
 
@@ -69,6 +70,8 @@ Notes: Removed 792 lines of dead code from the old implementation. Deleted inter
 4. **Character-by-Character Rendering**: Inline highlighting required character-level rendering to accurately apply brighter backgrounds at diff boundaries while preserving syntax highlighting.
 
 5. **ChangeIndices Migration**: Moved from diff structure to DiffState to better separate data concerns (content/alignment vs. UI state).
+
+6. **Tab Expansion Bug**: During manual testing, discovered that inline diff highlighting was misaligned when tabs were present. The issue was that inline diffs computed positions treating tabs as single characters, but rendering expanded tabs to 4 spaces. Fixed by expanding tabs when building the highlightMap, ensuring positions align correctly. Added comprehensive tests for tab handling.
 
 ## Verification
 
