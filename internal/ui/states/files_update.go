@@ -144,8 +144,13 @@ func (s *FilesState) loadDiff(file git.FileChange) tea.Cmd {
 			}
 		}
 
-		// Parse the diff
-		parsedDiff, err := diff.ParseUnifiedDiff(fullDiffResult.DiffOutput)
+		// Build the complete aligned diff with change indices
+		alignedDiff, changeIndices, err := diff.BuildAlignedFileDiff(
+			file.Path,
+			fullDiffResult.OldContent,
+			fullDiffResult.NewContent,
+			fullDiffResult.DiffOutput,
+		)
 		if err != nil {
 			return messages.DiffLoadedMsg{
 				Commit:                 commit,
@@ -158,59 +163,6 @@ func (s *FilesState) loadDiff(file git.FileChange) tea.Cmd {
 				FilesListCommits:       listCommits,
 				FilesListCursor:        listCursor,
 				FilesListViewportStart: listViewportStart,
-			}
-		}
-
-		// Build file content with syntax highlighting for both sides
-		leftContent, err := diff.BuildFileContent(file.Path, fullDiffResult.OldContent)
-		if err != nil {
-			return messages.DiffLoadedMsg{
-				Commit:                 commit,
-				File:                   file,
-				Err:                    err,
-				FilesCommit:            commit,
-				FilesFiles:             files,
-				FilesCursor:            cursor,
-				FilesViewportStart:     viewportStart,
-				FilesListCommits:       listCommits,
-				FilesListCursor:        listCursor,
-				FilesListViewportStart: listViewportStart,
-			}
-		}
-
-		rightContent, err := diff.BuildFileContent(file.Path, fullDiffResult.NewContent)
-		if err != nil {
-			return messages.DiffLoadedMsg{
-				Commit:                 commit,
-				File:                   file,
-				Err:                    err,
-				FilesCommit:            commit,
-				FilesFiles:             files,
-				FilesCursor:            cursor,
-				FilesViewportStart:     viewportStart,
-				FilesListCommits:       listCommits,
-				FilesListCursor:        listCursor,
-				FilesListViewportStart: listViewportStart,
-			}
-		}
-
-		// Build alignments with line pairing and inline diffs
-		alignments := diff.BuildAlignments(leftContent, rightContent, &parsedDiff)
-
-		// Build the aligned file diff
-		alignedDiff := &diff.AlignedFileDiff{
-			Left:       leftContent,
-			Right:      rightContent,
-			Alignments: alignments,
-		}
-
-		// Calculate change indices for navigation
-		changeIndices := make([]int, 0)
-		for i, alignment := range alignments {
-			switch alignment.(type) {
-			case diff.ModifiedAlignment, diff.RemovedAlignment, diff.AddedAlignment:
-				// This is a change - add to indices
-				changeIndices = append(changeIndices, i)
 			}
 		}
 

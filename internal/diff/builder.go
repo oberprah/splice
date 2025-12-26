@@ -1,9 +1,88 @@
 package diff
 
 import (
+	"fmt"
+
 	"github.com/oberprah/splice/internal/highlight"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
+
+// BuildAlignedFileDiff is a high-level facade function that runs the complete pipeline
+// from raw file content and diff output to a fully built AlignedFileDiff with change indices.
+//
+// This is the recommended entry point for most use cases. For testing or custom pipelines,
+// the individual functions (ParseUnifiedDiff, BuildFileContent, BuildAlignments) can be
+// used directly.
+//
+// Parameters:
+//   - filePath: Path to the file (used for syntax highlighting lexer selection)
+//   - oldContent: Content of the file before changes
+//   - newContent: Content of the file after changes
+//   - diffOutput: Raw unified diff output from git
+//
+// Returns:
+//   - *AlignedFileDiff: Complete diff structure with file content and alignments
+//   - []int: Indices of alignments that represent changes (for navigation)
+//   - error: Any error that occurred during processing
+//
+// Example:
+//
+//	alignedDiff, changeIndices, err := diff.BuildAlignedFileDiff(
+//	    "main.go",
+//	    oldFileContent,
+//	    newFileContent,
+//	    gitDiffOutput,
+//	)
+//	if err != nil {
+//	    return err
+//	}
+//	// Use alignedDiff for rendering
+func BuildAlignedFileDiff(
+	filePath string,
+	oldContent string,
+	newContent string,
+	diffOutput string,
+) (*AlignedFileDiff, []int, error) {
+	// Step 1: Parse the unified diff output
+	parsedDiff, err := ParseUnifiedDiff(diffOutput)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse diff: %w", err)
+	}
+
+	// Step 2: Build file content with syntax highlighting for old version
+	leftContent, err := BuildFileContent(filePath, oldContent)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to build left content: %w", err)
+	}
+
+	// Step 3: Build file content with syntax highlighting for new version
+	rightContent, err := BuildFileContent(filePath, newContent)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to build right content: %w", err)
+	}
+
+	// Step 4: Build alignments with line pairing and inline diffs
+	alignments := BuildAlignments(leftContent, rightContent, &parsedDiff)
+
+	// Step 5: Create the final aligned diff structure
+	alignedDiff := &AlignedFileDiff{
+		Left:       leftContent,
+		Right:      rightContent,
+		Alignments: alignments,
+	}
+
+	// Step 6: Calculate change indices for navigation
+	// These are the indices into the Alignments slice that represent actual changes
+	changeIndices := make([]int, 0)
+	for i, alignment := range alignments {
+		switch alignment.(type) {
+		case ModifiedAlignment, RemovedAlignment, AddedAlignment:
+			changeIndices = append(changeIndices, i)
+		}
+	}
+
+	return alignedDiff, changeIndices, nil
+}
 
 // BuildFileContent takes raw file content and a file path, applies syntax highlighting,
 // and returns a FileContent struct containing lines with syntax tokens.
