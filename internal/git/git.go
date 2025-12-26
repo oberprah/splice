@@ -289,13 +289,10 @@ func FetchFullFileDiff(commitHash string, change FileChange) (*FullFileDiffResul
 		OldPath: change.Path,
 	}
 
-	// Determine old path (for renames, status starts with "R")
-	if strings.HasPrefix(change.Status, "R") {
-		// For renames, the path contains "old -> new" format, but we get OldPath from git
-		// Actually in our FileChange struct, we only have Path (the new path)
-		// We need to handle this differently - for now assume same path
-		// TODO: Handle renames properly if needed
-	}
+	// TODO: Handle renames properly (status starts with "R")
+	// For renames, the path contains "old -> new" format, but we get OldPath from git
+	// In our FileChange struct, we only have Path (the new path)
+	// We need to handle this differently - for now assume same path
 
 	// Fetch new content (at commitHash)
 	switch change.Status {

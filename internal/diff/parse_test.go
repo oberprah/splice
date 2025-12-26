@@ -158,16 +158,16 @@ func TestParseUnifiedDiff_LineNumbers(t *testing.T) {
 	}
 
 	tests := []struct {
-		idx       int
-		wantType  LineType
-		wantOld   int
-		wantNew   int
+		idx      int
+		wantType LineType
+		wantOld  int
+		wantNew  int
 	}{
-		{0, Context, 5, 5},  // context at 5
-		{1, Remove, 6, 0},   // removed at 6
-		{2, Add, 0, 6},      // added at 6
-		{3, Add, 0, 7},      // added at 7
-		{4, Context, 7, 8},  // context at 7->8
+		{0, Context, 5, 5}, // context at 5
+		{1, Remove, 6, 0},  // removed at 6
+		{2, Add, 0, 6},     // added at 6
+		{3, Add, 0, 7},     // added at 7
+		{4, Context, 7, 8}, // context at 7->8
 	}
 
 	for _, tt := range tests {

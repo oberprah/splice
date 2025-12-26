@@ -14,7 +14,7 @@ type DiffState struct {
 
 	// Viewport control
 	ViewportStart    int
-	CurrentChangeIdx int // Index into ChangeIndices for navigation
+	CurrentChangeIdx int   // Index into ChangeIndices for navigation
 	ChangeIndices    []int // Indices of alignments that have changes (for navigation)
 
 	// Preserved FilesState data for back navigation

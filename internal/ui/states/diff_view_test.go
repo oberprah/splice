@@ -446,7 +446,7 @@ func TestRenderTokensWithInlineDiff_TabsInModifiedLines(t *testing.T) {
 	// Right side (new): "func\tMain() {"
 	rightTokens := []highlight.Token{
 		{Type: chroma.Keyword, Value: "func"},
-		{Type: chroma.Text, Value: "\t"}, // Tab character
+		{Type: chroma.Text, Value: "\t"},           // Tab character
 		{Type: chroma.NameFunction, Value: "Main"}, // Changed to uppercase M
 		{Type: chroma.Punctuation, Value: "() {"},
 	}
@@ -509,7 +509,7 @@ func TestRenderTokensWithInlineDiff_MultipleTabsWithChanges(t *testing.T) {
 	rightTokens := []highlight.Token{
 		{Type: chroma.Keyword, Value: "if"},
 		{Type: chroma.Text, Value: "\t\t"}, // Two tabs
-		{Type: chroma.Name, Value: "y"}, // Changed from x to y
+		{Type: chroma.Name, Value: "y"},    // Changed from x to y
 		{Type: chroma.Text, Value: "\t"},
 		{Type: chroma.Operator, Value: "=="},
 		{Type: chroma.Text, Value: "\t"},

@@ -92,15 +92,15 @@ func TestLogState_Update_CursorBoundaries(t *testing.T) {
 			}
 			ctx := mockContext{width: 80, height: 24}
 
-		var msg tea.Msg
-		switch tt.key {
-		case "down":
-			msg = tea.KeyMsg{Type: tea.KeyDown}
-		case "up":
-			msg = tea.KeyMsg{Type: tea.KeyUp}
-		default:
-			msg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(tt.key)}
-		}
+			var msg tea.Msg
+			switch tt.key {
+			case "down":
+				msg = tea.KeyMsg{Type: tea.KeyDown}
+			case "up":
+				msg = tea.KeyMsg{Type: tea.KeyUp}
+			default:
+				msg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(tt.key)}
+			}
 
 			newState, _ := s.Update(msg, ctx)
 			listState := newState.(LogState)

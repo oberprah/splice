@@ -231,10 +231,8 @@ func (s *DiffState) renderTokens(tokens []highlight.Token, maxWidth int, bgStyle
 		// Expand tabs to spaces before processing
 		expandedValue := expandTabs(token.Value, 4)
 
-		// Convert to runes for proper width calculation
-		runes := []rune(expandedValue)
-
-		for _, r := range runes {
+		// Range over string directly for proper rune iteration
+		for _, r := range expandedValue {
 			if visibleWidth >= maxWidth {
 				// We've reached the max width, append ellipsis and stop
 				if visibleWidth == maxWidth {
@@ -245,8 +243,8 @@ func (s *DiffState) renderTokens(tokens []highlight.Token, maxWidth int, bgStyle
 
 			// Apply syntax highlighting style (foreground) with diff background
 			syntaxStyle := highlight.StyleForToken(token.Type)
-			// Combine: copy syntax foreground, then apply diff background
-			combinedStyle := syntaxStyle.Copy().Inherit(bgStyle)
+			// Combine syntax foreground with diff background (assignment is sufficient, no need for deprecated Copy)
+			combinedStyle := syntaxStyle.Inherit(bgStyle)
 			result.WriteString(combinedStyle.Render(string(r)))
 			visibleWidth++
 		}
@@ -357,10 +355,7 @@ func (s *DiffState) renderTokensWithInlineDiff(tokens []highlight.Token, maxWidt
 		// Expand tabs to spaces before processing
 		expandedValue := expandTabs(token.Value, 4)
 
-		// Convert to runes for proper width calculation
-		runes := []rune(expandedValue)
-
-		for _, r := range runes {
+		for _, r := range expandedValue {
 			if visibleWidth >= maxWidth {
 				// We've reached the max width, append ellipsis and stop
 				if visibleWidth == maxWidth {
@@ -379,7 +374,7 @@ func (s *DiffState) renderTokensWithInlineDiff(tokens []highlight.Token, maxWidt
 
 			// Apply syntax highlighting style (foreground) with appropriate background
 			syntaxStyle := highlight.StyleForToken(token.Type)
-			combinedStyle := syntaxStyle.Copy().Inherit(charBgStyle)
+			combinedStyle := syntaxStyle.Inherit(charBgStyle)
 			result.WriteString(combinedStyle.Render(string(r)))
 			visibleWidth++
 			charPos++

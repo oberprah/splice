@@ -182,4 +182,3 @@ func (s *FilesState) loadDiff(file git.FileChange) tea.Cmd {
 		}
 	}
 }
-

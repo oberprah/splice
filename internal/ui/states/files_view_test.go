@@ -278,10 +278,10 @@ func TestFilesState_View_FileStatsSummary(t *testing.T) {
 
 func TestFilesState_CalculateMaxStatWidth(t *testing.T) {
 	tests := []struct {
-		name            string
-		files           []git.FileChange
-		expectedAddW    int
-		expectedDelW    int
+		name         string
+		files        []git.FileChange
+		expectedAddW int
+		expectedDelW int
 	}{
 		{
 			name: "small numbers",

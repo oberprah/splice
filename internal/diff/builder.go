@@ -234,7 +234,7 @@ func BuildAlignments(left, right FileContent, parsedDiff *FileDiff) []Alignment 
 
 	// Walk through both files using indices
 	for leftIdx < len(left.Lines) || rightIdx < len(right.Lines) {
-		leftLineNo := leftIdx + 1  // 1-indexed line number for left file
+		leftLineNo := leftIdx + 1   // 1-indexed line number for left file
 		rightLineNo := rightIdx + 1 // 1-indexed line number for right file
 
 		// Check the diff status of current lines

@@ -101,7 +101,7 @@ func (AddedAlignment) alignment()     {}
 // describes how lines relate and should be displayed.
 // This is distinct from the FileDiff type in parse.go which represents a parsed unified diff.
 type AlignedFileDiff struct {
-	Left       FileContent  // Old version of the file
-	Right      FileContent  // New version of the file
-	Alignments []Alignment  // One entry per display row, describes line relationships
+	Left       FileContent // Old version of the file
+	Right      FileContent // New version of the file
+	Alignments []Alignment // One entry per display row, describes line relationships
 }
