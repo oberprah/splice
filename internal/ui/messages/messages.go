@@ -16,6 +16,13 @@ type FilesLoadedMsg struct {
 	ListViewportStart int
 }
 
+// FilesPreviewLoadedMsg is sent when files for a preview panel have been loaded
+type FilesPreviewLoadedMsg struct {
+	ForHash string
+	Files   []git.FileChange
+	Err     error
+}
+
 // DiffLoadedMsg is sent when diff content for a file has been loaded
 type DiffLoadedMsg struct {
 	Commit        git.GitCommit

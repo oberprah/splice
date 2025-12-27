@@ -28,11 +28,14 @@ func (s LoadingState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 		}
 
 		// Successfully loaded commits - transition to list view
+		// Load preview for the first commit (at cursor position 0)
+		firstCommitHash := msg.Commits[0].Hash
 		return &LogState{
 			Commits:       msg.Commits,
 			Cursor:        0,
 			ViewportStart: 0,
-		}, nil
+			Preview:       PreviewLoading{ForHash: firstCommitHash},
+		}, loadPreview(firstCommitHash, ctx.FetchFileChanges())
 	}
 
 	return s, nil

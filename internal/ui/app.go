@@ -20,11 +20,19 @@ func WithFetchCommits(fn FetchCommitsFunc) ModelOption {
 	}
 }
 
+// WithFetchFileChanges allows injecting a custom file changes fetcher for testing
+func WithFetchFileChanges(fn states.FetchFileChangesFunc) ModelOption {
+	return func(m *Model) {
+		m.fetchFileChanges = fn
+	}
+}
+
 // NewModel creates a new Model with initial loading state
 func NewModel(opts ...ModelOption) Model {
 	m := Model{
-		currentState: states.LoadingState{},
-		fetchCommits: git.FetchCommits, // Default to real git command
+		currentState:     states.LoadingState{},
+		fetchCommits:     git.FetchCommits,     // Default to real git command
+		fetchFileChanges: git.FetchFileChanges, // Default to real git command
 	}
 
 	for _, opt := range opts {

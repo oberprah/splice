@@ -24,8 +24,11 @@ func TestBasicNavigation(t *testing.T) {
 		"Initial commit",
 	})
 
-	// Create model with mocked commits
-	m := ui.NewModel(ui.WithFetchCommits(testutils.MockFetchCommits(commits, nil)))
+	// Create model with mocked commits and file changes
+	m := ui.NewModel(
+		ui.WithFetchCommits(testutils.MockFetchCommits(commits, nil)),
+		ui.WithFetchFileChanges(testutils.MockFetchFileChanges([]git.FileChange{}, nil)),
+	)
 
 	// Create test model with fixed terminal size
 	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(80, 24))
@@ -69,7 +72,10 @@ func TestViewportScrolling(t *testing.T) {
 	// Create more commits than can fit on screen
 	commits := testutils.CreateTestCommits(50)
 
-	m := ui.NewModel(ui.WithFetchCommits(testutils.MockFetchCommits(commits, nil)))
+	m := ui.NewModel(
+		ui.WithFetchCommits(testutils.MockFetchCommits(commits, nil)),
+		ui.WithFetchFileChanges(testutils.MockFetchFileChanges([]git.FileChange{}, nil)),
+	)
 	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(80, 10))
 
 	tm.Send(tea.WindowSizeMsg{Width: 80, Height: 10})
@@ -104,9 +110,10 @@ func TestViewportScrolling(t *testing.T) {
 // TestErrorState tests error handling when git command fails
 func TestErrorState(t *testing.T) {
 	// Create model with error-returning mock
-	m := ui.NewModel(ui.WithFetchCommits(
-		testutils.MockFetchCommits(nil, fmt.Errorf("not a git repository")),
-	))
+	m := ui.NewModel(
+		ui.WithFetchCommits(testutils.MockFetchCommits(nil, fmt.Errorf("not a git repository"))),
+		ui.WithFetchFileChanges(testutils.MockFetchFileChanges([]git.FileChange{}, nil)),
+	)
 
 	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(80, 24))
 
@@ -132,7 +139,10 @@ func TestErrorState(t *testing.T) {
 func TestEmptyRepository(t *testing.T) {
 	// Create model with empty commits (returns empty slice)
 	emptyCommits := []git.GitCommit{}
-	m := ui.NewModel(ui.WithFetchCommits(testutils.MockFetchCommits(emptyCommits, nil)))
+	m := ui.NewModel(
+		ui.WithFetchCommits(testutils.MockFetchCommits(emptyCommits, nil)),
+		ui.WithFetchFileChanges(testutils.MockFetchFileChanges([]git.FileChange{}, nil)),
+	)
 
 	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(80, 24))
 
@@ -158,7 +168,10 @@ func TestEmptyRepository(t *testing.T) {
 func TestWindowResize(t *testing.T) {
 	commits := testutils.CreateTestCommits(10)
 
-	m := ui.NewModel(ui.WithFetchCommits(testutils.MockFetchCommits(commits, nil)))
+	m := ui.NewModel(
+		ui.WithFetchCommits(testutils.MockFetchCommits(commits, nil)),
+		ui.WithFetchFileChanges(testutils.MockFetchFileChanges([]git.FileChange{}, nil)),
+	)
 	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(80, 24))
 
 	// Send initial size
@@ -197,7 +210,10 @@ func TestWindowResize(t *testing.T) {
 func TestQuitWithCtrlC(t *testing.T) {
 	commits := testutils.CreateTestCommits(5)
 
-	m := ui.NewModel(ui.WithFetchCommits(testutils.MockFetchCommits(commits, nil)))
+	m := ui.NewModel(
+		ui.WithFetchCommits(testutils.MockFetchCommits(commits, nil)),
+		ui.WithFetchFileChanges(testutils.MockFetchFileChanges([]git.FileChange{}, nil)),
+	)
 	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(80, 24))
 
 	tm.Send(tea.WindowSizeMsg{Width: 80, Height: 24})

@@ -2,7 +2,6 @@ package states
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/ui/messages"
 )
 
@@ -28,6 +27,28 @@ func (s LogState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 			ListViewportStart: msg.ListViewportStart,
 		}, nil
 
+	case messages.FilesPreviewLoadedMsg:
+		// Handle preview loading result
+		// Check if the response is for the current cursor commit (stale response detection)
+		if len(s.Commits) == 0 || s.Commits[s.Cursor].Hash != msg.ForHash {
+			// Response is stale (user navigated away), discard it
+			return s, nil
+		}
+
+		// Update preview state based on whether there was an error
+		if msg.Err != nil {
+			s.Preview = PreviewError{
+				ForHash: msg.ForHash,
+				Err:     msg.Err,
+			}
+		} else {
+			s.Preview = PreviewLoaded{
+				ForHash: msg.ForHash,
+				Files:   msg.Files,
+			}
+		}
+		return s, nil
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
@@ -37,8 +58,9 @@ func (s LogState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 			// Load files for the selected commit
 			if len(s.Commits) > 0 {
 				selectedCommit := s.Commits[s.Cursor]
+				fetchFileChanges := ctx.FetchFileChanges()
 				return s, func() tea.Msg {
-					fileChanges, err := git.FetchFileChanges(selectedCommit.Hash)
+					fileChanges, err := fetchFileChanges(selectedCommit.Hash)
 					return messages.FilesLoadedMsg{
 						Commit:            selectedCommit,
 						Files:             fileChanges,
@@ -55,6 +77,10 @@ func (s LogState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 			if s.Cursor < len(s.Commits)-1 {
 				s.Cursor++
 				s.updateViewport(ctx.Height())
+				// Trigger preview loading for the new cursor position
+				commitHash := s.Commits[s.Cursor].Hash
+				s.Preview = PreviewLoading{ForHash: commitHash}
+				return s, loadPreview(commitHash, ctx.FetchFileChanges())
 			}
 			return s, nil
 
@@ -62,17 +88,33 @@ func (s LogState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 			if s.Cursor > 0 {
 				s.Cursor--
 				s.updateViewport(ctx.Height())
+				// Trigger preview loading for the new cursor position
+				commitHash := s.Commits[s.Cursor].Hash
+				s.Preview = PreviewLoading{ForHash: commitHash}
+				return s, loadPreview(commitHash, ctx.FetchFileChanges())
 			}
 			return s, nil
 
 		case "g":
 			s.Cursor = 0
 			s.ViewportStart = 0
+			// Trigger preview loading for the top commit
+			if len(s.Commits) > 0 {
+				commitHash := s.Commits[s.Cursor].Hash
+				s.Preview = PreviewLoading{ForHash: commitHash}
+				return s, loadPreview(commitHash, ctx.FetchFileChanges())
+			}
 			return s, nil
 
 		case "G":
 			s.Cursor = len(s.Commits) - 1
 			s.updateViewport(ctx.Height())
+			// Trigger preview loading for the bottom commit
+			if len(s.Commits) > 0 {
+				commitHash := s.Commits[s.Cursor].Hash
+				s.Preview = PreviewLoading{ForHash: commitHash}
+				return s, loadPreview(commitHash, ctx.FetchFileChanges())
+			}
 			return s, nil
 		}
 	}
@@ -95,5 +137,17 @@ func (s *LogState) updateViewport(height int) {
 	// Ensure viewport doesn't go negative
 	if s.ViewportStart < 0 {
 		s.ViewportStart = 0
+	}
+}
+
+// loadPreview returns a command that loads file changes for the preview panel
+func loadPreview(commitHash string, fetchFileChanges FetchFileChangesFunc) tea.Cmd {
+	return func() tea.Msg {
+		files, err := fetchFileChanges(commitHash)
+		return messages.FilesPreviewLoadedMsg{
+			ForHash: commitHash,
+			Files:   files,
+			Err:     err,
+		}
 	}
 }

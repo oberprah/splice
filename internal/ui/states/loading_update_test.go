@@ -40,6 +40,13 @@ func TestLoadingState_Update_CommitsLoaded(t *testing.T) {
 				if listState.ViewportStart != 0 {
 					t.Errorf("Expected viewportStart at 0, got %d", listState.ViewportStart)
 				}
+				// Verify preview is loading for the first commit
+				previewLoading, ok := listState.Preview.(PreviewLoading)
+				if !ok {
+					t.Errorf("Expected Preview to be PreviewLoading, got %T", listState.Preview)
+				} else if previewLoading.ForHash != "abc123" {
+					t.Errorf("Expected preview loading for hash 'abc123', got %q", previewLoading.ForHash)
+				}
 			},
 		},
 		{
@@ -88,9 +95,17 @@ func TestLoadingState_Update_CommitsLoaded(t *testing.T) {
 
 			newState, cmd := s.Update(tt.msg, ctx)
 
-			// Check that no command is returned (state transitions are synchronous)
-			if cmd != nil {
-				t.Error("Expected nil command")
+			// Check command based on state type
+			if tt.expectedStateType == "LogState" {
+				// LogState should return a command to load preview
+				if cmd == nil {
+					t.Error("Expected a command to load preview for LogState")
+				}
+			} else {
+				// Error states should not return a command
+				if cmd != nil {
+					t.Error("Expected nil command for error states")
+				}
 			}
 
 			// Check state type and properties

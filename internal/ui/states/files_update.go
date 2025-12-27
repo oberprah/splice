@@ -46,10 +46,12 @@ func (s *FilesState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 		switch msg.String() {
 		case "q":
 			// Go back to the previous list state
+			// Reuse the already-loaded files for the preview
 			return &LogState{
 				Commits:       s.ListCommits,
 				Cursor:        s.ListCursor,
 				ViewportStart: s.ListViewportStart,
+				Preview:       PreviewLoaded{ForHash: s.Commit.Hash, Files: s.Files},
 			}, nil
 
 		case "ctrl+c", "Q":
