@@ -2,19 +2,22 @@
 
 ## Summary
 
-The log view split files panel feature has been successfully implemented. The implementation adds a details panel to the right side of the log view that shows commit message and changed files for the currently selected commit. The panel appears when terminal width is 160 characters or greater and updates asynchronously as the user navigates through commits.
+The log view split files panel feature has been successfully implemented and refined. The implementation adds a details panel to the right side of the log view that shows commit metadata, commit message, and changed files for the currently selected commit. The panel appears when terminal width is 160 characters or greater and updates asynchronously as the user navigates through commits.
 
 All implementation steps completed:
 - Step 1: Preview state types and LogState structure ✅
 - Step 2: Preview loading command and message handling ✅
 - Step 3: Split panel rendering in log view ✅
 - Step 4: Cursor navigation with preview updates ✅
+- Step 5: Fix integration tests ✅
+- Step 6: Refactor to eliminate code duplication ✅
 
 All automated verification passed:
 - 95 unit tests pass
 - 6 integration tests pass
 - Build succeeds
 - All 10 functional/non-functional requirements verified
+- Code duplication eliminated through shared rendering functions
 
 ## Steps
 
@@ -22,6 +25,8 @@ All automated verification passed:
 - [x] Step 2: Implement preview loading command and message handling
 - [x] Step 3: Implement split panel rendering in log view
 - [x] Step 4: Add cursor navigation with preview updates
+- [x] Step 5: Fix integration tests
+- [x] Step 6: Refactor to eliminate code duplication
 - [x] Validation: Test key user flows with running app
 
 ## Progress
@@ -79,9 +84,51 @@ Notes:
 - Build succeeds
 - Ready for manual testing by developer
 
+### Step 5: Fix integration tests
+Status: ✅ Complete
+Commits: 2470e69
+Notes:
+- Integration tests were timing out because navigation now triggers async preview loading
+- Added mock FetchFileChanges injection to all integration tests using ui.WithFetchFileChanges()
+- Tests now provide mock that returns immediately with empty file lists
+- Regenerated golden files with UPDATE_GOLDEN=1
+- All 6 integration tests now pass
+
+### Step 6: Refactor to eliminate code duplication
+Status: ✅ Complete
+Commits: 414dc19
+Notes:
+- **Problem identified**: Code duplication between files_view.go and log_view.go for rendering commit metadata and file entries
+- **Problem identified**: Missing metadata line in log detail panel (hash · author · time · file count · stats)
+- Created new file `internal/ui/states/commit_render.go` with shared rendering functions:
+  - `RenderCommitMetadata()` - renders metadata line
+  - `CalculateTotalStats()` - calculates additions/deletions
+  - `CalculateMaxStatWidth()` - calculates column widths for alignment
+  - `FormatFileLine()` - formats file entries with status, stats, path
+  - `TruncatePathFromLeft()` - helper for path truncation
+- Updated files_view.go to use shared functions (removed 117 lines of duplicate code)
+- Updated log_view.go to use shared functions and added metadata line to detail panel
+- Added metadata line appears only when files are loaded (PreviewLoaded state)
+- Net result: Reduced code by 168 lines of duplication, added 175 lines of shared functionality
+- All tests updated and passing
+
 ## Discoveries
 
-(None yet)
+### Code Duplication Issue
+After initial implementation, discovered significant code duplication between the files view and log detail panel for:
+- Rendering commit metadata line
+- Formatting individual file entries
+- Calculating statistics and column widths
+
+This was resolved by extracting shared logic into `commit_render.go`.
+
+### Missing Metadata Line
+The initial implementation of the detail panel was missing the metadata line that appears in the files view:
+```
+abc123d · John Doe committed 2 hours ago · 3 files · +45 -12
+```
+
+This has been added and now appears in the detail panel when files are loaded.
 
 ## Verification
 
@@ -118,7 +165,9 @@ To test the implemented feature manually:
    - Resize terminal to at least 160 characters wide
    - Navigate through commits using j/k/arrow keys
    - Observe the details panel on the right showing:
+     - Metadata line (hash · author · time · file count · stats)
      - Commit message (subject + body)
+     - Horizontal separator line
      - File list with status indicators and stats
    - Verify the panel updates as you navigate
    - Verify "Loading..." appears briefly while data loads
@@ -141,6 +190,8 @@ To test the implemented feature manually:
    - Navigate through commits quickly
    - Verify no crashes or UI glitches from stale responses
 
-## Deviations from Design
+## Enhancements Beyond Original Design
 
-None. Implementation follows the design document exactly.
+1. **Added metadata line to detail panel**: The original design didn't explicitly specify the metadata line (hash · author · time · file count · stats) that appears in the files view. This was added for better parity with the files view and to provide more context at a glance.
+
+2. **Shared rendering code**: Extracted common rendering logic into `commit_render.go` to eliminate duplication between the files view and log detail panel. This improves maintainability and ensures consistent formatting across both views.
