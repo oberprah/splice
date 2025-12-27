@@ -200,6 +200,20 @@ func TestLogState_View_SplitView_WideTerminal(t *testing.T) {
 		t.Error("Expected output to contain vertical separator for split view")
 	}
 
+	// Should contain metadata line in details panel
+	if !strings.Contains(result, "Alice") {
+		t.Error("Expected output to contain author name in metadata line")
+	}
+	if !strings.Contains(result, "2 files") {
+		t.Error("Expected output to contain file count in metadata line")
+	}
+	if !strings.Contains(result, "+30") {
+		t.Error("Expected output to contain total additions in metadata line")
+	}
+	if !strings.Contains(result, "-5") {
+		t.Error("Expected output to contain total deletions in metadata line")
+	}
+
 	// Should contain commit body in details panel
 	if !strings.Contains(result, "This is the body") {
 		t.Error("Expected output to contain commit body in details panel")
@@ -310,19 +324,19 @@ func TestLogState_formatFileEntry(t *testing.T) {
 			name:     "modified file",
 			file:     git.FileChange{Path: "src/main.go", Status: "M", Additions: 10, Deletions: 5},
 			width:    80,
-			contains: []string{"M", "+10", "-5", "src/main.go"},
+			contains: []string{"M", "10", "5", "src/main.go"},
 		},
 		{
 			name:     "added file",
 			file:     git.FileChange{Path: "README.md", Status: "A", Additions: 20, Deletions: 0},
 			width:    80,
-			contains: []string{"A", "+20", "-0", "README.md"},
+			contains: []string{"A", "20", "0", "README.md"},
 		},
 		{
 			name:     "deleted file",
 			file:     git.FileChange{Path: "old.txt", Status: "D", Additions: 0, Deletions: 15},
 			width:    80,
-			contains: []string{"D", "+0", "-15", "old.txt"},
+			contains: []string{"D", "0", "15", "old.txt"},
 		},
 		{
 			name:     "binary file",

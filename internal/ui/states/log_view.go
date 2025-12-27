@@ -180,6 +180,13 @@ func (s LogState) renderDetailsPanel(width, height int) []string {
 
 	commit := s.Commits[s.Cursor]
 
+	// Render metadata line if files are loaded
+	metadataLine := s.renderMetadataLine(commit, width)
+	if metadataLine != "" {
+		lines = append(lines, metadataLine)
+		lines = append(lines, "") // Blank line after metadata
+	}
+
 	// Render commit message (subject + body)
 	messageLines := s.renderCommitMessage(commit, width)
 	lines = append(lines, messageLines...)
@@ -193,6 +200,22 @@ func (s LogState) renderDetailsPanel(width, height int) []string {
 	lines = append(lines, fileLines...)
 
 	return lines
+}
+
+// renderMetadataLine renders the commit metadata line if files are available
+// Returns empty string if files are not loaded yet
+func (s LogState) renderMetadataLine(commit git.GitCommit, width int) string {
+	// Only show metadata if we have loaded files
+	if previewLoaded, ok := s.Preview.(PreviewLoaded); ok && previewLoaded.ForHash == commit.Hash {
+		metadata := RenderCommitMetadata(commit, previewLoaded.Files)
+		// Truncate if needed
+		if len(metadata) > width {
+			// Note: This is approximate due to ANSI codes, but better than nothing
+			return metadata[:width-3] + "..."
+		}
+		return metadata
+	}
+	return ""
 }
 
 // renderCommitMessage renders the commit subject and body (truncated)
@@ -315,64 +338,27 @@ func (s LogState) renderFiles(files []git.FileChange, width, maxLines int) []str
 // formatFileEntry formats a single file entry with status, stats, and path
 // Format: "Status +add -del  path"
 func (s LogState) formatFileEntry(file git.FileChange, width int) string {
-	var b strings.Builder
+	// For log view, we don't show selection indicator and use fixed widths for stats
+	// since we don't know all files at format time in the preview panel
+	maxAddWidth := len(fmt.Sprintf("+%d", file.Additions)) + 1
+	maxDelWidth := len(fmt.Sprintf("-%d", file.Deletions)) + 1
 
-	// Status indicator (1 char)
-	status := file.Status
-	if status == "" {
-		status = "M" // Default to modified
+	// Ensure minimum widths
+	if maxAddWidth < 2 {
+		maxAddWidth = 2
+	}
+	if maxDelWidth < 2 {
+		maxDelWidth = 2
 	}
 
-	// Style status based on type
-	var statusStyle lipgloss.Style
-	switch status {
-	case "A":
-		statusStyle = styles.AdditionsStyle // Green
-	case "M":
-		statusStyle = styles.HashStyle // Yellow/amber
-	case "D":
-		statusStyle = styles.DeletionsStyle // Red
-	case "R":
-		statusStyle = styles.AuthorStyle // Cyan/blue
-	default:
-		statusStyle = styles.TimeStyle // Gray for unknown
-	}
-
-	b.WriteString(statusStyle.Render(status))
-	b.WriteString(" ")
-
-	// Stats (e.g., "+17 -13")
-	if file.IsBinary {
-		b.WriteString(styles.TimeStyle.Render("(binary)"))
-		b.WriteString(" ")
-	} else {
-		addStr := fmt.Sprintf("+%d", file.Additions)
-		delStr := fmt.Sprintf("-%d", file.Deletions)
-		b.WriteString(styles.AdditionsStyle.Render(addStr))
-		b.WriteString(" ")
-		b.WriteString(styles.DeletionsStyle.Render(delStr))
-		b.WriteString(" ")
-	}
-
-	// Calculate available width for path
-	// Status (1) + space (1) + stats (variable) + spaces
-	statsWidth := 0
-	if file.IsBinary {
-		statsWidth = len("(binary)") + 1
-	} else {
-		statsWidth = len(fmt.Sprintf("+%d -%d ", file.Additions, file.Deletions))
-	}
-	pathWidth := width - 2 - statsWidth // 2 for status and initial space
-
-	// Path (truncated from left if needed)
-	path := file.Path
-	if len(path) > pathWidth && pathWidth > 3 {
-		// Truncate from left: "...filename.go"
-		path = "..." + path[len(path)-(pathWidth-3):]
-	}
-	b.WriteString(styles.FilePathStyle.Render(path))
-
-	return b.String()
+	return FormatFileLine(FormatFileLineParams{
+		File:         file,
+		IsSelected:   false,
+		Width:        width,
+		MaxAddWidth:  maxAddWidth,
+		MaxDelWidth:  maxDelWidth,
+		ShowSelector: false,
+	})
 }
 
 // wrapText wraps text to the specified width

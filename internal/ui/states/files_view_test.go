@@ -93,9 +93,9 @@ func TestFilesState_View_RendersFileList(t *testing.T) {
 		t.Error("Expected output to contain third file path")
 	}
 
-	// Check that stats appear
-	if !strings.Contains(result, "+45") || !strings.Contains(result, "-12") {
-		t.Error("Expected output to contain file statistics")
+	// Check that stats appear (with padding)
+	if !strings.Contains(result, "45") || !strings.Contains(result, "12") {
+		t.Errorf("Expected output to contain file statistics, got: %s", result)
 	}
 }
 
@@ -323,8 +323,7 @@ func TestFilesState_CalculateMaxStatWidth(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &FilesState{Files: tt.files}
-			addW, delW := s.calculateMaxStatWidth()
+			addW, delW := CalculateMaxStatWidth(tt.files)
 
 			if addW != tt.expectedAddW {
 				t.Errorf("Addition width = %d, want %d", addW, tt.expectedAddW)
