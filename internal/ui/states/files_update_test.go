@@ -264,6 +264,19 @@ func TestFilesState_Update_BackNavigation(t *testing.T) {
 	if len(listState.Commits) != len(listCommits) {
 		t.Errorf("Expected commits to be restored, got %d commits", len(listState.Commits))
 	}
+
+	// Verify preview is loaded with the already-fetched files
+	previewLoaded, ok := listState.Preview.(PreviewLoaded)
+	if !ok {
+		t.Errorf("Expected Preview to be PreviewLoaded, got %T", listState.Preview)
+	} else {
+		if previewLoaded.ForHash != commit.Hash {
+			t.Errorf("Expected preview for hash %q, got %q", commit.Hash, previewLoaded.ForHash)
+		}
+		if len(previewLoaded.Files) != len(files) {
+			t.Errorf("Expected %d files in preview, got %d", len(files), len(previewLoaded.Files))
+		}
+	}
 }
 
 func TestFilesState_Update_SingleFileList(t *testing.T) {
