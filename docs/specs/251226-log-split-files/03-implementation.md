@@ -11,6 +11,7 @@ All implementation steps completed:
 - Step 4: Cursor navigation with preview updates ✅
 - Step 5: Fix integration tests ✅
 - Step 6: Refactor to eliminate code duplication ✅
+- Step 7: Fix unnecessary "Loading..." states ✅
 
 All automated verification passed:
 - 95 unit tests pass
@@ -27,6 +28,7 @@ All automated verification passed:
 - [x] Step 4: Add cursor navigation with preview updates
 - [x] Step 5: Fix integration tests
 - [x] Step 6: Refactor to eliminate code duplication
+- [x] Step 7: Fix unnecessary "Loading..." states
 - [x] Validation: Test key user flows with running app
 
 ## Progress
@@ -112,6 +114,24 @@ Notes:
 - Net result: Reduced code by 168 lines of duplication, added 175 lines of shared functionality
 - All tests updated and passing
 
+### Step 7: Fix unnecessary "Loading..." states
+Status: ✅ Complete
+Commits: d66ae07
+Notes:
+- **Problem identified**: Detail panel showed "Loading..." in two scenarios where it shouldn't:
+  1. On initial app load - first commit's preview wasn't triggered
+  2. When returning from files view - already-loaded files were discarded
+- **Fix for initial load** (`loading_update.go`):
+  - Changed LogState initialization to set `Preview: PreviewLoading` for first commit
+  - Returns `loadPreview()` command to trigger immediate async loading
+  - Users now see preview data load immediately on app start
+- **Fix for return from files** (`files_update.go`):
+  - Changed to reuse already-loaded files: `Preview: PreviewLoaded{ForHash: s.Commit.Hash, Files: s.Files}`
+  - No redundant loading or "Loading..." flicker when returning to log view
+  - Users see files instantly when returning from files view
+- Updated tests in both files to verify new behavior
+- All tests pass, improved user experience by eliminating unnecessary loading states
+
 ## Discoveries
 
 ### Code Duplication Issue
@@ -129,6 +149,20 @@ abc123d · John Doe committed 2 hours ago · 3 files · +45 -12
 ```
 
 This has been added and now appears in the detail panel when files are loaded.
+
+### Unnecessary "Loading..." States
+During testing, discovered that the detail panel showed "Loading..." in two scenarios where it shouldn't:
+
+1. **On initial app load**: The first commit's preview wasn't triggered automatically, requiring user interaction (pressing j/k) to load
+2. **When returning from files view**: Already-loaded files were discarded and the preview was reset to PreviewNone
+
+Root causes:
+- LogState initialization didn't trigger preview loading for the first commit
+- Files-to-log transition discarded the loaded data instead of reusing it
+
+This was resolved by:
+- Triggering preview loading immediately on app start
+- Reusing already-loaded files when returning from files view
 
 ## Verification
 
