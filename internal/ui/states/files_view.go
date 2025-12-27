@@ -69,7 +69,6 @@ func (s *FilesState) renderHeader() string {
 	return b.String()
 }
 
-
 // formatFileLine formats a single file line with proper styling
 func (s *FilesState) formatFileLine(file git.FileChange, isSelected bool, width int) string {
 	// Calculate dynamic widths based on all files

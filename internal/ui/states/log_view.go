@@ -11,10 +11,10 @@ import (
 )
 
 const (
-	splitPanelWidth     = 80  // Fixed width for details panel
-	splitThreshold      = 160 // Minimum terminal width to show split view
-	separatorWidth      = 3   // Width of " │ " separator
-	commitBodyMaxLines  = 5   // Maximum lines for commit body in preview
+	splitPanelWidth    = 80  // Fixed width for details panel
+	splitThreshold     = 160 // Minimum terminal width to show split view
+	separatorWidth     = 3   // Width of " │ " separator
+	commitBodyMaxLines = 5   // Maximum lines for commit body in preview
 )
 
 // View renders the list of commits
