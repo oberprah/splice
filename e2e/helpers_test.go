@@ -94,48 +94,75 @@ func (r *E2ETestRunner) AssertGolden(goldenFile string, timeout ...time.Duration
 	assertEventually(r.t, r.out, goldenFile, assertTimeout)
 }
 
-// extractLatestFrame attempts to extract the final rendered frame from accumulated terminal output
-func extractLatestFrame(output string) string {
-	// Strategy: Look for cursor movement patterns that indicate a redraw
-	// Common pattern: "[<N>A" means move cursor up N lines, often marks frame start
+// stripAnsiCodes removes ANSI escape sequences from text, leaving only readable content
+func stripAnsiCodes(s string) string {
+	var result strings.Builder
+	result.Grow(len(s))
 
-	// Find the last occurrence of a cursor up movement
-	// This heuristic assumes redraws start with cursor repositioning
-	lastFrameIdx := -1
-	for i := len(output) - 1; i >= 0; i-- {
-		if i > 0 && output[i] == 'A' && output[i-1] >= '0' && output[i-1] <= '9' {
-			// Found potential "[<N>A" pattern, look backwards for '['
-			for j := i - 1; j >= 0; j-- {
-				if output[j] == '[' {
-					lastFrameIdx = j
+	i := 0
+	for i < len(s) {
+		if s[i] == '\x1b' && i+1 < len(s) && s[i+1] == '[' {
+			// Found start of ANSI escape sequence "\x1b["
+			// Skip until we find the terminating character (a letter)
+			j := i + 2
+			for j < len(s) {
+				ch := s[j]
+				// Check if this is the terminating character
+				if (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') {
+					// Skip the entire sequence including terminator
+					i = j + 1
 					break
 				}
-				if output[j] < '0' || output[j] > '9' {
-					break
-				}
+				// Continue scanning (digits, semicolons, question marks, etc.)
+				j++
 			}
-			if lastFrameIdx != -1 {
+			if j >= len(s) {
+				// Malformed sequence at end of string, just skip to end
 				break
+			}
+		} else {
+			// Regular character, keep it
+			result.WriteByte(s[i])
+			i++
+		}
+	}
+
+	return result.String()
+}
+
+// extractLatestFrame extracts the final rendered frame from accumulated terminal output
+func extractLatestFrame(output string) string {
+	// Strategy: Bubbletea redraws by sending "\x1b[<N>A" (cursor up N lines) then re-rendering
+	// We find the LAST cursor-up sequence to identify the start of the final frame
+
+	// Find all cursor-up movements "\x1b[<N>A"
+	var frameStarts []int
+	for i := 0; i < len(output)-3; i++ {
+		if output[i] == '\x1b' && output[i+1] == '[' {
+			// Look for digits followed by 'A'
+			j := i + 2
+			for j < len(output) && output[j] >= '0' && output[j] <= '9' {
+				j++
+			}
+			if j < len(output) && output[j] == 'A' && j > i+2 {
+				// Found "\x1b[<N>A" pattern - this marks a frame start
+				frameStarts = append(frameStarts, i)
 			}
 		}
 	}
 
-	if lastFrameIdx == -1 {
-		// No cursor movement found, return full output
-		lastFrameIdx = 0
+	// Start from the last frame boundary (or beginning if none found)
+	lastFrameIdx := 0
+	if len(frameStarts) > 0 {
+		lastFrameIdx = frameStarts[len(frameStarts)-1]
 	}
 
 	frame := output[lastFrameIdx:]
 
-	// Strip cleanup codes at the end
-	// Common cleanup patterns that indicate program termination:
-	// - "[?2004l" - disable bracketed paste mode
-	// - "[?25h" - show cursor
-	// - "[?1002l", "[?1003l", "[?1006l" - disable mouse tracking
-	// These typically appear at the very end when the program quits
+	// Strip cleanup codes that appear when the program quits
 	cleanupPatterns := []string{
-		"[?2004l", // Most reliable indicator of cleanup
-		"[?25h",   // Show cursor (end of program)
+		"\x1b[?2004l", // disable bracketed paste mode
+		"\x1b[?25h",   // show cursor
 	}
 
 	for _, pattern := range cleanupPatterns {
@@ -151,12 +178,20 @@ func extractLatestFrame(output string) string {
 		}
 	}
 
+	// Strip all ANSI escape codes for clean, readable golden files
+	frame = stripAnsiCodes(frame)
+
 	return frame
 }
 
 // assertEventually polls the output buffer until the condition is met or timeout
 func assertEventually(t *testing.T, out *bytes.Buffer, goldenFile string, timeout time.Duration) {
 	t.Helper()
+
+	// In update mode, wait a bit to ensure render is complete before capturing
+	if *update {
+		time.Sleep(100 * time.Millisecond)
+	}
 
 	deadline := time.Now().Add(timeout)
 	var lastOutput string
@@ -193,7 +228,8 @@ func assertEventually(t *testing.T, out *bytes.Buffer, goldenFile string, timeou
 			}
 		}
 
-		time.Sleep(50 * time.Millisecond)
+		// Small sleep to avoid busy-waiting and give Bubbletea time to render
+		time.Sleep(10 * time.Millisecond)
 	}
 
 	if !*update {
