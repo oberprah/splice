@@ -1,0 +1,46 @@
+package main
+
+import (
+	"testing"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/oberprah/splice/internal/git"
+	"github.com/oberprah/splice/internal/ui"
+	"github.com/oberprah/splice/internal/ui/testutils"
+)
+
+// TestViewportScrolling tests that viewport adjusts when navigating beyond visible area
+// Uses 50 commits with a small 10-line screen to force scrolling behavior
+func TestViewportScrolling(t *testing.T) {
+	// Create more commits than can fit on screen (50 commits, 10-line screen)
+	commits := testutils.CreateTestCommits(50)
+
+	// Create model with mocked commits and file changes
+	m := ui.NewModel(
+		ui.WithFetchCommits(testutils.MockFetchCommits(commits, nil)),
+		ui.WithFetchFileChanges(testutils.MockFetchFileChanges([]git.FileChange{}, nil)),
+	)
+
+	runner := NewE2ETestRunner(t, m)
+
+	// Set initial window size (small height to force scrolling) and wait for loading
+	runner.Send(tea.WindowSizeMsg{Width: 80, Height: 10})
+	runner.AssertGolden("viewport_scrolling/1_initial.golden")
+
+	// Navigate down 15 times to trigger viewport scrolling
+	for i := 0; i < 15; i++ {
+		runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	}
+	runner.AssertGolden("viewport_scrolling/2_after_scroll_down.golden")
+
+	// Jump to bottom to test large jump
+	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("G")})
+	runner.AssertGolden("viewport_scrolling/3_at_bottom.golden")
+
+	// Jump back to top
+	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("g")})
+	runner.AssertGolden("viewport_scrolling/4_back_to_top.golden")
+
+	// Quit
+	runner.Quit()
+}
