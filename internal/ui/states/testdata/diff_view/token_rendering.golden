@@ -1,0 +1,6 @@
+abc123 · test.go · +0 -0
+────────────────────────────────────────────────────────────
+  1   func main() {          │   1   func main() {         
+  2       fmt.Println("hell… │   2       fmt.Println("hell…
+  3       // This is a very… │   3       // This is a very…
+  4   }                      │   4   }                     
