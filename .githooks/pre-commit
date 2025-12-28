@@ -1,0 +1,40 @@
+#!/bin/sh
+
+# Splice pre-commit hook
+# Runs the same checks as CI pipeline to catch issues early
+
+set -e
+
+echo "Running pre-commit checks..."
+
+# 1. Lint
+printf "→ Lint... "
+if go tool golangci-lint run > /tmp/splice-lint.log 2>&1; then
+    echo "✓"
+else
+    echo "✗"
+    cat /tmp/splice-lint.log
+    exit 1
+fi
+
+# 2. Tests
+printf "→ Tests... "
+if go test ./... > /tmp/splice-test.log 2>&1; then
+    echo "✓"
+else
+    echo "✗"
+    cat /tmp/splice-test.log
+    exit 1
+fi
+
+# 3. Build
+printf "→ Build... "
+if go build ./... > /tmp/splice-build.log 2>&1; then
+    echo "✓"
+else
+    echo "✗"
+    cat /tmp/splice-build.log
+    exit 1
+fi
+
+echo "All checks passed!"
