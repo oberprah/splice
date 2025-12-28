@@ -56,15 +56,13 @@ When modifying a state's data structure, typically need to update:
 ## Development Commands
 
 ```bash
-# Run the application
-go run .
+go run .                        # Run application
+go build -o splice .            # Build binary
 
-# Build binary
-go build -o splice .
+go tool golangci-lint run       # Lint
 
-# Add dependencies
-go get <package>
+go mod tidy                     # Update dependencies
 
-# Update dependencies
-go mod tidy
+go test ./...                   # Run tests
+go test ./... -update           # Update golden files
 ```
