@@ -12,6 +12,12 @@ import (
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
+// Per-file helper that adds subdirectory prefix
+func assertDiffViewGolden(t *testing.T, output, filename string) {
+	t.Helper()
+	assertGolden(t, output, "diff_view/"+filename, *update)
+}
+
 func TestDiffState_View_Header(t *testing.T) {
 	state := &DiffState{
 		Commit: git.GitCommit{
@@ -36,27 +42,9 @@ func TestDiffState_View_Header(t *testing.T) {
 	}
 
 	ctx := &mockContext{width: 80, height: 24}
-	view := state.View(ctx)
+	output := state.View(ctx)
 
-	// Should contain short hash
-	if !strings.Contains(view, "abc123d") {
-		t.Error("View should contain short hash")
-	}
-
-	// Should contain file path
-	if !strings.Contains(view, "internal/ui/states/diff_view.go") {
-		t.Error("View should contain file path")
-	}
-
-	// Should contain additions
-	if !strings.Contains(view, "+15") {
-		t.Error("View should contain additions count")
-	}
-
-	// Should contain deletions
-	if !strings.Contains(view, "-8") {
-		t.Error("View should contain deletions count")
-	}
+	assertDiffViewGolden(t, output, "header.golden")
 }
 
 func TestDiffState_View_EmptyDiff(t *testing.T) {
@@ -77,11 +65,9 @@ func TestDiffState_View_EmptyDiff(t *testing.T) {
 	}
 
 	ctx := &mockContext{width: 80, height: 24}
-	view := state.View(ctx)
+	output := state.View(ctx)
 
-	if !strings.Contains(view, "No changes") {
-		t.Error("Empty diff should show 'No changes' message")
-	}
+	assertDiffViewGolden(t, output, "empty_diff.golden")
 }
 
 func TestDiffState_View_UnchangedLines(t *testing.T) {
@@ -111,17 +97,9 @@ func TestDiffState_View_UnchangedLines(t *testing.T) {
 	}
 
 	ctx := &mockContext{width: 80, height: 24}
-	view := state.View(ctx)
+	output := state.View(ctx)
 
-	// Unchanged lines should appear (shown on both sides)
-	if !strings.Contains(view, "unchanged line") {
-		t.Error("View should contain unchanged line content")
-	}
-
-	// Line numbers should appear
-	if !strings.Contains(view, "1") {
-		t.Error("View should contain line numbers")
-	}
+	assertDiffViewGolden(t, output, "unchanged_lines.golden")
 }
 
 func TestDiffState_View_RemovedLines(t *testing.T) {
@@ -152,22 +130,9 @@ func TestDiffState_View_RemovedLines(t *testing.T) {
 	}
 
 	ctx := &mockContext{width: 80, height: 24}
-	view := state.View(ctx)
+	output := state.View(ctx)
 
-	// Should contain removed line content
-	if !strings.Contains(view, "removed line") {
-		t.Error("View should contain removed line content")
-	}
-
-	// Should contain line number
-	if !strings.Contains(view, "5") {
-		t.Error("View should contain line number for removed line")
-	}
-
-	// Should contain minus indicator
-	if !strings.Contains(view, "-") {
-		t.Error("View should contain minus indicator for removed line")
-	}
+	assertDiffViewGolden(t, output, "removed_lines.golden")
 }
 
 func TestDiffState_View_AddedLines(t *testing.T) {
@@ -200,22 +165,9 @@ func TestDiffState_View_AddedLines(t *testing.T) {
 	}
 
 	ctx := &mockContext{width: 80, height: 24}
-	view := state.View(ctx)
+	output := state.View(ctx)
 
-	// Should contain added line content
-	if !strings.Contains(view, "added line") {
-		t.Error("View should contain added line content")
-	}
-
-	// Should contain line number
-	if !strings.Contains(view, "7") {
-		t.Error("View should contain line number for added line")
-	}
-
-	// Should contain plus indicator
-	if !strings.Contains(view, "+") {
-		t.Error("View should contain plus indicator for added line")
-	}
+	assertDiffViewGolden(t, output, "added_lines.golden")
 }
 
 func TestDiffState_View_SideBySideSeparator(t *testing.T) {
@@ -245,12 +197,9 @@ func TestDiffState_View_SideBySideSeparator(t *testing.T) {
 	}
 
 	ctx := &mockContext{width: 80, height: 24}
-	view := state.View(ctx)
+	output := state.View(ctx)
 
-	// Should contain side-by-side separator
-	if !strings.Contains(view, "│") {
-		t.Error("View should contain side-by-side separator")
-	}
+	assertDiffViewGolden(t, output, "side_by_side_separator.golden")
 }
 
 func TestDiffState_View_Viewport(t *testing.T) {
@@ -289,15 +238,9 @@ func TestDiffState_View_Viewport(t *testing.T) {
 	}
 
 	ctx := &mockContext{width: 80, height: 10}
-	view := state.View(ctx)
+	output := state.View(ctx)
 
-	// Should contain line 51 (ViewportStart + 1 because line numbers are 1-based in our test data)
-	if !strings.Contains(view, "51") {
-		t.Error("View should contain line 51 when viewport starts at 50")
-	}
-
-	// Should NOT contain line 1 (before viewport)
-	// This is tricky to test since "1" appears in many places, so we skip this check
+	assertDiffViewGolden(t, output, "viewport.golden")
 }
 
 func TestDiffState_View_SyntaxHighlightedTokens(t *testing.T) {
@@ -339,17 +282,12 @@ func TestDiffState_View_SyntaxHighlightedTokens(t *testing.T) {
 	}
 
 	ctx := &mockContext{width: 80, height: 24}
-	view := state.View(ctx)
+	output := state.View(ctx)
 
-	// Should contain the token content
-	if !strings.Contains(view, "package") {
-		t.Error("View should contain 'package' keyword")
-	}
-	if !strings.Contains(view, "main") {
-		t.Error("View should contain 'main' identifier")
-	}
+	assertDiffViewGolden(t, output, "syntax_highlighted_tokens.golden")
 }
 
+// Helper function test - testing internal logic
 func TestRenderTokens_MultipleTokens(t *testing.T) {
 	state := &DiffState{}
 	tokens := []highlight.Token{
@@ -374,6 +312,7 @@ func TestRenderTokens_MultipleTokens(t *testing.T) {
 	}
 }
 
+// Helper function test - testing internal logic
 func TestRenderTokens_Truncation(t *testing.T) {
 	state := &DiffState{}
 	tokens := []highlight.Token{
@@ -393,6 +332,7 @@ func TestRenderTokens_Truncation(t *testing.T) {
 	}
 }
 
+// Helper function test - testing internal logic
 func TestRenderTokens_EmptyTokens(t *testing.T) {
 	state := &DiffState{}
 	tokens := []highlight.Token{}
@@ -405,6 +345,7 @@ func TestRenderTokens_EmptyTokens(t *testing.T) {
 	}
 }
 
+// Helper function test - testing internal logic
 func TestRenderTokens_TabExpansion(t *testing.T) {
 	state := &DiffState{}
 	tokens := []highlight.Token{
@@ -424,6 +365,7 @@ func TestRenderTokens_TabExpansion(t *testing.T) {
 	}
 }
 
+// Helper function test - testing internal logic
 func TestRenderTokensWithInlineDiff_TabsInModifiedLines(t *testing.T) {
 	// Import diffmatchpatch for creating inline diffs
 	dmp := diffmatchpatch.New()
@@ -487,6 +429,7 @@ func TestRenderTokensWithInlineDiff_TabsInModifiedLines(t *testing.T) {
 	// 3. No crashes due to position misalignment
 }
 
+// Helper function test - testing internal logic
 func TestRenderTokensWithInlineDiff_MultipleTabsWithChanges(t *testing.T) {
 	dmp := diffmatchpatch.New()
 
