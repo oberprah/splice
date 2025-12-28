@@ -68,3 +68,14 @@ go get <package>
 # Update dependencies
 go mod tidy
 ```
+
+## Testing
+
+**When implementing tests, you MUST read `docs/guidelines/testing-guidelines.md` first.**
+
+The project uses three types of tests:
+- **Unit tests** for most functionality
+- **Golden file tests** for TUI rendering (snapshot comparisons)
+- **E2E tests** for critical user workflows
+
+All external dependencies (git commands) are mocked via dependency injection.
