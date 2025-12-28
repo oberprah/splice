@@ -16,9 +16,10 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
-      - uses: golangci/golangci-lint-action@v6
+      - uses: golangci/golangci-lint-action@v7
         with:
-          install-mode: goinstall
+          # Keep version in sync with go.mod tool directive
+          version: v2.7.2
 
   test:
     runs-on: ubuntu-latest
