@@ -5,26 +5,32 @@ import (
 	"testing"
 )
 
+// Per-file helper that adds subdirectory prefix
+func assertErrorViewGolden(t *testing.T, output, filename string) {
+	t.Helper()
+	assertGolden(t, output, "error_view/"+filename, *update)
+}
+
 func TestErrorState_View(t *testing.T) {
 	tests := []struct {
-		name     string
-		err      error
-		expected string
+		name       string
+		err        error
+		goldenFile string
 	}{
 		{
-			name:     "simple error message",
-			err:      fmt.Errorf("file not found"),
-			expected: "  Error: file not found\n",
+			name:       "simple error message",
+			err:        fmt.Errorf("file not found"),
+			goldenFile: "simple_error.golden",
 		},
 		{
-			name:     "git error message",
-			err:      fmt.Errorf("not a git repository"),
-			expected: "  Error: not a git repository\n",
+			name:       "git error message",
+			err:        fmt.Errorf("not a git repository"),
+			goldenFile: "git_error.golden",
 		},
 		{
-			name:     "empty commits error",
-			err:      fmt.Errorf("no commits found in repository"),
-			expected: "  Error: no commits found in repository\n",
+			name:       "empty commits error",
+			err:        fmt.Errorf("no commits found in repository"),
+			goldenFile: "empty_commits_error.golden",
 		},
 	}
 
@@ -33,11 +39,9 @@ func TestErrorState_View(t *testing.T) {
 			s := ErrorState{Err: tt.err}
 			ctx := mockContext{width: 80, height: 24}
 
-			result := s.View(ctx)
+			output := s.View(ctx)
 
-			if result != tt.expected {
-				t.Errorf("View() = %q, want %q", result, tt.expected)
-			}
+			assertErrorViewGolden(t, output, tt.goldenFile)
 		})
 	}
 }
