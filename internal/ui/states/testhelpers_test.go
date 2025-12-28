@@ -29,6 +29,13 @@ func (m mockContext) FetchFileChanges() FetchFileChangesFunc {
 	}
 }
 
+func (m mockContext) FetchFullFileDiff() FetchFullFileDiffFunc {
+	// Return a mock function that returns an empty diff result
+	return func(commitHash string, change git.FileChange) (*git.FullFileDiffResult, error) {
+		return &git.FullFileDiffResult{}, nil
+	}
+}
+
 // assertGolden compares the output against a golden file.
 // If the -update flag is set, it updates the golden file instead.
 // The goldenFileName should be relative to the testdata directory and can include subdirectories

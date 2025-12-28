@@ -65,3 +65,13 @@ func MockFetchFileChanges(files []git.FileChange, err error) func(string) ([]git
 		return files, nil
 	}
 }
+
+// MockFetchFullFileDiff creates a mock function that returns full file diff result
+func MockFetchFullFileDiff(result *git.FullFileDiffResult, err error) func(string, git.FileChange) (*git.FullFileDiffResult, error) {
+	return func(commitHash string, change git.FileChange) (*git.FullFileDiffResult, error) {
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
+	}
+}
