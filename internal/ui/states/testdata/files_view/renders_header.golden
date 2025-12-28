@@ -1,0 +1,5 @@
+abc123d · John Doe committed 1 year ago · 1 file · +45 -12
+
+Add automatic light/dark theme support
+────────────────────────────────────────────────────────────────────────────────
+> M +45 -12  internal/ui/app.go

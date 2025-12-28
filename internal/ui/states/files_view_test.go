@@ -1,12 +1,17 @@
 package states
 
 import (
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/oberprah/splice/internal/git"
 )
+
+// Per-file helper that adds subdirectory prefix
+func assertFilesViewGolden(t *testing.T, output, filename string) {
+	t.Helper()
+	assertGolden(t, output, "files_view/"+filename, *update)
+}
 
 func createTestCommit() git.GitCommit {
 	return git.GitCommit{
@@ -50,18 +55,9 @@ func TestFilesState_View_RendersHeader(t *testing.T) {
 	}
 	ctx := mockContext{width: 80, height: 24}
 
-	result := s.View(ctx)
+	output := s.View(ctx)
 
-	// Check that commit info appears in header
-	if !strings.Contains(result, "abc123d") { // Short hash
-		t.Error("Expected output to contain short commit hash")
-	}
-	if !strings.Contains(result, "Add automatic light/dark theme support") {
-		t.Error("Expected output to contain commit message")
-	}
-	if !strings.Contains(result, "John Doe") {
-		t.Error("Expected output to contain author name")
-	}
+	assertFilesViewGolden(t, output, "renders_header.golden")
 }
 
 func TestFilesState_View_RendersFileList(t *testing.T) {
@@ -80,23 +76,9 @@ func TestFilesState_View_RendersFileList(t *testing.T) {
 	}
 	ctx := mockContext{width: 80, height: 24}
 
-	result := s.View(ctx)
+	output := s.View(ctx)
 
-	// Check that all files appear in the output
-	if !strings.Contains(result, "internal/ui/app.go") {
-		t.Error("Expected output to contain first file path")
-	}
-	if !strings.Contains(result, "internal/ui/model.go") {
-		t.Error("Expected output to contain second file path")
-	}
-	if !strings.Contains(result, "internal/git/git.go") {
-		t.Error("Expected output to contain third file path")
-	}
-
-	// Check that stats appear (with padding)
-	if !strings.Contains(result, "45") || !strings.Contains(result, "12") {
-		t.Errorf("Expected output to contain file statistics, got: %s", result)
-	}
+	assertFilesViewGolden(t, output, "renders_file_list.golden")
 }
 
 func TestFilesState_View_SelectionIndicator(t *testing.T) {
@@ -104,12 +86,13 @@ func TestFilesState_View_SelectionIndicator(t *testing.T) {
 	files := createTestFileChanges(3)
 
 	tests := []struct {
-		name   string
-		cursor int
+		name       string
+		cursor     int
+		goldenFile string
 	}{
-		{"first file selected", 0},
-		{"second file selected", 1},
-		{"third file selected", 2},
+		{"first file selected", 0, "selection_first.golden"},
+		{"second file selected", 1, "selection_second.golden"},
+		{"third file selected", 2, "selection_third.golden"},
 	}
 
 	for _, tt := range tests {
@@ -122,14 +105,9 @@ func TestFilesState_View_SelectionIndicator(t *testing.T) {
 			}
 			ctx := mockContext{width: 80, height: 24}
 
-			result := s.View(ctx)
+			output := s.View(ctx)
 
-			// Should have at least one selection indicator (">")
-			selectedCount := strings.Count(result, ">")
-
-			if selectedCount < 1 {
-				t.Error("Expected at least one selection indicator '>'")
-			}
+			assertFilesViewGolden(t, output, tt.goldenFile)
 		})
 	}
 }
@@ -146,16 +124,9 @@ func TestFilesState_View_ViewportLimits(t *testing.T) {
 	}
 	ctx := mockContext{width: 80, height: 10}
 
-	result := s.View(ctx)
+	output := s.View(ctx)
 
-	// The output should be limited by viewport
-	// This is hard to test exactly due to header, but we can check it's not showing all files
-	lines := strings.Split(strings.TrimSpace(result), "\n")
-
-	// Should not have 20+ lines (one per file) due to viewport limit
-	if len(lines) > 15 {
-		t.Errorf("Expected viewport to limit output, but got %d lines", len(lines))
-	}
+	assertFilesViewGolden(t, output, "viewport_limits.golden")
 }
 
 func TestFilesState_View_BinaryFiles(t *testing.T) {
@@ -173,16 +144,9 @@ func TestFilesState_View_BinaryFiles(t *testing.T) {
 	}
 	ctx := mockContext{width: 80, height: 24}
 
-	result := s.View(ctx)
+	output := s.View(ctx)
 
-	// Binary files should show different stats
-	if !strings.Contains(result, "image.png") {
-		t.Error("Expected output to contain binary file")
-	}
-	// Binary files might show "binary" or special indicator instead of +/-
-	if !strings.Contains(result, "main.go") {
-		t.Error("Expected output to contain text file")
-	}
+	assertFilesViewGolden(t, output, "binary_files.golden")
 }
 
 func TestFilesState_View_EmptyFileList(t *testing.T) {
@@ -197,18 +161,9 @@ func TestFilesState_View_EmptyFileList(t *testing.T) {
 	}
 	ctx := mockContext{width: 80, height: 24}
 
-	result := s.View(ctx)
+	output := s.View(ctx)
 
-	// Should still render header with commit info
-	if !strings.Contains(result, "abc123d") {
-		t.Error("Expected output to contain commit hash even with no files")
-	}
-
-	// Should indicate no files changed (or show empty list)
-	// The exact message depends on implementation, so we just check it doesn't panic
-	if result == "" {
-		t.Error("Expected some output even with empty file list")
-	}
+	assertFilesViewGolden(t, output, "empty_file_list.golden")
 }
 
 func TestFilesState_View_LongFilePaths(t *testing.T) {
@@ -231,24 +186,9 @@ func TestFilesState_View_LongFilePaths(t *testing.T) {
 	// Test with narrow terminal
 	ctx := mockContext{width: 50, height: 24}
 
-	result := s.View(ctx)
+	output := s.View(ctx)
 
-	// Should handle long paths gracefully (either truncate or wrap)
-	if result == "" {
-		t.Error("Expected output even with long file paths")
-	}
-
-	// Check that truncation indicator appears if path is truncated
-	lines := strings.Split(result, "\n")
-	for i, line := range lines {
-		if line == "" {
-			continue
-		}
-		// Lines shouldn't be excessively long (allowing for ANSI codes)
-		if len(line) > 200 {
-			t.Errorf("Line %d appears too long (%d chars), may need truncation", i, len(line))
-		}
-	}
+	assertFilesViewGolden(t, output, "long_file_paths.golden")
 }
 
 func TestFilesState_View_FileStatsSummary(t *testing.T) {
@@ -267,15 +207,12 @@ func TestFilesState_View_FileStatsSummary(t *testing.T) {
 	}
 	ctx := mockContext{width: 80, height: 24}
 
-	result := s.View(ctx)
+	output := s.View(ctx)
 
-	// Should show summary: 3 files changed, 35 insertions(+), 10 deletions(-)
-	// The exact format may vary, but we check for key information
-	if !strings.Contains(result, "3") {
-		t.Error("Expected output to mention 3 files")
-	}
+	assertFilesViewGolden(t, output, "file_stats_summary.golden")
 }
 
+// Helper function test - testing internal logic
 func TestFilesState_CalculateMaxStatWidth(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -351,32 +288,9 @@ func TestFilesState_View_StatusDisplay(t *testing.T) {
 	}
 	ctx := mockContext{width: 80, height: 24}
 
-	result := s.View(ctx)
+	output := s.View(ctx)
 
-	// Strip ANSI codes for easier testing
-	cleanResult := stripANSI(result)
-
-	// Check that status letters appear
-	if !strings.Contains(cleanResult, " M ") {
-		t.Error("Expected output to contain 'M' status for modified file")
-	}
-	if !strings.Contains(cleanResult, " A ") {
-		t.Error("Expected output to contain 'A' status for added file")
-	}
-	if !strings.Contains(cleanResult, " D ") {
-		t.Error("Expected output to contain 'D' status for deleted file")
-	}
-
-	// Check that file paths appear
-	if !strings.Contains(cleanResult, "modified.go") {
-		t.Error("Expected output to contain modified.go")
-	}
-	if !strings.Contains(cleanResult, "added.go") {
-		t.Error("Expected output to contain added.go")
-	}
-	if !strings.Contains(cleanResult, "deleted.go") {
-		t.Error("Expected output to contain deleted.go")
-	}
+	assertFilesViewGolden(t, output, "status_display.golden")
 }
 
 func TestFilesState_View_DynamicAlignment(t *testing.T) {
@@ -394,52 +308,7 @@ func TestFilesState_View_DynamicAlignment(t *testing.T) {
 	}
 	ctx := mockContext{width: 80, height: 24}
 
-	result := s.View(ctx)
-	cleanResult := stripANSI(result)
+	output := s.View(ctx)
 
-	lines := strings.Split(cleanResult, "\n")
-
-	// Find the file lines (skip header)
-	var fileLines []string
-	for _, line := range lines {
-		if strings.Contains(line, ".go") {
-			fileLines = append(fileLines, line)
-		}
-	}
-
-	if len(fileLines) < 2 {
-		t.Fatal("Expected at least 2 file lines in output")
-	}
-
-	// Both lines should have stats at the same column position
-	// Check that the file paths start at the same position
-	// This is a rough check - in practice the numbers should be right-aligned
-	smallIdx := strings.Index(fileLines[0], "small.go")
-	largeIdx := strings.Index(fileLines[1], "large.go")
-
-	if smallIdx != largeIdx {
-		t.Errorf("File paths not aligned: small.go at %d, large.go at %d", smallIdx, largeIdx)
-	}
-}
-
-// Helper function to strip ANSI escape codes
-func stripANSI(str string) string {
-	// Simple ANSI code stripper - removes escape sequences
-	result := ""
-	inEscape := false
-	for i := 0; i < len(str); i++ {
-		if str[i] == '\x1b' && i+1 < len(str) && str[i+1] == '[' {
-			inEscape = true
-			i++ // Skip the '['
-			continue
-		}
-		if inEscape {
-			if (str[i] >= 'A' && str[i] <= 'Z') || (str[i] >= 'a' && str[i] <= 'z') {
-				inEscape = false
-			}
-			continue
-		}
-		result += string(str[i])
-	}
-	return result
+	assertFilesViewGolden(t, output, "dynamic_alignment.golden")
 }
