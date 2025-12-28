@@ -1,0 +1,6 @@
+abc123d · John Doe committed 1 year ago · 2 files · +10 -5
+
+Add automatic light/dark theme support
+────────────────────────────────────────────────────────────────────────────────
+> M (binary)  image.png
+  M +10 -5  main.go

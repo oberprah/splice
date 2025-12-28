@@ -1,0 +1,10 @@
+abc123d · John Doe committed 1 year ago · 20 files · +1900 -380
+
+Add automatic light/dark theme support
+────────────────────────────────────────────────────────────────────────────────
+  M + 50 -10  file5.go
+  M + 60 -12  file6.go
+  M + 70 -14  file7.go
+  M + 80 -16  file8.go
+  M + 90 -18  file9.go
+> M +100 -20  file:.go

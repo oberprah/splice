@@ -61,7 +61,7 @@ func (s *FilesState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 			// Load diff for selected file
 			if len(s.Files) > 0 && s.Cursor < len(s.Files) {
 				file := s.Files[s.Cursor]
-				return s, s.loadDiff(file)
+				return s, s.loadDiff(file, ctx.FetchFullFileDiff())
 			}
 			return s, nil
 
@@ -119,7 +119,7 @@ func (s *FilesState) updateViewport(height int) {
 }
 
 // loadDiff creates a command to fetch and parse the diff for a file
-func (s *FilesState) loadDiff(file git.FileChange) tea.Cmd {
+func (s *FilesState) loadDiff(file git.FileChange, fetchFullFileDiff FetchFullFileDiffFunc) tea.Cmd {
 	commit := s.Commit
 	files := s.Files
 	cursor := s.Cursor
@@ -130,7 +130,7 @@ func (s *FilesState) loadDiff(file git.FileChange) tea.Cmd {
 
 	return func() tea.Msg {
 		// Fetch full file content and diff
-		fullDiffResult, err := git.FetchFullFileDiff(commit.Hash, file)
+		fullDiffResult, err := fetchFullFileDiff(commit.Hash, file)
 		if err != nil {
 			return messages.DiffLoadedMsg{
 				Commit:                 commit,

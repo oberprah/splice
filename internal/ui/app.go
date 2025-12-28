@@ -27,12 +27,20 @@ func WithFetchFileChanges(fn states.FetchFileChangesFunc) ModelOption {
 	}
 }
 
+// WithFetchFullFileDiff allows injecting a custom full file diff fetcher for testing
+func WithFetchFullFileDiff(fn states.FetchFullFileDiffFunc) ModelOption {
+	return func(m *Model) {
+		m.fetchFullFileDiff = fn
+	}
+}
+
 // NewModel creates a new Model with initial loading state
 func NewModel(opts ...ModelOption) Model {
 	m := Model{
-		currentState:     states.LoadingState{},
-		fetchCommits:     git.FetchCommits,     // Default to real git command
-		fetchFileChanges: git.FetchFileChanges, // Default to real git command
+		currentState:      states.LoadingState{},
+		fetchCommits:      git.FetchCommits,      // Default to real git command
+		fetchFileChanges:  git.FetchFileChanges,  // Default to real git command
+		fetchFullFileDiff: git.FetchFullFileDiff, // Default to real git command
 	}
 
 	for _, opt := range opts {
