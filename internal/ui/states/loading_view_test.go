@@ -4,14 +4,17 @@ import (
 	"testing"
 )
 
+// Per-file helper that adds subdirectory prefix
+func assertLoadingViewGolden(t *testing.T, output, filename string) {
+	t.Helper()
+	assertGolden(t, output, "loading_view/"+filename, *update)
+}
+
 func TestLoadingState_View(t *testing.T) {
 	s := LoadingState{}
 	ctx := mockContext{width: 80, height: 24}
 
-	result := s.View(ctx)
-	expected := "  Loading commits...\n"
+	output := s.View(ctx)
 
-	if result != expected {
-		t.Errorf("View() = %q, want %q", result, expected)
-	}
+	assertLoadingViewGolden(t, output, "loading_message.golden")
 }
