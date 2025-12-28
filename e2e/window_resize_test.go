@@ -59,6 +59,45 @@ func TestWindowResize(t *testing.T) {
 		{Path: "web/components/settings/themes/dark_mode_toggle.tsx", Additions: 89, Deletions: 34},
 	}
 
+	// Create mock diff data with long lines to demonstrate truncation
+	oldContent := `func authenticateUser(username, password string) (*User, error) {
+	if username == "" || password == "" {
+		return nil, errors.New("username and password required")
+	}
+	return nil, errors.New("not implemented")
+}
+`
+	newContent := `func authenticateUser(username, password string, options *AuthenticationOptions) (*User, error) {
+	if username == "" || password == "" {
+		return nil, fmt.Errorf("authentication failed: username and password are required fields")
+	}
+
+	// Validate password complexity requirements before attempting authentication
+	if len(password) < options.MinPasswordLength {
+		return nil, fmt.Errorf("password does not meet minimum length requirement of %d characters", options.MinPasswordLength)
+	}
+
+	return authenticateWithProvider(username, password, options.Provider)
+}
+`
+	diffOutput := `@@ -1,6 +1,12 @@
+-func authenticateUser(username, password string) (*User, error) {
++func authenticateUser(username, password string, options *AuthenticationOptions) (*User, error) {
+ 	if username == "" || password == "" {
+-		return nil, errors.New("username and password required")
++		return nil, fmt.Errorf("authentication failed: username and password are required fields")
+ 	}
+-	return nil, errors.New("not implemented")
++
++	// Validate password complexity requirements before attempting authentication
++	if len(password) < options.MinPasswordLength {
++		return nil, fmt.Errorf("password does not meet minimum length requirement of %d characters", options.MinPasswordLength)
++	}
++
++	return authenticateWithProvider(username, password, options.Provider)
+ }
+`
+
 	m := ui.NewModel(
 		ui.WithFetchCommits(func(limit int) ([]git.GitCommit, error) {
 			if limit < len(commits) {
@@ -68,6 +107,15 @@ func TestWindowResize(t *testing.T) {
 		}),
 		ui.WithFetchFileChanges(func(commitHash string) ([]git.FileChange, error) {
 			return fileChanges, nil
+		}),
+		ui.WithFetchFullFileDiff(func(commitHash string, change git.FileChange) (*git.FullFileDiffResult, error) {
+			return &git.FullFileDiffResult{
+				OldContent: oldContent,
+				NewContent: newContent,
+				DiffOutput: diffOutput,
+				OldPath:    change.Path,
+				NewPath:    change.Path,
+			}, nil
 		}),
 	)
 
@@ -97,9 +145,25 @@ func TestWindowResize(t *testing.T) {
 	runner.Send(tea.WindowSizeMsg{Width: 180, Height: 40})
 	runner.AssertGolden("window_resize/6_files_full.golden")
 
-	// 7. Go back to log (q key from files view)
+	// 7. Select first file (Enter to go to diff view)
+	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	runner.AssertGolden("window_resize/7_diff_view.golden")
+
+	// 8. Make window smaller (diff lines truncated)
+	runner.Send(tea.WindowSizeMsg{Width: 60, Height: 20})
+	runner.AssertGolden("window_resize/8_diff_truncated.golden")
+
+	// 9. Make window larger again (full diff shown)
+	runner.Send(tea.WindowSizeMsg{Width: 180, Height: 40})
+	runner.AssertGolden("window_resize/9_diff_full.golden")
+
+	// 10. Go back to files (q from diff view)
 	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
-	runner.AssertGolden("window_resize/7_back_to_log.golden")
+	runner.AssertGolden("window_resize/10_back_to_files.golden")
+
+	// 11. Go back to log (q key from files view)
+	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	runner.AssertGolden("window_resize/11_back_to_log.golden")
 
 	// Quit (q from log view quits the app)
 	runner.Quit()
