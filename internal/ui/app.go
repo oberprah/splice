@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"time"
+
 	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/ui/states"
 
@@ -34,6 +36,13 @@ func WithFetchFullFileDiff(fn states.FetchFullFileDiffFunc) ModelOption {
 	}
 }
 
+// WithNow allows injecting a custom time function for deterministic testing
+func WithNow(fn func() time.Time) ModelOption {
+	return func(m *Model) {
+		m.nowFunc = fn
+	}
+}
+
 // NewModel creates a new Model with initial loading state
 func NewModel(opts ...ModelOption) Model {
 	m := Model{
@@ -41,6 +50,7 @@ func NewModel(opts ...ModelOption) Model {
 		fetchCommits:      git.FetchCommits,      // Default to real git command
 		fetchFileChanges:  git.FetchFileChanges,  // Default to real git command
 		fetchFullFileDiff: git.FetchFullFileDiff, // Default to real git command
+		nowFunc:           time.Now,              // Default to real time
 	}
 
 	for _, opt := range opts {

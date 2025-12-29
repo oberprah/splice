@@ -98,6 +98,9 @@ func TestWindowResize(t *testing.T) {
  }
 `
 
+	// Fixed time for deterministic date formatting (commits are exactly 1 year old)
+	fixedNow := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+
 	m := ui.NewModel(
 		ui.WithFetchCommits(func(limit int) ([]git.GitCommit, error) {
 			if limit < len(commits) {
@@ -117,6 +120,7 @@ func TestWindowResize(t *testing.T) {
 				NewPath:    change.Path,
 			}, nil
 		}),
+		ui.WithNow(func() time.Time { return fixedNow }),
 	)
 
 	runner := NewE2ETestRunner(t, m)

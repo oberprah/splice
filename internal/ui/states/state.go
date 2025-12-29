@@ -1,6 +1,8 @@
 package states
 
 import (
+	"time"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/oberprah/splice/internal/git"
 )
@@ -17,6 +19,7 @@ type Context interface {
 	Height() int
 	FetchFileChanges() FetchFileChangesFunc
 	FetchFullFileDiff() FetchFullFileDiffFunc
+	Now() time.Time
 }
 
 // State represents the current state of the application.

@@ -71,7 +71,7 @@ go test ./... -update
 
 Use E2E tests for full user journeys across multiple states. Use unit tests for everything else.
 
-E2ETestRunner API (`e2e/helpers_test.go`):
+E2ETestRunner API (`test/e2e/helpers_test.go`):
 
 ```go
 func TestNavigateToFilesView(t *testing.T) {

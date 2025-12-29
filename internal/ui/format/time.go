@@ -54,9 +54,3 @@ func ToRelativeTimeFrom(t, now time.Time) string {
 		return t.Format("Jan 2, 2006")
 	}
 }
-
-// ToRelativeTime converts a timestamp into a human-readable relative time
-// relative to the current time.
-func ToRelativeTime(t time.Time) string {
-	return ToRelativeTimeFrom(t, time.Now())
-}

@@ -12,7 +12,7 @@ func (s *FilesState) View(ctx Context) string {
 	var b strings.Builder
 
 	// Render header with commit info
-	header := s.renderHeader()
+	header := s.renderHeader(ctx)
 	b.WriteString(header)
 
 	// Render separator
@@ -40,7 +40,7 @@ func (s *FilesState) View(ctx Context) string {
 }
 
 // renderHeader formats the commit information header
-func (s *FilesState) renderHeader() string {
+func (s *FilesState) renderHeader(ctx Context) string {
 	// Format:
 	// abc123d · John Doe committed 2 hours ago · 3 files · +45 -12
 	//
@@ -52,7 +52,7 @@ func (s *FilesState) renderHeader() string {
 	var b strings.Builder
 
 	// First line: metadata
-	b.WriteString(RenderCommitMetadata(s.Commit, s.Files))
+	b.WriteString(RenderCommitMetadata(s.Commit, s.Files, ctx))
 	b.WriteString("\n\n")
 
 	// Subject line
