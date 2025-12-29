@@ -16,8 +16,8 @@ func TestNoDirectTimeNowUsage(t *testing.T) {
 
 	// Allowed files where time.Now() is acceptable (relative to project root)
 	allowedFiles := map[string]bool{
-		"e2e/helpers_test.go": true, // Test timeout/deadline logic
-		"internal/ui/app.go":  true, // Default initialization: nowFunc: time.Now
+		"test/e2e/helpers_test.go": true, // Test timeout/deadline logic
+		"internal/ui/app.go":       true, // Default initialization: nowFunc: time.Now
 	}
 
 	var violations []string
