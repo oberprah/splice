@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/oberprah/splice/internal/git"
 )
@@ -34,6 +35,11 @@ func (m mockContext) FetchFullFileDiff() FetchFullFileDiffFunc {
 	return func(commitHash string, change git.FileChange) (*git.FullFileDiffResult, error) {
 		return &git.FullFileDiffResult{}, nil
 	}
+}
+
+func (m mockContext) Now() time.Time {
+	// Return fixed time for deterministic tests (commits are exactly 1 year old)
+	return time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
 }
 
 // assertGolden compares the output against a golden file.

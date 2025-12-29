@@ -12,13 +12,14 @@ import (
 
 func createTestCommits(count int) []git.GitCommit {
 	commits := make([]git.GitCommit, count)
+	baseTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 	for i := range count {
 		commits[i] = git.GitCommit{
 			Hash:    string(rune('a' + i)),
 			Message: "Commit " + string(rune('0'+i)),
 			Body:    "",
 			Author:  "Author",
-			Date:    time.Now(),
+			Date:    baseTime.Add(time.Duration(-i) * time.Hour),
 		}
 	}
 	return commits

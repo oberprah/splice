@@ -1,6 +1,10 @@
 package ui
 
-import "github.com/oberprah/splice/internal/ui/states"
+import (
+	"time"
+
+	"github.com/oberprah/splice/internal/ui/states"
+)
 
 // Model represents the application model using the state pattern
 type Model struct {
@@ -10,6 +14,7 @@ type Model struct {
 	fetchCommits      FetchCommitsFunc
 	fetchFileChanges  states.FetchFileChangesFunc
 	fetchFullFileDiff states.FetchFullFileDiffFunc
+	nowFunc           func() time.Time
 }
 
 // Width returns the terminal width
@@ -30,4 +35,9 @@ func (m *Model) FetchFileChanges() states.FetchFileChangesFunc {
 // FetchFullFileDiff returns the full file diff fetcher function
 func (m *Model) FetchFullFileDiff() states.FetchFullFileDiffFunc {
 	return m.fetchFullFileDiff
+}
+
+// Now returns the current time (for testing time-dependent formatting)
+func (m *Model) Now() time.Time {
+	return m.nowFunc()
 }

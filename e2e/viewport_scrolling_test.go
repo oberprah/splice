@@ -2,6 +2,7 @@ package main
 
 import (
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/oberprah/splice/internal/git"
@@ -15,10 +16,14 @@ func TestViewportScrolling(t *testing.T) {
 	// Create more commits than can fit on screen (50 commits, 10-line screen)
 	commits := testutils.CreateTestCommits(50)
 
+	// Fixed time for deterministic date formatting (commits are exactly 1 year old)
+	fixedNow := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+
 	// Create model with mocked commits and file changes
 	m := ui.NewModel(
 		ui.WithFetchCommits(testutils.MockFetchCommits(commits, nil)),
 		ui.WithFetchFileChanges(testutils.MockFetchFileChanges([]git.FileChange{}, nil)),
+		ui.WithNow(func() time.Time { return fixedNow }),
 	)
 
 	runner := NewE2ETestRunner(t, m)

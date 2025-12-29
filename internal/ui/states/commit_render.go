@@ -12,7 +12,7 @@ import (
 
 // RenderCommitMetadata renders the metadata line for a commit
 // Format: abc123d · John Doe committed 2 hours ago · 3 files · +45 -12
-func RenderCommitMetadata(commit git.GitCommit, files []git.FileChange) string {
+func RenderCommitMetadata(commit git.GitCommit, files []git.FileChange, ctx Context) string {
 	var b strings.Builder
 
 	// Calculate total stats
@@ -23,7 +23,7 @@ func RenderCommitMetadata(commit git.GitCommit, files []git.FileChange) string {
 	b.WriteString(styles.HeaderStyle.Render(" · "))
 	b.WriteString(styles.AuthorStyle.Render(commit.Author))
 	b.WriteString(styles.HeaderStyle.Render(" committed "))
-	b.WriteString(styles.TimeStyle.Render(format.ToRelativeTime(commit.Date)))
+	b.WriteString(styles.TimeStyle.Render(format.ToRelativeTimeFrom(commit.Date, ctx.Now())))
 	b.WriteString(styles.HeaderStyle.Render(" · "))
 
 	// File stats

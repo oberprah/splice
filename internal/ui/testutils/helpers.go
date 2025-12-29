@@ -8,8 +8,11 @@ import (
 )
 
 // CreateTestCommits generates n mock git commits for testing
+// Uses fixed dates that are exactly 1 year old to ensure deterministic formatting
 func CreateTestCommits(count int) []git.GitCommit {
 	commits := make([]git.GitCommit, count)
+	// Fixed date exactly 1 year ago from test "now" (2024-01-01 from 2025-01-01)
+	// This ensures "1 year ago" formatting consistently in tests
 	baseTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 
 	for i := range count {
@@ -26,8 +29,10 @@ func CreateTestCommits(count int) []git.GitCommit {
 }
 
 // CreateTestCommitsWithMessages generates commits with specific messages
+// Uses fixed dates that are exactly 1 year old to ensure deterministic formatting
 func CreateTestCommitsWithMessages(messages []string) []git.GitCommit {
 	commits := make([]git.GitCommit, len(messages))
+	// Fixed date exactly 1 year ago from test "now" (2024-01-01 from 2025-01-01)
 	baseTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 
 	for i, msg := range messages {
