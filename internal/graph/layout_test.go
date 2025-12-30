@@ -21,8 +21,6 @@ func TestComputeLayout_Empty(t *testing.T) {
 	}
 }
 
-// Test Case 1: Linear History (No Branches)
-// Topology: A ← B ← C ← D (HEAD)
 func TestComputeLayout_LinearHistory(t *testing.T) {
 	commits := []Commit{
 		{Hash: "D", Parents: []string{"C"}},
@@ -52,13 +50,6 @@ func TestComputeLayout_LinearHistory(t *testing.T) {
 	}
 }
 
-// Test Case 2: Simple Feature Branch Merge
-// Topology:
-//
-//	 C ← D (feature, merged)
-//	/     \
-//
-// A ← B ←───← E (HEAD -> main)
 func TestComputeLayout_SimpleFeatureBranchMerge(t *testing.T) {
 	commits := []Commit{
 		{Hash: "E", Parents: []string{"B", "D"}}, // Merge commit
@@ -73,10 +64,10 @@ func TestComputeLayout_SimpleFeatureBranchMerge(t *testing.T) {
 
 	expected := []string{
 		"├─╮", // E: merge commit
-		"│ ├", // D: on feature branch
-		"│ ├", // C: on feature branch
-		"├ │", // B: on main branch
-		"├─╯", // A: convergence point
+		"│ ├", // D: feature branch
+		"│ ├", // C: feature branch
+		"├ │", // B: main branch
+		"├─╯", // A: convergence
 	}
 
 	if len(rendered) != len(expected) {
@@ -90,8 +81,6 @@ func TestComputeLayout_SimpleFeatureBranchMerge(t *testing.T) {
 	}
 }
 
-// Test Case 6: Root Commit (End of History)
-// Topology: A (root, no parents)
 func TestComputeLayout_RootCommit(t *testing.T) {
 	commits := []Commit{
 		{Hash: "A", Parents: []string{}},
@@ -115,13 +104,6 @@ func TestComputeLayout_RootCommit(t *testing.T) {
 	}
 }
 
-// Test Case 7: Multiple Roots (Merged Repositories)
-// Topology:
-// A ← B ← D (HEAD -> main)
-//
-//	↑
-//
-// C ──────┘ (was separate repo)
 func TestComputeLayout_MultipleRoots(t *testing.T) {
 	commits := []Commit{
 		{Hash: "D", Parents: []string{"B", "C"}}, // Merge commit
@@ -135,8 +117,8 @@ func TestComputeLayout_MultipleRoots(t *testing.T) {
 
 	expected := []string{
 		"├─╮", // D: merge commit
-		"│ ├", // C: other repo root (no continuation below)
-		"├",   // B: main branch (column 1 collapsed after C)
+		"│ ├", // C: other repo root
+		"├",   // B: main branch
 		"├",   // A: main repo root
 	}
 
@@ -151,16 +133,6 @@ func TestComputeLayout_MultipleRoots(t *testing.T) {
 	}
 }
 
-// Test Case 4: Sequential Merges
-// Topology:
-//
-//	 B ← C (feature-1)
-//	/     \
-//
-// A ←───────← D ← G (HEAD -> main)
-//
-//	\   /
-//	 E─F (feature-2)
 func TestComputeLayout_SequentialMerges(t *testing.T) {
 	commits := []Commit{
 		{Hash: "G", Parents: []string{"D", "F"}},
@@ -175,14 +147,13 @@ func TestComputeLayout_SequentialMerges(t *testing.T) {
 	layout := ComputeLayout(commits)
 	rendered := renderLayout(layout)
 
-	// Expected from test-cases.md
 	expected := []string{
 		"├─╮", // G: merge commit
-		"│ ├", // F: feature-2 branch
-		"│ ├", // E: feature-2 branch
-		"├─┤", // D: merge feature-1 (merge join)
-		"│ ├", // C: feature-1 branch
-		"│ ├", // B: feature-1 branch
+		"│ ├", // F: feature-2
+		"│ ├", // E: feature-2
+		"├─┤", // D: merge commit (merge join)
+		"│ ├", // C: feature-1
+		"│ ├", // B: feature-1
 		"├─╯", // A: convergence
 	}
 
@@ -197,12 +168,6 @@ func TestComputeLayout_SequentialMerges(t *testing.T) {
 	}
 }
 
-// Test Case 5: Sequential Merges with commits on main
-// Topology:
-// A ← B ← E ← F ← H (HEAD -> main)
-//
-//	\   /   \   /
-//	 C─D     G
 func TestComputeLayout_SequentialMergesWithMainCommits(t *testing.T) {
 	commits := []Commit{
 		{Hash: "H", Parents: []string{"F", "G"}},
@@ -218,17 +183,15 @@ func TestComputeLayout_SequentialMergesWithMainCommits(t *testing.T) {
 	layout := ComputeLayout(commits)
 	rendered := renderLayout(layout)
 
-	// Expected output for this input order
-	// Note: test-cases.md expected differs because it assumes different commit ordering
 	expected := []string{
-		"├─╮", // H: merge commit (F@0, G@1)
-		"│ ├", // G: feature-2 work
-		"├─╯", // F: convergence (both lanes had F)
-		"├─╮", // E: merge feature-1 (B@0, D@1)
-		"│ ├", // D: feature-1 done
-		"│ ├", // C: feature-1 work
-		"├─╯", // B: convergence (both lanes have B - main and C's parent)
-		"├",   // A: root commit
+		"├─╮", // H: merge commit
+		"│ ├", // G: feature-2
+		"├─╯", // F: convergence
+		"├─╮", // E: merge commit
+		"│ ├", // D: feature-1
+		"│ ├", // C: feature-1
+		"├─╯", // B: convergence
+		"├",   // A: root
 	}
 
 	if len(rendered) != len(expected) {
@@ -242,16 +205,6 @@ func TestComputeLayout_SequentialMergesWithMainCommits(t *testing.T) {
 	}
 }
 
-// Test Case 3: Two Parallel Feature Branches (Octopus Merge)
-// Topology:
-//
-//	 C ← D (feature-1)
-//	/     \
-//
-// A ←───────← G (HEAD -> main)
-//
-//	\     /
-//	 E ← F (feature-2)
 func TestComputeLayout_OctopusMerge(t *testing.T) {
 	commits := []Commit{
 		{Hash: "G", Parents: []string{"A", "D", "F"}}, // Octopus merge - 3 parents
@@ -265,15 +218,13 @@ func TestComputeLayout_OctopusMerge(t *testing.T) {
 	layout := ComputeLayout(commits)
 	rendered := renderLayout(layout)
 
-	// Expected for input order: G, F, E, D, C, A
-	// (Note: test-cases.md shows different order: G, D, C, F, E, A)
 	expected := []string{
-		"├─┬─╮", // G: octopus merge (3 parents: A@0, D@1, F@2)
-		"│ │ ├", // F: at col 2, passing at 0, 1
-		"│ │ ├", // E: at col 2, passing at 0, 1
-		"│ ├ │", // D: at col 1, passing at 0, 2
-		"│ ├ │", // C: at col 1, passing at 0, 2
-		"├─┴─╯", // A: convergence from cols 1, 2
+		"├─┬─╮", // G: octopus merge (3 parents)
+		"│ │ ├", // F: feature-2
+		"│ │ ├", // E: feature-2
+		"│ ├ │", // D: feature-1
+		"│ ├ │", // C: feature-1
+		"├─┴─╯", // A: convergence
 	}
 
 	if len(rendered) != len(expected) {
@@ -287,8 +238,6 @@ func TestComputeLayout_OctopusMerge(t *testing.T) {
 	}
 }
 
-// Test Case 8: With Tags and Remote Refs (graph only, no refs in this test)
-// Same as linear history - just tests the graph part
 func TestComputeLayout_WithRefs(t *testing.T) {
 	commits := []Commit{
 		{Hash: "C", Parents: []string{"B"}},
@@ -316,8 +265,6 @@ func TestComputeLayout_WithRefs(t *testing.T) {
 	}
 }
 
-// Test Case 9: Complex Multi-Branch
-// This is the most complex test case from the spec
 func TestComputeLayout_ComplexMultiBranch(t *testing.T) {
 	commits := []Commit{
 		{Hash: "M", Parents: []string{"J", "L"}},
@@ -338,22 +285,20 @@ func TestComputeLayout_ComplexMultiBranch(t *testing.T) {
 	layout := ComputeLayout(commits)
 	rendered := renderLayout(layout)
 
-	// Expected output for this algorithm (reuses existing lanes for merge parents)
-	// Note: test-cases.md expected values assume new columns are created for merge parents
 	expected := []string{
-		"├─╮",   // M: merge feature-3 (J@0, L@1)
-		"│ ├",   // L: feature-3 done
+		"├─╮",   // M: merge commit
+		"│ ├",   // L: feature-3
 		"│ ├",   // K: feature-3
-		"├─│─╮", // J: merge feature-2 (H@0, D@1, I@2)
-		"│ │ ├", // I: feature-2 done
-		"├─│─╮", // H: merge to G (reuses G's existing lane at col 2)
-		"│ │ ├", // G: at col 2
-		"├─│─┤", // F: merge E, col 2 both converging (had F) and merge target
-		"│ │ ├", // E: hotfix feature-1
-		"├─┼─╯", // D: merge C, convergence at col 2
+		"├─│─╮", // J: merge commit
+		"│ │ ├", // I: feature-2
+		"├─│─╮", // H: merge commit
+		"│ │ ├", // G: feature-2
+		"├─│─┤", // F: merge commit (merge join)
+		"│ │ ├", // E: hotfix
+		"├─┼─╯", // D: merge commit (cross + convergence)
 		"│ ├",   // C: feature-1
-		"├─╯",   // B: main work, convergence
-		"├",     // A: initial commit
+		"├─╯",   // B: convergence
+		"├",     // A: root
 	}
 
 	if len(rendered) != len(expected) {
@@ -367,15 +312,10 @@ func TestComputeLayout_ComplexMultiBranch(t *testing.T) {
 	}
 }
 
-// Additional test: verify that passing lanes are detected correctly
 func TestComputeLayout_PassingLanes(t *testing.T) {
-	// Scenario: commit on column 1 with passing lane on column 0
-	// A ← B ← D
-	//      \  ↑
-	//       ← C
 	commits := []Commit{
 		{Hash: "D", Parents: []string{"B", "C"}},
-		{Hash: "C", Parents: []string{"B"}}, // C is at col 1, B passes on col 0
+		{Hash: "C", Parents: []string{"B"}},
 		{Hash: "B", Parents: []string{"A"}},
 		{Hash: "A", Parents: []string{}},
 	}
@@ -385,7 +325,7 @@ func TestComputeLayout_PassingLanes(t *testing.T) {
 
 	expected := []string{
 		"├─╮", // D: merge commit
-		"│ ├", // C: commit with passing lane on left
+		"│ ├", // C: with passing lane
 		"├─╯", // B: convergence
 		"├",   // A: root
 	}
