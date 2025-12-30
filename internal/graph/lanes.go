@@ -43,6 +43,72 @@ func assignColumn(hash string, lanes []string) (int, []string) {
 	return len(lanes) - 1, lanes
 }
 
+// UpdateResult contains the result of updating lanes after processing a commit.
+type UpdateResult struct {
+	Lanes        []string // Updated lanes state
+	MergeColumns []int    // Columns where merge parents were placed (empty for non-merge commits)
+}
+
+// updateLanes updates the active lanes after processing a commit.
+// It replaces the commit's position with its first parent and adds merge parents.
+//
+// Parameters:
+//   - col: the column where this commit is located
+//   - parents: the commit's parent hashes (first parent is primary branch)
+//   - lanes: current lane state
+//
+// Returns UpdateResult with updated lanes and merge parent column positions.
+func updateLanes(col int, parents []string, lanes []string) UpdateResult {
+	result := UpdateResult{
+		Lanes:        lanes,
+		MergeColumns: []int{},
+	}
+
+	if len(parents) == 0 {
+		// Root commit - clear this lane
+		if col < len(result.Lanes) {
+			result.Lanes[col] = ""
+		}
+		return result
+	}
+
+	// First parent replaces commit's position (branch continuation)
+	if col < len(result.Lanes) {
+		result.Lanes[col] = parents[0]
+	}
+
+	// Additional parents (merge) get placed in available slots or appended
+	for i := 1; i < len(parents); i++ {
+		mergeParent := parents[i]
+
+		// Check if this parent is already in a lane
+		if existingCol := findInLanes(mergeParent, result.Lanes); existingCol >= 0 {
+			// Parent already has a lane - record where it is
+			result.MergeColumns = append(result.MergeColumns, existingCol)
+			continue
+		}
+
+		// Find an empty slot (prefer slots to the right of commit column)
+		placed := false
+		for j := col + 1; j < len(result.Lanes); j++ {
+			if result.Lanes[j] == "" {
+				result.Lanes[j] = mergeParent
+				result.MergeColumns = append(result.MergeColumns, j)
+				placed = true
+				break
+			}
+		}
+
+		if !placed {
+			// No empty slot found, append new column
+			result.Lanes = append(result.Lanes, mergeParent)
+			result.MergeColumns = append(result.MergeColumns, len(result.Lanes)-1)
+		}
+	}
+
+	return result
+}
+
 // collapseTrailingEmpty removes trailing empty strings from lanes.
 // This prevents unbounded width growth when branches complete.
 func collapseTrailingEmpty(lanes []string) []string {

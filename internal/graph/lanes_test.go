@@ -225,3 +225,104 @@ func TestCollapseTrailingEmpty(t *testing.T) {
 		})
 	}
 }
+
+func TestUpdateLanes(t *testing.T) {
+	tests := []struct {
+		name                 string
+		col                  int
+		parents              []string
+		lanes                []string
+		expectedLanes        []string
+		expectedMergeColumns []int
+	}{
+		{
+			name:                 "root commit - clears lane",
+			col:                  0,
+			parents:              []string{},
+			lanes:                []string{"A"},
+			expectedLanes:        []string{""},
+			expectedMergeColumns: []int{},
+		},
+		{
+			name:                 "single parent - replaces position",
+			col:                  0,
+			parents:              []string{"parent"},
+			lanes:                []string{"commit"},
+			expectedLanes:        []string{"parent"},
+			expectedMergeColumns: []int{},
+		},
+		{
+			name:                 "merge commit - adds second parent",
+			col:                  0,
+			parents:              []string{"parent1", "parent2"},
+			lanes:                []string{"commit"},
+			expectedLanes:        []string{"parent1", "parent2"},
+			expectedMergeColumns: []int{1},
+		},
+		{
+			name:                 "merge commit - second parent in empty slot",
+			col:                  0,
+			parents:              []string{"parent1", "parent2"},
+			lanes:                []string{"commit", ""},
+			expectedLanes:        []string{"parent1", "parent2"},
+			expectedMergeColumns: []int{1},
+		},
+		{
+			name:                 "merge commit - second parent already in lane",
+			col:                  0,
+			parents:              []string{"parent1", "parent2"},
+			lanes:                []string{"commit", "parent2"},
+			expectedLanes:        []string{"parent1", "parent2"},
+			expectedMergeColumns: []int{1},
+		},
+		{
+			name:                 "octopus merge - three parents",
+			col:                  0,
+			parents:              []string{"p1", "p2", "p3"},
+			lanes:                []string{"commit"},
+			expectedLanes:        []string{"p1", "p2", "p3"},
+			expectedMergeColumns: []int{1, 2},
+		},
+		{
+			name:                 "merge in middle column",
+			col:                  1,
+			parents:              []string{"parent1", "parent2"},
+			lanes:                []string{"other", "commit", ""},
+			expectedLanes:        []string{"other", "parent1", "parent2"},
+			expectedMergeColumns: []int{2},
+		},
+		{
+			name:                 "merge parent prefers slot to the right",
+			col:                  0,
+			parents:              []string{"p1", "p2"},
+			lanes:                []string{"commit", "occupied", ""},
+			expectedLanes:        []string{"p1", "occupied", "p2"},
+			expectedMergeColumns: []int{2},
+		},
+		{
+			name:                 "single parent with multiple lanes",
+			col:                  0,
+			parents:              []string{"parent"},
+			lanes:                []string{"commit", "other"},
+			expectedLanes:        []string{"parent", "other"},
+			expectedMergeColumns: []int{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Make a copy to avoid modifying test data
+			lanes := make([]string, len(tt.lanes))
+			copy(lanes, tt.lanes)
+
+			result := updateLanes(tt.col, tt.parents, lanes)
+
+			if !reflect.DeepEqual(result.Lanes, tt.expectedLanes) {
+				t.Errorf("updateLanes() lanes = %v, want %v", result.Lanes, tt.expectedLanes)
+			}
+			if !reflect.DeepEqual(result.MergeColumns, tt.expectedMergeColumns) {
+				t.Errorf("updateLanes() mergeColumns = %v, want %v", result.MergeColumns, tt.expectedMergeColumns)
+			}
+		})
+	}
+}

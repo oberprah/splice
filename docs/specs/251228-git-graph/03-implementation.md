@@ -17,7 +17,7 @@ This implementation follows a TDD approach, starting with the core algorithm and
 - [ ] Step 1: Implement core graph layout algorithm with TDD
   - [x] 1a: Data structures and symbol rendering
   - [x] 1b: Column assignment
-  - [ ] 1c: Lane updates
+  - [x] 1c: Lane updates
   - [ ] 1d: Symbol generation
   - [ ] 1e: Full algorithm integration
 - [ ] Step 2: Extend GitCommit with parent hashes and update git parsing
@@ -275,7 +275,18 @@ Status: ✅ Complete
 - Empty strings represent cleared lanes (branch completed)
 
 #### 1c: Lane updates
-Status: Pending
+Status: ✅ Complete
+
+**Changes:**
+- Added `UpdateResult` struct to hold lanes and merge column positions
+- Added `updateLanes()` function to lanes.go
+- Added comprehensive tests for lane updates
+
+**Notes:**
+- First parent replaces commit's position (branch continuation)
+- Merge parents placed in available slots or appended
+- Returns merge column positions for symbol generation
+- Prefers slots to the right of commit column for merge parents
 
 #### 1d: Symbol generation
 Status: Pending
