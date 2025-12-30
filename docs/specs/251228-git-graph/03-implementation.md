@@ -15,7 +15,7 @@ This implementation follows a TDD approach, starting with the core algorithm and
 ## Steps
 
 - [ ] Step 1: Implement core graph layout algorithm with TDD
-  - [ ] 1a: Data structures and symbol rendering
+  - [x] 1a: Data structures and symbol rendering
   - [ ] 1b: Column assignment
   - [ ] 1c: Lane updates
   - [ ] 1d: Symbol generation
@@ -247,10 +247,20 @@ Manual testing against a real git repository with various branch topologies.
 ## Progress
 
 ### Step 1: Implement core graph layout algorithm with TDD
-Status: Pending
+Status: 🔄 In progress
 
 #### 1a: Data structures and symbol rendering
-Status: Pending
+Status: ✅ Complete
+
+**Files created:**
+- `internal/graph/types.go`: Commit, Layout, Row, GraphSymbol types
+- `internal/graph/symbols.go`: RenderRow() function, symbol string mapping
+- `internal/graph/symbols_test.go`: Tests for symbol rendering
+
+**Notes:**
+- All 11 GraphSymbol values defined with 2-character string representations
+- Tests verify each symbol renders correctly and is exactly 2 runes wide
+- Unknown/invalid symbols default to empty ("  ")
 
 #### 1b: Column assignment
 Status: Pending
