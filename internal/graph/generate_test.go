@@ -5,6 +5,38 @@ import (
 	"testing"
 )
 
+// TestGenerateRowSymbols_MergeJoin tests that when a column is BOTH converging
+// AND receiving a merge parent, it should show ┤ (merge join), not ╯ (just convergence).
+//
+// This is the case in SequentialMerges at commit D:
+// - D is at col 0, merging C which should go into col 1
+// - Col 1 was converging (had D from a different branch)
+// - The symbol at col 1 should be ┤ (merge line joins into continuing branch)
+func TestGenerateRowSymbols_MergeJoin(t *testing.T) {
+	// Scenario: commit at col 0, col 1 is both converging AND a merge target
+	commitCol := 0
+	numCols := 2
+	mergeColumns := []int{1}      // C is being merged into col 1
+	convergingColumns := []int{1} // col 1 was also converging
+	passingColumns := []int{}
+
+	row := generateRowSymbols(commitCol, numCols, mergeColumns, convergingColumns, passingColumns)
+
+	// Expected: ├─┤ (commit with merge line, merge join symbol)
+	expected := []GraphSymbol{SymbolMergeCommit, SymbolMergeJoin}
+
+	if len(row.Symbols) != len(expected) {
+		t.Fatalf("Length: got %d, want %d", len(row.Symbols), len(expected))
+	}
+
+	for i, exp := range expected {
+		if row.Symbols[i] != exp {
+			t.Errorf("Symbols[%d]: got %v (%s), want %v (%s)",
+				i, row.Symbols[i], row.Symbols[i].String(), exp, exp.String())
+		}
+	}
+}
+
 func TestGenerateRowSymbols(t *testing.T) {
 	tests := []struct {
 		name              string
@@ -76,7 +108,7 @@ func TestGenerateRowSymbols(t *testing.T) {
 			mergeColumns:      []int{1, 2},
 			convergingColumns: nil,
 			passingColumns:    nil,
-			expected:          []GraphSymbol{SymbolMergeCommit, SymbolBranchTop, SymbolBranchTop}, // ├─╮ ╮
+			expected:          []GraphSymbol{SymbolMergeCommit, SymbolOctopus, SymbolBranchTop}, // ├─┬─╮
 		},
 		{
 			name:              "empty row",

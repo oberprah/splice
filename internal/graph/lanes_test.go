@@ -226,6 +226,39 @@ func TestCollapseTrailingEmpty(t *testing.T) {
 	}
 }
 
+// TestUpdateLanes_ConvergingColumnReuse tests that converging columns are
+// reused for merge parents. This behavior is achieved by clearing converging
+// columns in ComputeLayout before calling updateLanes, so updateLanes naturally
+// uses the empty slots.
+func TestUpdateLanes_ConvergingColumnReuse(t *testing.T) {
+	// Scenario: D is at col 0, col 1 was cleared (was converging)
+	// D's parents are [A, C]
+	// Expected: A goes to col 0, C goes into col 1 (the cleared converging column)
+	col := 0
+	parents := []string{"A", "C"}
+	lanes := []string{"D", ""} // col 1 cleared by ComputeLayout before calling updateLanes
+
+	result := updateLanes(col, parents, lanes)
+
+	// C should go into col 1 (the empty slot)
+	expectedLanes := []string{"A", "C"}
+	expectedMergeColumns := []int{1}
+
+	if len(result.Lanes) != len(expectedLanes) {
+		t.Errorf("Lanes length: got %d, want %d", len(result.Lanes), len(expectedLanes))
+	}
+
+	for i, exp := range expectedLanes {
+		if i < len(result.Lanes) && result.Lanes[i] != exp {
+			t.Errorf("Lanes[%d]: got %q, want %q", i, result.Lanes[i], exp)
+		}
+	}
+
+	if len(result.MergeColumns) != len(expectedMergeColumns) {
+		t.Errorf("MergeColumns: got %v, want %v", result.MergeColumns, expectedMergeColumns)
+	}
+}
+
 func TestUpdateLanes(t *testing.T) {
 	tests := []struct {
 		name                 string

@@ -24,8 +24,14 @@ func ComputeLayout(commits []Commit) *Layout {
 		// 2. Detect converging columns (other lanes waiting for this same commit)
 		convergingColumns := detectConvergingColumns(col, commit.Hash, lanes)
 
-		// 3. Update lanes with parent information (before symbol generation)
-		// This tells us where merge parents will go
+		// 3. Clear converging columns so updateLanes can reuse them for merge parents
+		// This must happen AFTER detection but BEFORE updateLanes
+		for _, convergingCol := range convergingColumns {
+			lanes[convergingCol] = ""
+		}
+
+		// 4. Update lanes with parent information
+		// Merge parents will naturally fill the cleared converging columns
 		updateResult := updateLanes(col, commit.Parents, lanes)
 		lanes = updateResult.Lanes
 

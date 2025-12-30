@@ -61,12 +61,28 @@ func generateRowSymbols(commitCol int, numCols int, mergeColumns []int, convergi
 			} else {
 				symbols[col] = SymbolCommit // ├
 			}
+		} else if mergeSet[col] && convergeSet[col] {
+			// Column is BOTH merging AND converging - merge join
+			// This happens when a merge parent reuses a converging column
+			if col < rightmostHorizontal {
+				symbols[col] = SymbolMergeCross // ┼─ (continues right)
+			} else {
+				symbols[col] = SymbolMergeJoin // ┤ (rightmost)
+			}
 		} else if mergeSet[col] {
 			// This is a merge parent column (new branch starting from merge)
-			symbols[col] = SymbolBranchTop // ╮
+			if col < rightmostMerge {
+				symbols[col] = SymbolOctopus // ┬─ (continues right to more merges)
+			} else {
+				symbols[col] = SymbolBranchTop // ╮ (rightmost merge)
+			}
 		} else if convergeSet[col] {
 			// This is a converging column (branch ending, joining commit)
-			symbols[col] = SymbolBranchBottom // ╯
+			if col < rightmostConverge {
+				symbols[col] = SymbolDiverge // ┴─ (continues right to more convergences)
+			} else {
+				symbols[col] = SymbolBranchBottom // ╯ (rightmost convergence)
+			}
 		} else if passingSet[col] {
 			// This is a passing lane
 			if col > commitCol && col < rightmostHorizontal {
