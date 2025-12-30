@@ -18,7 +18,7 @@ This implementation follows a TDD approach, starting with the core algorithm and
   - [x] 1a: Data structures and symbol rendering
   - [x] 1b: Column assignment
   - [x] 1c: Lane updates
-  - [ ] 1d: Symbol generation
+  - [x] 1d: Symbol generation
   - [ ] 1e: Full algorithm integration
 - [ ] Step 2: Extend GitCommit with parent hashes and update git parsing
 - [ ] Step 3: Integrate graph rendering into LogState view
@@ -289,7 +289,17 @@ Status: ✅ Complete
 - Prefers slots to the right of commit column for merge parents
 
 #### 1d: Symbol generation
-Status: Pending
+Status: ✅ Complete
+
+**Files created:**
+- `internal/graph/generate.go`: generateRowSymbols, detectConvergingColumns, detectPassingColumns
+- `internal/graph/generate_test.go`: Tests for all generation functions
+
+**Notes:**
+- `generateRowSymbols` determines symbols for each column based on connectivity
+- Handles merge lines (├─╮), convergence (├─╯), passing lanes (│), and crossings (│─)
+- `detectConvergingColumns` finds lanes with same hash (branch convergence points)
+- `detectPassingColumns` finds lanes that pass through without interaction
 
 #### 1e: Full algorithm integration
 Status: Pending
