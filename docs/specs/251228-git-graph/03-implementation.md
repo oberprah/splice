@@ -16,7 +16,7 @@ This implementation follows a TDD approach, starting with the core algorithm and
 
 - [ ] Step 1: Implement core graph layout algorithm with TDD
   - [x] 1a: Data structures and symbol rendering
-  - [ ] 1b: Column assignment
+  - [x] 1b: Column assignment
   - [ ] 1c: Lane updates
   - [ ] 1d: Symbol generation
   - [ ] 1e: Full algorithm integration
@@ -263,7 +263,16 @@ Status: ✅ Complete
 - Unknown/invalid symbols default to empty ("  ")
 
 #### 1b: Column assignment
-Status: Pending
+Status: ✅ Complete
+
+**Files created:**
+- `internal/graph/lanes.go`: findInLanes, findEmptyLane, assignColumn, collapseTrailingEmpty
+- `internal/graph/lanes_test.go`: Tests for all lane functions
+
+**Notes:**
+- `assignColumn` prioritizes: existing lane → empty slot → new column
+- `collapseTrailingEmpty` prevents unbounded width growth
+- Empty strings represent cleared lanes (branch completed)
 
 #### 1c: Lane updates
 Status: Pending
