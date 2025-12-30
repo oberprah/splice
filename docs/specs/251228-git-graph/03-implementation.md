@@ -14,12 +14,12 @@ This implementation follows a TDD approach, starting with the core algorithm and
 
 ## Steps
 
-- [ ] Step 1: Implement core graph layout algorithm with TDD
+- [x] Step 1: Implement core graph layout algorithm with TDD
   - [x] 1a: Data structures and symbol rendering
   - [x] 1b: Column assignment
   - [x] 1c: Lane updates
   - [x] 1d: Symbol generation
-  - [ ] 1e: Full algorithm integration
+  - [x] 1e: Full algorithm integration
 - [ ] Step 2: Extend GitCommit with parent hashes and update git parsing
 - [ ] Step 3: Integrate graph rendering into LogState view
 - [ ] Step 4: Add ref decorations (branch names, tags)
@@ -247,7 +247,7 @@ Manual testing against a real git repository with various branch topologies.
 ## Progress
 
 ### Step 1: Implement core graph layout algorithm with TDD
-Status: 🔄 In progress
+Status: ✅ Complete
 
 #### 1a: Data structures and symbol rendering
 Status: ✅ Complete
@@ -302,7 +302,16 @@ Status: ✅ Complete
 - `detectPassingColumns` finds lanes that pass through without interaction
 
 #### 1e: Full algorithm integration
-Status: Pending
+Status: ✅ Complete
+
+**Files created:**
+- `internal/graph/layout.go`: ComputeLayout function
+- `internal/graph/layout_test.go`: Tests for all 9 test cases from spec
+
+**Notes:**
+- All 9 test cases from test-cases.md pass
+- Algorithm handles linear history, merges, octopus merges, multiple roots, and complex multi-branch scenarios
+- Tests verify structural properties (merge symbols, convergence, etc.)
 
 ### Step 2: Extend GitCommit with parent hashes
 Status: Pending
