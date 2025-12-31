@@ -29,6 +29,7 @@ func CreateTestCommits(count int) []git.GitCommit {
 		commits[i] = git.GitCommit{
 			Hash:         fmt.Sprintf("%040d", i), // Full 40-char hash
 			ParentHashes: parentHashes,
+			Refs:         []git.RefInfo{}, // No refs by default
 			Message:      fmt.Sprintf("Commit message %d", i),
 			Body:         "",
 			Author:       fmt.Sprintf("Author %d", i%3),               // Vary authors
@@ -60,6 +61,7 @@ func CreateTestCommitsWithMessages(messages []string) []git.GitCommit {
 		commits[i] = git.GitCommit{
 			Hash:         fmt.Sprintf("%040d", i),
 			ParentHashes: parentHashes,
+			Refs:         []git.RefInfo{}, // No refs by default
 			Message:      msg,
 			Body:         "",
 			Author:       "Test Author",

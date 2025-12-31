@@ -8,10 +8,27 @@ import (
 	"time"
 )
 
+// RefType represents the type of a git reference
+type RefType int
+
+const (
+	RefTypeBranch       RefType = iota // Local branch (e.g., "main")
+	RefTypeRemoteBranch                // Remote branch (e.g., "origin/main")
+	RefTypeTag                         // Tag (e.g., "v1.0")
+)
+
+// RefInfo represents a git reference (branch, tag, or HEAD pointer)
+type RefInfo struct {
+	Name   string  // e.g., "main", "v1.0", "origin/main"
+	Type   RefType // Branch, RemoteBranch, or Tag
+	IsHead bool    // true if this is the current HEAD
+}
+
 // GitCommit represents a single git commit with all necessary display information
 type GitCommit struct {
 	Hash         string    // Full 40-char hash
 	ParentHashes []string  // Parent commit hashes (empty for root commits, space-separated in git output)
+	Refs         []RefInfo // Branch/tag decorations
 	Message      string    // First line of commit message (subject)
 	Body         string    // Commit message body (everything after subject line)
 	Author       string    // Author name (not email)
@@ -27,8 +44,94 @@ type FileChange struct {
 	IsBinary  bool   // True if the file is binary
 }
 
+// parseRefDecorations parses git's %d output into structured RefInfo data.
+// Git's %d format examples:
+//
+//	" (HEAD -> main)" - HEAD pointing to branch
+//	" (HEAD -> main, origin/main)" - HEAD and remote
+//	" (tag: v1.0)" - tag
+//	" (main)" - local branch
+//	" (origin/main)" - remote branch
+//	"" - no refs
+func parseRefDecorations(refsStr string) []RefInfo {
+	// Trim the leading space and surrounding parentheses
+	refsStr = strings.TrimSpace(refsStr)
+	if refsStr == "" {
+		return []RefInfo{}
+	}
+
+	// Remove the surrounding parentheses
+	if strings.HasPrefix(refsStr, "(") && strings.HasSuffix(refsStr, ")") {
+		refsStr = refsStr[1 : len(refsStr)-1]
+	} else {
+		// No parentheses means no refs
+		return []RefInfo{}
+	}
+
+	// Split by comma to get individual refs
+	refParts := strings.Split(refsStr, ",")
+	refs := make([]RefInfo, 0, len(refParts))
+
+	headBranch := "" // Track which branch HEAD points to
+
+	// First pass: find HEAD pointer
+	for _, part := range refParts {
+		part = strings.TrimSpace(part)
+		if strings.HasPrefix(part, "HEAD -> ") {
+			headBranch = strings.TrimPrefix(part, "HEAD -> ")
+			break
+		}
+	}
+
+	// Second pass: parse all refs
+	for _, part := range refParts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+
+		var ref RefInfo
+
+		// Handle "HEAD -> branch" specially
+		if strings.HasPrefix(part, "HEAD -> ") {
+			branchName := strings.TrimPrefix(part, "HEAD -> ")
+			ref = RefInfo{
+				Name:   branchName,
+				Type:   RefTypeBranch,
+				IsHead: true,
+			}
+		} else if strings.HasPrefix(part, "tag: ") {
+			// Handle tags
+			tagName := strings.TrimPrefix(part, "tag: ")
+			ref = RefInfo{
+				Name:   tagName,
+				Type:   RefTypeTag,
+				IsHead: false,
+			}
+		} else if strings.Contains(part, "/") {
+			// Remote branch (contains /)
+			ref = RefInfo{
+				Name:   part,
+				Type:   RefTypeRemoteBranch,
+				IsHead: false,
+			}
+		} else {
+			// Local branch
+			ref = RefInfo{
+				Name:   part,
+				Type:   RefTypeBranch,
+				IsHead: part == headBranch,
+			}
+		}
+
+		refs = append(refs, ref)
+	}
+
+	return refs
+}
+
 // ParseGitLogOutput parses git log output into GitCommit structs.
-// Input format: "hash\0parents\0author\0date\0subject\0body\x1e" (NULL-separated fields, record separator between commits).
+// Input format: "hash\0parents\0refs\0author\0date\0subject\0body\x1e" (NULL-separated fields, record separator between commits).
 func ParseGitLogOutput(output string) ([]GitCommit, error) {
 	output = strings.TrimSpace(output)
 	if output == "" {
@@ -47,17 +150,18 @@ func ParseGitLogOutput(output string) ([]GitCommit, error) {
 		}
 
 		// Split each commit by single NULL to get fields
-		fields := strings.SplitN(record, "\x00", 6)
-		if len(fields) != 6 {
+		fields := strings.SplitN(record, "\x00", 7)
+		if len(fields) != 7 {
 			continue // Skip malformed records
 		}
 
 		hash := fields[0]
 		parentsStr := fields[1]
-		author := fields[2]
-		dateStr := fields[3]
-		message := fields[4]
-		body := strings.TrimSpace(fields[5])
+		refsStr := fields[2]
+		author := fields[3]
+		dateStr := fields[4]
+		message := fields[5]
+		body := strings.TrimSpace(fields[6])
 
 		// Skip empty commits
 		if hash == "" {
@@ -72,6 +176,9 @@ func ParseGitLogOutput(output string) ([]GitCommit, error) {
 			parentHashes = []string{}
 		}
 
+		// Parse ref decorations
+		refs := parseRefDecorations(refsStr)
+
 		// Parse the date
 		date, err := time.Parse(time.RFC3339, dateStr)
 		if err != nil {
@@ -81,6 +188,7 @@ func ParseGitLogOutput(output string) ([]GitCommit, error) {
 		commit := GitCommit{
 			Hash:         hash,
 			ParentHashes: parentHashes,
+			Refs:         refs,
 			Message:      message,
 			Body:         body,
 			Author:       author,
@@ -95,12 +203,13 @@ func ParseGitLogOutput(output string) ([]GitCommit, error) {
 
 // FetchCommits executes git log and returns a slice of commits
 func FetchCommits(limit int) ([]GitCommit, error) {
-	// Use git log with custom format using NULL separator: hash\0parents\0author\0date\0subject\0body
+	// Use git log with custom format using NULL separator: hash\0parents\0refs\0author\0date\0subject\0body
 	// NULL character is used as field delimiter since it won't appear in commit messages
 	// ASCII Record Separator (0x1e) is used as commit record separator
 	// %P outputs parent hashes (space-separated for merges, empty for root commits)
+	// %d outputs ref decorations (e.g., " (HEAD -> main, tag: v1.0)")
 	cmd := exec.Command("git", "log",
-		"--pretty=format:%H%x00%P%x00%an%x00%ad%x00%s%x00%b%x1e",
+		"--pretty=format:%H%x00%P%x00%d%x00%an%x00%ad%x00%s%x00%b%x1e",
 		"--date=iso-strict",
 		fmt.Sprintf("-n %d", limit))
 

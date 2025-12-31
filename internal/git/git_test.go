@@ -16,11 +16,12 @@ func TestParseGitLogOutput(t *testing.T) {
 	}{
 		{
 			name:  "single commit with parent",
-			input: "abc123def456789012345678901234567890abcd\x00parent1\x00John Doe\x002024-01-15T10:00:00Z\x00Fix memory leak\x00\x1e",
+			input: "abc123def456789012345678901234567890abcd\x00parent1\x00\x00John Doe\x002024-01-15T10:00:00Z\x00Fix memory leak\x00\x1e",
 			expected: []GitCommit{
 				{
 					Hash:         "abc123def456789012345678901234567890abcd",
 					ParentHashes: []string{"parent1"},
+					Refs:         []RefInfo{},
 					Author:       "John Doe",
 					Date:         time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC),
 					Message:      "Fix memory leak",
@@ -30,11 +31,12 @@ func TestParseGitLogOutput(t *testing.T) {
 		},
 		{
 			name:  "multiple commits",
-			input: "hash1\x00\x00Author One\x002024-01-01T10:00:00Z\x00First commit\x00\x1ehash2\x00hash1\x00Author Two\x002024-01-02T11:30:00Z\x00Second commit\x00\x1ehash3\x00hash2\x00Author Three\x002024-01-03T15:45:00Z\x00Third commit\x00\x1e",
+			input: "hash1\x00\x00\x00Author One\x002024-01-01T10:00:00Z\x00First commit\x00\x1ehash2\x00hash1\x00\x00Author Two\x002024-01-02T11:30:00Z\x00Second commit\x00\x1ehash3\x00hash2\x00\x00Author Three\x002024-01-03T15:45:00Z\x00Third commit\x00\x1e",
 			expected: []GitCommit{
 				{
 					Hash:         "hash1",
 					ParentHashes: []string{},
+					Refs:         []RefInfo{},
 					Author:       "Author One",
 					Date:         time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 					Message:      "First commit",
@@ -43,6 +45,7 @@ func TestParseGitLogOutput(t *testing.T) {
 				{
 					Hash:         "hash2",
 					ParentHashes: []string{"hash1"},
+					Refs:         []RefInfo{},
 					Author:       "Author Two",
 					Date:         time.Date(2024, 1, 2, 11, 30, 0, 0, time.UTC),
 					Message:      "Second commit",
@@ -51,6 +54,7 @@ func TestParseGitLogOutput(t *testing.T) {
 				{
 					Hash:         "hash3",
 					ParentHashes: []string{"hash2"},
+					Refs:         []RefInfo{},
 					Author:       "Author Three",
 					Date:         time.Date(2024, 1, 3, 15, 45, 0, 0, time.UTC),
 					Message:      "Third commit",
@@ -70,11 +74,12 @@ func TestParseGitLogOutput(t *testing.T) {
 		},
 		{
 			name:  "commit with body",
-			input: "hash\x00parent123\x00Author\x002024-01-01T10:00:00Z\x00Fix memory leak\x00This commit fixes a critical memory leak.\n\nThe issue was in the cleanup code.\x1e",
+			input: "hash\x00parent123\x00\x00Author\x002024-01-01T10:00:00Z\x00Fix memory leak\x00This commit fixes a critical memory leak.\n\nThe issue was in the cleanup code.\x1e",
 			expected: []GitCommit{
 				{
 					Hash:         "hash",
 					ParentHashes: []string{"parent123"},
+					Refs:         []RefInfo{},
 					Author:       "Author",
 					Date:         time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 					Message:      "Fix memory leak",
@@ -84,11 +89,12 @@ func TestParseGitLogOutput(t *testing.T) {
 		},
 		{
 			name:  "pipes and special chars in message",
-			input: "hash\x00parent1\x00Author\x002024-01-01T10:00:00Z\x00Fix A | B | C issue\x00\x1e",
+			input: "hash\x00parent1\x00\x00Author\x002024-01-01T10:00:00Z\x00Fix A | B | C issue\x00\x1e",
 			expected: []GitCommit{
 				{
 					Hash:         "hash",
 					ParentHashes: []string{"parent1"},
+					Refs:         []RefInfo{},
 					Author:       "Author",
 					Date:         time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 					Message:      "Fix A | B | C issue",
@@ -98,11 +104,12 @@ func TestParseGitLogOutput(t *testing.T) {
 		},
 		{
 			name:  "multiple commits with bodies",
-			input: "hash1\x00\x00Author\x002024-01-01T10:00:00Z\x00First\x00Body 1\x1ehash2\x00hash1\x00Author\x002024-01-02T10:00:00Z\x00Second\x00Body 2\x1ehash3\x00hash2\x00Author\x002024-01-03T10:00:00Z\x00Third\x00\x1e",
+			input: "hash1\x00\x00\x00Author\x002024-01-01T10:00:00Z\x00First\x00Body 1\x1ehash2\x00hash1\x00\x00Author\x002024-01-02T10:00:00Z\x00Second\x00Body 2\x1ehash3\x00hash2\x00\x00Author\x002024-01-03T10:00:00Z\x00Third\x00\x1e",
 			expected: []GitCommit{
 				{
 					Hash:         "hash1",
 					ParentHashes: []string{},
+					Refs:         []RefInfo{},
 					Author:       "Author",
 					Date:         time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 					Message:      "First",
@@ -111,6 +118,7 @@ func TestParseGitLogOutput(t *testing.T) {
 				{
 					Hash:         "hash2",
 					ParentHashes: []string{"hash1"},
+					Refs:         []RefInfo{},
 					Author:       "Author",
 					Date:         time.Date(2024, 1, 2, 10, 0, 0, 0, time.UTC),
 					Message:      "Second",
@@ -119,6 +127,7 @@ func TestParseGitLogOutput(t *testing.T) {
 				{
 					Hash:         "hash3",
 					ParentHashes: []string{"hash2"},
+					Refs:         []RefInfo{},
 					Author:       "Author",
 					Date:         time.Date(2024, 1, 3, 10, 0, 0, 0, time.UTC),
 					Message:      "Third",
@@ -128,11 +137,12 @@ func TestParseGitLogOutput(t *testing.T) {
 		},
 		{
 			name:  "author with special characters",
-			input: "hash\x00parent\x00José García-López\x002024-01-01T10:00:00Z\x00Add feature\x00\x1e",
+			input: "hash\x00parent\x00\x00José García-López\x002024-01-01T10:00:00Z\x00Add feature\x00\x1e",
 			expected: []GitCommit{
 				{
 					Hash:         "hash",
 					ParentHashes: []string{"parent"},
+					Refs:         []RefInfo{},
 					Author:       "José García-López",
 					Date:         time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 					Message:      "Add feature",
@@ -142,11 +152,12 @@ func TestParseGitLogOutput(t *testing.T) {
 		},
 		{
 			name:  "empty message",
-			input: "hash\x00parent\x00Author\x002024-01-01T10:00:00Z\x00\x00\x1e",
+			input: "hash\x00parent\x00\x00Author\x002024-01-01T10:00:00Z\x00\x00\x1e",
 			expected: []GitCommit{
 				{
 					Hash:         "hash",
 					ParentHashes: []string{"parent"},
+					Refs:         []RefInfo{},
 					Author:       "Author",
 					Date:         time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 					Message:      "",
@@ -156,11 +167,12 @@ func TestParseGitLogOutput(t *testing.T) {
 		},
 		{
 			name:  "merge commit with two parents",
-			input: "merge123\x00parent1 parent2\x00Author\x002024-01-01T10:00:00Z\x00Merge branch feature\x00\x1e",
+			input: "merge123\x00parent1 parent2\x00\x00Author\x002024-01-01T10:00:00Z\x00Merge branch feature\x00\x1e",
 			expected: []GitCommit{
 				{
 					Hash:         "merge123",
 					ParentHashes: []string{"parent1", "parent2"},
+					Refs:         []RefInfo{},
 					Author:       "Author",
 					Date:         time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 					Message:      "Merge branch feature",
@@ -170,11 +182,12 @@ func TestParseGitLogOutput(t *testing.T) {
 		},
 		{
 			name:  "octopus merge with three parents",
-			input: "octopus\x00p1 p2 p3\x00Author\x002024-01-01T10:00:00Z\x00Octopus merge\x00\x1e",
+			input: "octopus\x00p1 p2 p3\x00\x00Author\x002024-01-01T10:00:00Z\x00Octopus merge\x00\x1e",
 			expected: []GitCommit{
 				{
 					Hash:         "octopus",
 					ParentHashes: []string{"p1", "p2", "p3"},
+					Refs:         []RefInfo{},
 					Author:       "Author",
 					Date:         time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 					Message:      "Octopus merge",
@@ -184,15 +197,52 @@ func TestParseGitLogOutput(t *testing.T) {
 		},
 		{
 			name:  "root commit with no parents",
-			input: "root\x00\x00Author\x002024-01-01T10:00:00Z\x00Initial commit\x00\x1e",
+			input: "root\x00\x00\x00Author\x002024-01-01T10:00:00Z\x00Initial commit\x00\x1e",
 			expected: []GitCommit{
 				{
 					Hash:         "root",
 					ParentHashes: []string{},
+					Refs:         []RefInfo{},
 					Author:       "Author",
 					Date:         time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 					Message:      "Initial commit",
 					Body:         "",
+				},
+			},
+		},
+		{
+			name:  "commit with HEAD and branch refs",
+			input: "hash\x00parent\x00 (HEAD -> main)\x00Author\x002024-01-01T10:00:00Z\x00Commit on main\x00\x1e",
+			expected: []GitCommit{
+				{
+					Hash:         "hash",
+					ParentHashes: []string{"parent"},
+					Refs: []RefInfo{
+						{Name: "main", Type: RefTypeBranch, IsHead: true},
+					},
+					Author:  "Author",
+					Date:    time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
+					Message: "Commit on main",
+					Body:    "",
+				},
+			},
+		},
+		{
+			name:  "commit with multiple refs including tag",
+			input: "hash\x00parent\x00 (HEAD -> main, tag: v1.0, origin/main)\x00Author\x002024-01-01T10:00:00Z\x00Release v1.0\x00\x1e",
+			expected: []GitCommit{
+				{
+					Hash:         "hash",
+					ParentHashes: []string{"parent"},
+					Refs: []RefInfo{
+						{Name: "main", Type: RefTypeBranch, IsHead: true},
+						{Name: "v1.0", Type: RefTypeTag, IsHead: false},
+						{Name: "origin/main", Type: RefTypeRemoteBranch, IsHead: false},
+					},
+					Author:  "Author",
+					Date:    time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
+					Message: "Release v1.0",
+					Body:    "",
 				},
 			},
 		},
@@ -214,7 +264,7 @@ func TestParseGitLogOutput(t *testing.T) {
 }
 
 func TestParseGitLogOutput_InvalidDate(t *testing.T) {
-	input := "hash\x00parent\x00Author\x00INVALID_DATE\x00Message\x00\x1e"
+	input := "hash\x00parent\x00\x00Author\x00INVALID_DATE\x00Message\x00\x1e"
 
 	commits, err := ParseGitLogOutput(input)
 
@@ -240,17 +290,18 @@ func TestParseGitLogOutput_IncompleteData(t *testing.T) {
 		expected []GitCommit
 	}{
 		{
-			name:     "incomplete commit with 4 fields only",
-			input:    "hash\x00parent\x00Author\x00Date",
+			name:     "incomplete commit with 5 fields only",
+			input:    "hash\x00parent\x00\x00Author\x00Date",
 			expected: []GitCommit{},
 		},
 		{
 			name:  "valid commit followed by incomplete data",
-			input: "hash1\x00parent1\x00Author\x002024-01-01T10:00:00Z\x00Message\x00Body\x1eincomplete\x00data",
+			input: "hash1\x00parent1\x00\x00Author\x002024-01-01T10:00:00Z\x00Message\x00Body\x1eincomplete\x00data",
 			expected: []GitCommit{
 				{
 					Hash:         "hash1",
 					ParentHashes: []string{"parent1"},
+					Refs:         []RefInfo{},
 					Author:       "Author",
 					Date:         time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 					Message:      "Message",
@@ -785,5 +836,113 @@ func TestFetchFullFileDiff_NewFile(t *testing.T) {
 	// We just verify the result is valid
 	if result == nil {
 		t.Error("FetchFullFileDiff() returned nil for new file")
+	}
+}
+
+func TestParseRefDecorations(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []RefInfo
+	}{
+		{
+			name:     "empty string",
+			input:    "",
+			expected: []RefInfo{},
+		},
+		{
+			name:     "no refs - just whitespace",
+			input:    "   ",
+			expected: []RefInfo{},
+		},
+		{
+			name:  "HEAD pointing to branch",
+			input: " (HEAD -> main)",
+			expected: []RefInfo{
+				{Name: "main", Type: RefTypeBranch, IsHead: true},
+			},
+		},
+		{
+			name:  "HEAD and remote branch",
+			input: " (HEAD -> main, origin/main)",
+			expected: []RefInfo{
+				{Name: "main", Type: RefTypeBranch, IsHead: true},
+				{Name: "origin/main", Type: RefTypeRemoteBranch, IsHead: false},
+			},
+		},
+		{
+			name:  "tag only",
+			input: " (tag: v1.0)",
+			expected: []RefInfo{
+				{Name: "v1.0", Type: RefTypeTag, IsHead: false},
+			},
+		},
+		{
+			name:  "local branch only",
+			input: " (main)",
+			expected: []RefInfo{
+				{Name: "main", Type: RefTypeBranch, IsHead: false},
+			},
+		},
+		{
+			name:  "remote branch only",
+			input: " (origin/main)",
+			expected: []RefInfo{
+				{Name: "origin/main", Type: RefTypeRemoteBranch, IsHead: false},
+			},
+		},
+		{
+			name:  "multiple refs with HEAD, remote, and tag",
+			input: " (HEAD -> main, origin/main, tag: v1.0)",
+			expected: []RefInfo{
+				{Name: "main", Type: RefTypeBranch, IsHead: true},
+				{Name: "origin/main", Type: RefTypeRemoteBranch, IsHead: false},
+				{Name: "v1.0", Type: RefTypeTag, IsHead: false},
+			},
+		},
+		{
+			name:  "multiple local branches",
+			input: " (main, develop)",
+			expected: []RefInfo{
+				{Name: "main", Type: RefTypeBranch, IsHead: false},
+				{Name: "develop", Type: RefTypeBranch, IsHead: false},
+			},
+		},
+		{
+			name:  "multiple remote branches",
+			input: " (origin/main, upstream/main)",
+			expected: []RefInfo{
+				{Name: "origin/main", Type: RefTypeRemoteBranch, IsHead: false},
+				{Name: "upstream/main", Type: RefTypeRemoteBranch, IsHead: false},
+			},
+		},
+		{
+			name:  "multiple tags",
+			input: " (tag: v1.0, tag: v1.0.1)",
+			expected: []RefInfo{
+				{Name: "v1.0", Type: RefTypeTag, IsHead: false},
+				{Name: "v1.0.1", Type: RefTypeTag, IsHead: false},
+			},
+		},
+		{
+			name:  "complex scenario - HEAD, local, remote, tags",
+			input: " (HEAD -> feature/branch, origin/feature/branch, main, tag: release-1.0)",
+			expected: []RefInfo{
+				{Name: "feature/branch", Type: RefTypeBranch, IsHead: true},
+				{Name: "origin/feature/branch", Type: RefTypeRemoteBranch, IsHead: false},
+				{Name: "main", Type: RefTypeBranch, IsHead: false},
+				{Name: "release-1.0", Type: RefTypeTag, IsHead: false},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := parseRefDecorations(tt.input)
+
+			if !reflect.DeepEqual(result, tt.expected) {
+				t.Errorf("parseRefDecorations() mismatch:\ngot:  %+v\nwant: %+v", result, tt.expected)
+			}
+		})
 	}
 }
