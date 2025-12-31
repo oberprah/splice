@@ -9,6 +9,7 @@ import (
 
 // CreateTestCommits generates n mock git commits for testing
 // Uses fixed dates that are exactly 1 year old to ensure deterministic formatting
+// Creates linear commit history where each commit has the previous commit as its parent
 func CreateTestCommits(count int) []git.GitCommit {
 	commits := make([]git.GitCommit, count)
 	// Fixed date exactly 1 year ago from test "now" (2024-01-01 from 2025-01-01)
@@ -16,12 +17,22 @@ func CreateTestCommits(count int) []git.GitCommit {
 	baseTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 
 	for i := range count {
+		var parentHashes []string
+		if i > 0 {
+			// Each commit has the previous commit as its parent (linear history)
+			parentHashes = []string{fmt.Sprintf("%040d", i-1)}
+		} else {
+			// First commit (root) has no parents
+			parentHashes = []string{}
+		}
+
 		commits[i] = git.GitCommit{
-			Hash:    fmt.Sprintf("%040d", i), // Full 40-char hash
-			Message: fmt.Sprintf("Commit message %d", i),
-			Body:    "",
-			Author:  fmt.Sprintf("Author %d", i%3),               // Vary authors
-			Date:    baseTime.Add(time.Duration(-i) * time.Hour), // Reverse chronological
+			Hash:         fmt.Sprintf("%040d", i), // Full 40-char hash
+			ParentHashes: parentHashes,
+			Message:      fmt.Sprintf("Commit message %d", i),
+			Body:         "",
+			Author:       fmt.Sprintf("Author %d", i%3),               // Vary authors
+			Date:         baseTime.Add(time.Duration(-i) * time.Hour), // Reverse chronological
 		}
 	}
 
@@ -30,18 +41,29 @@ func CreateTestCommits(count int) []git.GitCommit {
 
 // CreateTestCommitsWithMessages generates commits with specific messages
 // Uses fixed dates that are exactly 1 year old to ensure deterministic formatting
+// Creates linear commit history where each commit has the previous commit as its parent
 func CreateTestCommitsWithMessages(messages []string) []git.GitCommit {
 	commits := make([]git.GitCommit, len(messages))
 	// Fixed date exactly 1 year ago from test "now" (2024-01-01 from 2025-01-01)
 	baseTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 
 	for i, msg := range messages {
+		var parentHashes []string
+		if i > 0 {
+			// Each commit has the previous commit as its parent (linear history)
+			parentHashes = []string{fmt.Sprintf("%040d", i-1)}
+		} else {
+			// First commit (root) has no parents
+			parentHashes = []string{}
+		}
+
 		commits[i] = git.GitCommit{
-			Hash:    fmt.Sprintf("%040d", i),
-			Message: msg,
-			Body:    "",
-			Author:  "Test Author",
-			Date:    baseTime.Add(time.Duration(-i) * time.Hour),
+			Hash:         fmt.Sprintf("%040d", i),
+			ParentHashes: parentHashes,
+			Message:      msg,
+			Body:         "",
+			Author:       "Test Author",
+			Date:         baseTime.Add(time.Duration(-i) * time.Hour),
 		}
 	}
 

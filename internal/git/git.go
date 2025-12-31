@@ -10,11 +10,12 @@ import (
 
 // GitCommit represents a single git commit with all necessary display information
 type GitCommit struct {
-	Hash    string    // Full 40-char hash
-	Message string    // First line of commit message (subject)
-	Body    string    // Commit message body (everything after subject line)
-	Author  string    // Author name (not email)
-	Date    time.Time // Commit timestamp
+	Hash         string    // Full 40-char hash
+	ParentHashes []string  // Parent commit hashes (empty for root commits, space-separated in git output)
+	Message      string    // First line of commit message (subject)
+	Body         string    // Commit message body (everything after subject line)
+	Author       string    // Author name (not email)
+	Date         time.Time // Commit timestamp
 }
 
 // FileChange represents a file that was changed in a commit
@@ -27,7 +28,7 @@ type FileChange struct {
 }
 
 // ParseGitLogOutput parses git log output into GitCommit structs.
-// Input format: "hash\0author\0date\0subject\0body\x1e" (NULL-separated fields, record separator between commits).
+// Input format: "hash\0parents\0author\0date\0subject\0body\x1e" (NULL-separated fields, record separator between commits).
 func ParseGitLogOutput(output string) ([]GitCommit, error) {
 	output = strings.TrimSpace(output)
 	if output == "" {
@@ -46,20 +47,29 @@ func ParseGitLogOutput(output string) ([]GitCommit, error) {
 		}
 
 		// Split each commit by single NULL to get fields
-		fields := strings.SplitN(record, "\x00", 5)
-		if len(fields) != 5 {
+		fields := strings.SplitN(record, "\x00", 6)
+		if len(fields) != 6 {
 			continue // Skip malformed records
 		}
 
 		hash := fields[0]
-		author := fields[1]
-		dateStr := fields[2]
-		message := fields[3]
-		body := strings.TrimSpace(fields[4])
+		parentsStr := fields[1]
+		author := fields[2]
+		dateStr := fields[3]
+		message := fields[4]
+		body := strings.TrimSpace(fields[5])
 
 		// Skip empty commits
 		if hash == "" {
 			continue
+		}
+
+		// Parse parent hashes (space-separated, empty string for root commits)
+		var parentHashes []string
+		if parentsStr != "" {
+			parentHashes = strings.Split(parentsStr, " ")
+		} else {
+			parentHashes = []string{}
 		}
 
 		// Parse the date
@@ -69,11 +79,12 @@ func ParseGitLogOutput(output string) ([]GitCommit, error) {
 		}
 
 		commit := GitCommit{
-			Hash:    hash,
-			Message: message,
-			Body:    body,
-			Author:  author,
-			Date:    date,
+			Hash:         hash,
+			ParentHashes: parentHashes,
+			Message:      message,
+			Body:         body,
+			Author:       author,
+			Date:         date,
 		}
 
 		commits = append(commits, commit)
@@ -84,11 +95,12 @@ func ParseGitLogOutput(output string) ([]GitCommit, error) {
 
 // FetchCommits executes git log and returns a slice of commits
 func FetchCommits(limit int) ([]GitCommit, error) {
-	// Use git log with custom format using NULL separator: hash\0author\0date\0subject\0body
+	// Use git log with custom format using NULL separator: hash\0parents\0author\0date\0subject\0body
 	// NULL character is used as field delimiter since it won't appear in commit messages
 	// ASCII Record Separator (0x1e) is used as commit record separator
+	// %P outputs parent hashes (space-separated for merges, empty for root commits)
 	cmd := exec.Command("git", "log",
-		"--pretty=format:%H%x00%an%x00%ad%x00%s%x00%b%x1e",
+		"--pretty=format:%H%x00%P%x00%an%x00%ad%x00%s%x00%b%x1e",
 		"--date=iso-strict",
 		fmt.Sprintf("-n %d", limit))
 
