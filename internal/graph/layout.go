@@ -15,6 +15,7 @@ func ComputeLayout(commits []Commit) *Layout {
 
 	var rows []Row
 	var lanes []string
+	var prevMergedHashes map[string]bool // Hashes that were merged in previous row
 
 	for _, commit := range commits {
 		// 1. Assign column for this commit
@@ -30,10 +31,36 @@ func ComputeLayout(commits []Commit) *Layout {
 			lanes[convergingCol] = ""
 		}
 
-		// 4. Update lanes with parent information
+		// 4. Check if this commit was merged in previous row (existing lane merge)
+		// If so, it should show convergence (closing the merge bracket)
+		wasInExistingLaneMerge := prevMergedHashes != nil && prevMergedHashes[commit.Hash]
+
+		// 5. Save lanes state before update (to track merged hashes)
+		lanesCopy := make([]string, len(lanes))
+		copy(lanesCopy, lanes)
+
+		// 6. Update lanes with parent information
 		// Merge parents will naturally fill the cleared converging columns
 		updateResult := updateLanes(col, commit.Parents, lanes)
 		lanes = updateResult.Lanes
+
+		// Override convergence if this commit was in a previous existing lane merge
+		if wasInExistingLaneMerge && len(commit.Parents) == 1 {
+			updateResult.ConvergesToParent = true
+		}
+
+		// 7. Track which hashes were merged in this row (for next iteration)
+		currentMergedHashes := make(map[string]bool)
+		for _, mergeCol := range updateResult.ExistingLanesMerge {
+			// Get the hash that was in this column before updateLanes
+			if mergeCol < len(lanesCopy) {
+				mergedHash := lanesCopy[mergeCol]
+				if mergedHash != "" {
+					currentMergedHashes[mergedHash] = true
+				}
+			}
+		}
+		prevMergedHashes = currentMergedHashes
 
 		// 4. Detect passing columns (lanes that continue through without interaction)
 		passingColumns := detectPassingColumns(col, lanes, updateResult.MergeColumns, convergingColumns)
@@ -43,7 +70,15 @@ func ComputeLayout(commits []Commit) *Layout {
 		if numCols == 0 {
 			numCols = 1 // At least the commit column
 		}
-		row := generateRowSymbols(col, numCols, updateResult.MergeColumns, convergingColumns, passingColumns)
+		// Add extra column for merge corner when merging to existing lane
+		if len(updateResult.ExistingLanesMerge) > 0 {
+			numCols++
+		}
+		// Add extra column for convergence symbol when converging to parent
+		if updateResult.ConvergesToParent {
+			numCols++
+		}
+		row := generateRowSymbols(col, numCols, updateResult.MergeColumns, convergingColumns, passingColumns, updateResult.ExistingLanesMerge, updateResult.ConvergesToParent)
 		rows = append(rows, row)
 
 		// 6. Collapse trailing empty lanes

@@ -313,6 +313,31 @@ Status: ✅ Complete
 - Algorithm handles linear history, merges, octopus merges, multiple roots, and complex multi-branch scenarios
 - Tests verify structural properties (merge symbols, convergence, etc.)
 
+#### 1f: Convergence and Existing Lane Merge Detection (Refinement)
+Status: ✅ Complete
+
+**Scope:** Refine the algorithm to handle "forward convergence" and "existing lane merges" discovered during implementation.
+
+**Problem:**
+- `detectConvergingColumns` only finds convergence BEFORE lane updates
+- Misses convergence that happens DURING `updateLanes` when parent placement creates duplication
+- Existing lane merges need extra visual column for corner symbol
+
+**Solution:**
+- Enhance `updateLanes()` to detect and track forward convergence
+- Enhance `updateLanes()` to detect when merge parents already exist in lanes
+- Add extra visual columns in `ComputeLayout()` when needed
+- Extend `generateRowSymbols()` to place symbols in extra columns
+
+**Key Rules:**
+1. **Existing lane merge:** Merge parent already in lanes → extra column for corner `╮`
+2. **Forward convergence:** Single-parent commit where parent exists in exactly ONE other lane → extra column for `╯`
+3. **Not convergence:** Parent exists in MULTIPLE lanes → propagation, not convergence
+
+**Tests:** Update complex multi-branch test expectations to match correct visual output
+
+**Deliverable:** All test cases pass with correct convergence and merge-to-existing-lane visualization
+
 ### Step 2: Extend GitCommit with parent hashes
 Status: Pending
 
@@ -327,7 +352,86 @@ Status: Pending
 
 ## Discoveries
 
-(To be filled during implementation)
+### Discovery 1: Forward Convergence Detection (Step 1e refinement)
+
+**Issue Identified:** The initial algorithm doesn't fully handle "forward convergence" - when a commit's branch ends by converging to a parent that already exists in another lane.
+
+**Example:** In the complex multi-branch test:
+- Commit G is at column 2, parent is F at column 0
+- When G processes, `updateLanes` replaces G with F, creating `[F, D, F]`
+- G's lane should end with convergence symbol `╯`, but detection happens too late
+
+**Root Cause:** `detectConvergingColumns` only finds lanes with the commit's hash BEFORE processing. It misses convergence that occurs when the parent is placed during `updateLanes`.
+
+**Original Algorithm Flow:**
+1. Assign column for commit
+2. Detect converging columns (looks for duplicate commit hash)
+3. Update lanes (replaces commit with parents) ← **Convergence happens here but not detected**
+4. Generate symbols (based on earlier detection)
+
+**Problem Cases:**
+1. **Simple convergence:** G (parent: F) where F is already in another lane
+   - Expected: `│ │ ├─╯` (commit with convergence symbol)
+   - Without fix: `│ │ ├` (missing convergence)
+
+2. **Existing lane merge:** H (parents: F, G) where G is already in a lane
+   - Expected: `├─│─│─╮` (merge to existing lane needs extra column for corner)
+   - Without fix: `├─│─╮` (missing column, G appears as merge point not passing lane)
+
+**Solution Approach:**
+
+Added **Step 1f: Convergence and Existing Lane Merge Detection** as a refinement to the algorithm.
+
+The fix involves two related patterns:
+
+1. **Existing Lane Merge Detection:**
+   - Detect when a merge parent already exists in lanes (not being placed fresh)
+   - Add extra visual column for the merge corner symbol
+   - Treat the existing lane as a "passing" lane (shows `│─` not `╮`)
+   - Implementation: Track in `UpdateResult.ExistingLanesMerge`
+
+2. **Forward Convergence Detection:**
+   - Detect when placing first parent will create convergence (parent exists elsewhere)
+   - Only for single-parent commits (merges are handled differently)
+   - Only when parent appears in exactly ONE other lane (multiple = propagation, not convergence)
+   - Add extra visual column for convergence symbol `╯`
+   - Implementation: Track in `UpdateResult.ConvergesToParent`
+
+**Key Insight:** Both patterns require adding an extra visual column beyond the lanes array, because the symbol appears to the RIGHT of the branch that's being merged/converged.
+
+**Implementation Details:**
+
+Modified `UpdateResult` struct:
+```go
+type UpdateResult struct {
+    Lanes              []string
+    MergeColumns       []int
+    ExistingLanesMerge []int    // NEW: merge parents already in lanes
+    ConvergesToParent  bool     // NEW: first parent exists elsewhere
+}
+```
+
+Modified `updateLanes()` to detect both cases during lane updates.
+
+Modified `generateRowSymbols()` to:
+- Accept `existingLanesMerge` and `convergesToParent` parameters
+- Extend `rightmostHorizontal` when extra columns needed
+- Place corner/convergence symbols in extra columns
+
+Modified `ComputeLayout()` to:
+- Add extra column to `numCols` when `ExistingLanesMerge` or `ConvergesToParent` is set
+- Pass detection results to symbol generation
+
+**Testing:** This refinement fixes the visual representation for:
+- Complex multi-branch scenario rows 5-6 (H and I commits)
+- Any case where branches merge to existing lanes
+- Any case where branches converge to parents in other lanes
+
+**Files Modified:**
+- `internal/graph/lanes.go`: Added detection logic to `updateLanes()`
+- `internal/graph/generate.go`: Added parameters and logic for extra columns
+- `internal/graph/layout.go`: Added column expansion logic
+- `internal/graph/layout_test.go`: Updated test expectations for complex cases
 
 ## Verification
 

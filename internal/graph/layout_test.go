@@ -286,19 +286,19 @@ func TestComputeLayout_ComplexMultiBranch(t *testing.T) {
 	rendered := renderLayout(layout)
 
 	expected := []string{
-		"├─╮",   // M: merge commit
-		"│ ├",   // L: feature-3
-		"│ ├",   // K: feature-3
-		"├─│─╮", // J: merge commit
-		"│ │ ├", // I: feature-2
-		"├─│─╮", // H: merge commit
-		"│ │ ├", // G: feature-2
-		"├─│─┤", // F: merge commit (merge join)
-		"│ │ ├", // E: hotfix
-		"├─┼─╯", // D: merge commit (cross + convergence)
-		"│ ├",   // C: feature-1
-		"├─╯",   // B: convergence
-		"├",     // A: root
+		"├─╮",     // M: merge commit
+		"│ ├",     // L: feature-3
+		"│ ├",     // K: feature-3
+		"├─│─╮",   // J: merge commit
+		"│ │ ├",   // I: feature-2
+		"├─│─│─╮", // H: merge commit
+		"│ │ ├─╯", // G: feature-2 converges
+		"├─│─┤",   // F: merge commit (merge join)
+		"│ │ ├",   // E: hotfix
+		"├─┼─╯",   // D: merge commit (cross + convergence)
+		"│ ├",     // C: feature-1
+		"├─╯",     // B: convergence
+		"├",       // A: root
 	}
 
 	if len(rendered) != len(expected) {

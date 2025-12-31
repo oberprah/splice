@@ -20,7 +20,7 @@ func TestGenerateRowSymbols_MergeJoin(t *testing.T) {
 	convergingColumns := []int{1} // col 1 was also converging
 	passingColumns := []int{}
 
-	row := generateRowSymbols(commitCol, numCols, mergeColumns, convergingColumns, passingColumns)
+	row := generateRowSymbols(commitCol, numCols, mergeColumns, convergingColumns, passingColumns, []int{}, false)
 
 	// Expected: ├─┤ (commit with merge line, merge join symbol)
 	expected := []GraphSymbol{SymbolMergeCommit, SymbolMergeJoin}
@@ -132,7 +132,7 @@ func TestGenerateRowSymbols(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateRowSymbols(tt.commitCol, tt.numCols, tt.mergeColumns, tt.convergingColumns, tt.passingColumns)
+			got := generateRowSymbols(tt.commitCol, tt.numCols, tt.mergeColumns, tt.convergingColumns, tt.passingColumns, []int{}, false)
 			if !reflect.DeepEqual(got.Symbols, tt.expected) {
 				// Print rendered versions for easier debugging
 				gotStr := RenderRow(got)

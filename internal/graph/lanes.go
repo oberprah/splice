@@ -45,8 +45,10 @@ func assignColumn(hash string, lanes []string) (int, []string) {
 
 // UpdateResult contains the result of updating lanes after processing a commit.
 type UpdateResult struct {
-	Lanes        []string // Updated lanes state
-	MergeColumns []int    // Columns where merge parents were placed (empty for non-merge commits)
+	Lanes              []string // Updated lanes state
+	MergeColumns       []int    // Columns where merge parents were placed (empty for non-merge commits)
+	ExistingLanesMerge []int    // Columns where merge parents already existed in lanes (need extra visual column for corner)
+	ConvergesToParent  bool     // True if commit's first parent already exists in another lane (convergence)
 }
 
 // updateLanes updates the active lanes after processing a commit.
@@ -60,8 +62,10 @@ type UpdateResult struct {
 // Returns UpdateResult with updated lanes and merge parent column positions.
 func updateLanes(col int, parents []string, lanes []string) UpdateResult {
 	result := UpdateResult{
-		Lanes:        lanes,
-		MergeColumns: []int{},
+		Lanes:              lanes,
+		MergeColumns:       []int{},
+		ExistingLanesMerge: []int{},
+		ConvergesToParent:  false,
 	}
 
 	if len(parents) == 0 {
@@ -74,7 +78,45 @@ func updateLanes(col int, parents []string, lanes []string) UpdateResult {
 
 	// First parent replaces commit's position (branch continuation)
 	if col < len(result.Lanes) {
-		result.Lanes[col] = parents[0]
+		firstParent := parents[0]
+		// Check if first parent already exists in another lane
+		existingCol := findInLanes(firstParent, result.Lanes)
+		if existingCol >= 0 && existingCol != col {
+			// First parent exists elsewhere
+			// For single-parent commits, decide if this is a convergence (lane ends)
+			// or if we should propagate the parent (traditional convergence comes later)
+
+			if len(parents) == 1 {
+				// Check if this is forward convergence vs traditional convergence
+				// Simulate placing the parent and see if it would be in multiple lanes
+
+				// Count how many lanes would have this parent AFTER placement
+				futureParentCount := 0
+				for i, hash := range result.Lanes {
+					if hash == firstParent {
+						futureParentCount++ // Already exists
+					} else if i == col {
+						futureParentCount++ // We're about to place it here
+					}
+				}
+
+				if futureParentCount > 1 {
+					// Multiple lanes will have parent - traditional convergence
+					// Keep parent in lane for multi-lane convergence detection at parent's row
+					result.Lanes[col] = firstParent
+				} else {
+					// Only one lane will have parent - forward convergence (branch ending)
+					// Clear lane and show convergence symbol here
+					result.Lanes[col] = ""
+					result.ConvergesToParent = true
+				}
+			} else {
+				// Merge commit - keep first parent, merge join logic handles it
+				result.Lanes[col] = firstParent
+			}
+		} else {
+			result.Lanes[col] = firstParent
+		}
 	}
 
 	// Additional parents (merge) get placed in available slots or appended
@@ -83,8 +125,10 @@ func updateLanes(col int, parents []string, lanes []string) UpdateResult {
 
 		// Check if this parent is already in a lane
 		if existingCol := findInLanes(mergeParent, result.Lanes); existingCol >= 0 {
-			// Parent already has a lane - record where it is
+			// Parent already has a lane - this lane continues vertically
+			// We need an extra visual column for the merge corner
 			result.MergeColumns = append(result.MergeColumns, existingCol)
+			result.ExistingLanesMerge = append(result.ExistingLanesMerge, existingCol)
 			continue
 		}
 
