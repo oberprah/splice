@@ -14,12 +14,21 @@ func createTestCommits(count int) []git.GitCommit {
 	commits := make([]git.GitCommit, count)
 	baseTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 	for i := range count {
+		// Create linear parent chain (each commit's parent is the next one)
+		var parents []string
+		if i < count-1 {
+			parents = []string{string(rune('a' + i + 1))}
+		} else {
+			parents = []string{} // Last commit is root
+		}
+
 		commits[i] = git.GitCommit{
-			Hash:    string(rune('a' + i)),
-			Message: "Commit " + string(rune('0'+i)),
-			Body:    "",
-			Author:  "Author",
-			Date:    baseTime.Add(time.Duration(-i) * time.Hour),
+			Hash:         string(rune('a' + i)),
+			ParentHashes: parents,
+			Message:      "Commit " + string(rune('0'+i)),
+			Body:         "",
+			Author:       "Author",
+			Date:         baseTime.Add(time.Duration(-i) * time.Hour),
 		}
 	}
 	return commits

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/oberprah/splice/internal/git"
+	"github.com/oberprah/splice/internal/graph"
 )
 
 var update = flag.Bool("update", false, "update golden files")
@@ -15,19 +16,37 @@ func assertLogViewGolden(t *testing.T, output, filename string) {
 	assertGolden(t, output, "log_view/"+filename, *update)
 }
 
+// createLogStateWithGraph creates a LogState with computed GraphLayout
+func createLogStateWithGraph(commits []git.GitCommit) LogState {
+	// Convert to graph.Commits
+	graphCommits := make([]graph.Commit, len(commits))
+	for i, commit := range commits {
+		graphCommits[i] = graph.Commit{
+			Hash:    commit.Hash,
+			Parents: commit.ParentHashes,
+		}
+	}
+
+	// Compute layout
+	layout := graph.ComputeLayout(graphCommits)
+
+	return LogState{
+		Commits:     commits,
+		GraphLayout: layout,
+	}
+}
+
 func TestLogState_View_RendersCommits(t *testing.T) {
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
 	commits := []git.GitCommit{
-		{Hash: "abc123", Message: "First commit", Body: "", Author: "Alice", Date: fixedTime},
-		{Hash: "def456", Message: "Second commit", Body: "", Author: "Bob", Date: fixedTime.Add(time.Hour)},
+		{Hash: "abc123", ParentHashes: []string{"def456"}, Message: "First commit", Body: "", Author: "Alice", Date: fixedTime},
+		{Hash: "def456", ParentHashes: []string{}, Message: "Second commit", Body: "", Author: "Bob", Date: fixedTime.Add(time.Hour)},
 	}
 
-	s := LogState{
-		Commits:       commits,
-		Cursor:        0,
-		ViewportStart: 0,
-		Preview:       PreviewNone{},
-	}
+	s := createLogStateWithGraph(commits)
+	s.Cursor = 0
+	s.ViewportStart = 0
+	s.Preview = PreviewNone{}
 	ctx := mockContext{width: 80, height: 24}
 
 	output := s.View(ctx)
@@ -49,12 +68,10 @@ func TestLogState_View_SelectionIndicator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := LogState{
-				Commits:       commits,
-				Cursor:        tt.cursor,
-				ViewportStart: 0,
-				Preview:       PreviewNone{},
-			}
+			s := createLogStateWithGraph(commits)
+			s.Cursor = tt.cursor
+			s.ViewportStart = 0
+			s.Preview = PreviewNone{}
 			ctx := mockContext{width: 80, height: 24}
 
 			output := s.View(ctx)
@@ -67,12 +84,10 @@ func TestLogState_View_SelectionIndicator(t *testing.T) {
 func TestLogState_View_ViewportLimits(t *testing.T) {
 	commits := createTestCommits(20)
 
-	s := LogState{
-		Commits:       commits,
-		Cursor:        10,
-		ViewportStart: 5,
-		Preview:       PreviewNone{},
-	}
+	s := createLogStateWithGraph(commits)
+	s.Cursor = 10
+	s.ViewportStart = 5
+	s.Preview = PreviewNone{}
 	ctx := mockContext{width: 80, height: 10}
 
 	output := s.View(ctx)
@@ -83,12 +98,10 @@ func TestLogState_View_ViewportLimits(t *testing.T) {
 func TestLogState_View_EmptyViewport(t *testing.T) {
 	commits := createTestCommits(5)
 
-	s := LogState{
-		Commits:       commits,
-		Cursor:        0,
-		ViewportStart: 10, // Beyond end
-		Preview:       PreviewNone{},
-	}
+	s := createLogStateWithGraph(commits)
+	s.Cursor = 0
+	s.ViewportStart = 10 // Beyond end
+	s.Preview = PreviewNone{}
 	ctx := mockContext{width: 80, height: 10}
 
 	output := s.View(ctx)
@@ -101,20 +114,19 @@ func TestLogState_View_LineTruncation(t *testing.T) {
 
 	commits := []git.GitCommit{
 		{
-			Hash:    "abc123def456",
-			Message: "This is a very long commit message that should be truncated when the terminal is narrow",
-			Body:    "",
-			Author:  "VeryLongAuthorNameThatShouldAlsoGetTruncated",
-			Date:    fixedTime,
+			Hash:         "abc123def456",
+			ParentHashes: []string{},
+			Message:      "This is a very long commit message that should be truncated when the terminal is narrow",
+			Body:         "",
+			Author:       "VeryLongAuthorNameThatShouldAlsoGetTruncated",
+			Date:         fixedTime,
 		},
 	}
 
-	s := LogState{
-		Commits:       commits,
-		Cursor:        0,
-		ViewportStart: 0,
-		Preview:       PreviewNone{},
-	}
+	s := createLogStateWithGraph(commits)
+	s.Cursor = 0
+	s.ViewportStart = 0
+	s.Preview = PreviewNone{}
 
 	ctx := mockContext{width: 40, height: 24}
 
@@ -127,8 +139,8 @@ func TestLogState_View_SplitView_WideTerminal(t *testing.T) {
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
 
 	commits := []git.GitCommit{
-		{Hash: "abc123", Message: "First commit", Body: "This is the body", Author: "Alice", Date: fixedTime},
-		{Hash: "def456", Message: "Second commit", Body: "", Author: "Bob", Date: fixedTime.Add(time.Hour)},
+		{Hash: "abc123", ParentHashes: []string{"def456"}, Message: "First commit", Body: "This is the body", Author: "Alice", Date: fixedTime},
+		{Hash: "def456", ParentHashes: []string{}, Message: "Second commit", Body: "", Author: "Bob", Date: fixedTime.Add(time.Hour)},
 	}
 
 	files := []git.FileChange{
@@ -136,12 +148,10 @@ func TestLogState_View_SplitView_WideTerminal(t *testing.T) {
 		{Path: "README.md", Status: "A", Additions: 20, Deletions: 0},
 	}
 
-	s := LogState{
-		Commits:       commits,
-		Cursor:        0,
-		ViewportStart: 0,
-		Preview:       PreviewLoaded{ForHash: "abc123", Files: files},
-	}
+	s := createLogStateWithGraph(commits)
+	s.Cursor = 0
+	s.ViewportStart = 0
+	s.Preview = PreviewLoaded{ForHash: "abc123", Files: files}
 
 	ctx := mockContext{width: 160, height: 24}
 
@@ -154,19 +164,17 @@ func TestLogState_View_SplitView_NarrowTerminal(t *testing.T) {
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
 
 	commits := []git.GitCommit{
-		{Hash: "abc123", Message: "First commit", Body: "This is the body", Author: "Alice", Date: fixedTime},
+		{Hash: "abc123", ParentHashes: []string{}, Message: "First commit", Body: "This is the body", Author: "Alice", Date: fixedTime},
 	}
 
 	files := []git.FileChange{
 		{Path: "src/main.go", Status: "M", Additions: 10, Deletions: 5},
 	}
 
-	s := LogState{
-		Commits:       commits,
-		Cursor:        0,
-		ViewportStart: 0,
-		Preview:       PreviewLoaded{ForHash: "abc123", Files: files},
-	}
+	s := createLogStateWithGraph(commits)
+	s.Cursor = 0
+	s.ViewportStart = 0
+	s.Preview = PreviewLoaded{ForHash: "abc123", Files: files}
 
 	ctx := mockContext{width: 100, height: 24}
 
@@ -179,15 +187,13 @@ func TestLogState_View_SplitView_PreviewLoading(t *testing.T) {
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
 
 	commits := []git.GitCommit{
-		{Hash: "abc123", Message: "First commit", Body: "", Author: "Alice", Date: fixedTime},
+		{Hash: "abc123", ParentHashes: []string{}, Message: "First commit", Body: "", Author: "Alice", Date: fixedTime},
 	}
 
-	s := LogState{
-		Commits:       commits,
-		Cursor:        0,
-		ViewportStart: 0,
-		Preview:       PreviewLoading{ForHash: "abc123"},
-	}
+	s := createLogStateWithGraph(commits)
+	s.Cursor = 0
+	s.ViewportStart = 0
+	s.Preview = PreviewLoading{ForHash: "abc123"}
 
 	ctx := mockContext{width: 160, height: 24}
 
@@ -200,15 +206,13 @@ func TestLogState_View_SplitView_PreviewError(t *testing.T) {
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
 
 	commits := []git.GitCommit{
-		{Hash: "abc123", Message: "First commit", Body: "", Author: "Alice", Date: fixedTime},
+		{Hash: "abc123", ParentHashes: []string{}, Message: "First commit", Body: "", Author: "Alice", Date: fixedTime},
 	}
 
-	s := LogState{
-		Commits:       commits,
-		Cursor:        0,
-		ViewportStart: 0,
-		Preview:       PreviewError{ForHash: "abc123", Err: nil},
-	}
+	s := createLogStateWithGraph(commits)
+	s.Cursor = 0
+	s.ViewportStart = 0
+	s.Preview = PreviewError{ForHash: "abc123", Err: nil}
 
 	ctx := mockContext{width: 160, height: 24}
 

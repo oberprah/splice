@@ -1,6 +1,9 @@
 package states
 
-import "github.com/oberprah/splice/internal/git"
+import (
+	"github.com/oberprah/splice/internal/git"
+	"github.com/oberprah/splice/internal/graph"
+)
 
 // PreviewState is a sum type representing the state of the preview panel.
 // Use type assertion to determine which variant is present.
@@ -42,4 +45,5 @@ type LogState struct {
 	Cursor        int
 	ViewportStart int
 	Preview       PreviewState
+	GraphLayout   *graph.Layout // Computed graph layout for commits
 }

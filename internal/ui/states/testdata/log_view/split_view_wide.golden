@@ -1,5 +1,5 @@
-> abc123 First commit - Alice 11 months ago                                   │ abc123 · Alice committed 11 months ago · 2 files · +30 -5                       
-  def456 Second commit - Bob 11 months ago                                    │                                                                                 
+> ├ abc123 First commit - Alice 11 months ago                                 │ abc123 · Alice committed 11 months ago · 2 files · +30 -5                       
+  ├ def456 Second commit - Bob 11 months ago                                  │                                                                                 
                                                                               │ First commit                                                                    
                                                                               │                                                                                 
                                                                               │ This is the body                                                                

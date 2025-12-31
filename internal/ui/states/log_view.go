@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/oberprah/splice/internal/git"
+	"github.com/oberprah/splice/internal/graph"
 	"github.com/oberprah/splice/internal/ui/format"
 	"github.com/oberprah/splice/internal/ui/styles"
 )
@@ -36,7 +37,7 @@ func (s LogState) renderSimpleView(ctx Context) string {
 	// Render only visible commits
 	for i := s.ViewportStart; i < viewportEnd; i++ {
 		commit := s.Commits[i]
-		line := s.formatCommitLine(commit, i == s.Cursor, ctx.Width(), ctx)
+		line := s.formatCommitLine(commit, i, i == s.Cursor, ctx.Width(), ctx)
 		b.WriteString(line)
 		b.WriteString("\n")
 	}
@@ -73,7 +74,7 @@ func (s LogState) renderSplitView(ctx Context) string {
 		logIdx := s.ViewportStart + i
 		if logIdx < viewportEnd && logIdx < len(s.Commits) {
 			commit := s.Commits[logIdx]
-			logLine = s.formatCommitLine(commit, logIdx == s.Cursor, logWidth, ctx)
+			logLine = s.formatCommitLine(commit, logIdx, logIdx == s.Cursor, logWidth, ctx)
 		}
 
 		// Get details line if available
@@ -96,9 +97,9 @@ func (s LogState) renderSplitView(ctx Context) string {
 }
 
 // formatCommitLine formats a single commit line with proper styling
-func (s LogState) formatCommitLine(commit git.GitCommit, isSelected bool, width int, ctx Context) string {
-	// Format: hash message - author (time ago)
-	// Example: a4c3a8a Fix memory leak in parser - John Doe (4 min ago)
+func (s LogState) formatCommitLine(commit git.GitCommit, commitIndex int, isSelected bool, width int, ctx Context) string {
+	// Format: [selector] [graph] hash message - author (time ago)
+	// Example: > ├─╮ a4c3a8a Merge feature - John Doe (4 min ago)
 
 	// Determine available width (accounting for selection indicator and spacing)
 	availableWidth := width
@@ -112,6 +113,13 @@ func (s LogState) formatCommitLine(commit git.GitCommit, isSelected bool, width 
 		selectionIndicator = "> "
 	}
 
+	// Get graph symbols for this commit
+	var graphSymbols string
+	if s.GraphLayout != nil && commitIndex >= 0 && commitIndex < len(s.GraphLayout.Rows) {
+		row := s.GraphLayout.Rows[commitIndex]
+		graphSymbols = graph.RenderRow(row)
+	}
+
 	// Format the base components
 	hash := format.ToShortHash(commit.Hash)                   // 7 chars
 	message := commit.Message                                 // Variable
@@ -120,8 +128,8 @@ func (s LogState) formatCommitLine(commit git.GitCommit, isSelected bool, width 
 	timePrefix := " "                                         // 1 char
 	time := format.ToRelativeTimeFrom(commit.Date, ctx.Now()) // Variable
 
-	// Calculate required space for fixed elements
-	fixedWidth := len(selectionIndicator) + len(hash) + 1 + len(separator) + len(timePrefix) + len(time)
+	// Calculate required space for fixed elements (including graph symbols)
+	fixedWidth := len(selectionIndicator) + len(graphSymbols) + len(hash) + 1 + len(separator) + len(timePrefix) + len(time)
 
 	// Calculate remaining space for message and author
 	remainingWidth := max(availableWidth-fixedWidth,
@@ -144,6 +152,7 @@ func (s LogState) formatCommitLine(commit git.GitCommit, isSelected bool, width 
 	var line strings.Builder
 
 	line.WriteString(selectionIndicator)
+	line.WriteString(graphSymbols) // Graph symbols come after selector, before hash
 
 	if isSelected {
 		// For selected lines, use bold styles
