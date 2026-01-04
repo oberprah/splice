@@ -46,8 +46,6 @@ func (s LogState) renderSimpleView(ctx Context) *ViewBuilder {
 
 // renderSplitView renders the log list on the left and details panel on the right
 func (s LogState) renderSplitView(ctx Context) *ViewBuilder {
-	vb := NewViewBuilder()
-
 	// Calculate widths
 	logWidth := ctx.Width() - splitPanelWidth - separatorWidth
 	detailsWidth := splitPanelWidth
@@ -55,41 +53,38 @@ func (s LogState) renderSplitView(ctx Context) *ViewBuilder {
 	// Create styles for fixed-width columns
 	logColStyle := lipgloss.NewStyle().Width(logWidth)
 	detailsColStyle := lipgloss.NewStyle().Width(detailsWidth)
-	separatorStyle := styles.HeaderStyle
 
 	// Calculate the end of the viewport
 	viewportEnd := min(s.ViewportStart+ctx.Height(), len(s.Commits))
 
-	// Get details panel content
-	detailsLines := s.renderDetailsPanel(detailsWidth, ctx.Height(), ctx)
-
-	// Render each line with split layout
+	// Build left column (commit list)
+	leftVb := NewViewBuilder()
 	for i := 0; i < ctx.Height(); i++ {
 		var logLine string
-		var detailLine string
-
-		// Get log line if within viewport
 		logIdx := s.ViewportStart + i
 		if logIdx < viewportEnd && logIdx < len(s.Commits) {
 			commit := s.Commits[logIdx]
 			logLine = s.formatCommitLine(commit, logIdx, logIdx == s.Cursor, logWidth, ctx)
 		}
+		// Apply fixed-width styling to each line
+		leftVb.AddLine(logColStyle.Render(logLine))
+	}
 
-		// Get details line if available
+	// Build right column (details panel)
+	rightVb := NewViewBuilder()
+	detailsLines := s.renderDetailsPanel(detailsWidth, ctx.Height(), ctx)
+	for i := 0; i < ctx.Height(); i++ {
+		var detailLine string
 		if i < len(detailsLines) {
 			detailLine = detailsLines[i]
 		}
-
-		// Join columns horizontally
-		row := lipgloss.JoinHorizontal(
-			lipgloss.Top,
-			logColStyle.Render(logLine),
-			separatorStyle.Render(" │ "),
-			detailsColStyle.Render(detailLine),
-		)
-		vb.AddLine(row)
+		// Apply fixed-width styling to each line
+		rightVb.AddLine(detailsColStyle.Render(detailLine))
 	}
 
+	// Compose the split view
+	vb := NewViewBuilder()
+	vb.AddSplitView(leftVb, rightVb)
 	return vb
 }
 

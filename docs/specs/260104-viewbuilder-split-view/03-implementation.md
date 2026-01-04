@@ -4,6 +4,9 @@
 
 - [x] Implement AddSplitView method with comprehensive tests
 - [x] Verify implementation with manual testing
+- [ ] Refactor log view to use AddSplitView
+- [ ] Refactor diff view to use AddSplitView
+- [ ] Verify refactored views work correctly
 
 ## Progress
 
