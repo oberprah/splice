@@ -9,7 +9,8 @@ import (
 
 // CreateTestCommits generates n mock git commits for testing
 // Uses fixed dates that are exactly 1 year old to ensure deterministic formatting
-// Creates linear commit history where each commit has the previous commit as its parent
+// Creates linear commit history in display order (newest to oldest)
+// Each commit has the next commit in the array as its parent (linear history)
 func CreateTestCommits(count int) []git.GitCommit {
 	commits := make([]git.GitCommit, count)
 	// Fixed date exactly 1 year ago from test "now" (2024-01-01 from 2025-01-01)
@@ -18,11 +19,12 @@ func CreateTestCommits(count int) []git.GitCommit {
 
 	for i := range count {
 		var parentHashes []string
-		if i > 0 {
-			// Each commit has the previous commit as its parent (linear history)
-			parentHashes = []string{fmt.Sprintf("%040d", i-1)}
+		if i < count-1 {
+			// Each commit has the next commit in array as its parent (older commit)
+			// Array is in display order: newest first, so parent is i+1
+			parentHashes = []string{fmt.Sprintf("%040d", i+1)}
 		} else {
-			// First commit (root) has no parents
+			// Last commit in array (oldest) has no parents
 			parentHashes = []string{}
 		}
 
@@ -42,7 +44,8 @@ func CreateTestCommits(count int) []git.GitCommit {
 
 // CreateTestCommitsWithMessages generates commits with specific messages
 // Uses fixed dates that are exactly 1 year old to ensure deterministic formatting
-// Creates linear commit history where each commit has the previous commit as its parent
+// Creates linear commit history in display order (newest to oldest)
+// Each commit has the next commit in the array as its parent (linear history)
 func CreateTestCommitsWithMessages(messages []string) []git.GitCommit {
 	commits := make([]git.GitCommit, len(messages))
 	// Fixed date exactly 1 year ago from test "now" (2024-01-01 from 2025-01-01)
@@ -50,11 +53,12 @@ func CreateTestCommitsWithMessages(messages []string) []git.GitCommit {
 
 	for i, msg := range messages {
 		var parentHashes []string
-		if i > 0 {
-			// Each commit has the previous commit as its parent (linear history)
-			parentHashes = []string{fmt.Sprintf("%040d", i-1)}
+		if i < len(messages)-1 {
+			// Each commit has the next commit in array as its parent (older commit)
+			// Array is in display order: newest first, so parent is i+1
+			parentHashes = []string{fmt.Sprintf("%040d", i+1)}
 		} else {
-			// First commit (root) has no parents
+			// Last commit in array (oldest) has no parents
 			parentHashes = []string{}
 		}
 
