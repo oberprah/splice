@@ -4,9 +4,9 @@
 
 - [x] Implement AddSplitView method with comprehensive tests
 - [x] Verify implementation with manual testing
-- [ ] Refactor log view to use AddSplitView
-- [ ] Refactor diff view to use AddSplitView
-- [ ] Verify refactored views work correctly
+- [x] Refactor log view to use AddSplitView
+- [x] Refactor diff view to use AddSplitView
+- [x] Verify refactored views work correctly
 
 ## Progress
 
@@ -60,20 +60,47 @@ All manual tests passed. The implementation correctly:
 - Automatically aligns mismatched column heights
 - Supports composition with other ViewBuilder methods
 
+### Step 3: Refactor log and diff views to use AddSplitView
+Status: ✅ Complete
+Commit: 36ca506
+
+Successfully refactored both log and diff views to use the new AddSplitView method, eliminating the row-by-row JoinHorizontal loop pattern.
+
+**Log view changes** (`log_view.go:48-89`):
+- Removed row-by-row loop with manual JoinHorizontal calls
+- Built left column (commit list) in separate ViewBuilder with fixed-width styling
+- Built right column (details panel) in separate ViewBuilder with fixed-width styling
+- Used `AddSplitView(leftVb, rightVb)` to compose
+
+**Diff view changes** (`diff_view.go:56-73`):
+- Removed row-by-row loop with manual JoinHorizontal calls
+- Built left column (left side of diff) in separate ViewBuilder with fixed-width styling
+- Built right column (right side of diff) in separate ViewBuilder with fixed-width styling
+- Used `AddSplitView(leftVb, rightVb)` to compose
+
+Both refactorings:
+- Follow the clean three-step pattern from the design
+- Eliminate code duplication
+- Maintain exact same visual appearance and behavior
+- Simplify the code significantly
+
 ## Verification
 
-- [x] All tests pass (10 unit tests, all passing)
+- [x] All tests pass (10 ViewBuilder unit tests + all existing view tests)
 - [x] Code compiles successfully
-- [x] Pre-commit hooks passed
+- [x] Pre-commit hooks passed (lint, tests, build)
 - [x] Manual validation complete (standalone test program)
+- [x] E2E tests pass (navigation, scrolling, resize)
 
 ## Summary
 
-The implementation is complete and ready for use. The `AddSplitView` method has been successfully added to ViewBuilder, providing a clean, reusable abstraction for split-panel layouts.
+The implementation is **complete and verified**. The `AddSplitView` method has been successfully added to ViewBuilder and is now actively used in production code, providing a clean, reusable abstraction for split-panel layouts.
 
 **What was delivered:**
-- `AddSplitView(left, right *ViewBuilder)` method in `viewbuilder.go`
+- `AddSplitView(left, right *ViewBuilder)` method in `viewbuilder.go:40-71`
 - 10 comprehensive unit tests with golden file verification
+- Refactored log view to use AddSplitView (eliminated 30+ lines of duplication)
+- Refactored diff view to use AddSplitView (simplified split rendering logic)
 - Full documentation of implementation approach
 
 **Key characteristics:**
@@ -82,10 +109,13 @@ The implementation is complete and ready for use. The `AddSplitView` method has 
 - Composable API allows mixing split and full-width content
 - No width parameters - caller controls layout decisions
 
-**Next steps for views:**
-Views that need split layouts (log, diff) can now use the simple three-step pattern:
-1. Build left content using ViewBuilder
-2. Build right content using ViewBuilder
-3. Compose with `AddSplitView(left, right)`
+**Impact:**
+- Eliminated code duplication across views
+- Simplified split rendering from row-by-row loops to clean three-step pattern
+- Maintained all existing visual appearance and behavior
+- All tests pass (unit tests, view tests, E2E tests)
 
-This eliminates the row-by-row joining logic currently duplicated across views.
+**Commits:**
+- `a090279` - Implement AddSplitView for ViewBuilder
+- `b5036dd` - Add implementation documentation for ViewBuilder split view
+- `36ca506` - Refactor split views to use AddSplitView method
