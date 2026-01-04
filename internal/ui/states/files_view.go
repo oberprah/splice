@@ -8,17 +8,19 @@ import (
 )
 
 // View renders the files state
-func (s *FilesState) View(ctx Context) string {
-	var b strings.Builder
+func (s *FilesState) View(ctx Context) *ViewBuilder {
+	vb := NewViewBuilder()
 
 	// Render header with commit info
 	header := s.renderHeader(ctx)
-	b.WriteString(header)
+	// Split header into lines and add each line
+	for _, line := range strings.Split(strings.TrimSuffix(header, "\n"), "\n") {
+		vb.AddLine(line)
+	}
 
 	// Render separator
 	separator := strings.Repeat("─", min(ctx.Width(), 80))
-	b.WriteString(styles.HeaderStyle.Render(separator))
-	b.WriteString("\n")
+	vb.AddLine(styles.HeaderStyle.Render(separator))
 
 	// Calculate available height for file list (subtract header lines)
 	// Count actual header lines (including body if present)
@@ -32,11 +34,10 @@ func (s *FilesState) View(ctx Context) string {
 	for i := s.ViewportStart; i < viewportEnd; i++ {
 		file := s.Files[i]
 		line := s.formatFileLine(file, i == s.Cursor, ctx.Width())
-		b.WriteString(line)
-		b.WriteString("\n")
+		vb.AddLine(line)
 	}
 
-	return b.String()
+	return vb
 }
 
 // renderHeader formats the commit information header

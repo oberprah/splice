@@ -8,5 +8,4 @@ Additional context about this change that provides
   M +198 - 87  internal/authentication/oauth2/prov
   M + 67 - 12  pkg/database/migrations/v2/user_pre
   M +142 - 56  cmd/server/handlers/api/v1/users/pr
-  M + 89 - 34  web/components/settings/themes/dark
-
+  M + 89 - 34  web/components/settings/themes/dark

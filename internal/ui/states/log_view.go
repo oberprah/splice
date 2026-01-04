@@ -19,7 +19,7 @@ const (
 )
 
 // View renders the list of commits
-func (s LogState) View(ctx Context) string {
+func (s LogState) View(ctx Context) *ViewBuilder {
 	// Check if terminal is wide enough for split view
 	if ctx.Width() >= splitThreshold {
 		return s.renderSplitView(ctx)
@@ -28,8 +28,8 @@ func (s LogState) View(ctx Context) string {
 }
 
 // renderSimpleView renders the traditional single-column log view
-func (s LogState) renderSimpleView(ctx Context) string {
-	var b strings.Builder
+func (s LogState) renderSimpleView(ctx Context) *ViewBuilder {
+	vb := NewViewBuilder()
 
 	// Calculate the end of the viewport
 	viewportEnd := min(s.ViewportStart+ctx.Height(), len(s.Commits))
@@ -38,15 +38,16 @@ func (s LogState) renderSimpleView(ctx Context) string {
 	for i := s.ViewportStart; i < viewportEnd; i++ {
 		commit := s.Commits[i]
 		line := s.formatCommitLine(commit, i, i == s.Cursor, ctx.Width(), ctx)
-		b.WriteString(line)
-		b.WriteString("\n")
+		vb.AddLine(line)
 	}
 
-	return b.String()
+	return vb
 }
 
 // renderSplitView renders the log list on the left and details panel on the right
-func (s LogState) renderSplitView(ctx Context) string {
+func (s LogState) renderSplitView(ctx Context) *ViewBuilder {
+	vb := NewViewBuilder()
+
 	// Calculate widths
 	logWidth := ctx.Width() - splitPanelWidth - separatorWidth
 	detailsWidth := splitPanelWidth
@@ -55,9 +56,6 @@ func (s LogState) renderSplitView(ctx Context) string {
 	logColStyle := lipgloss.NewStyle().Width(logWidth)
 	detailsColStyle := lipgloss.NewStyle().Width(detailsWidth)
 	separatorStyle := styles.HeaderStyle
-
-	// Build output line by line
-	var output strings.Builder
 
 	// Calculate the end of the viewport
 	viewportEnd := min(s.ViewportStart+ctx.Height(), len(s.Commits))
@@ -89,11 +87,10 @@ func (s LogState) renderSplitView(ctx Context) string {
 			separatorStyle.Render(" │ "),
 			detailsColStyle.Render(detailLine),
 		)
-		output.WriteString(row)
-		output.WriteString("\n")
+		vb.AddLine(row)
 	}
 
-	return output.String()
+	return vb
 }
 
 // formatRefs formats ref decorations for display

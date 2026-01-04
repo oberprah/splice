@@ -26,7 +26,7 @@ type Context interface {
 // Each state implementation handles its own update logic and rendering.
 type State interface {
 	// View renders the state with access to the context
-	View(ctx Context) string
+	View(ctx Context) *ViewBuilder
 
 	// Update handles messages and returns the next state
 	Update(msg tea.Msg, ctx Context) (State, tea.Cmd)

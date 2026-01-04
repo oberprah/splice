@@ -85,5 +85,5 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the UI by delegating to the current state
 func (m Model) View() string {
-	return m.currentState.View(&m)
+	return m.currentState.View(&m).String()
 }

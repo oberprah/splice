@@ -12,5 +12,4 @@
   ├ 0000000 Add comprehensive error handling for network failures in API client wit... - Christina Van Der Berg 1 year ago
   ├ 0000000 Update database schema migration to include new user preferences and no... - Alexandra Chen-Rodriguez 1 year ago
   ├ 0000000 Implement dark mode toggle with system preference detection and custom ... - Benjamin O'Sullivan-Smith 1 year ago
-  ├ 0000000 Fix critical security vulnerability in session management discovered du... - Christina Van Der Berg 1 year ago
-
+  ├ 0000000 Fix critical security vulnerability in session management discovered du... - Christina Van Der Berg 1 year ago

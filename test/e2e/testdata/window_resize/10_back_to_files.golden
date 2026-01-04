@@ -8,5 +8,4 @@ Additional context about this change that provides more detailed information.
   M +198 - 87  internal/authentication/oauth2/providers/google/client.go
   M + 67 - 12  pkg/database/migrations/v2/user_preferences_schema.sql
   M +142 - 56  cmd/server/handlers/api/v1/users/profile_handler.go
-  M + 89 - 34  web/components/settings/themes/dark_mode_toggle.tsx
-
+  M + 89 - 34  web/components/settings/themes/dark_mode_toggle.tsx

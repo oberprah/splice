@@ -8,9 +8,9 @@ import (
 )
 
 // Per-file helper that adds subdirectory prefix
-func assertFilesViewGolden(t *testing.T, output, filename string) {
+func assertFilesViewGolden(t *testing.T, output *ViewBuilder, filename string) {
 	t.Helper()
-	assertGolden(t, output, "files_view/"+filename, *update)
+	assertGolden(t, output.String(), "files_view/"+filename, *update)
 }
 
 func createTestCommit() git.GitCommit {
