@@ -46,48 +46,63 @@ func (s LogState) renderSimpleView(ctx Context) *ViewBuilder {
 
 // renderSplitView renders the log list on the left and details panel on the right
 func (s LogState) renderSplitView(ctx Context) *ViewBuilder {
-	vb := NewViewBuilder()
-
 	// Calculate widths
 	logWidth := ctx.Width() - splitPanelWidth - separatorWidth
 	detailsWidth := splitPanelWidth
 
-	// Create styles for fixed-width columns
-	logColStyle := lipgloss.NewStyle().Width(logWidth)
-	detailsColStyle := lipgloss.NewStyle().Width(detailsWidth)
-	separatorStyle := styles.HeaderStyle
+	// Build columns independently
+	leftVb := s.buildCommitListColumn(logWidth, ctx)
+	rightVb := s.buildDetailsColumn(detailsWidth, ctx)
+
+	// Compose the split view
+	vb := NewViewBuilder()
+	vb.AddSplitView(leftVb, rightVb)
+	return vb
+}
+
+// buildCommitListColumn builds the left column (commit list) independently
+func (s LogState) buildCommitListColumn(width int, ctx Context) *ViewBuilder {
+	vb := NewViewBuilder()
+
+	// Create style for fixed-width column
+	colStyle := lipgloss.NewStyle().Width(width)
 
 	// Calculate the end of the viewport
 	viewportEnd := min(s.ViewportStart+ctx.Height(), len(s.Commits))
 
-	// Get details panel content
-	detailsLines := s.renderDetailsPanel(detailsWidth, ctx.Height(), ctx)
-
-	// Render each line with split layout
+	// Build the column with viewport height
 	for i := 0; i < ctx.Height(); i++ {
-		var logLine string
-		var detailLine string
-
-		// Get log line if within viewport
+		var line string
 		logIdx := s.ViewportStart + i
 		if logIdx < viewportEnd && logIdx < len(s.Commits) {
 			commit := s.Commits[logIdx]
-			logLine = s.formatCommitLine(commit, logIdx, logIdx == s.Cursor, logWidth, ctx)
+			line = s.formatCommitLine(commit, logIdx, logIdx == s.Cursor, width, ctx)
 		}
+		// Apply fixed-width styling to each line
+		vb.AddLine(colStyle.Render(line))
+	}
 
-		// Get details line if available
+	return vb
+}
+
+// buildDetailsColumn builds the right column (details panel) independently
+func (s LogState) buildDetailsColumn(width int, ctx Context) *ViewBuilder {
+	vb := NewViewBuilder()
+
+	// Create style for fixed-width column
+	colStyle := lipgloss.NewStyle().Width(width)
+
+	// Render the details panel content
+	detailsLines := s.renderDetailsPanel(width, ctx.Height(), ctx)
+
+	// Build the column with viewport height
+	for i := 0; i < ctx.Height(); i++ {
+		var line string
 		if i < len(detailsLines) {
-			detailLine = detailsLines[i]
+			line = detailsLines[i]
 		}
-
-		// Join columns horizontally
-		row := lipgloss.JoinHorizontal(
-			lipgloss.Top,
-			logColStyle.Render(logLine),
-			separatorStyle.Render(" │ "),
-			detailsColStyle.Render(detailLine),
-		)
-		vb.AddLine(row)
+		// Apply fixed-width styling to each line
+		vb.AddLine(colStyle.Render(line))
 	}
 
 	return vb

@@ -52,22 +52,23 @@ func (s *DiffState) View(ctx Context) *ViewBuilder {
 	// Create styles for fixed-width columns
 	leftColStyle := lipgloss.NewStyle().Width(columnWidth)
 	rightColStyle := lipgloss.NewStyle().Width(columnWidth)
-	separatorStyle := styles.HeaderStyle
 
-	// Render visible alignments
+	// Build left and right columns independently
+	leftVb := NewViewBuilder()
+	rightVb := NewViewBuilder()
+
+	// Render visible alignments into separate ViewBuilders
 	for i := s.ViewportStart; i < viewportEnd; i++ {
 		alignment := s.Diff.Alignments[i]
 		left, right := s.renderAlignment(alignment, columnWidth, lineNoWidth)
 
-		// Use Lip Gloss to join columns - it handles width properly with ANSI codes
-		row := lipgloss.JoinHorizontal(
-			lipgloss.Top,
-			leftColStyle.Render(left),
-			separatorStyle.Render(" │ "),
-			rightColStyle.Render(right),
-		)
-		vb.AddLine(row)
+		// Apply fixed width styling to each line before adding to ViewBuilders
+		leftVb.AddLine(leftColStyle.Render(left))
+		rightVb.AddLine(rightColStyle.Render(right))
 	}
+
+	// Compose the split view
+	vb.AddSplitView(leftVb, rightVb)
 
 	return vb
 }
