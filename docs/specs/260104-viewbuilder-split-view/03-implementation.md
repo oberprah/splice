@@ -4,8 +4,9 @@
 
 - [x] Implement AddSplitView method with comprehensive tests
 - [x] Verify implementation with manual testing
-- [x] Refactor log view to use AddSplitView
+- [x] Refactor log view to use AddSplitView (initial)
 - [x] Refactor diff view to use AddSplitView
+- [x] Extract independent column builder methods for log view
 - [x] Verify refactored views work correctly
 
 ## Progress
@@ -45,6 +46,8 @@ Key implementation insight: The separator is treated as a multi-line column with
 - Lipgloss automatically handles padding for mismatched column heights without manual intervention
 - The implementation is highly composable - can mix split views with full-width content
 - Golden file testing works perfectly for verifying visual output
+- Extracting independent column builders eliminates all coupling between left/right columns
+- The pattern "calculate → build → compose" is much clearer than synchronized loops
 
 ### Step 2: Verify implementation with manual testing
 Status: ✅ Complete
@@ -84,6 +87,30 @@ Both refactorings:
 - Maintain exact same visual appearance and behavior
 - Simplify the code significantly
 
+### Step 4: Extract independent column builder methods
+Status: ✅ Complete
+Commits: c981802, 9a1667c
+
+Refactored both views to eliminate the synchronized loop pattern by extracting truly independent column builder methods.
+
+**Log view - extracted methods** (`log_view.go:63-109`):
+- `buildCommitListColumn(width int, ctx Context) *ViewBuilder` - Builds left column completely independently
+- `buildDetailsColumn(width int, ctx Context) *ViewBuilder` - Builds right column completely independently
+- Each method is self-contained with its own styling, viewport logic, and height handling
+- `renderSplitView` simplified to: calculate widths → build columns → compose (13 lines, down from 42)
+
+**Diff view - extracted methods** (`diff_view.go:62-94`):
+- `buildLeftColumn(width, lineNoWidth, start, end int) *ViewBuilder` - Builds left column independently
+- `buildRightColumn(width, lineNoWidth, start, end int) *ViewBuilder` - Builds right column independently
+- Each method iterates through alignments independently and extracts only its content
+- Main view method simplified to: calculate params → build columns → compose
+
+**Key improvements:**
+- **True independence**: No synchronized loops - each column is built in complete isolation
+- **Better encapsulation**: All column-specific logic is contained within each builder method
+- **Cleaner composition**: Main methods now clearly show: calculate → build → compose
+- **Separation of concerns**: Each column builder knows nothing about the other column
+
 ## Verification
 
 - [x] All tests pass (10 ViewBuilder unit tests + all existing view tests)
@@ -119,3 +146,5 @@ The implementation is **complete and verified**. The `AddSplitView` method has b
 - `a090279` - Implement AddSplitView for ViewBuilder
 - `b5036dd` - Add implementation documentation for ViewBuilder split view
 - `36ca506` - Refactor split views to use AddSplitView method
+- `c981802` - Extract independent column builders in diff view
+- `9a1667c` - Decouple split view column rendering
