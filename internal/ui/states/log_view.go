@@ -39,7 +39,10 @@ func (s LogState) renderSimpleView(ctx Context) string {
 		commit := s.Commits[i]
 		line := s.formatCommitLine(commit, i, i == s.Cursor, ctx.Width(), ctx)
 		b.WriteString(line)
-		b.WriteString("\n")
+		// Add newline between lines, but not after the last line
+		if i < viewportEnd-1 {
+			b.WriteString("\n")
+		}
 	}
 
 	return b.String()
@@ -90,7 +93,10 @@ func (s LogState) renderSplitView(ctx Context) string {
 			detailsColStyle.Render(detailLine),
 		)
 		output.WriteString(row)
-		output.WriteString("\n")
+		// Add newline between lines, but not after the last line
+		if i < ctx.Height()-1 {
+			output.WriteString("\n")
+		}
 	}
 
 	return output.String()

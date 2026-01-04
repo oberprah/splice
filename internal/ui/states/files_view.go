@@ -33,7 +33,10 @@ func (s *FilesState) View(ctx Context) string {
 		file := s.Files[i]
 		line := s.formatFileLine(file, i == s.Cursor, ctx.Width())
 		b.WriteString(line)
-		b.WriteString("\n")
+		// Add newline between lines, but not after the last line
+		if i < viewportEnd-1 {
+			b.WriteString("\n")
+		}
 	}
 
 	return b.String()

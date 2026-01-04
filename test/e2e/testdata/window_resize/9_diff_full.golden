@@ -13,5 +13,4 @@
                                                                                          │  10 +                                                                                   
                                                                                          │  11 +     return authenticateWithProvider(username, password, options.Provider)         
   6   }                                                                                  │  12   }                                                                                 
-  7                                                                                      │  13                                                                                     
-
+  7                                                                                      │  13                                                                                     

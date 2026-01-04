@@ -66,7 +66,10 @@ func (s *DiffState) View(ctx Context) string {
 			rightColStyle.Render(right),
 		)
 		b.WriteString(row)
-		b.WriteString("\n")
+		// Add newline between lines, but not after the last line
+		if i < viewportEnd-1 {
+			b.WriteString("\n")
+		}
 	}
 
 	return b.String()
