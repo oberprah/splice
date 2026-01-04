@@ -1,18 +1,18 @@
-  0000000 Refactor authentication module to support OAu... - Alexandra Chen-Rodriguez 1 year ago  │ 0000000 · Benjamin O'Sullivan-Smith committed 1 year ago · 5 files · +741 ...   
-> 0000000 Add comprehensive error handling for network ... - Benjamin O'Sullivan-Smith 1 year ago │                                                                                 
-  0000000 Update database schema migration to include n... - Christina Van Der Berg 1 year ago    │ Add comprehensive error handling for network failures in API client with retr...
-  0000000 Implement dark mode toggle with system prefer... - Alexandra Chen-Rodriguez 1 year ago  │                                                                                 
-  0000000 Fix critical security vulnerability in sessio... - Benjamin O'Sullivan-Smith 1 year ago │ Additional context about this change that provides more detailed information.   
-  0000000 Optimize rendering performance for large comm... - Christina Van Der Berg 1 year ago    │ ────────────────────────────────────────────────────────────────────────────────
-  0000000 Add internationalization support for multiple... - Alexandra Chen-Rodriguez 1 year ago  │ M + 245 - 123  internal/authentication/oauth2/providers/github/client.go        
-  0000000 Migrate legacy codebase from deprecated frame... - Benjamin O'Sullivan-Smith 1 year ago │ M + 198 - 87  internal/authentication/oauth2/providers/google/client.go         
-  0000000 Implement automated backup system with increm... - Christina Van Der Berg 1 year ago    │ M + 67 - 12  pkg/database/migrations/v2/user_preferences_schema.sql             
-  0000000 Add real-time collaboration features with Web... - Alexandra Chen-Rodriguez 1 year ago  │ M + 142 - 56  cmd/server/handlers/api/v1/users/profile_handler.go               
-  0000000 Refactor authentication module to support OAu... - Benjamin O'Sullivan-Smith 1 year ago │ M + 89 - 34  web/components/settings/themes/dark_mode_toggle.tsx                
-  0000000 Add comprehensive error handling for network ... - Christina Van Der Berg 1 year ago    │                                                                                 
-  0000000 Update database schema migration to include n... - Alexandra Chen-Rodriguez 1 year ago  │                                                                                 
-  0000000 Implement dark mode toggle with system prefer... - Benjamin O'Sullivan-Smith 1 year ago │                                                                                 
-  0000000 Fix critical security vulnerability in sessio... - Christina Van Der Berg 1 year ago    │                                                                                 
+  ├ 0000000 Refactor authentication module to support O... - Alexandra Chen-Rodri... 1 year ago   │ 0000000 · Benjamin O'Sullivan-Smith committed 1 year ago · 5 files · +741 ...   
+> ├ 0000000 Add comprehensive error handling for networ... - Benjamin O'Sullivan-... 1 year ago   │                                                                                 
+  ├ 0000000 Update database schema migration to include... - Christina Van Der Berg 1 year ago    │ Add comprehensive error handling for network failures in API client with retr...
+  ├ 0000000 Implement dark mode toggle with system pref... - Alexandra Chen-Rodri... 1 year ago   │                                                                                 
+  ├ 0000000 Fix critical security vulnerability in sess... - Benjamin O'Sullivan-... 1 year ago   │ Additional context about this change that provides more detailed information.   
+  ├ 0000000 Optimize rendering performance for large co... - Christina Van Der Berg 1 year ago    │ ────────────────────────────────────────────────────────────────────────────────
+  ├ 0000000 Add internationalization support for multip... - Alexandra Chen-Rodri... 1 year ago   │ M + 245 - 123  internal/authentication/oauth2/providers/github/client.go        
+  ├ 0000000 Migrate legacy codebase from deprecated fra... - Benjamin O'Sullivan-... 1 year ago   │ M + 198 - 87  internal/authentication/oauth2/providers/google/client.go         
+  ├ 0000000 Implement automated backup system with incr... - Christina Van Der Berg 1 year ago    │ M + 67 - 12  pkg/database/migrations/v2/user_preferences_schema.sql             
+  ├ 0000000 Add real-time collaboration features with W... - Alexandra Chen-Rodri... 1 year ago   │ M + 142 - 56  cmd/server/handlers/api/v1/users/profile_handler.go               
+  ├ 0000000 Refactor authentication module to support O... - Benjamin O'Sullivan-... 1 year ago   │ M + 89 - 34  web/components/settings/themes/dark_mode_toggle.tsx                
+  ├ 0000000 Add comprehensive error handling for networ... - Christina Van Der Berg 1 year ago    │                                                                                 
+  ├ 0000000 Update database schema migration to include... - Alexandra Chen-Rodri... 1 year ago   │                                                                                 
+  ├ 0000000 Implement dark mode toggle with system pref... - Benjamin O'Sullivan-... 1 year ago   │                                                                                 
+  ├ 0000000 Fix critical security vulnerability in sess... - Christina Van Der Berg 1 year ago    │                                                                                 
                                                                                                   │                                                                                 
                                                                                                   │                                                                                 
                                                                                                   │                                                                                 

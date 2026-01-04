@@ -5,6 +5,7 @@ import (
 
 	"github.com/oberprah/splice/internal/diff"
 	"github.com/oberprah/splice/internal/git"
+	"github.com/oberprah/splice/internal/graph"
 	"github.com/oberprah/splice/internal/ui/messages"
 )
 
@@ -47,11 +48,22 @@ func (s *FilesState) Update(msg tea.Msg, ctx Context) (State, tea.Cmd) {
 		case "q":
 			// Go back to the previous list state
 			// Reuse the already-loaded files for the preview
+			// Recompute graph layout from commits (derived data)
+			graphCommits := make([]graph.Commit, len(s.ListCommits))
+			for i, commit := range s.ListCommits {
+				graphCommits[i] = graph.Commit{
+					Hash:    commit.Hash,
+					Parents: commit.ParentHashes,
+				}
+			}
+			layout := graph.ComputeLayout(graphCommits)
+
 			return &LogState{
 				Commits:       s.ListCommits,
 				Cursor:        s.ListCursor,
 				ViewportStart: s.ListViewportStart,
 				Preview:       PreviewLoaded{ForHash: s.Commit.Hash, Files: s.Files},
+				GraphLayout:   layout,
 			}, nil
 
 		case "ctrl+c", "Q":
