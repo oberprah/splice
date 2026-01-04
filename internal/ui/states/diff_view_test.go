@@ -11,9 +11,9 @@ import (
 )
 
 // Per-file helper that adds subdirectory prefix
-func assertDiffViewGolden(t *testing.T, output, filename string) {
+func assertDiffViewGolden(t *testing.T, output *ViewBuilder, filename string) {
 	t.Helper()
-	assertGolden(t, output, "diff_view/"+filename, *update)
+	assertGolden(t, output.String(), "diff_view/"+filename, *update)
 }
 
 func TestDiffState_View_AllLineTypes(t *testing.T) {

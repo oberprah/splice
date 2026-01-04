@@ -6,9 +6,9 @@ import (
 )
 
 // Per-file helper that adds subdirectory prefix
-func assertErrorViewGolden(t *testing.T, output, filename string) {
+func assertErrorViewGolden(t *testing.T, output *ViewBuilder, filename string) {
 	t.Helper()
-	assertGolden(t, output, "error_view/"+filename, *update)
+	assertGolden(t, output.String(), "error_view/"+filename, *update)
 }
 
 func TestErrorState_View(t *testing.T) {

@@ -5,9 +5,9 @@ import (
 )
 
 // Per-file helper that adds subdirectory prefix
-func assertLoadingViewGolden(t *testing.T, output, filename string) {
+func assertLoadingViewGolden(t *testing.T, output *ViewBuilder, filename string) {
 	t.Helper()
-	assertGolden(t, output, "loading_view/"+filename, *update)
+	assertGolden(t, output.String(), "loading_view/"+filename, *update)
 }
 
 func TestLoadingState_View(t *testing.T) {

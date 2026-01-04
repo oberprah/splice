@@ -13,17 +13,19 @@ import (
 )
 
 // View renders the diff state
-func (s *DiffState) View(ctx Context) string {
-	var b strings.Builder
+func (s *DiffState) View(ctx Context) *ViewBuilder {
+	vb := NewViewBuilder()
 
 	// Render header
 	header := s.renderHeader()
-	b.WriteString(header)
+	// Split header into lines and add each line (trimming trailing newline first)
+	for _, line := range strings.Split(strings.TrimSuffix(header, "\n"), "\n") {
+		vb.AddLine(line)
+	}
 
 	// Render separator
 	separator := strings.Repeat("─", min(ctx.Width(), 80))
-	b.WriteString(styles.HeaderStyle.Render(separator))
-	b.WriteString("\n")
+	vb.AddLine(styles.HeaderStyle.Render(separator))
 
 	// Calculate available height for diff content
 	headerLines := strings.Count(header, "\n") + 1 // +1 for separator
@@ -31,9 +33,8 @@ func (s *DiffState) View(ctx Context) string {
 
 	// Handle nil or empty diff
 	if s.Diff == nil || len(s.Diff.Alignments) == 0 {
-		b.WriteString(styles.TimeStyle.Render("No changes"))
-		b.WriteString("\n")
-		return b.String()
+		vb.AddLine(styles.TimeStyle.Render("No changes"))
+		return vb
 	}
 
 	// Calculate column width (each column gets half the terminal width minus separator)
@@ -65,14 +66,10 @@ func (s *DiffState) View(ctx Context) string {
 			separatorStyle.Render(" │ "),
 			rightColStyle.Render(right),
 		)
-		b.WriteString(row)
-		// Add newline between lines, but not after the last line
-		if i < viewportEnd-1 {
-			b.WriteString("\n")
-		}
+		vb.AddLine(row)
 	}
 
-	return b.String()
+	return vb
 }
 
 // renderHeader formats the diff view header

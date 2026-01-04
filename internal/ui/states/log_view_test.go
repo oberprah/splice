@@ -11,9 +11,9 @@ import (
 
 var update = flag.Bool("update", false, "update golden files")
 
-func assertLogViewGolden(t *testing.T, output, filename string) {
+func assertLogViewGolden(t *testing.T, output *ViewBuilder, filename string) {
 	t.Helper()
-	assertGolden(t, output, "log_view/"+filename, *update)
+	assertGolden(t, output.String(), "log_view/"+filename, *update)
 }
 
 // createLogStateWithGraph creates a LogState with computed GraphLayout
