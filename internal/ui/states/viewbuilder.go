@@ -1,6 +1,10 @@
 package states
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/charmbracelet/lipgloss"
+)
 
 // ViewBuilder builds view output with automatic newline handling.
 // It ensures views never end with a trailing newline by storing
@@ -31,4 +35,37 @@ func (vb *ViewBuilder) AddLine(line string) {
 // Lines are joined with "\n" separator.
 func (vb *ViewBuilder) String() string {
 	return strings.Join(vb.lines, "\n")
+}
+
+// AddSplitView joins two ViewBuilders horizontally with a vertical separator.
+// The left and right ViewBuilders are rendered side-by-side with " │ " between them.
+// If the two sides have different line counts, lipgloss automatically pads the shorter
+// side to align the columns properly.
+func (vb *ViewBuilder) AddSplitView(left *ViewBuilder, right *ViewBuilder) {
+	// Convert each ViewBuilder's lines to a multi-line string
+	leftStr := left.String()
+	rightStr := right.String()
+
+	// Determine the maximum line count between the two columns
+	leftLineCount := len(left.lines)
+	rightLineCount := len(right.lines)
+	maxLines := leftLineCount
+	if rightLineCount > maxLines {
+		maxLines = rightLineCount
+	}
+
+	// Build a separator string with that many lines (each line being " │ ")
+	separatorLines := make([]string, maxLines)
+	for i := 0; i < maxLines; i++ {
+		separatorLines[i] = " │ "
+	}
+	separatorStr := strings.Join(separatorLines, "\n")
+
+	// Use lipgloss.JoinHorizontal to join left, separator, and right
+	joined := lipgloss.JoinHorizontal(lipgloss.Top, leftStr, separatorStr, rightStr)
+
+	// Add the joined result's lines to the parent ViewBuilder
+	for _, line := range strings.Split(joined, "\n") {
+		vb.AddLine(line)
+	}
 }
