@@ -50,41 +50,61 @@ func (s LogState) renderSplitView(ctx Context) *ViewBuilder {
 	logWidth := ctx.Width() - splitPanelWidth - separatorWidth
 	detailsWidth := splitPanelWidth
 
-	// Create styles for fixed-width columns
-	logColStyle := lipgloss.NewStyle().Width(logWidth)
-	detailsColStyle := lipgloss.NewStyle().Width(detailsWidth)
-
-	// Calculate the end of the viewport
-	viewportEnd := min(s.ViewportStart+ctx.Height(), len(s.Commits))
-
-	// Build left column (commit list)
-	leftVb := NewViewBuilder()
-	for i := 0; i < ctx.Height(); i++ {
-		var logLine string
-		logIdx := s.ViewportStart + i
-		if logIdx < viewportEnd && logIdx < len(s.Commits) {
-			commit := s.Commits[logIdx]
-			logLine = s.formatCommitLine(commit, logIdx, logIdx == s.Cursor, logWidth, ctx)
-		}
-		// Apply fixed-width styling to each line
-		leftVb.AddLine(logColStyle.Render(logLine))
-	}
-
-	// Build right column (details panel)
-	rightVb := NewViewBuilder()
-	detailsLines := s.renderDetailsPanel(detailsWidth, ctx.Height(), ctx)
-	for i := 0; i < ctx.Height(); i++ {
-		var detailLine string
-		if i < len(detailsLines) {
-			detailLine = detailsLines[i]
-		}
-		// Apply fixed-width styling to each line
-		rightVb.AddLine(detailsColStyle.Render(detailLine))
-	}
+	// Build columns independently
+	leftVb := s.buildCommitListColumn(logWidth, ctx)
+	rightVb := s.buildDetailsColumn(detailsWidth, ctx)
 
 	// Compose the split view
 	vb := NewViewBuilder()
 	vb.AddSplitView(leftVb, rightVb)
+	return vb
+}
+
+// buildCommitListColumn builds the left column (commit list) independently
+func (s LogState) buildCommitListColumn(width int, ctx Context) *ViewBuilder {
+	vb := NewViewBuilder()
+
+	// Create style for fixed-width column
+	colStyle := lipgloss.NewStyle().Width(width)
+
+	// Calculate the end of the viewport
+	viewportEnd := min(s.ViewportStart+ctx.Height(), len(s.Commits))
+
+	// Build the column with viewport height
+	for i := 0; i < ctx.Height(); i++ {
+		var line string
+		logIdx := s.ViewportStart + i
+		if logIdx < viewportEnd && logIdx < len(s.Commits) {
+			commit := s.Commits[logIdx]
+			line = s.formatCommitLine(commit, logIdx, logIdx == s.Cursor, width, ctx)
+		}
+		// Apply fixed-width styling to each line
+		vb.AddLine(colStyle.Render(line))
+	}
+
+	return vb
+}
+
+// buildDetailsColumn builds the right column (details panel) independently
+func (s LogState) buildDetailsColumn(width int, ctx Context) *ViewBuilder {
+	vb := NewViewBuilder()
+
+	// Create style for fixed-width column
+	colStyle := lipgloss.NewStyle().Width(width)
+
+	// Render the details panel content
+	detailsLines := s.renderDetailsPanel(width, ctx.Height(), ctx)
+
+	// Build the column with viewport height
+	for i := 0; i < ctx.Height(); i++ {
+		var line string
+		if i < len(detailsLines) {
+			line = detailsLines[i]
+		}
+		// Apply fixed-width styling to each line
+		vb.AddLine(colStyle.Render(line))
+	}
+
 	return vb
 }
 
