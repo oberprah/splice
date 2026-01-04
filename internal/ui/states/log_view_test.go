@@ -221,6 +221,76 @@ func TestLogState_View_SplitView_PreviewError(t *testing.T) {
 	assertLogViewGolden(t, output, "split_view_error.golden")
 }
 
+func TestLogState_View_MergeBranchGraph(t *testing.T) {
+	// Create a simple feature branch merge scenario:
+	// E (merge commit) <- merges B and D
+	// D (feature branch)
+	// C (feature branch)
+	// B (main branch)
+	// A (initial commit)
+	//
+	// Expected graph:
+	// ├─╮  E: Merge feature-x
+	// │ ├  D: Add feature X part 2
+	// │ ├  C: Add feature X part 1
+	// ├ │  B: Fix bug on main
+	// ├─╯  A: Initial commit
+
+	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	commits := []git.GitCommit{
+		{
+			Hash:         "eeeeeeee",
+			ParentHashes: []string{"bbbbbbbb", "dddddddd"}, // Merge commit
+			Message:      "Merge feature-x",
+			Body:         "",
+			Author:       "Alice",
+			Date:         fixedTime,
+		},
+		{
+			Hash:         "dddddddd",
+			ParentHashes: []string{"cccccccc"},
+			Message:      "Add feature X part 2",
+			Body:         "",
+			Author:       "Bob",
+			Date:         fixedTime.Add(time.Hour),
+		},
+		{
+			Hash:         "cccccccc",
+			ParentHashes: []string{"aaaaaaaa"},
+			Message:      "Add feature X part 1",
+			Body:         "",
+			Author:       "Bob",
+			Date:         fixedTime.Add(2 * time.Hour),
+		},
+		{
+			Hash:         "bbbbbbbb",
+			ParentHashes: []string{"aaaaaaaa"},
+			Message:      "Fix bug on main",
+			Body:         "",
+			Author:       "Alice",
+			Date:         fixedTime.Add(3 * time.Hour),
+		},
+		{
+			Hash:         "aaaaaaaa",
+			ParentHashes: []string{},
+			Message:      "Initial commit",
+			Body:         "",
+			Author:       "Alice",
+			Date:         fixedTime.Add(4 * time.Hour),
+		},
+	}
+
+	s := createLogStateWithGraph(commits)
+	s.Cursor = 0
+	s.ViewportStart = 0
+	s.Preview = PreviewNone{}
+	ctx := mockContext{width: 80, height: 24}
+
+	output := s.View(ctx)
+
+	assertLogViewGolden(t, output, "merge_branch_graph.golden")
+}
+
 // Helper function tests - testing internal formatting logic
 func TestLogState_formatFileEntry(t *testing.T) {
 	s := LogState{}
