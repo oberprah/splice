@@ -1,3 +1,3 @@
-> a Commit 0 - Author 1 year ago
-  b Commit 1 - Author 1 year ago
-  c Commit 2 - Author 1 year ago
+> ├ a Commit 0 - Author 1 year ago
+  ├ b Commit 1 - Author 1 year ago
+  ├ c Commit 2 - Author 1 year ago

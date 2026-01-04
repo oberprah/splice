@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/oberprah/splice/internal/git"
+	"github.com/oberprah/splice/internal/graph"
 	"github.com/oberprah/splice/internal/ui/format"
 	"github.com/oberprah/splice/internal/ui/styles"
 )
@@ -36,7 +37,7 @@ func (s LogState) renderSimpleView(ctx Context) string {
 	// Render only visible commits
 	for i := s.ViewportStart; i < viewportEnd; i++ {
 		commit := s.Commits[i]
-		line := s.formatCommitLine(commit, i == s.Cursor, ctx.Width(), ctx)
+		line := s.formatCommitLine(commit, i, i == s.Cursor, ctx.Width(), ctx)
 		b.WriteString(line)
 		b.WriteString("\n")
 	}
@@ -73,7 +74,7 @@ func (s LogState) renderSplitView(ctx Context) string {
 		logIdx := s.ViewportStart + i
 		if logIdx < viewportEnd && logIdx < len(s.Commits) {
 			commit := s.Commits[logIdx]
-			logLine = s.formatCommitLine(commit, logIdx == s.Cursor, logWidth, ctx)
+			logLine = s.formatCommitLine(commit, logIdx, logIdx == s.Cursor, logWidth, ctx)
 		}
 
 		// Get details line if available
@@ -95,10 +96,33 @@ func (s LogState) renderSplitView(ctx Context) string {
 	return output.String()
 }
 
+// formatRefs formats ref decorations for display
+// Returns formatted refs like "(HEAD -> main, tag: v1.0)" or empty string if no refs
+func formatRefs(refs []git.RefInfo) string {
+	if len(refs) == 0 {
+		return ""
+	}
+
+	var parts []string
+	for _, ref := range refs {
+		var formatted string
+		switch ref.Type {
+		case git.RefTypeTag:
+			formatted = fmt.Sprintf("tag: %s", ref.Name)
+		default:
+			// For branches, just use the name
+			formatted = ref.Name
+		}
+		parts = append(parts, formatted)
+	}
+
+	return fmt.Sprintf("(%s) ", strings.Join(parts, ", "))
+}
+
 // formatCommitLine formats a single commit line with proper styling
-func (s LogState) formatCommitLine(commit git.GitCommit, isSelected bool, width int, ctx Context) string {
-	// Format: hash message - author (time ago)
-	// Example: a4c3a8a Fix memory leak in parser - John Doe (4 min ago)
+func (s LogState) formatCommitLine(commit git.GitCommit, commitIndex int, isSelected bool, width int, ctx Context) string {
+	// Format: [selector] [graph] hash (refs) message - author (time ago)
+	// Example: > ├─╮ a4c3a8a (HEAD -> main, tag: v1.0) Merge feature - John Doe (4 min ago)
 
 	// Determine available width (accounting for selection indicator and spacing)
 	availableWidth := width
@@ -112,16 +136,24 @@ func (s LogState) formatCommitLine(commit git.GitCommit, isSelected bool, width 
 		selectionIndicator = "> "
 	}
 
+	// Get graph symbols for this commit
+	var graphSymbols string
+	if s.GraphLayout != nil && commitIndex >= 0 && commitIndex < len(s.GraphLayout.Rows) {
+		row := s.GraphLayout.Rows[commitIndex]
+		graphSymbols = graph.RenderRow(row)
+	}
+
 	// Format the base components
 	hash := format.ToShortHash(commit.Hash)                   // 7 chars
+	refsStr := formatRefs(commit.Refs)                        // Variable (includes trailing space if present)
 	message := commit.Message                                 // Variable
 	separator := " - "                                        // 3 chars
 	author := commit.Author                                   // Variable
 	timePrefix := " "                                         // 1 char
 	time := format.ToRelativeTimeFrom(commit.Date, ctx.Now()) // Variable
 
-	// Calculate required space for fixed elements
-	fixedWidth := len(selectionIndicator) + len(hash) + 1 + len(separator) + len(timePrefix) + len(time)
+	// Calculate required space for fixed elements (including graph symbols and refs)
+	fixedWidth := len(selectionIndicator) + len(graphSymbols) + len(hash) + 1 + len(refsStr) + len(separator) + len(timePrefix) + len(time)
 
 	// Calculate remaining space for message and author
 	remainingWidth := max(availableWidth-fixedWidth,
@@ -144,11 +176,15 @@ func (s LogState) formatCommitLine(commit git.GitCommit, isSelected bool, width 
 	var line strings.Builder
 
 	line.WriteString(selectionIndicator)
+	line.WriteString(graphSymbols) // Graph symbols come after selector, before hash
 
 	if isSelected {
 		// For selected lines, use bold styles
 		line.WriteString(styles.SelectedHashStyle.Render(hash))
 		line.WriteString(" ")
+		if refsStr != "" {
+			line.WriteString(styles.SelectedTimeStyle.Render(refsStr)) // Use time style for refs (dim)
+		}
 		line.WriteString(styles.SelectedMessageStyle.Render(message))
 		line.WriteString(separator)
 		line.WriteString(styles.SelectedAuthorStyle.Render(author))
@@ -158,6 +194,9 @@ func (s LogState) formatCommitLine(commit git.GitCommit, isSelected bool, width 
 		// For unselected lines, apply regular styles
 		line.WriteString(styles.HashStyle.Render(hash))
 		line.WriteString(" ")
+		if refsStr != "" {
+			line.WriteString(styles.TimeStyle.Render(refsStr)) // Use time style for refs (dim)
+		}
 		line.WriteString(styles.MessageStyle.Render(message))
 		line.WriteString(separator)
 		line.WriteString(styles.AuthorStyle.Render(author))
