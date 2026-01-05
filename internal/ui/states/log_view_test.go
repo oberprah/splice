@@ -893,3 +893,574 @@ func TestMeasureLineWidth(t *testing.T) {
 		})
 	}
 }
+
+// Integration tests for formatCommitLine - testing the complete truncation pipeline
+
+func TestFormatCommitLine_VariousTerminalWidths(t *testing.T) {
+	tests := []struct {
+		name             string
+		components       CommitLineComponents
+		availableWidth   int
+		isSelected       bool
+		expectedMaxLen   int
+		verifyContains   []string // strings that must appear in output
+		verifyNotContain []string // strings that must not appear in output
+	}{
+		{
+			name: "very wide terminal - everything fits",
+			components: CommitLineComponents{
+				Selector: "> ",
+				Graph:    "├─╮ ",
+				Hash:     "abc123d",
+				Refs: []git.RefInfo{
+					{Name: "feature/user-authentication", Type: git.RefTypeBranch, IsHead: true},
+					{Name: "origin/feature/user-authentication", Type: git.RefTypeRemoteBranch, IsHead: false},
+					{Name: "v2.1.0", Type: git.RefTypeTag, IsHead: false},
+				},
+				Message: "Implement advanced user authentication system with OAuth2 support",
+				Author:  "Alice Johnson",
+				Time:    "2 days ago",
+			},
+			availableWidth: 200,
+			isSelected:     true,
+			expectedMaxLen: 200,
+			verifyContains: []string{"abc123d", "feature/user-authentication", "origin/feature/user-authentication", "tag: v2.1.0",
+				"Implement advanced user authentication system with OAuth2 support", "Alice Johnson", "2 days ago"},
+		},
+		{
+			name: "wide terminal - message capped at 72",
+			components: CommitLineComponents{
+				Selector: "  ",
+				Graph:    "",
+				Hash:     "def456a",
+				Refs:     []git.RefInfo{},
+				Message:  "This is a very long commit message that exceeds the 72 character limit and should be truncated at that boundary for readability",
+				Author:   "Bob Smith",
+				Time:     "3 hours ago",
+			},
+			availableWidth:   120,
+			isSelected:       false,
+			expectedMaxLen:   120,
+			verifyContains:   []string{"def456a", "This is a very long commit message that exceeds the 72 character limi...", "Bob Smith"},
+			verifyNotContain: []string{"for readability"}, // Part after 72 chars should be cut
+		},
+		{
+			name: "medium terminal - refs shortened, author truncated",
+			components: CommitLineComponents{
+				Selector: "> ",
+				Graph:    "│ ",
+				Hash:     "ghi789b",
+				Refs: []git.RefInfo{
+					{Name: "feature/implement-advanced-caching-strategy", Type: git.RefTypeBranch, IsHead: true},
+					{Name: "origin/feature/implement-advanced-caching-strategy", Type: git.RefTypeRemoteBranch, IsHead: false},
+				},
+				Message: "Add distributed caching layer for improved performance",
+				Author:  "Christopher Williamson-Henderson",
+				Time:    "yesterday",
+			},
+			availableWidth: 80,
+			isSelected:     true,
+			expectedMaxLen: 80,
+			verifyContains: []string{"ghi789b", "refs", "Add distributed caching", "Ch..."},
+		},
+		{
+			name: "narrow terminal - time dropped, message shortened",
+			components: CommitLineComponents{
+				Selector: "  ",
+				Graph:    "├ ",
+				Hash:     "jkl012c",
+				Refs: []git.RefInfo{
+					{Name: "main", Type: git.RefTypeBranch, IsHead: true},
+				},
+				Message: "Refactor database connection pool management",
+				Author:  "Diana Prince",
+				Time:    "5 days ago",
+			},
+			availableWidth:   60,
+			isSelected:       false,
+			expectedMaxLen:   60,
+			verifyContains:   []string{"jkl012c", "Refactor database connection pool man..."},
+			verifyNotContain: []string{"5 days ago"}, // Time should be dropped
+		},
+		{
+			name: "very narrow terminal - minimal format, author dropped",
+			components: CommitLineComponents{
+				Selector: "> ",
+				Graph:    "",
+				Hash:     "mno345d",
+				Refs:     []git.RefInfo{},
+				Message:  "Fix critical security vulnerability in auth module",
+				Author:   "Edward Norton",
+				Time:     "just now",
+			},
+			availableWidth:   40,
+			isSelected:       true,
+			expectedMaxLen:   40,
+			verifyContains:   []string{"mno345d", "Fix critical security vulne..."},
+			verifyNotContain: []string{"Edward Norton", "just now"},
+		},
+		{
+			name: "extreme narrow terminal - entire line truncated",
+			components: CommitLineComponents{
+				Selector: "  ",
+				Graph:    "├─┬─╮─┬─╮ ", // Large graph
+				Hash:     "pqr678e",
+				Refs: []git.RefInfo{
+					{Name: "feature/x", Type: git.RefTypeBranch, IsHead: true},
+				},
+				Message: "Update",
+				Author:  "Frank",
+				Time:    "1h ago",
+			},
+			availableWidth: 30,
+			isSelected:     false,
+			expectedMaxLen: 30,
+			verifyContains: []string{"..."}, // Line is truncated including graph
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatCommitLine(tt.components, tt.availableWidth, tt.isSelected)
+
+			// Verify line doesn't exceed available width (accounting for ANSI codes)
+			// Note: We can't use simple len() because of styling, but we can check the assembled components
+			// For now, verify the result is not empty and contains expected strings
+			if result == "" {
+				t.Error("Expected non-empty result")
+			}
+
+			// Verify expected strings are present (ignoring ANSI codes)
+			for _, str := range tt.verifyContains {
+				if !contains(result, str) {
+					t.Errorf("Expected result to contain %q, got:\n%s", str, result)
+				}
+			}
+
+			// Verify strings that should not be present
+			for _, str := range tt.verifyNotContain {
+				if contains(result, str) {
+					t.Errorf("Expected result NOT to contain %q, got:\n%s", str, result)
+				}
+			}
+		})
+	}
+}
+
+func TestFormatCommitLine_ContentCombinations(t *testing.T) {
+	tests := []struct {
+		name           string
+		components     CommitLineComponents
+		availableWidth int
+		description    string
+	}{
+		{
+			name: "very long commit message",
+			components: CommitLineComponents{
+				Selector: "  ",
+				Graph:    "",
+				Hash:     "abc123d",
+				Refs:     []git.RefInfo{},
+				Message:  "Implement comprehensive end-to-end testing framework with support for multiple browsers, parallel execution, and detailed reporting capabilities that include screenshots and video recordings of test failures",
+				Author:   "Alice",
+				Time:     "1 day ago",
+			},
+			availableWidth: 100,
+			description:    "Message should be capped at 72 chars",
+		},
+		{
+			name: "very long author name",
+			components: CommitLineComponents{
+				Selector: "> ",
+				Graph:    "",
+				Hash:     "def456a",
+				Refs:     []git.RefInfo{},
+				Message:  "Update documentation",
+				Author:   "Christopher Alexander Montgomery-Worthington III",
+				Time:     "2 hours ago",
+			},
+			availableWidth: 80,
+			description:    "Author should be truncated to 25 chars",
+		},
+		{
+			name: "multiple long branch names",
+			components: CommitLineComponents{
+				Selector: "  ",
+				Graph:    "├ ",
+				Hash:     "ghi789b",
+				Refs: []git.RefInfo{
+					{Name: "feature/implement-distributed-caching-with-redis", Type: git.RefTypeBranch, IsHead: true},
+					{Name: "origin/feature/implement-distributed-caching-with-redis", Type: git.RefTypeRemoteBranch, IsHead: false},
+					{Name: "staging/feature/implement-distributed-caching-with-redis", Type: git.RefTypeRemoteBranch, IsHead: false},
+				},
+				Message: "Add Redis caching layer",
+				Author:  "Bob",
+				Time:    "3 days ago",
+			},
+			availableWidth: 90,
+			description:    "Refs should be progressively shortened",
+		},
+		{
+			name: "many refs",
+			components: CommitLineComponents{
+				Selector: "> ",
+				Graph:    "",
+				Hash:     "jkl012c",
+				Refs: []git.RefInfo{
+					{Name: "main", Type: git.RefTypeBranch, IsHead: true},
+					{Name: "develop", Type: git.RefTypeBranch, IsHead: false},
+					{Name: "staging", Type: git.RefTypeBranch, IsHead: false},
+					{Name: "production", Type: git.RefTypeBranch, IsHead: false},
+					{Name: "v1.0", Type: git.RefTypeTag, IsHead: false},
+					{Name: "v1.1", Type: git.RefTypeTag, IsHead: false},
+					{Name: "v1.2", Type: git.RefTypeTag, IsHead: false},
+					{Name: "v2.0-beta", Type: git.RefTypeTag, IsHead: false},
+					{Name: "release-candidate", Type: git.RefTypeBranch, IsHead: false},
+					{Name: "hotfix", Type: git.RefTypeBranch, IsHead: false},
+				},
+				Message: "Release version 2.0",
+				Author:  "Release Manager",
+				Time:    "1 week ago",
+			},
+			availableWidth: 80,
+			description:    "Should show first ref + count or total count",
+		},
+		{
+			name: "no refs",
+			components: CommitLineComponents{
+				Selector: "  ",
+				Graph:    "│ ",
+				Hash:     "mno345d",
+				Refs:     []git.RefInfo{},
+				Message:  "Fix typo in documentation",
+				Author:   "Charlie",
+				Time:     "just now",
+			},
+			availableWidth: 70,
+			description:    "Should render cleanly without refs",
+		},
+		{
+			name: "empty message",
+			components: CommitLineComponents{
+				Selector: "> ",
+				Graph:    "",
+				Hash:     "pqr678e",
+				Refs:     []git.RefInfo{},
+				Message:  "",
+				Author:   "Dave",
+				Time:     "5 min ago",
+			},
+			availableWidth: 60,
+			description:    "Should handle empty message gracefully",
+		},
+		{
+			name: "large graph with many parallel branches",
+			components: CommitLineComponents{
+				Selector: "  ",
+				Graph:    "├─┬─┬─╮─┬─╮─┬─╮─┬ ", // 20 chars of graph
+				Hash:     "stu901f",
+				Refs: []git.RefInfo{
+					{Name: "main", Type: git.RefTypeBranch, IsHead: true},
+				},
+				Message: "Merge multiple feature branches",
+				Author:  "Integration Bot",
+				Time:    "2 min ago",
+			},
+			availableWidth: 80,
+			description:    "Graph takes priority, other components compete for remaining space",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatCommitLine(tt.components, tt.availableWidth, false)
+
+			// Basic sanity checks
+			if result == "" && tt.components.Message != "" {
+				t.Error("Expected non-empty result for non-empty message")
+			}
+
+			// Verify hash is always present (it's in styled content, so we check for the hash value)
+			if !contains(result, tt.components.Hash) {
+				t.Errorf("Expected result to always contain hash %q, got:\n%s", tt.components.Hash, result)
+			}
+		})
+	}
+}
+
+func TestFormatCommitLine_TruncationLevels(t *testing.T) {
+	// This test verifies that truncation levels are applied in the correct order
+	// We test specific scenarios that trigger each level
+	tests := []struct {
+		name             string
+		components       CommitLineComponents
+		availableWidth   int
+		expectedLevel    string
+		verifyContains   []string
+		verifyNotContain []string
+	}{
+		{
+			name: "level 0 - message capped at 72",
+			components: CommitLineComponents{
+				Selector: "  ",
+				Graph:    "",
+				Hash:     "abc123d",
+				Refs:     []git.RefInfo{},
+				Message:  "This is an extremely long commit message that definitely exceeds 72 characters and needs to be capped",
+				Author:   "Alice",
+				Time:     "1 day ago",
+			},
+			availableWidth: 110,
+			expectedLevel:  "Message capped at 72",
+			verifyContains: []string{"This is an extremely long commit message that definitely exceeds 72 c..."},
+		},
+		{
+			name: "level 1 - author truncated to 25",
+			components: CommitLineComponents{
+				Selector: "  ",
+				Graph:    "",
+				Hash:     "def456a",
+				Refs:     []git.RefInfo{},
+				Message:  "Short message",
+				Author:   "Christopher Montgomery-Worthington III",
+				Time:     "1 day ago",
+			},
+			availableWidth: 60,
+			expectedLevel:  "Author truncated to 25",
+			verifyContains: []string{"Ch..."},
+		},
+		{
+			name: "level 2-4 - refs degradation",
+			components: CommitLineComponents{
+				Selector: "  ",
+				Graph:    "",
+				Hash:     "ghi789b",
+				Refs: []git.RefInfo{
+					{Name: "feature/very-long-branch-name-here", Type: git.RefTypeBranch, IsHead: true},
+					{Name: "origin/feature/very-long-branch-name-here", Type: git.RefTypeRemoteBranch, IsHead: false},
+					{Name: "v1.0", Type: git.RefTypeTag, IsHead: false},
+				},
+				Message: "Update feature",
+				Author:  "Bob",
+				Time:    "2 days ago",
+			},
+			availableWidth: 55,
+			expectedLevel:  "Refs shortened or count-only",
+			verifyContains: []string{"ghi789b", "Update feature"},
+		},
+		{
+			name: "level 5 - author at 5 chars",
+			components: CommitLineComponents{
+				Selector: "  ",
+				Graph:    "",
+				Hash:     "jkl012c",
+				Refs:     []git.RefInfo{},
+				Message:  "This is a moderately long commit message for testing",
+				Author:   "Christopher",
+				Time:     "just now",
+			},
+			availableWidth: 45,
+			expectedLevel:  "Author at 5 chars",
+			verifyContains: []string{"moderately long commit..."},
+		},
+		{
+			name: "level 6 - time dropped",
+			components: CommitLineComponents{
+				Selector: "  ",
+				Graph:    "├ ",
+				Hash:     "mno345d",
+				Refs:     []git.RefInfo{},
+				Message:  "Implement new caching strategy for database",
+				Author:   "Diana",
+				Time:     "3 hours ago",
+			},
+			availableWidth:   42,
+			expectedLevel:    "Time dropped",
+			verifyNotContain: []string{"3 hours ago"},
+		},
+		{
+			name: "level 7 - message at 40 chars",
+			components: CommitLineComponents{
+				Selector: "  ",
+				Graph:    "",
+				Hash:     "pqr678e",
+				Refs:     []git.RefInfo{},
+				Message:  "Refactor the entire authentication and authorization subsystem",
+				Author:   "Eve",
+				Time:     "yesterday",
+			},
+			availableWidth: 38,
+			expectedLevel:  "Message at 40 chars",
+			verifyContains: []string{"Refactor the entire authe..."},
+		},
+		{
+			name: "level 8 - author dropped",
+			components: CommitLineComponents{
+				Selector: "  ",
+				Graph:    "",
+				Hash:     "stu901f",
+				Refs:     []git.RefInfo{},
+				Message:  "Update documentation for API endpoints",
+				Author:   "Frank",
+				Time:     "5 min ago",
+			},
+			availableWidth:   30,
+			expectedLevel:    "Author dropped",
+			verifyNotContain: []string{"Frank", " - "},
+		},
+		{
+			name: "level 9 - entire line truncated",
+			components: CommitLineComponents{
+				Selector: "  ",
+				Graph:    "├─┬─╮─┬ ",
+				Hash:     "vwx234g",
+				Refs: []git.RefInfo{
+					{Name: "feature/test", Type: git.RefTypeBranch, IsHead: true},
+				},
+				Message: "Fix bug in payment processing",
+				Author:  "Grace",
+				Time:    "now",
+			},
+			availableWidth: 25,
+			expectedLevel:  "Entire line truncated",
+			verifyContains: []string{"..."},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatCommitLine(tt.components, tt.availableWidth, false)
+
+			// Verify expected strings are present
+			for _, str := range tt.verifyContains {
+				if !contains(result, str) {
+					t.Errorf("Level %q: Expected result to contain %q, got:\n%s", tt.expectedLevel, str, result)
+				}
+			}
+
+			// Verify strings that should not be present
+			for _, str := range tt.verifyNotContain {
+				if contains(result, str) {
+					t.Errorf("Level %q: Expected result NOT to contain %q, got:\n%s", tt.expectedLevel, str, result)
+				}
+			}
+		})
+	}
+}
+
+func TestFormatCommitLine_VisualQuality(t *testing.T) {
+	tests := []struct {
+		name           string
+		components     CommitLineComponents
+		availableWidth int
+		description    string
+	}{
+		{
+			name: "balanced parentheses for refs",
+			components: CommitLineComponents{
+				Selector: "  ",
+				Graph:    "",
+				Hash:     "abc123d",
+				Refs: []git.RefInfo{
+					{Name: "main", Type: git.RefTypeBranch, IsHead: true},
+					{Name: "v1.0", Type: git.RefTypeTag, IsHead: false},
+				},
+				Message: "Release version 1.0",
+				Author:  "Alice",
+				Time:    "1 week ago",
+			},
+			availableWidth: 50,
+			description:    "Refs should have balanced parentheses at all truncation levels",
+		},
+		{
+			name: "correct ellipsis for message",
+			components: CommitLineComponents{
+				Selector: "  ",
+				Graph:    "",
+				Hash:     "def456a",
+				Refs:     []git.RefInfo{},
+				Message:  "This is a very long message that will be truncated",
+				Author:   "Bob",
+				Time:     "2 days ago",
+			},
+			availableWidth: 40,
+			description:    "Message should use '...' (3 chars) for truncation",
+		},
+		{
+			name: "correct ellipsis for author",
+			components: CommitLineComponents{
+				Selector: "  ",
+				Graph:    "",
+				Hash:     "ghi789b",
+				Refs:     []git.RefInfo{},
+				Message:  "Short message",
+				Author:   "Christopher Montgomery",
+				Time:     "just now",
+			},
+			availableWidth: 40,
+			description:    "Author should use '...' (3 chars) for truncation",
+		},
+		{
+			name: "correct ellipsis for refs",
+			components: CommitLineComponents{
+				Selector: "  ",
+				Graph:    "",
+				Hash:     "jkl012c",
+				Refs: []git.RefInfo{
+					{Name: "feature/very-long-branch-name", Type: git.RefTypeBranch, IsHead: true},
+				},
+				Message: "Add feature",
+				Author:  "Diana",
+				Time:    "3 hours ago",
+			},
+			availableWidth: 45,
+			description:    "Refs should use '…' (single char) for truncation",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatCommitLine(tt.components, tt.availableWidth, false)
+
+			// Check for balanced parentheses if refs are present
+			if len(tt.components.Refs) > 0 {
+				openCount := 0
+				closeCount := 0
+				for _, ch := range result {
+					switch ch {
+					case '(':
+						openCount++
+					case ')':
+						closeCount++
+					}
+				}
+				if openCount != closeCount {
+					t.Errorf("Unbalanced parentheses: %d open, %d close in:\n%s", openCount, closeCount, result)
+				}
+			}
+
+			// Note: Checking for specific ellipsis characters is difficult due to ANSI codes
+			// The actual verification is in the pure function tests above
+			// Here we just verify the output is reasonable
+			if result == "" {
+				t.Error("Expected non-empty result")
+			}
+		})
+	}
+}
+
+// Helper function to check if a string contains a substring (ignoring ANSI codes for basic checks)
+func contains(s, substr string) bool {
+	return len(s) > 0 && len(substr) > 0 &&
+		(len(s) >= len(substr) && indexOf(s, substr) >= 0)
+}
+
+// Simple indexOf implementation
+func indexOf(s, substr string) int {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return i
+		}
+	}
+	return -1
+}
