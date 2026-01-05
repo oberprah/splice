@@ -65,8 +65,18 @@ func truncateAuthor(author string, maxLen int) string {
 	return string(runes[:maxLen-3]) + "..."
 }
 
+// max returns the maximum of two integers.
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 // truncateEntireLine hard-truncates an assembled line to maxWidth characters.
 // Uses "..." suffix if maxWidth >= 3, otherwise truncates to available space.
+// Note: This function works on plain strings only. It is currently unused but kept
+// for potential future use cases where entire line truncation is needed.
 func truncateEntireLine(line string, maxWidth int) string {
 	if utf8.RuneCountInString(line) <= maxWidth {
 		return line
@@ -355,13 +365,29 @@ func formatCommitLine(components CommitLineComponents, availableWidth int) strin
 			// Level 8: Drop author
 			author = ""
 		case 9:
-			// Level 9: Drop refs, assemble minimal line, then truncate entire line to fit
+			// Level 9: Drop refs, truncate message if needed BEFORE assembling
 			refs = ""
-			assembledLine := assembleLine(selector, graph, hash, refs, message, author, time, components.IsSelected)
-			if utf8.RuneCountInString(assembledLine) > availableWidth {
-				return truncateEntireLine(assembledLine, availableWidth)
+
+			// Measure what we'd have without truncation (plain strings)
+			plainLine := selector + graph + hash + " " + message
+			if author != "" {
+				plainLine += " - " + author
 			}
-			return assembledLine
+			if time != "" {
+				plainLine += " " + time
+			}
+
+			visualWidth := utf8.RuneCountInString(plainLine)
+
+			// If too long, truncate the message (plain) to fit
+			if visualWidth > availableWidth {
+				excess := visualWidth - availableWidth
+				targetMsgLen := max(utf8.RuneCountInString(message)-excess, 5)
+				message = capMessage(message, targetMsgLen)
+			}
+
+			// NOW assemble with styling - all components fit
+			return assembleLine(selector, graph, hash, refs, message, author, time, components.IsSelected)
 		}
 		level++
 	}
