@@ -40,15 +40,7 @@ func (s LogState) renderSimpleView(ctx Context) *ViewBuilder {
 		isSelected := i == s.Cursor
 
 		// Prepare all components (impure operations happen here)
-		components := CommitLineComponents{
-			IsSelected: isSelected,
-			Graph:      s.buildGraphForCommit(i),
-			Hash:       format.ToShortHash(commit.Hash),
-			Refs:       commit.Refs,
-			Message:    commit.Message,
-			Author:     commit.Author,
-			Time:       format.ToRelativeTimeFrom(commit.Date, ctx.Now()),
-		}
+		components := s.buildCommitLineComponents(commit, i, isSelected, ctx)
 
 		// Call pure function with all components
 		line := formatCommitLine(components, ctx.Width())
@@ -93,15 +85,7 @@ func (s LogState) buildCommitListColumn(width int, ctx Context) *ViewBuilder {
 			isSelected := logIdx == s.Cursor
 
 			// Prepare all components (impure operations happen here)
-			components := CommitLineComponents{
-				IsSelected: isSelected,
-				Graph:      s.buildGraphForCommit(logIdx),
-				Hash:       format.ToShortHash(commit.Hash),
-				Refs:       commit.Refs,
-				Message:    commit.Message,
-				Author:     commit.Author,
-				Time:       format.ToRelativeTimeFrom(commit.Date, ctx.Now()),
-			}
+			components := s.buildCommitLineComponents(commit, logIdx, isSelected, ctx)
 
 			// Call pure function with all components
 			line = formatCommitLine(components, width)
@@ -134,6 +118,20 @@ func (s LogState) buildDetailsColumn(width int, ctx Context) *ViewBuilder {
 	}
 
 	return vb
+}
+
+// buildCommitLineComponents prepares all components for formatting a commit line.
+// This is where impure operations (time formatting, graph lookup) happen.
+func (s LogState) buildCommitLineComponents(commit git.GitCommit, commitIndex int, isSelected bool, ctx Context) CommitLineComponents {
+	return CommitLineComponents{
+		IsSelected: isSelected,
+		Graph:      s.buildGraphForCommit(commitIndex),
+		Hash:       format.ToShortHash(commit.Hash),
+		Refs:       commit.Refs,
+		Message:    commit.Message,
+		Author:     commit.Author,
+		Time:       format.ToRelativeTimeFrom(commit.Date, ctx.Now()),
+	}
 }
 
 // buildGraphForCommit returns the graph symbols for a commit at the given index.
