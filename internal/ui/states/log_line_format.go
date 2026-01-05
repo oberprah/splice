@@ -36,33 +36,33 @@ type CommitLineComponents struct {
 	Time       string
 }
 
-// capMessage truncates a message to maxLen characters with "..." suffix.
+// capMessage truncates a message to maxLen characters with "…" suffix.
 // Returns the original message if it fits within maxLen.
 func capMessage(message string, maxLen int) string {
 	if utf8.RuneCountInString(message) <= maxLen {
 		return message
 	}
-	if maxLen < 3 {
+	if maxLen < 1 {
 		return ""
 	}
 	// Convert to runes to properly truncate multi-byte characters
 	runes := []rune(message)
-	return string(runes[:maxLen-3]) + "..."
+	return string(runes[:maxLen-1]) + "…"
 }
 
-// truncateAuthor truncates an author name to maxLen characters with "..." suffix.
+// truncateAuthor truncates an author name to maxLen characters with "…" suffix.
 // Returns the original author if it fits within maxLen.
-// Returns empty string if maxLen < 3.
+// Returns empty string if maxLen < 1.
 func truncateAuthor(author string, maxLen int) string {
 	if utf8.RuneCountInString(author) <= maxLen {
 		return author
 	}
-	if maxLen < 3 {
+	if maxLen < 1 {
 		return ""
 	}
 	// Convert to runes to properly truncate multi-byte characters
 	runes := []rune(author)
-	return string(runes[:maxLen-3]) + "..."
+	return string(runes[:maxLen-1]) + "…"
 }
 
 // max returns the maximum of two integers.
@@ -74,7 +74,7 @@ func max(a, b int) int {
 }
 
 // truncateEntireLine hard-truncates an assembled line to maxWidth characters.
-// Uses "..." suffix if maxWidth >= 3, otherwise truncates to available space.
+// Uses "…" suffix if maxWidth >= 1, otherwise truncates to available space.
 // Note: This function works on plain strings only. It is currently unused but kept
 // for potential future use cases where entire line truncation is needed.
 func truncateEntireLine(line string, maxWidth int) string {
@@ -86,10 +86,10 @@ func truncateEntireLine(line string, maxWidth int) string {
 	}
 	// Convert to runes to properly truncate multi-byte characters
 	runes := []rune(line)
-	if maxWidth < 3 {
+	if maxWidth < 1 {
 		return string(runes[:maxWidth])
 	}
-	return string(runes[:maxWidth-3]) + "..."
+	return string(runes[:maxWidth-1]) + "…"
 }
 
 // formatRefsFull formats all refs with their full names.

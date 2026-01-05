@@ -35,18 +35,18 @@ func TestCapMessage(t *testing.T) {
 			name:     "message needs truncation",
 			message:  "This is a very long commit message that should be truncated",
 			maxLen:   30,
-			expected: "This is a very long commit ...",
+			expected: "This is a very long commit me…",
 		},
 		{
-			name:     "maxLen is 3",
+			name:     "maxLen is 1",
 			message:  "Hello",
-			maxLen:   3,
-			expected: "...",
+			maxLen:   1,
+			expected: "…",
 		},
 		{
-			name:     "maxLen less than 3",
+			name:     "maxLen less than 1",
 			message:  "Hello",
-			maxLen:   2,
+			maxLen:   0,
 			expected: "",
 		},
 		{
@@ -90,18 +90,18 @@ func TestTruncateAuthor(t *testing.T) {
 			name:     "author needs truncation",
 			author:   "VeryLongAuthorNameThatShouldGetTruncated",
 			maxLen:   25,
-			expected: "VeryLongAuthorNameThat...",
+			expected: "VeryLongAuthorNameThatSh…",
 		},
 		{
-			name:     "maxLen is 3",
+			name:     "maxLen is 1",
 			author:   "Alice",
-			maxLen:   3,
-			expected: "...",
+			maxLen:   1,
+			expected: "…",
 		},
 		{
-			name:     "maxLen less than 3",
+			name:     "maxLen less than 1",
 			author:   "Alice",
-			maxLen:   2,
+			maxLen:   0,
 			expected: "",
 		},
 		{
@@ -145,25 +145,13 @@ func TestTruncateEntireLine(t *testing.T) {
 			name:     "line needs truncation",
 			line:     "> ├─╮ abc123d (main) This is a very long message - Alice (2 days ago)",
 			maxWidth: 40,
-			expected: "> ├─╮ abc123d (main) This is a very l...", // With rune counting, graph chars take fewer positions
-		},
-		{
-			name:     "maxWidth is 3",
-			line:     "Hello",
-			maxWidth: 3,
-			expected: "...",
-		},
-		{
-			name:     "maxWidth is 2",
-			line:     "Hello",
-			maxWidth: 2,
-			expected: "He",
+			expected: "> ├─╮ abc123d (main) This is a very lon…", // With rune counting, graph chars take fewer positions
 		},
 		{
 			name:     "maxWidth is 1",
 			line:     "Hello",
 			maxWidth: 1,
-			expected: "H",
+			expected: "…",
 		},
 		{
 			name:     "maxWidth is 0",
@@ -558,7 +546,7 @@ func TestFormatCommitLine_VariousTerminalWidths(t *testing.T) {
 			},
 			availableWidth:   120,
 			expectedMaxLen:   120,
-			verifyContains:   []string{"def456a", "This is a very long commit message that exceeds the 72 character limi...", "Bob Smith"},
+			verifyContains:   []string{"def456a", "This is a very long commit message that exceeds the 72 character limit …", "Bob Smith"},
 			verifyNotContain: []string{"for readability"}, // Part after 72 chars should be cut
 		},
 		{
@@ -577,7 +565,7 @@ func TestFormatCommitLine_VariousTerminalWidths(t *testing.T) {
 			},
 			availableWidth: 80,
 			expectedMaxLen: 80,
-			verifyContains: []string{"ghi789b", "refs", "Add distributed caching", "Ch..."},
+			verifyContains: []string{"ghi789b", "refs", "Add distributed caching", "Chri…"},
 		},
 		{
 			name: "narrow terminal - time dropped, message shortened",
@@ -594,7 +582,7 @@ func TestFormatCommitLine_VariousTerminalWidths(t *testing.T) {
 			},
 			availableWidth:   60,
 			expectedMaxLen:   60,
-			verifyContains:   []string{"jkl012c", "Refactor database connection pool man..."},
+			verifyContains:   []string{"jkl012c", "Refactor database connection pool manag…"},
 			verifyNotContain: []string{"5 days ago"}, // Time should be dropped
 		},
 		{
@@ -610,7 +598,7 @@ func TestFormatCommitLine_VariousTerminalWidths(t *testing.T) {
 			},
 			availableWidth:   40,
 			expectedMaxLen:   40,
-			verifyContains:   []string{"mno345d", "Fix critical security vulne..."},
+			verifyContains:   []string{"mno345d", "Fix critical security vulnera…"},
 			verifyNotContain: []string{"Edward Norton", "just now"},
 		},
 		{
@@ -628,7 +616,7 @@ func TestFormatCommitLine_VariousTerminalWidths(t *testing.T) {
 			},
 			availableWidth: 20, // Reduced from 30 to force truncation with rune counting
 			expectedMaxLen: 20,
-			verifyContains: []string{"..."}, // Line is truncated including graph
+			verifyContains: []string{"…"}, // Line is truncated including graph
 		},
 	}
 
@@ -825,7 +813,7 @@ func TestFormatCommitLine_TruncationLevels(t *testing.T) {
 			},
 			availableWidth: 110,
 			expectedLevel:  "Message capped at 72",
-			verifyContains: []string{"This is an extremely long commit message that definitely exceeds 72 c..."},
+			verifyContains: []string{"This is an extremely long commit message that definitely exceeds 72 cha…"},
 		},
 		{
 			name: "level 1 - author truncated to 25",
@@ -840,7 +828,7 @@ func TestFormatCommitLine_TruncationLevels(t *testing.T) {
 			},
 			availableWidth: 60,
 			expectedLevel:  "Author truncated to 25",
-			verifyContains: []string{"Ch..."},
+			verifyContains: []string{"Chri…"},
 		},
 		{
 			name: "level 2-4 - refs degradation",
@@ -874,7 +862,7 @@ func TestFormatCommitLine_TruncationLevels(t *testing.T) {
 			},
 			availableWidth: 45,
 			expectedLevel:  "Author at 5 chars",
-			verifyContains: []string{"moderately long commit..."},
+			verifyContains: []string{"moderately long commit m…"},
 		},
 		{
 			name: "level 6 - time dropped",
@@ -904,7 +892,7 @@ func TestFormatCommitLine_TruncationLevels(t *testing.T) {
 			},
 			availableWidth: 38,
 			expectedLevel:  "Message at 40 chars",
-			verifyContains: []string{"Refactor the entire authe..."},
+			verifyContains: []string{"Refactor the entire authent…"},
 		},
 		{
 			name: "level 8 - author dropped",
@@ -936,7 +924,7 @@ func TestFormatCommitLine_TruncationLevels(t *testing.T) {
 			},
 			availableWidth: 25,
 			expectedLevel:  "Entire line truncated",
-			verifyContains: []string{"..."},
+			verifyContains: []string{"…"},
 		},
 	}
 
@@ -997,7 +985,7 @@ func TestFormatCommitLine_VisualQuality(t *testing.T) {
 				Time:       "2 days ago",
 			},
 			availableWidth: 40,
-			description:    "Message should use '...' (3 chars) for truncation",
+			description:    "Message should use '…' (1 char) for truncation",
 		},
 		{
 			name: "correct ellipsis for author",
@@ -1011,7 +999,7 @@ func TestFormatCommitLine_VisualQuality(t *testing.T) {
 				Time:       "just now",
 			},
 			availableWidth: 40,
-			description:    "Author should use '...' (3 chars) for truncation",
+			description:    "Author should use '…' (1 char) for truncation",
 		},
 		{
 			name: "correct ellipsis for refs",
@@ -1230,9 +1218,9 @@ func TestFormatCommitLine_Level9Truncation(t *testing.T) {
 				t.Errorf("Visual width %d exceeds available width %d", visualWidth, tt.width)
 			}
 
-			// Check if the line ends with "..." as expected at level 9
-			if plain[len(plain)-3:] != "..." {
-				t.Logf("Note: Line does not end with '...' (may not have reached level 9)")
+			// Check if the line ends with "…" as expected at level 9
+			if plain[len(plain)-3:] != "…" {
+				t.Logf("Note: Line does not end with '…' (may not have reached level 9)")
 			}
 		})
 	}

@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/graph"
 )
@@ -110,6 +112,10 @@ func TestLogState_View_EmptyViewport(t *testing.T) {
 }
 
 func TestLogState_View_LineTruncation(t *testing.T) {
+	// Force no color output for consistent golden file testing
+	lipgloss.SetColorProfile(termenv.Ascii)
+	defer lipgloss.SetColorProfile(termenv.TrueColor) // Reset after test
+
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
 
 	commits := []git.GitCommit{
