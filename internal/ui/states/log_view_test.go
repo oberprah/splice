@@ -389,3 +389,507 @@ func TestLogState_wrapText(t *testing.T) {
 		})
 	}
 }
+
+// Pure function tests - testing truncation logic
+
+func TestCapMessage(t *testing.T) {
+	tests := []struct {
+		name     string
+		message  string
+		maxLen   int
+		expected string
+	}{
+		{
+			name:     "message fits",
+			message:  "Short message",
+			maxLen:   50,
+			expected: "Short message",
+		},
+		{
+			name:     "message exactly at limit",
+			message:  "Exactly 20 chars!!",
+			maxLen:   18,
+			expected: "Exactly 20 chars!!",
+		},
+		{
+			name:     "message needs truncation",
+			message:  "This is a very long commit message that should be truncated",
+			maxLen:   30,
+			expected: "This is a very long commit ...",
+		},
+		{
+			name:     "maxLen is 3",
+			message:  "Hello",
+			maxLen:   3,
+			expected: "...",
+		},
+		{
+			name:     "maxLen less than 3",
+			message:  "Hello",
+			maxLen:   2,
+			expected: "",
+		},
+		{
+			name:     "empty message",
+			message:  "",
+			maxLen:   10,
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := capMessage(tt.message, tt.maxLen)
+			if result != tt.expected {
+				t.Errorf("Expected %q, got %q", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestTruncateAuthor(t *testing.T) {
+	tests := []struct {
+		name     string
+		author   string
+		maxLen   int
+		expected string
+	}{
+		{
+			name:     "author fits",
+			author:   "Alice",
+			maxLen:   25,
+			expected: "Alice",
+		},
+		{
+			name:     "author exactly at limit",
+			author:   "Alice",
+			maxLen:   5,
+			expected: "Alice",
+		},
+		{
+			name:     "author needs truncation",
+			author:   "VeryLongAuthorNameThatShouldGetTruncated",
+			maxLen:   25,
+			expected: "VeryLongAuthorNameThat...",
+		},
+		{
+			name:     "maxLen is 3",
+			author:   "Alice",
+			maxLen:   3,
+			expected: "...",
+		},
+		{
+			name:     "maxLen less than 3",
+			author:   "Alice",
+			maxLen:   2,
+			expected: "",
+		},
+		{
+			name:     "empty author",
+			author:   "",
+			maxLen:   10,
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := truncateAuthor(tt.author, tt.maxLen)
+			if result != tt.expected {
+				t.Errorf("Expected %q, got %q", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestTruncateEntireLine(t *testing.T) {
+	tests := []struct {
+		name     string
+		line     string
+		maxWidth int
+		expected string
+	}{
+		{
+			name:     "line fits",
+			line:     "Short line",
+			maxWidth: 50,
+			expected: "Short line",
+		},
+		{
+			name:     "line exactly at limit",
+			line:     "Exactly 20 chars!!",
+			maxWidth: 18,
+			expected: "Exactly 20 chars!!",
+		},
+		{
+			name:     "line needs truncation",
+			line:     "> ├─╮ abc123d (main) This is a very long message - Alice (2 days ago)",
+			maxWidth: 40,
+			expected: "> ├─╮ abc123d (main) This is a ...",
+		},
+		{
+			name:     "maxWidth is 3",
+			line:     "Hello",
+			maxWidth: 3,
+			expected: "...",
+		},
+		{
+			name:     "maxWidth is 2",
+			line:     "Hello",
+			maxWidth: 2,
+			expected: "He",
+		},
+		{
+			name:     "maxWidth is 1",
+			line:     "Hello",
+			maxWidth: 1,
+			expected: "H",
+		},
+		{
+			name:     "maxWidth is 0",
+			line:     "Hello",
+			maxWidth: 0,
+			expected: "",
+		},
+		{
+			name:     "maxWidth negative",
+			line:     "Hello",
+			maxWidth: -1,
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := truncateEntireLine(tt.line, tt.maxWidth)
+			if result != tt.expected {
+				t.Errorf("Expected %q, got %q", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestFormatRefsFull(t *testing.T) {
+	tests := []struct {
+		name     string
+		refs     []git.RefInfo
+		expected string
+	}{
+		{
+			name:     "no refs",
+			refs:     []git.RefInfo{},
+			expected: "",
+		},
+		{
+			name: "single local branch",
+			refs: []git.RefInfo{
+				{Name: "main", Type: git.RefTypeBranch, IsHead: true},
+			},
+			expected: "(main) ",
+		},
+		{
+			name: "multiple refs",
+			refs: []git.RefInfo{
+				{Name: "main", Type: git.RefTypeBranch, IsHead: true},
+				{Name: "origin/main", Type: git.RefTypeRemoteBranch, IsHead: false},
+				{Name: "v1.0", Type: git.RefTypeTag, IsHead: false},
+			},
+			expected: "(main, origin/main, tag: v1.0) ",
+		},
+		{
+			name: "tag only",
+			refs: []git.RefInfo{
+				{Name: "v2.1.0", Type: git.RefTypeTag, IsHead: false},
+			},
+			expected: "(tag: v2.1.0) ",
+		},
+		{
+			name: "long branch name",
+			refs: []git.RefInfo{
+				{Name: "feature/implement-advanced-user-authentication-system", Type: git.RefTypeBranch, IsHead: true},
+			},
+			expected: "(feature/implement-advanced-user-authentication-system) ",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatRefsFull(tt.refs)
+			if result != tt.expected {
+				t.Errorf("Expected %q, got %q", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestFormatRefsShortenedIndividual(t *testing.T) {
+	tests := []struct {
+		name     string
+		refs     []git.RefInfo
+		maxLen   int
+		expected string
+	}{
+		{
+			name:     "no refs",
+			refs:     []git.RefInfo{},
+			maxLen:   30,
+			expected: "",
+		},
+		{
+			name: "short refs no truncation",
+			refs: []git.RefInfo{
+				{Name: "main", Type: git.RefTypeBranch, IsHead: true},
+				{Name: "v1.0", Type: git.RefTypeTag, IsHead: false},
+			},
+			maxLen:   30,
+			expected: "(main, tag: v1.0) ",
+		},
+		{
+			name: "long branch name truncated",
+			refs: []git.RefInfo{
+				{Name: "feature/implement-advanced-user-auth", Type: git.RefTypeBranch, IsHead: true},
+			},
+			maxLen:   30,
+			expected: "(feature/implement-advanced-…) ",
+		},
+		{
+			name: "multiple refs with truncation",
+			refs: []git.RefInfo{
+				{Name: "feature/implement-advanced-user-auth", Type: git.RefTypeBranch, IsHead: true},
+				{Name: "origin/feature/implement-advanced-user-auth", Type: git.RefTypeRemoteBranch, IsHead: false},
+				{Name: "v2.1.0", Type: git.RefTypeTag, IsHead: false},
+			},
+			maxLen:   30,
+			expected: "(feature/implement-advanced-…, origin/feature/implement-ad…, tag: v2.1.0) ",
+		},
+		{
+			name: "maxLen 1",
+			refs: []git.RefInfo{
+				{Name: "main", Type: git.RefTypeBranch, IsHead: true},
+			},
+			maxLen:   1,
+			expected: "() ",
+		},
+		{
+			name: "maxLen 0",
+			refs: []git.RefInfo{
+				{Name: "main", Type: git.RefTypeBranch, IsHead: true},
+			},
+			maxLen:   0,
+			expected: "() ",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatRefsShortenedIndividual(tt.refs, tt.maxLen)
+			if result != tt.expected {
+				t.Errorf("Expected %q, got %q", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestFormatRefsFirstPlusCount(t *testing.T) {
+	tests := []struct {
+		name     string
+		refs     []git.RefInfo
+		maxLen   int
+		expected string
+	}{
+		{
+			name:     "no refs",
+			refs:     []git.RefInfo{},
+			maxLen:   30,
+			expected: "",
+		},
+		{
+			name: "single ref",
+			refs: []git.RefInfo{
+				{Name: "main", Type: git.RefTypeBranch, IsHead: true},
+			},
+			maxLen:   30,
+			expected: "(main) ",
+		},
+		{
+			name: "multiple refs shows HEAD",
+			refs: []git.RefInfo{
+				{Name: "main", Type: git.RefTypeBranch, IsHead: true},
+				{Name: "origin/main", Type: git.RefTypeRemoteBranch, IsHead: false},
+				{Name: "v1.0", Type: git.RefTypeTag, IsHead: false},
+			},
+			maxLen:   30,
+			expected: "(main +2 more) ",
+		},
+		{
+			name: "multiple refs no HEAD shows first",
+			refs: []git.RefInfo{
+				{Name: "origin/main", Type: git.RefTypeRemoteBranch, IsHead: false},
+				{Name: "v1.0", Type: git.RefTypeTag, IsHead: false},
+			},
+			maxLen:   30,
+			expected: "(origin/main +1 more) ",
+		},
+		{
+			name: "long ref name truncated",
+			refs: []git.RefInfo{
+				{Name: "feature/implement-advanced-user-authentication", Type: git.RefTypeBranch, IsHead: true},
+				{Name: "origin/feature/implement-advanced-user-authentication", Type: git.RefTypeRemoteBranch, IsHead: false},
+			},
+			maxLen:   30,
+			expected: "(feature/implement-advanced-… +1 more) ",
+		},
+		{
+			name: "tag as first ref",
+			refs: []git.RefInfo{
+				{Name: "v2.1.0-beta-very-long-tag-name", Type: git.RefTypeTag, IsHead: false},
+				{Name: "main", Type: git.RefTypeBranch, IsHead: false},
+			},
+			maxLen:   20,
+			expected: "(tag: v2.1.0-beta-very-… +1 more) ",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatRefsFirstPlusCount(tt.refs, tt.maxLen)
+			if result != tt.expected {
+				t.Errorf("Expected %q, got %q", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestBuildRefs(t *testing.T) {
+	refs := []git.RefInfo{
+		{Name: "feature/implement-advanced-user-authentication", Type: git.RefTypeBranch, IsHead: true},
+		{Name: "origin/feature/implement-advanced-user-authentication", Type: git.RefTypeRemoteBranch, IsHead: false},
+		{Name: "v2.1.0", Type: git.RefTypeTag, IsHead: false},
+	}
+
+	tests := []struct {
+		name     string
+		refs     []git.RefInfo
+		level    RefsLevel
+		expected string
+	}{
+		{
+			name:     "empty refs",
+			refs:     []git.RefInfo{},
+			level:    RefsLevelFull,
+			expected: "",
+		},
+		{
+			name:     "level full",
+			refs:     refs,
+			level:    RefsLevelFull,
+			expected: "(feature/implement-advanced-user-authentication, origin/feature/implement-advanced-user-authentication, tag: v2.1.0) ",
+		},
+		{
+			name:     "level shorten individual",
+			refs:     refs,
+			level:    RefsLevelShortenIndividual,
+			expected: "(feature/implement-advanced-…, origin/feature/implement-ad…, tag: v2.1.0) ",
+		},
+		{
+			name:     "level first plus count",
+			refs:     refs,
+			level:    RefsLevelFirstPlusCount,
+			expected: "(feature/implement-advanced-… +2 more) ",
+		},
+		{
+			name:     "level count only",
+			refs:     refs,
+			level:    RefsLevelCountOnly,
+			expected: "(3 refs) ",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := buildRefs(tt.refs, tt.level)
+			if result != tt.expected {
+				t.Errorf("Expected %q, got %q", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestMeasureLineWidth(t *testing.T) {
+	tests := []struct {
+		name     string
+		selector string
+		graph    string
+		hash     string
+		refs     string
+		message  string
+		author   string
+		time     string
+		expected int
+	}{
+		{
+			name:     "minimal line (no refs, author, time)",
+			selector: "  ",
+			graph:    "",
+			hash:     "abc123d",
+			refs:     "",
+			message:  "Initial commit",
+			author:   "",
+			time:     "",
+			expected: 2 + 7 + 1 + 14, // "  abc123d Initial commit"
+		},
+		{
+			name:     "full line with all components",
+			selector: "> ",
+			graph:    "├─╮ ",
+			hash:     "abc123d",
+			refs:     "(main) ",
+			message:  "Merge feature",
+			author:   "Alice",
+			time:     "2 days ago",
+			expected: 2 + 10 + 7 + 1 + 7 + 13 + 3 + 5 + 1 + 10, // "> ├─╮ abc123d (main) Merge feature - Alice 2 days ago"
+		},
+		{
+			name:     "with refs no author or time",
+			selector: "  ",
+			graph:    "│ ",
+			hash:     "abc123d",
+			refs:     "(HEAD -> main, tag: v1.0) ",
+			message:  "Add feature",
+			author:   "",
+			time:     "",
+			expected: 2 + 4 + 7 + 1 + 26 + 11,
+		},
+		{
+			name:     "with author no time",
+			selector: "  ",
+			graph:    "",
+			hash:     "abc123d",
+			refs:     "",
+			message:  "Fix bug",
+			author:   "Bob",
+			time:     "",
+			expected: 2 + 7 + 1 + 7 + 3 + 3, // "  abc123d Fix bug - Bob"
+		},
+		{
+			name:     "empty components",
+			selector: "",
+			graph:    "",
+			hash:     "",
+			refs:     "",
+			message:  "",
+			author:   "",
+			time:     "",
+			expected: 1, // just the space after hash
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := measureLineWidth(tt.selector, tt.graph, tt.hash, tt.refs, tt.message, tt.author, tt.time)
+			if result != tt.expected {
+				t.Errorf("Expected %d, got %d", tt.expected, result)
+			}
+		})
+	}
+}

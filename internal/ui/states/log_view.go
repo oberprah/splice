@@ -108,6 +108,224 @@ func (s LogState) buildDetailsColumn(width int, ctx Context) *ViewBuilder {
 	return vb
 }
 
+// RefsLevel represents the truncation level for refs display
+type RefsLevel int
+
+const (
+	RefsLevelFull RefsLevel = iota
+	RefsLevelShortenIndividual
+	RefsLevelFirstPlusCount
+	RefsLevelCountOnly
+)
+
+// capMessage truncates a message to maxLen characters with "..." suffix.
+// Returns the original message if it fits within maxLen.
+func capMessage(message string, maxLen int) string {
+	if len(message) <= maxLen {
+		return message
+	}
+	if maxLen < 3 {
+		return ""
+	}
+	return message[:maxLen-3] + "..."
+}
+
+// truncateAuthor truncates an author name to maxLen characters with "..." suffix.
+// Returns the original author if it fits within maxLen.
+// Returns empty string if maxLen < 3.
+func truncateAuthor(author string, maxLen int) string {
+	if len(author) <= maxLen {
+		return author
+	}
+	if maxLen < 3 {
+		return ""
+	}
+	return author[:maxLen-3] + "..."
+}
+
+// truncateEntireLine hard-truncates an assembled line to maxWidth characters.
+// Uses "..." suffix if maxWidth >= 3, otherwise truncates to available space.
+func truncateEntireLine(line string, maxWidth int) string {
+	if len(line) <= maxWidth {
+		return line
+	}
+	if maxWidth <= 0 {
+		return ""
+	}
+	if maxWidth < 3 {
+		return line[:maxWidth]
+	}
+	return line[:maxWidth-3] + "..."
+}
+
+// formatRefsFull formats all refs with their full names.
+// Returns formatted refs like "(HEAD -> main, tag: v1.0)" with trailing space.
+func formatRefsFull(refs []git.RefInfo) string {
+	if len(refs) == 0 {
+		return ""
+	}
+
+	var parts []string
+	for _, ref := range refs {
+		var formatted string
+		switch ref.Type {
+		case git.RefTypeTag:
+			formatted = fmt.Sprintf("tag: %s", ref.Name)
+		default:
+			// For branches, just use the name
+			formatted = ref.Name
+		}
+		parts = append(parts, formatted)
+	}
+
+	return fmt.Sprintf("(%s) ", strings.Join(parts, ", "))
+}
+
+// formatRefsShortenedIndividual formats refs with individual names truncated to maxLen.
+// Uses "…" (single ellipsis char) for truncation to save space.
+// Note: "…" is 3 bytes in UTF-8, so maxLen is treated as byte count.
+func formatRefsShortenedIndividual(refs []git.RefInfo, maxLen int) string {
+	if len(refs) == 0 {
+		return ""
+	}
+
+	var parts []string
+	for _, ref := range refs {
+		var formatted string
+		switch ref.Type {
+		case git.RefTypeTag:
+			name := ref.Name
+			if len(name) > maxLen {
+				if maxLen < 3 {
+					name = ""
+				} else {
+					name = name[:maxLen-3] + "…" // "…" is 3 bytes
+				}
+			}
+			formatted = fmt.Sprintf("tag: %s", name)
+		default:
+			// For branches, truncate the name
+			name := ref.Name
+			if len(name) > maxLen {
+				if maxLen < 3 {
+					name = ""
+				} else {
+					name = name[:maxLen-3] + "…" // "…" is 3 bytes
+				}
+			}
+			formatted = name
+		}
+		parts = append(parts, formatted)
+	}
+
+	return fmt.Sprintf("(%s) ", strings.Join(parts, ", "))
+}
+
+// formatRefsFirstPlusCount formats refs showing only the first ref plus a count.
+// Prefers showing the current branch (HEAD ref) if present.
+// First ref is still truncated if needed with "…".
+// Note: "…" is 3 bytes in UTF-8, so maxLen is treated as byte count.
+func formatRefsFirstPlusCount(refs []git.RefInfo, maxLen int) string {
+	if len(refs) == 0 {
+		return ""
+	}
+
+	// Find the HEAD ref (current branch) if it exists
+	var firstRef git.RefInfo
+	foundHead := false
+	for _, ref := range refs {
+		if ref.IsHead {
+			firstRef = ref
+			foundHead = true
+			break
+		}
+	}
+
+	// If no HEAD ref, use the first ref
+	if !foundHead {
+		firstRef = refs[0]
+	}
+
+	// Format the first ref
+	var formatted string
+	switch firstRef.Type {
+	case git.RefTypeTag:
+		name := firstRef.Name
+		if len(name) > maxLen {
+			if maxLen < 3 {
+				name = ""
+			} else {
+				name = name[:maxLen-3] + "…" // "…" is 3 bytes
+			}
+		}
+		formatted = fmt.Sprintf("tag: %s", name)
+	default:
+		name := firstRef.Name
+		if len(name) > maxLen {
+			if maxLen < 3 {
+				name = ""
+			} else {
+				name = name[:maxLen-3] + "…" // "…" is 3 bytes
+			}
+		}
+		formatted = name
+	}
+
+	// Calculate remaining refs count
+	remaining := len(refs) - 1
+	if remaining > 0 {
+		return fmt.Sprintf("(%s +%d more) ", formatted, remaining)
+	}
+
+	return fmt.Sprintf("(%s) ", formatted)
+}
+
+// buildRefs builds the refs string at the specified truncation level.
+// Returns empty string if no refs, otherwise returns formatted string with trailing space.
+func buildRefs(refs []git.RefInfo, level RefsLevel) string {
+	if len(refs) == 0 {
+		return ""
+	}
+
+	switch level {
+	case RefsLevelFull:
+		return formatRefsFull(refs)
+	case RefsLevelShortenIndividual:
+		return formatRefsShortenedIndividual(refs, 30)
+	case RefsLevelFirstPlusCount:
+		return formatRefsFirstPlusCount(refs, 30)
+	case RefsLevelCountOnly:
+		return fmt.Sprintf("(%d refs) ", len(refs))
+	default:
+		return formatRefsFull(refs)
+	}
+}
+
+// measureLineWidth calculates the total width of a commit line.
+// Accounts for all components and spacing: selector + graph + hash + space + refs + message + separator + author + space + time.
+// Note: refs already includes trailing space if non-empty.
+func measureLineWidth(selector, graph, hash, refs, message, author, time string) int {
+	width := len(selector) + len(graph) + len(hash)
+
+	if refs != "" {
+		width += 1 + len(refs) // space before refs + refs (which includes trailing space)
+	} else {
+		width += 1 // space after hash when no refs
+	}
+
+	width += len(message)
+
+	if author != "" {
+		width += 3 + len(author) // " - " + author
+	}
+
+	if time != "" {
+		width += 1 + len(time) // space + time
+	}
+
+	return width
+}
+
 // formatRefs formats ref decorations for display
 // Returns formatted refs like "(HEAD -> main, tag: v1.0)" or empty string if no refs
 func formatRefs(refs []git.RefInfo) string {
