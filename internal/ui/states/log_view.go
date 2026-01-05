@@ -37,7 +37,13 @@ func (s LogState) renderSimpleView(ctx Context) *ViewBuilder {
 	// Render only visible commits
 	for i := s.ViewportStart; i < viewportEnd; i++ {
 		commit := s.Commits[i]
-		line := s.formatCommitLine(commit, i, i == s.Cursor, ctx.Width(), ctx)
+		isSelected := i == s.Cursor
+
+		// Prepare all components (impure operations happen here)
+		components := s.buildCommitLineComponents(commit, i, isSelected, ctx)
+
+		// Call pure function with all components
+		line := formatCommitLine(components, ctx.Width())
 		vb.AddLine(line)
 	}
 
@@ -76,7 +82,13 @@ func (s LogState) buildCommitListColumn(width int, ctx Context) *ViewBuilder {
 		logIdx := s.ViewportStart + i
 		if logIdx < viewportEnd && logIdx < len(s.Commits) {
 			commit := s.Commits[logIdx]
-			line = s.formatCommitLine(commit, logIdx, logIdx == s.Cursor, width, ctx)
+			isSelected := logIdx == s.Cursor
+
+			// Prepare all components (impure operations happen here)
+			components := s.buildCommitLineComponents(commit, logIdx, isSelected, ctx)
+
+			// Call pure function with all components
+			line = formatCommitLine(components, width)
 		}
 		// Apply fixed-width styling to each line
 		vb.AddLine(colStyle.Render(line))
@@ -108,115 +120,28 @@ func (s LogState) buildDetailsColumn(width int, ctx Context) *ViewBuilder {
 	return vb
 }
 
-// formatRefs formats ref decorations for display
-// Returns formatted refs like "(HEAD -> main, tag: v1.0)" or empty string if no refs
-func formatRefs(refs []git.RefInfo) string {
-	if len(refs) == 0 {
-		return ""
+// buildCommitLineComponents prepares all components for formatting a commit line.
+// This is where impure operations (time formatting, graph lookup) happen.
+func (s LogState) buildCommitLineComponents(commit git.GitCommit, commitIndex int, isSelected bool, ctx Context) CommitLineComponents {
+	return CommitLineComponents{
+		IsSelected: isSelected,
+		Graph:      s.buildGraphForCommit(commitIndex),
+		Hash:       format.ToShortHash(commit.Hash),
+		Refs:       commit.Refs,
+		Message:    commit.Message,
+		Author:     commit.Author,
+		Time:       format.ToRelativeTimeFrom(commit.Date, ctx.Now()),
 	}
-
-	var parts []string
-	for _, ref := range refs {
-		var formatted string
-		switch ref.Type {
-		case git.RefTypeTag:
-			formatted = fmt.Sprintf("tag: %s", ref.Name)
-		default:
-			// For branches, just use the name
-			formatted = ref.Name
-		}
-		parts = append(parts, formatted)
-	}
-
-	return fmt.Sprintf("(%s) ", strings.Join(parts, ", "))
 }
 
-// formatCommitLine formats a single commit line with proper styling
-func (s LogState) formatCommitLine(commit git.GitCommit, commitIndex int, isSelected bool, width int, ctx Context) string {
-	// Format: [selector] [graph] hash (refs) message - author (time ago)
-	// Example: > ├─╮ a4c3a8a (HEAD -> main, tag: v1.0) Merge feature - John Doe (4 min ago)
-
-	// Determine available width (accounting for selection indicator and spacing)
-	availableWidth := width
-	if availableWidth <= 0 {
-		availableWidth = 80 // Default fallback
-	}
-
-	// Selection indicator (2 chars: "> " or "  ")
-	selectionIndicator := "  "
-	if isSelected {
-		selectionIndicator = "> "
-	}
-
-	// Get graph symbols for this commit
-	var graphSymbols string
+// buildGraphForCommit returns the graph symbols for a commit at the given index.
+// Returns empty string if no graph layout is available.
+func (s LogState) buildGraphForCommit(commitIndex int) string {
 	if s.GraphLayout != nil && commitIndex >= 0 && commitIndex < len(s.GraphLayout.Rows) {
 		row := s.GraphLayout.Rows[commitIndex]
-		graphSymbols = graph.RenderRow(row)
+		return graph.RenderRow(row)
 	}
-
-	// Format the base components
-	hash := format.ToShortHash(commit.Hash)                   // 7 chars
-	refsStr := formatRefs(commit.Refs)                        // Variable (includes trailing space if present)
-	message := commit.Message                                 // Variable
-	separator := " - "                                        // 3 chars
-	author := commit.Author                                   // Variable
-	timePrefix := " "                                         // 1 char
-	time := format.ToRelativeTimeFrom(commit.Date, ctx.Now()) // Variable
-
-	// Calculate required space for fixed elements (including graph symbols and refs)
-	fixedWidth := len(selectionIndicator) + len(graphSymbols) + len(hash) + 1 + len(refsStr) + len(separator) + len(timePrefix) + len(time)
-
-	// Calculate remaining space for message and author
-	remainingWidth := max(availableWidth-fixedWidth,
-		// Terminal too narrow, show minimal format
-		10)
-
-	// Truncate message and author to fit remaining space
-	messageMaxWidth := remainingWidth * 2 / 3 // Give 2/3 to message
-	authorMaxWidth := remainingWidth - messageMaxWidth
-
-	if len(message) > messageMaxWidth && messageMaxWidth > 3 {
-		message = message[:messageMaxWidth-3] + "..."
-	}
-
-	if len(author) > authorMaxWidth && authorMaxWidth > 3 {
-		author = author[:authorMaxWidth-3] + "..."
-	}
-
-	// Build the line with styling
-	var line strings.Builder
-
-	line.WriteString(selectionIndicator)
-	line.WriteString(graphSymbols) // Graph symbols come after selector, before hash
-
-	if isSelected {
-		// For selected lines, use bold styles
-		line.WriteString(styles.SelectedHashStyle.Render(hash))
-		line.WriteString(" ")
-		if refsStr != "" {
-			line.WriteString(styles.SelectedTimeStyle.Render(refsStr)) // Use time style for refs (dim)
-		}
-		line.WriteString(styles.SelectedMessageStyle.Render(message))
-		line.WriteString(separator)
-		line.WriteString(styles.SelectedAuthorStyle.Render(author))
-		line.WriteString(timePrefix)
-		line.WriteString(styles.SelectedTimeStyle.Render(time))
-	} else {
-		// For unselected lines, apply regular styles
-		line.WriteString(styles.HashStyle.Render(hash))
-		line.WriteString(" ")
-		if refsStr != "" {
-			line.WriteString(styles.TimeStyle.Render(refsStr)) // Use time style for refs (dim)
-		}
-		line.WriteString(styles.MessageStyle.Render(message))
-		line.WriteString(separator)
-		line.WriteString(styles.AuthorStyle.Render(author))
-		line.WriteString(timePrefix)
-		line.WriteString(styles.TimeStyle.Render(time))
-	}
-
-	return line.String()
+	return ""
 }
 
 // renderDetailsPanel renders the details panel content for the currently selected commit
