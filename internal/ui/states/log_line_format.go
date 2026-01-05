@@ -7,6 +7,7 @@ package states
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/oberprah/splice/internal/git"
@@ -38,41 +39,47 @@ type CommitLineComponents struct {
 // capMessage truncates a message to maxLen characters with "..." suffix.
 // Returns the original message if it fits within maxLen.
 func capMessage(message string, maxLen int) string {
-	if len(message) <= maxLen {
+	if utf8.RuneCountInString(message) <= maxLen {
 		return message
 	}
 	if maxLen < 3 {
 		return ""
 	}
-	return message[:maxLen-3] + "..."
+	// Convert to runes to properly truncate multi-byte characters
+	runes := []rune(message)
+	return string(runes[:maxLen-3]) + "..."
 }
 
 // truncateAuthor truncates an author name to maxLen characters with "..." suffix.
 // Returns the original author if it fits within maxLen.
 // Returns empty string if maxLen < 3.
 func truncateAuthor(author string, maxLen int) string {
-	if len(author) <= maxLen {
+	if utf8.RuneCountInString(author) <= maxLen {
 		return author
 	}
 	if maxLen < 3 {
 		return ""
 	}
-	return author[:maxLen-3] + "..."
+	// Convert to runes to properly truncate multi-byte characters
+	runes := []rune(author)
+	return string(runes[:maxLen-3]) + "..."
 }
 
 // truncateEntireLine hard-truncates an assembled line to maxWidth characters.
 // Uses "..." suffix if maxWidth >= 3, otherwise truncates to available space.
 func truncateEntireLine(line string, maxWidth int) string {
-	if len(line) <= maxWidth {
+	if utf8.RuneCountInString(line) <= maxWidth {
 		return line
 	}
 	if maxWidth <= 0 {
 		return ""
 	}
+	// Convert to runes to properly truncate multi-byte characters
+	runes := []rune(line)
 	if maxWidth < 3 {
-		return line[:maxWidth]
+		return string(runes[:maxWidth])
 	}
-	return line[:maxWidth-3] + "..."
+	return string(runes[:maxWidth-3]) + "..."
 }
 
 // formatRefsFull formats all refs with their full names.
@@ -100,7 +107,7 @@ func formatRefsFull(refs []git.RefInfo) string {
 
 // formatRefsShortenedIndividual formats refs with individual names truncated to maxLen.
 // Uses "…" (single ellipsis char) for truncation to save space.
-// Note: "…" is 3 bytes in UTF-8, so maxLen is treated as byte count.
+// Note: maxLen is treated as character count (rune count).
 func formatRefsShortenedIndividual(refs []git.RefInfo, maxLen int) string {
 	if len(refs) == 0 {
 		return ""
@@ -112,22 +119,24 @@ func formatRefsShortenedIndividual(refs []git.RefInfo, maxLen int) string {
 		switch ref.Type {
 		case git.RefTypeTag:
 			name := ref.Name
-			if len(name) > maxLen {
+			if utf8.RuneCountInString(name) > maxLen {
 				if maxLen < 3 {
 					name = ""
 				} else {
-					name = name[:maxLen-3] + "…" // "…" is 3 bytes
+					runes := []rune(name)
+					name = string(runes[:maxLen-3]) + "…"
 				}
 			}
 			formatted = fmt.Sprintf("tag: %s", name)
 		default:
 			// For branches, truncate the name
 			name := ref.Name
-			if len(name) > maxLen {
+			if utf8.RuneCountInString(name) > maxLen {
 				if maxLen < 3 {
 					name = ""
 				} else {
-					name = name[:maxLen-3] + "…" // "…" is 3 bytes
+					runes := []rune(name)
+					name = string(runes[:maxLen-3]) + "…"
 				}
 			}
 			formatted = name
@@ -141,7 +150,7 @@ func formatRefsShortenedIndividual(refs []git.RefInfo, maxLen int) string {
 // formatRefsFirstPlusCount formats refs showing only the first ref plus a count.
 // Prefers showing the current branch (HEAD ref) if present.
 // First ref is still truncated if needed with "…".
-// Note: "…" is 3 bytes in UTF-8, so maxLen is treated as byte count.
+// Note: maxLen is treated as character count (rune count).
 func formatRefsFirstPlusCount(refs []git.RefInfo, maxLen int) string {
 	if len(refs) == 0 {
 		return ""
@@ -168,21 +177,23 @@ func formatRefsFirstPlusCount(refs []git.RefInfo, maxLen int) string {
 	switch firstRef.Type {
 	case git.RefTypeTag:
 		name := firstRef.Name
-		if len(name) > maxLen {
+		if utf8.RuneCountInString(name) > maxLen {
 			if maxLen < 3 {
 				name = ""
 			} else {
-				name = name[:maxLen-3] + "…" // "…" is 3 bytes
+				runes := []rune(name)
+				name = string(runes[:maxLen-3]) + "…"
 			}
 		}
 		formatted = fmt.Sprintf("tag: %s", name)
 	default:
 		name := firstRef.Name
-		if len(name) > maxLen {
+		if utf8.RuneCountInString(name) > maxLen {
 			if maxLen < 3 {
 				name = ""
 			} else {
-				name = name[:maxLen-3] + "…" // "…" is 3 bytes
+				runes := []rune(name)
+				name = string(runes[:maxLen-3]) + "…"
 			}
 		}
 		formatted = name
@@ -222,22 +233,22 @@ func buildRefs(refs []git.RefInfo, level RefsLevel) string {
 // Accounts for all components and spacing: selector + graph + hash + space + refs + message + separator + author + space + time.
 // Note: refs already includes trailing space if non-empty.
 func measureLineWidth(selector, graph, hash, refs, message, author, time string) int {
-	width := len(selector) + len(graph) + len(hash)
+	width := utf8.RuneCountInString(selector) + utf8.RuneCountInString(graph) + utf8.RuneCountInString(hash)
 
 	if refs != "" {
-		width += 1 + len(refs) // space before refs + refs (which includes trailing space)
+		width += 1 + utf8.RuneCountInString(refs) // space before refs + refs (which includes trailing space)
 	} else {
 		width += 1 // space after hash when no refs
 	}
 
-	width += len(message)
+	width += utf8.RuneCountInString(message)
 
 	if author != "" {
-		width += 3 + len(author) // " - " + author
+		width += 3 + utf8.RuneCountInString(author) // " - " + author
 	}
 
 	if time != "" {
-		width += 1 + len(time) // space + time
+		width += 1 + utf8.RuneCountInString(time) // space + time
 	}
 
 	return width
@@ -347,7 +358,7 @@ func formatCommitLine(components CommitLineComponents, availableWidth int) strin
 			// Level 9: Drop refs, assemble minimal line, then truncate entire line to fit
 			refs = ""
 			assembledLine := assembleLine(selector, graph, hash, refs, message, author, time, components.IsSelected)
-			if len(assembledLine) > availableWidth {
+			if utf8.RuneCountInString(assembledLine) > availableWidth {
 				return truncateEntireLine(assembledLine, availableWidth)
 			}
 			return assembledLine

@@ -525,7 +525,7 @@ func TestTruncateEntireLine(t *testing.T) {
 			name:     "line needs truncation",
 			line:     "> ├─╮ abc123d (main) This is a very long message - Alice (2 days ago)",
 			maxWidth: 40,
-			expected: "> ├─╮ abc123d (main) This is a ...",
+			expected: "> ├─╮ abc123d (main) This is a very l...", // With rune counting, graph chars take fewer positions
 		},
 		{
 			name:     "maxWidth is 3",
@@ -847,7 +847,7 @@ func TestMeasureLineWidth(t *testing.T) {
 			message:  "Merge feature",
 			author:   "Alice",
 			time:     "2 days ago",
-			expected: 2 + 10 + 7 + 1 + 7 + 13 + 3 + 5 + 1 + 10, // "> ├─╮ abc123d (main) Merge feature - Alice 2 days ago"
+			expected: 2 + 4 + 7 + 1 + 7 + 13 + 3 + 5 + 1 + 10, // "> ├─╮ abc123d (main) Merge feature - Alice 2 days ago" (graph is 4 runes, not 10 bytes)
 		},
 		{
 			name:     "with refs no author or time",
@@ -858,7 +858,7 @@ func TestMeasureLineWidth(t *testing.T) {
 			message:  "Add feature",
 			author:   "",
 			time:     "",
-			expected: 2 + 4 + 7 + 1 + 26 + 11,
+			expected: 2 + 2 + 7 + 1 + 26 + 11, // graph is 2 runes, not 4 bytes
 		},
 		{
 			name:     "with author no time",
@@ -997,7 +997,7 @@ func TestFormatCommitLine_VariousTerminalWidths(t *testing.T) {
 			name: "extreme narrow terminal - entire line truncated",
 			components: CommitLineComponents{
 				IsSelected: false,
-				Graph:      "├─┬─╮─┬─╮ ", // Large graph
+				Graph:      "├─┬─╮─┬─╮ ", // Large graph (8 runes)
 				Hash:       "pqr678e",
 				Refs: []git.RefInfo{
 					{Name: "feature/x", Type: git.RefTypeBranch, IsHead: true},
@@ -1006,8 +1006,8 @@ func TestFormatCommitLine_VariousTerminalWidths(t *testing.T) {
 				Author:  "Frank",
 				Time:    "1h ago",
 			},
-			availableWidth: 30,
-			expectedMaxLen: 30,
+			availableWidth: 20, // Reduced from 30 to force truncation with rune counting
+			expectedMaxLen: 20,
 			verifyContains: []string{"..."}, // Line is truncated including graph
 		},
 	}

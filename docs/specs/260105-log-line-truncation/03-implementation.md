@@ -43,7 +43,19 @@ Notes: Build successful (8.4M binary). All tests pass (go test ./...). Linter cl
 
 ## Discoveries
 
-None - implementation proceeded according to design without unexpected issues.
+### Width Measurement Bug (Discovered during manual testing)
+
+**Issue**: Lines were being truncated too aggressively despite having available visual space.
+
+**Root Cause**: The implementation used `len()` to measure string widths, which counts bytes instead of visual character width. UTF-8 box-drawing characters in git graphs (│, ├, ─, etc.) are 3 bytes each but display as 1 character width. This caused `measureLineWidth()` to significantly over-estimate line width, triggering premature truncation.
+
+**Example**: Graph "│ ├─" = 14 bytes but only 6 visual characters (over-counted by 8 characters).
+
+**Impact**: Messages truncated to "Extra..." or "f..." even when plenty of visual space remained.
+
+**Fix**: Replace all `len()` calls with `utf8.RuneCountInString()` to count visual characters instead of bytes. This affects `measureLineWidth()`, `capMessage()`, `truncateAuthor()`, `truncateEntireLine()`, and all refs formatting functions in log_line_format.go.
+
+**Design Note**: The design document mentioned this as a "future consideration" (lines 382-384) for when we add per-component styling. However, we missed that the graph component already contains UTF-8 characters, so the fix was needed immediately.
 
 ## Verification
 
