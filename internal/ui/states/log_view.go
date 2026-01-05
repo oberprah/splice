@@ -37,7 +37,21 @@ func (s LogState) renderSimpleView(ctx Context) *ViewBuilder {
 	// Render only visible commits
 	for i := s.ViewportStart; i < viewportEnd; i++ {
 		commit := s.Commits[i]
-		line := s.formatCommitLine(commit, i, i == s.Cursor, ctx.Width(), ctx)
+		isSelected := i == s.Cursor
+
+		// Prepare all components (impure operations happen here)
+		components := CommitLineComponents{
+			Selector: buildSelector(isSelected),
+			Graph:    s.buildGraphForCommit(i),
+			Hash:     format.ToShortHash(commit.Hash),
+			Refs:     commit.Refs,
+			Message:  commit.Message,
+			Author:   commit.Author,
+			Time:     format.ToRelativeTimeFrom(commit.Date, ctx.Now()),
+		}
+
+		// Call pure function with all components
+		line := formatCommitLine(components, ctx.Width(), isSelected)
 		vb.AddLine(line)
 	}
 
@@ -76,7 +90,21 @@ func (s LogState) buildCommitListColumn(width int, ctx Context) *ViewBuilder {
 		logIdx := s.ViewportStart + i
 		if logIdx < viewportEnd && logIdx < len(s.Commits) {
 			commit := s.Commits[logIdx]
-			line = s.formatCommitLine(commit, logIdx, logIdx == s.Cursor, width, ctx)
+			isSelected := logIdx == s.Cursor
+
+			// Prepare all components (impure operations happen here)
+			components := CommitLineComponents{
+				Selector: buildSelector(isSelected),
+				Graph:    s.buildGraphForCommit(logIdx),
+				Hash:     format.ToShortHash(commit.Hash),
+				Refs:     commit.Refs,
+				Message:  commit.Message,
+				Author:   commit.Author,
+				Time:     format.ToRelativeTimeFrom(commit.Date, ctx.Now()),
+			}
+
+			// Call pure function with all components
+			line = formatCommitLine(components, width, isSelected)
 		}
 		// Apply fixed-width styling to each line
 		vb.AddLine(colStyle.Render(line))
@@ -117,6 +145,37 @@ const (
 	RefsLevelFirstPlusCount
 	RefsLevelCountOnly
 )
+
+// CommitLineComponents holds all pre-computed components for a commit line.
+// This struct enables formatCommitLine to be a pure function.
+type CommitLineComponents struct {
+	Selector string
+	Graph    string
+	Hash     string
+	Refs     []git.RefInfo
+	Message  string
+	Author   string
+	Time     string
+}
+
+// buildSelector returns the selection indicator string.
+// Returns "> " for selected items, "  " for unselected.
+func buildSelector(isSelected bool) string {
+	if isSelected {
+		return "> "
+	}
+	return "  "
+}
+
+// buildGraphForCommit returns the graph symbols for a commit at the given index.
+// Returns empty string if no graph layout is available.
+func (s LogState) buildGraphForCommit(commitIndex int) string {
+	if s.GraphLayout != nil && commitIndex >= 0 && commitIndex < len(s.GraphLayout.Rows) {
+		row := s.GraphLayout.Rows[commitIndex]
+		return graph.RenderRow(row)
+	}
+	return ""
+}
 
 // capMessage truncates a message to maxLen characters with "..." suffix.
 // Returns the original message if it fits within maxLen.
@@ -326,115 +385,115 @@ func measureLineWidth(selector, graph, hash, refs, message, author, time string)
 	return width
 }
 
-// formatRefs formats ref decorations for display
-// Returns formatted refs like "(HEAD -> main, tag: v1.0)" or empty string if no refs
-func formatRefs(refs []git.RefInfo) string {
-	if len(refs) == 0 {
-		return ""
-	}
-
-	var parts []string
-	for _, ref := range refs {
-		var formatted string
-		switch ref.Type {
-		case git.RefTypeTag:
-			formatted = fmt.Sprintf("tag: %s", ref.Name)
-		default:
-			// For branches, just use the name
-			formatted = ref.Name
-		}
-		parts = append(parts, formatted)
-	}
-
-	return fmt.Sprintf("(%s) ", strings.Join(parts, ", "))
-}
-
-// formatCommitLine formats a single commit line with proper styling
-func (s LogState) formatCommitLine(commit git.GitCommit, commitIndex int, isSelected bool, width int, ctx Context) string {
-	// Format: [selector] [graph] hash (refs) message - author (time ago)
-	// Example: > ├─╮ a4c3a8a (HEAD -> main, tag: v1.0) Merge feature - John Doe (4 min ago)
-
-	// Determine available width (accounting for selection indicator and spacing)
-	availableWidth := width
-	if availableWidth <= 0 {
-		availableWidth = 80 // Default fallback
-	}
-
-	// Selection indicator (2 chars: "> " or "  ")
-	selectionIndicator := "  "
-	if isSelected {
-		selectionIndicator = "> "
-	}
-
-	// Get graph symbols for this commit
-	var graphSymbols string
-	if s.GraphLayout != nil && commitIndex >= 0 && commitIndex < len(s.GraphLayout.Rows) {
-		row := s.GraphLayout.Rows[commitIndex]
-		graphSymbols = graph.RenderRow(row)
-	}
-
-	// Format the base components
-	hash := format.ToShortHash(commit.Hash)                   // 7 chars
-	refsStr := formatRefs(commit.Refs)                        // Variable (includes trailing space if present)
-	message := commit.Message                                 // Variable
-	separator := " - "                                        // 3 chars
-	author := commit.Author                                   // Variable
-	timePrefix := " "                                         // 1 char
-	time := format.ToRelativeTimeFrom(commit.Date, ctx.Now()) // Variable
-
-	// Calculate required space for fixed elements (including graph symbols and refs)
-	fixedWidth := len(selectionIndicator) + len(graphSymbols) + len(hash) + 1 + len(refsStr) + len(separator) + len(timePrefix) + len(time)
-
-	// Calculate remaining space for message and author
-	remainingWidth := max(availableWidth-fixedWidth,
-		// Terminal too narrow, show minimal format
-		10)
-
-	// Truncate message and author to fit remaining space
-	messageMaxWidth := remainingWidth * 2 / 3 // Give 2/3 to message
-	authorMaxWidth := remainingWidth - messageMaxWidth
-
-	if len(message) > messageMaxWidth && messageMaxWidth > 3 {
-		message = message[:messageMaxWidth-3] + "..."
-	}
-
-	if len(author) > authorMaxWidth && authorMaxWidth > 3 {
-		author = author[:authorMaxWidth-3] + "..."
-	}
-
-	// Build the line with styling
+// assembleLine assembles the final commit line with proper spacing, separators, and styling.
+// This is a pure function that builds the styled string from plain components.
+func assembleLine(selector, graph, hash, refs, message, author, time string, isSelected bool) string {
 	var line strings.Builder
 
-	line.WriteString(selectionIndicator)
-	line.WriteString(graphSymbols) // Graph symbols come after selector, before hash
+	// Add selector and graph (no styling)
+	line.WriteString(selector)
+	line.WriteString(graph)
 
+	// Choose styles based on selection
+	var hashStyle, messageStyle, authorStyle, timeStyle lipgloss.Style
 	if isSelected {
-		// For selected lines, use bold styles
-		line.WriteString(styles.SelectedHashStyle.Render(hash))
-		line.WriteString(" ")
-		if refsStr != "" {
-			line.WriteString(styles.SelectedTimeStyle.Render(refsStr)) // Use time style for refs (dim)
-		}
-		line.WriteString(styles.SelectedMessageStyle.Render(message))
-		line.WriteString(separator)
-		line.WriteString(styles.SelectedAuthorStyle.Render(author))
-		line.WriteString(timePrefix)
-		line.WriteString(styles.SelectedTimeStyle.Render(time))
+		hashStyle = styles.SelectedHashStyle
+		messageStyle = styles.SelectedMessageStyle
+		authorStyle = styles.SelectedAuthorStyle
+		timeStyle = styles.SelectedTimeStyle
 	} else {
-		// For unselected lines, apply regular styles
-		line.WriteString(styles.HashStyle.Render(hash))
+		hashStyle = styles.HashStyle
+		messageStyle = styles.MessageStyle
+		authorStyle = styles.AuthorStyle
+		timeStyle = styles.TimeStyle
+	}
+
+	// Add hash with space
+	line.WriteString(hashStyle.Render(hash))
+	line.WriteString(" ")
+
+	// Add refs (with space) if present
+	if refs != "" {
+		line.WriteString(timeStyle.Render(refs)) // Use time style for refs (dim)
+	}
+
+	// Add message
+	line.WriteString(messageStyle.Render(message))
+
+	// Add separator + author if both present
+	if author != "" && message != "" {
+		line.WriteString(" - ")
+		line.WriteString(authorStyle.Render(author))
+	}
+
+	// Add time (with space prefix) if present
+	if time != "" {
 		line.WriteString(" ")
-		if refsStr != "" {
-			line.WriteString(styles.TimeStyle.Render(refsStr)) // Use time style for refs (dim)
-		}
-		line.WriteString(styles.MessageStyle.Render(message))
-		line.WriteString(separator)
-		line.WriteString(styles.AuthorStyle.Render(author))
-		line.WriteString(timePrefix)
-		line.WriteString(styles.TimeStyle.Render(time))
+		line.WriteString(timeStyle.Render(time))
 	}
 
 	return line.String()
+}
+
+// formatCommitLine applies progressive truncation to fit a commit line within available width.
+// Pure function - all inputs provided via CommitLineComponents struct, no side effects.
+func formatCommitLine(components CommitLineComponents, availableWidth int, isSelected bool) string {
+	// 1. Extract components (already computed by caller)
+	selector := components.Selector
+	graph := components.Graph
+	hash := components.Hash
+	message := components.Message
+	author := components.Author
+	time := components.Time
+
+	// Build refs at full level initially
+	refs := buildRefs(components.Refs, RefsLevelFull)
+
+	// 2. Apply truncation levels sequentially until line fits
+	level := 0
+	for measureLineWidth(selector, graph, hash, refs, message, author, time) > availableWidth && level < 10 {
+		switch level {
+		case 0:
+			// Level 0: Cap message at 72 chars
+			message = capMessage(message, 72)
+		case 1:
+			// Level 1: Truncate author to 25 chars
+			author = truncateAuthor(author, 25)
+		case 2:
+			// Level 2: Shorten refs Level 1 - Truncate individual ref names
+			refs = buildRefs(components.Refs, RefsLevelShortenIndividual)
+		case 3:
+			// Level 3: Shorten refs Level 2 - Show first ref + count
+			refs = buildRefs(components.Refs, RefsLevelFirstPlusCount)
+		case 4:
+			// Level 4: Shorten refs Level 3 - Show total count only
+			refs = buildRefs(components.Refs, RefsLevelCountOnly)
+		case 5:
+			// Level 5: Truncate author to 5 chars
+			author = truncateAuthor(author, 5)
+		case 6:
+			// Level 6: Drop time
+			time = ""
+		case 7:
+			// Level 7: Shorten message to 40 chars
+			message = capMessage(message, 40)
+		case 8:
+			// Level 8: Drop author
+			author = ""
+		case 9:
+			// Level 9: Drop refs, assemble minimal line, then truncate entire line to fit
+			refs = ""
+			assembledLine := assembleLine(selector, graph, hash, refs, message, author, time, isSelected)
+			if len(assembledLine) > availableWidth {
+				return truncateEntireLine(assembledLine, availableWidth)
+			}
+			return assembledLine
+		}
+		level++
+	}
+
+	// 3. Assemble and style the line
+	return assembleLine(selector, graph, hash, refs, message, author, time, isSelected)
 }
 
 // renderDetailsPanel renders the details panel content for the currently selected commit
