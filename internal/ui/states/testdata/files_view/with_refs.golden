@@ -1,7 +1,7 @@
 abc123d · John Doe committed 2 months ago
+main, origin/main
 
 Add automatic light/dark theme support
 
-2 files · +10 -5
-> M (binary)  image.png
-  M +10 -5  main.go
+1 file · +45 -12
+> M +45 -12  internal/ui/app.go
