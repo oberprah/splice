@@ -2,8 +2,6 @@ package states
 
 import (
 	"fmt"
-	"strings"
-	"unicode/utf8"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/oberprah/splice/internal/git"
@@ -157,92 +155,13 @@ func (s LogState) renderDetailsPanel(width, height int, ctx Context) []string {
 
 	commit := s.Commits[s.Cursor]
 
-	// Render metadata line if files are loaded
-	metadataLine := s.renderMetadataLine(commit, width, ctx)
-	if metadataLine != "" {
-		lines = append(lines, metadataLine)
-		lines = append(lines, "") // Blank line after metadata
-	}
+	// Always show commit info immediately (all data available in memory)
+	commitInfoLines := CommitInfo(commit, width, commitBodyMaxLines, ctx)
+	lines = append(lines, commitInfoLines...)
 
-	// Render commit message (subject + body)
-	messageLines := s.renderCommitMessage(commit, width)
-	lines = append(lines, messageLines...)
-
-	// Add separator line
-	separator := strings.Repeat("─", width)
-	lines = append(lines, styles.HeaderStyle.Render(separator))
-
-	// Render file list based on Preview state
+	// Render file section based on Preview state
 	fileLines := s.renderFileList(width, height-len(lines))
 	lines = append(lines, fileLines...)
-
-	return lines
-}
-
-// renderMetadataLine renders the commit metadata line if files are available
-// Returns empty string if files are not loaded yet
-func (s LogState) renderMetadataLine(commit git.GitCommit, width int, ctx Context) string {
-	// Only show metadata if we have loaded files
-	if previewLoaded, ok := s.Preview.(PreviewLoaded); ok && previewLoaded.ForHash == commit.Hash {
-		metadata := RenderCommitMetadata(commit, previewLoaded.Files, ctx)
-		// Truncate if needed
-		if len(metadata) > width {
-			// Note: This is approximate due to ANSI codes, but better than nothing
-			return metadata[:width-3] + "..."
-		}
-		return metadata
-	}
-	return ""
-}
-
-// renderCommitMessage renders the commit subject and body (truncated)
-func (s LogState) renderCommitMessage(commit git.GitCommit, width int) []string {
-	var lines []string
-
-	// Subject line (always show)
-	subject := commit.Message
-	if len(subject) > width {
-		subject = subject[:width-3] + "..."
-	}
-	lines = append(lines, styles.MessageStyle.Render(subject))
-
-	// Body (if exists, limit to commitBodyMaxLines)
-	if commit.Body != "" {
-		// Add blank line between subject and body
-		lines = append(lines, "")
-
-		// Split body into lines and wrap to width
-		bodyLines := strings.Split(commit.Body, "\n")
-		lineCount := 0
-
-		for _, bodyLine := range bodyLines {
-			if lineCount >= commitBodyMaxLines {
-				// Add truncation indicator
-				lines = append(lines, styles.TimeStyle.Render("..."))
-				break
-			}
-
-			// Wrap long lines
-			if len(bodyLine) > width {
-				wrapped := wrapText(bodyLine, width)
-				for _, wrappedLine := range wrapped {
-					if lineCount >= commitBodyMaxLines {
-						lines = append(lines, styles.TimeStyle.Render("..."))
-						break
-					}
-					lines = append(lines, styles.MessageStyle.Render(wrappedLine))
-					lineCount++
-				}
-			} else {
-				lines = append(lines, styles.MessageStyle.Render(bodyLine))
-				lineCount++
-			}
-
-			if lineCount >= commitBodyMaxLines {
-				break
-			}
-		}
-	}
 
 	return lines
 }
@@ -254,15 +173,18 @@ func (s LogState) renderFileList(width, maxLines int) []string {
 	// Check Preview state
 	switch preview := s.Preview.(type) {
 	case PreviewNone:
-		// No preview loaded yet
-		lines = append(lines, styles.TimeStyle.Render("Loading..."))
+		// No preview loaded yet - show loading state for file section
+		lines = append(lines, "")
+		lines = append(lines, styles.TimeStyle.Render("Loading files..."))
 
 	case PreviewLoading:
-		// Loading in progress
-		lines = append(lines, styles.TimeStyle.Render("Loading..."))
+		// Loading in progress - show loading state for file section
+		lines = append(lines, "")
+		lines = append(lines, styles.TimeStyle.Render("Loading files..."))
 
 	case PreviewError:
-		// Error occurred
+		// Error occurred - show error state for file section
+		lines = append(lines, "")
 		lines = append(lines, styles.DeletionsStyle.Render("Unable to load files"))
 
 	case PreviewLoaded:
@@ -270,104 +192,44 @@ func (s LogState) renderFileList(width, maxLines int) []string {
 		commit := s.Commits[s.Cursor]
 		if preview.ForHash != commit.Hash {
 			// Stale data, show loading
-			lines = append(lines, styles.TimeStyle.Render("Loading..."))
+			lines = append(lines, "")
+			lines = append(lines, styles.TimeStyle.Render("Loading files..."))
 		} else {
-			// Render files
-			lines = s.renderFiles(preview.Files, width, maxLines)
+			// Use FileSection component to render files
+			// Calculate how many files we can show
+			fileSectionLines := FileSection(preview.Files, width, -1, false)
+
+			// Truncate to available space if needed
+			if len(fileSectionLines) > maxLines {
+				// Keep blank line and stats line, truncate file list
+				lines = append(lines, fileSectionLines[0]) // blank line
+				lines = append(lines, fileSectionLines[1]) // stats line
+
+				// Add as many file lines as will fit, leaving room for overflow indicator
+				filesShown := 0
+				for i := 2; i < len(fileSectionLines) && i-2 < maxLines-3; i++ {
+					lines = append(lines, fileSectionLines[i])
+					filesShown++
+				}
+
+				// Add overflow indicator if needed
+				remaining := len(preview.Files) - filesShown
+				if remaining > 0 {
+					indicator := fmt.Sprintf("... and %d more file", remaining)
+					if remaining > 1 {
+						indicator += "s"
+					}
+					lines = append(lines, styles.TimeStyle.Render(indicator))
+				}
+			} else {
+				lines = append(lines, fileSectionLines...)
+			}
 		}
 
 	default:
 		// Unknown state, show loading
-		lines = append(lines, styles.TimeStyle.Render("Loading..."))
-	}
-
-	return lines
-}
-
-// renderFiles renders the file list with status indicators and stats
-func (s LogState) renderFiles(files []git.FileChange, width, maxLines int) []string {
-	var lines []string
-
-	// Determine how many files we can show
-	filesShown := 0
-	for i, file := range files {
-		if filesShown >= maxLines {
-			// Add overflow indicator
-			remaining := len(files) - i
-			if remaining > 0 {
-				indicator := fmt.Sprintf("... and %d more file", remaining)
-				if remaining > 1 {
-					indicator += "s"
-				}
-				lines = append(lines, styles.TimeStyle.Render(indicator))
-			}
-			break
-		}
-
-		line := s.formatFileEntry(file, width)
-		lines = append(lines, line)
-		filesShown++
-	}
-
-	return lines
-}
-
-// formatFileEntry formats a single file entry with status, stats, and path
-// Format: "Status +add -del  path"
-func (s LogState) formatFileEntry(file git.FileChange, width int) string {
-	// For log view, we don't show selection indicator and use fixed widths for stats
-	// since we don't know all files at format time in the preview panel
-	maxAddWidth := len(fmt.Sprintf("+%d", file.Additions)) + 1
-	maxDelWidth := len(fmt.Sprintf("-%d", file.Deletions)) + 1
-
-	// Ensure minimum widths
-	if maxAddWidth < 2 {
-		maxAddWidth = 2
-	}
-	if maxDelWidth < 2 {
-		maxDelWidth = 2
-	}
-
-	return FormatFileLine(FormatFileLineParams{
-		File:         file,
-		IsSelected:   false,
-		Width:        width,
-		MaxAddWidth:  maxAddWidth,
-		MaxDelWidth:  maxDelWidth,
-		ShowSelector: false,
-	})
-}
-
-// wrapText wraps text to the specified width
-func wrapText(text string, width int) []string {
-	if width <= 0 {
-		return []string{text}
-	}
-
-	var lines []string
-	words := strings.Fields(text)
-	if len(words) == 0 {
-		return []string{""}
-	}
-
-	var currentLine strings.Builder
-	for _, word := range words {
-		// If adding this word would exceed width, start a new line
-		if currentLine.Len() > 0 && currentLine.Len()+1+utf8.RuneCountInString(word) > width {
-			lines = append(lines, currentLine.String())
-			currentLine.Reset()
-		}
-
-		// Add word to current line
-		if currentLine.Len() > 0 {
-			currentLine.WriteString(" ")
-		}
-		currentLine.WriteString(word)
-	}
-
-	// Add final line
-	if currentLine.Len() > 0 {
-		lines = append(lines, currentLine.String())
+		lines = append(lines, "")
+		lines = append(lines, styles.TimeStyle.Render("Loading files..."))
 	}
 
 	return lines

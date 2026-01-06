@@ -189,3 +189,38 @@ func renderBodyLines(body string, width int, maxLines int) []string {
 
 	return wrappedLines
 }
+
+// wrapText wraps text to the specified width
+func wrapText(text string, width int) []string {
+	if width <= 0 {
+		return []string{text}
+	}
+
+	var lines []string
+	words := strings.Fields(text)
+	if len(words) == 0 {
+		return []string{""}
+	}
+
+	var currentLine strings.Builder
+	for _, word := range words {
+		// If adding this word would exceed width, start a new line
+		if currentLine.Len() > 0 && currentLine.Len()+1+utf8.RuneCountInString(word) > width {
+			lines = append(lines, currentLine.String())
+			currentLine.Reset()
+		}
+
+		// Add word to current line
+		if currentLine.Len() > 0 {
+			currentLine.WriteString(" ")
+		}
+		currentLine.WriteString(word)
+	}
+
+	// Add final line
+	if currentLine.Len() > 0 {
+		lines = append(lines, currentLine.String())
+	}
+
+	return lines
+}
