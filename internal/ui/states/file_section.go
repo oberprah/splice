@@ -15,8 +15,7 @@ import (
 // Parameters:
 //   - files: Files to display
 //   - width: Panel width
-//   - cursor: Selected file index (-1 for no selection)
-//   - showSelector: Whether to show `>` selection indicator
+//   - cursor: Pointer to selected file index (nil for no selection)
 //
 // The component renders:
 //  1. A blank line (separator from commit info above)
@@ -25,7 +24,7 @@ import (
 //
 // Note: This component does NOT handle loading/error states or truncate the file list.
 // The caller is responsible for those concerns.
-func FileSection(files []git.FileChange, width int, cursor int, showSelector bool) []string {
+func FileSection(files []git.FileChange, width int, cursor *int) []string {
 	lines := make([]string, 0, len(files)+2)
 
 	// 1. Blank line separator
@@ -49,9 +48,10 @@ func FileSection(files []git.FileChange, width int, cursor int, showSelector boo
 
 	// 3. File lines
 	maxAddWidth, maxDelWidth := CalculateMaxStatWidth(files)
+	showSelector := cursor != nil
 
 	for i, file := range files {
-		isSelected := i == cursor
+		isSelected := cursor != nil && *cursor == i
 		line := FormatFileLine(FormatFileLineParams{
 			File:         file,
 			IsSelected:   isSelected,

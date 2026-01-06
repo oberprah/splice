@@ -12,7 +12,7 @@ func (s *FilesState) View(ctx Context) *ViewBuilder {
 
 	// Render file section using shared component
 	// Note: FileSection includes blank line separator and stats line
-	fileSectionLines := FileSection(s.Files, ctx.Width(), s.Cursor, true)
+	fileSectionLines := FileSection(s.Files, ctx.Width(), &s.Cursor)
 
 	// Calculate available height for file list (subtract commit info lines + file section header)
 	// commitInfoLines + blank line + stats line = total non-file lines

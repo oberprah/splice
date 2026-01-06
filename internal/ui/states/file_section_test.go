@@ -20,7 +20,7 @@ func TestFileSection_SingleFile(t *testing.T) {
 		},
 	}
 
-	lines := FileSection(files, 80, -1, false)
+	lines := FileSection(files, 80, nil)
 
 	// Should have: blank line, stats line, 1 file line = 3 total
 	if len(lines) != 3 {
@@ -61,7 +61,7 @@ func TestFileSection_MultipleFiles(t *testing.T) {
 		{Path: "file3.go", Status: "D", Additions: 0, Deletions: 15, IsBinary: false},
 	}
 
-	lines := FileSection(files, 80, -1, false)
+	lines := FileSection(files, 80, nil)
 
 	// Should have: blank line + stats line + 3 file lines = 5 total
 	if len(lines) != 5 {
@@ -95,7 +95,8 @@ func TestFileSection_WithSelection(t *testing.T) {
 		{Path: "file2.go", Status: "A", Additions: 20, Deletions: 0, IsBinary: false},
 	}
 
-	lines := FileSection(files, 80, 1, true) // Select second file, show selector
+	cursor := 1
+	lines := FileSection(files, 80, &cursor) // Select second file
 
 	// Should have: blank line + stats line + 2 file lines = 4 total
 	if len(lines) != 4 {
@@ -120,7 +121,7 @@ func TestFileSection_WithoutSelector(t *testing.T) {
 		{Path: "file1.go", Status: "M", Additions: 10, Deletions: 5, IsBinary: false},
 	}
 
-	lines := FileSection(files, 80, 0, false) // No selector
+	lines := FileSection(files, 80, nil) // No selector (nil cursor)
 
 	// File line should NOT have selector prefix
 	fileLine := ansi.Strip(lines[2])
@@ -138,7 +139,7 @@ func TestFileSection_BinaryFile(t *testing.T) {
 		{Path: "image.png", Status: "A", Additions: 0, Deletions: 0, IsBinary: true},
 	}
 
-	lines := FileSection(files, 80, -1, false)
+	lines := FileSection(files, 80, nil)
 
 	fileLine := ansi.Strip(lines[2])
 	if !strings.Contains(fileLine, "(binary)") {
@@ -153,7 +154,7 @@ func TestFileSection_BinaryFile(t *testing.T) {
 func TestFileSection_EmptyFileList(t *testing.T) {
 	files := []git.FileChange{}
 
-	lines := FileSection(files, 80, -1, false)
+	lines := FileSection(files, 80, nil)
 
 	// Should have: blank line + stats line = 2 total (no file lines)
 	if len(lines) != 2 {
@@ -180,7 +181,7 @@ func TestFileSection_AllFileStatuses(t *testing.T) {
 		{Path: "renamed.go", Status: "R", Additions: 0, Deletions: 0, IsBinary: false},
 	}
 
-	lines := FileSection(files, 80, -1, false)
+	lines := FileSection(files, 80, nil)
 
 	// Should have: blank line + stats line + 4 file lines = 6 total
 	if len(lines) != 6 {

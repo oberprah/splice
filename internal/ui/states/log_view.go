@@ -197,7 +197,7 @@ func (s LogState) renderFileList(width, maxLines int) []string {
 		} else {
 			// Use FileSection component to render files
 			// Calculate how many files we can show
-			fileSectionLines := FileSection(preview.Files, width, -1, false)
+			fileSectionLines := FileSection(preview.Files, width, nil)
 
 			// Truncate to available space if needed
 			if len(fileSectionLines) > maxLines {
