@@ -3,6 +3,7 @@ package states
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/oberprah/splice/internal/git"
@@ -352,7 +353,7 @@ func wrapText(text string, width int) []string {
 	var currentLine strings.Builder
 	for _, word := range words {
 		// If adding this word would exceed width, start a new line
-		if currentLine.Len() > 0 && currentLine.Len()+1+len(word) > width {
+		if currentLine.Len() > 0 && currentLine.Len()+1+utf8.RuneCountInString(word) > width {
 			lines = append(lines, currentLine.String())
 			currentLine.Reset()
 		}
