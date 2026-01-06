@@ -6,39 +6,64 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/oberprah/splice/internal/git"
-	"github.com/oberprah/splice/internal/ui/format"
 	"github.com/oberprah/splice/internal/ui/styles"
 )
 
-// RenderCommitMetadata renders the metadata line for a commit
-// Format: abc123d · John Doe committed 2 hours ago · 3 files · +45 -12
-func RenderCommitMetadata(commit git.GitCommit, files []git.FileChange, ctx Context) string {
-	var b strings.Builder
+// FileSection renders file statistics and file list
+// Returns lines to display (blank line + stats line + all file lines)
+//
+// Parameters:
+//   - files: Files to display
+//   - width: Panel width
+//   - cursor: Pointer to selected file index (nil for no selection)
+//
+// The component renders:
+//  1. A blank line (separator from commit info above)
+//  2. File stats line: `{N} files · +{add} -{del}`
+//  3. All file lines with proper formatting
+//
+// Note: This component does NOT handle loading/error states or truncate the file list.
+// The caller is responsible for those concerns.
+func FileSection(files []git.FileChange, width int, cursor *int) []string {
+	lines := make([]string, 0, len(files)+2)
 
-	// Calculate total stats
+	// 1. Blank line separator
+	lines = append(lines, "")
+
+	// 2. File stats line
 	totalAdditions, totalDeletions := CalculateTotalStats(files)
-
-	// First line: hash · author committed time ago · X files · +Y -Z
-	b.WriteString(styles.HashStyle.Render(format.ToShortHash(commit.Hash)))
-	b.WriteString(styles.HeaderStyle.Render(" · "))
-	b.WriteString(styles.AuthorStyle.Render(commit.Author))
-	b.WriteString(styles.HeaderStyle.Render(" committed "))
-	b.WriteString(styles.TimeStyle.Render(format.ToRelativeTimeFrom(commit.Date, ctx.Now())))
-	b.WriteString(styles.HeaderStyle.Render(" · "))
-
-	// File stats
 	fileCount := len(files)
 	fileWord := "file"
 	if fileCount != 1 {
 		fileWord = "files"
 	}
-	b.WriteString(styles.HeaderStyle.Render(fmt.Sprintf("%d %s", fileCount, fileWord)))
-	b.WriteString(styles.HeaderStyle.Render(" · "))
-	b.WriteString(styles.AdditionsStyle.Render(fmt.Sprintf("+%d", totalAdditions)))
-	b.WriteString(styles.HeaderStyle.Render(" "))
-	b.WriteString(styles.DeletionsStyle.Render(fmt.Sprintf("-%d", totalDeletions)))
 
-	return b.String()
+	var statsLine strings.Builder
+	statsLine.WriteString(styles.HeaderStyle.Render(fmt.Sprintf("%d %s", fileCount, fileWord)))
+	statsLine.WriteString(styles.HeaderStyle.Render(" · "))
+	statsLine.WriteString(styles.AdditionsStyle.Render(fmt.Sprintf("+%d", totalAdditions)))
+	statsLine.WriteString(styles.HeaderStyle.Render(" "))
+	statsLine.WriteString(styles.DeletionsStyle.Render(fmt.Sprintf("-%d", totalDeletions)))
+	lines = append(lines, statsLine.String())
+
+	// 3. File lines
+	maxAddWidth, maxDelWidth := CalculateMaxStatWidth(files)
+	showSelector := cursor != nil
+
+	for i, file := range files {
+		isSelected := cursor != nil && *cursor == i
+		line := FormatFileLine(FormatFileLineParams{
+			File:         file,
+			IsSelected:   isSelected,
+			Width:        width,
+			MaxAddWidth:  maxAddWidth,
+			MaxDelWidth:  maxDelWidth,
+			ShowSelector: showSelector,
+		})
+		lines = append(lines, line)
+	}
+
+	return lines
 }
 
 // CalculateTotalStats calculates total additions and deletions across all files
@@ -160,16 +185,4 @@ func FormatFileLine(params FormatFileLineParams) string {
 	}
 
 	return line.String()
-}
-
-// TruncatePathFromLeft truncates a file path from the left if it exceeds maxWidth
-// Returns "...filename.ext" or "...dir/filename.ext" style truncation
-func TruncatePathFromLeft(path string, maxWidth int) string {
-	if len(path) <= maxWidth {
-		return path
-	}
-	if maxWidth <= 3 {
-		return path // Can't truncate meaningfully
-	}
-	return "..." + path[len(path)-(maxWidth-3):]
 }

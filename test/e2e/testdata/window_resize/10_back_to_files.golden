@@ -1,9 +1,10 @@
-0000000 · Benjamin O'Sullivan-Smith committed 1 year ago · 5 files · +741 -312
+0000000 · Benjamin O'Sullivan-Smith committed 1 year ago
 
 Add comprehensive error handling for network failures in API client with retry logic
 
 Additional context about this change that provides more detailed information.
-────────────────────────────────────────────────────────────────────────────────
+
+5 files · +741 -312
 > M +245 -123  internal/authentication/oauth2/providers/github/client.go
   M +198 - 87  internal/authentication/oauth2/providers/google/client.go
   M + 67 - 12  pkg/database/migrations/v2/user_preferences_schema.sql

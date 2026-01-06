@@ -312,3 +312,27 @@ func TestFilesState_View_DynamicAlignment(t *testing.T) {
 
 	assertFilesViewGolden(t, output, "dynamic_alignment.golden")
 }
+
+func TestFilesState_View_WithRefs(t *testing.T) {
+	commit := createTestCommit()
+	// Add refs to the commit
+	commit.Refs = []git.RefInfo{
+		{Name: "main", Type: git.RefTypeBranch, IsHead: true},
+		{Name: "origin/main", Type: git.RefTypeRemoteBranch},
+	}
+	files := []git.FileChange{
+		{Path: "internal/ui/app.go", Additions: 45, Deletions: 12},
+	}
+
+	s := FilesState{
+		Commit:        commit,
+		Files:         files,
+		Cursor:        0,
+		ViewportStart: 0,
+	}
+	ctx := mockContext{width: 80, height: 24}
+
+	output := s.View(ctx)
+
+	assertFilesViewGolden(t, output, "with_refs.golden")
+}

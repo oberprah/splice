@@ -1,86 +1,45 @@
 package states
 
-import (
-	"strings"
-
-	"github.com/oberprah/splice/internal/git"
-	"github.com/oberprah/splice/internal/ui/styles"
-)
-
 // View renders the files state
 func (s *FilesState) View(ctx Context) *ViewBuilder {
 	vb := NewViewBuilder()
 
-	// Render header with commit info
-	header := s.renderHeader(ctx)
-	// Split header into lines and add each line
-	for _, line := range strings.Split(strings.TrimSuffix(header, "\n"), "\n") {
+	// Render commit info using shared component
+	commitInfoLines := CommitInfo(s.Commit, ctx.Width(), 0, ctx) // 0 = unlimited body lines
+	for _, line := range commitInfoLines {
 		vb.AddLine(line)
 	}
 
-	// Render separator
-	separator := strings.Repeat("─", min(ctx.Width(), 80))
-	vb.AddLine(styles.HeaderStyle.Render(separator))
+	// Render file section using shared component
+	// Note: FileSection includes blank line separator and stats line
+	fileSectionLines := FileSection(s.Files, ctx.Width(), &s.Cursor)
 
-	// Calculate available height for file list (subtract header lines)
-	// Count actual header lines (including body if present)
-	headerLines := strings.Count(header, "\n") + 1 // +1 for separator
-	availableHeight := max(ctx.Height()-headerLines, 1)
+	// Calculate available height for file list (subtract commit info lines + file section header)
+	// commitInfoLines + blank line + stats line = total non-file lines
+	commitInfoLinesCount := len(commitInfoLines)
+	fileSectionHeaderLines := 2 // blank line + stats line
+	availableHeight := max(ctx.Height()-commitInfoLinesCount-fileSectionHeaderLines, 1)
 
-	// Calculate the end of the viewport
-	viewportEnd := min(s.ViewportStart+availableHeight, len(s.Files))
+	// Determine which file lines to render based on viewport
+	// The FileSection returns: blank line, stats line, then all file lines
+	// We need to render the header (blank + stats) then only visible files
+	totalFileLines := len(fileSectionLines) - fileSectionHeaderLines
 
-	// Render only visible files
+	// Add the file section header (blank line + stats line)
+	for i := 0; i < fileSectionHeaderLines && i < len(fileSectionLines); i++ {
+		vb.AddLine(fileSectionLines[i])
+	}
+
+	// Calculate viewport for files
+	viewportEnd := min(s.ViewportStart+availableHeight, totalFileLines)
+
+	// Add only visible file lines
 	for i := s.ViewportStart; i < viewportEnd; i++ {
-		file := s.Files[i]
-		line := s.formatFileLine(file, i == s.Cursor, ctx.Width())
-		vb.AddLine(line)
+		lineIndex := fileSectionHeaderLines + i
+		if lineIndex < len(fileSectionLines) {
+			vb.AddLine(fileSectionLines[lineIndex])
+		}
 	}
 
 	return vb
-}
-
-// renderHeader formats the commit information header
-func (s *FilesState) renderHeader(ctx Context) string {
-	// Format:
-	// abc123d · John Doe committed 2 hours ago · 3 files · +45 -12
-	//
-	// Subject line
-	//
-	// Body paragraph 1...
-	// Body paragraph 2...
-
-	var b strings.Builder
-
-	// First line: metadata
-	b.WriteString(RenderCommitMetadata(s.Commit, s.Files, ctx))
-	b.WriteString("\n\n")
-
-	// Subject line
-	b.WriteString(styles.MessageStyle.Render(s.Commit.Message))
-	b.WriteString("\n")
-
-	// Body (if exists)
-	if s.Commit.Body != "" {
-		b.WriteString("\n")
-		b.WriteString(styles.MessageStyle.Render(s.Commit.Body))
-		b.WriteString("\n")
-	}
-
-	return b.String()
-}
-
-// formatFileLine formats a single file line with proper styling
-func (s *FilesState) formatFileLine(file git.FileChange, isSelected bool, width int) string {
-	// Calculate dynamic widths based on all files
-	maxAddWidth, maxDelWidth := CalculateMaxStatWidth(s.Files)
-
-	return FormatFileLine(FormatFileLineParams{
-		File:         file,
-		IsSelected:   isSelected,
-		Width:        width,
-		MaxAddWidth:  maxAddWidth,
-		MaxDelWidth:  maxDelWidth,
-		ShowSelector: true,
-	})
 }

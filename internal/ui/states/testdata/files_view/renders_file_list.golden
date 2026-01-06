@@ -1,7 +1,8 @@
-abc123d · John Doe committed 2 months ago · 3 files · +168 -13
+abc123d · John Doe committed 2 months ago
 
 Add automatic light/dark theme support
-────────────────────────────────────────────────────────────────────────────────
+
+3 files · +168 -13
 > M + 45 -12  internal/ui/app.go
   M +  3 - 1  internal/ui/model.go
   M +120 - 0  internal/git/git.go
