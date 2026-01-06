@@ -7,6 +7,7 @@
 - [x] Step 3: Update log view to use new components
 - [x] Step 4: Update files view to use new components
 - [x] Step 5: Delete `commit_render.go` (functions migrated)
+- [x] Step 6: Refactor FileSection to use `*int` cursor (code quality)
 - [x] Validation: Run all tests and update golden files
 
 ## Progress
@@ -36,6 +37,11 @@ Status: ✅ Complete
 Commits: 3dddfb9
 Notes: Migrated remaining helper functions (`CalculateTotalStats`, `CalculateMaxStatWidth`, `FormatFileLine`, `FormatFileLineParams`) from `commit_render.go` to `file_section.go`. Deleted obsolete file. `TruncatePathFromLeft()` intentionally not migrated as it was never used. All tests pass after deletion.
 
+### Step 6: Refactor FileSection to use *int cursor
+Status: ✅ Complete
+Commits: 238769a
+Notes: Code quality improvement to eliminate magic number `-1`. Changed `FileSection(files, width, cursor int, showSelector bool)` to `FileSection(files, width, cursor *int)`. The `showSelector` parameter is now inferred from whether cursor is nil. Updated all callers: log view uses `nil` (no selection), files view uses `&s.Cursor` (with selection). More idiomatic Go - nil clearly means "no selection" and type system enforces optional cursor.
+
 ### Validation: Run all tests and update golden files
 Status: ✅ Complete
 Notes: All tests pass (unit, golden file, and E2E). All golden files updated to reflect new layout. Linter reports 0 issues. Build successful.
@@ -53,6 +59,9 @@ The new architecture naturally separates commit info (always available) from fil
 
 ### Separator Line Removal
 Removing the horizontal separator line created a cleaner layout. The file stats line (`N files · +add -del`) provides natural visual separation between commit info and file list, eliminating the need for an explicit separator.
+
+### API Design Improvement
+During code review, we identified that the `FileSection` API used a magic number (`-1`) to indicate "no selection" and had redundant parameters (`cursor` and `showSelector` always aligned). Refactoring to use `*int` for the cursor parameter eliminated the magic number and reduced parameter count from 4 to 3. Using `nil` for "no selection" is more idiomatic Go, and the type system now enforces that the cursor is optional. The `showSelector` behavior is inferred from whether cursor is nil, making the API cleaner and more intuitive.
 
 ## Verification
 
