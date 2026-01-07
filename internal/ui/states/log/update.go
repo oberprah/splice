@@ -49,7 +49,22 @@ func (s State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "q", "ctrl+c":
+		case "q":
+			// In visual mode, q exits visual mode; in normal mode, q quits
+			if visual, ok := s.Cursor.(core.CursorVisual); ok {
+				s.Cursor = core.CursorNormal{Pos: visual.Pos}
+				// Trigger preview loading for the new single-commit selection
+				if len(s.Commits) > 0 {
+					commitRange := s.GetSelectedRange()
+					rangeHash := getRangeHash(commitRange)
+					s.Preview = PreviewLoading{ForHash: rangeHash}
+					return s, LoadPreview(commitRange, ctx.FetchFileChanges())
+				}
+				return s, nil
+			}
+			return s, tea.Quit
+
+		case "ctrl+c":
 			return s, tea.Quit
 
 		case "v":

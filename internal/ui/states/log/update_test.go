@@ -511,3 +511,64 @@ func TestLogState_Update_VisualMode_NavigationLoadsRangePreview(t *testing.T) {
 		t.Errorf("Expected message ForHash %s, got %s", expectedRangeHash, previewMsg.ForHash)
 	}
 }
+
+func TestLogState_Update_QExitsVisualMode(t *testing.T) {
+	commits := createTestCommits(5)
+	// Start in visual mode with selection from pos 0 to anchor 2
+	s := State{
+		Commits:       commits,
+		Cursor:        core.CursorVisual{Pos: 2, Anchor: 0},
+		ViewportStart: 0,
+		Preview:       PreviewNone{},
+	}
+	ctx := testutils.MockContext{W: 80, H: 24}
+
+	// Press "q" to exit visual mode (not quit)
+	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")}
+	newState, cmd := s.Update(msg, ctx)
+
+	logState, ok := newState.(State)
+	if !ok {
+		t.Fatalf("Expected State, got %T", newState)
+	}
+
+	// Should be in normal mode at position 2
+	normal, ok := logState.Cursor.(core.CursorNormal)
+	if !ok {
+		t.Fatalf("Expected CursorNormal after q in visual mode, got %T", logState.Cursor)
+	}
+	if normal.Pos != 2 {
+		t.Errorf("Expected cursor at position 2, got %d", normal.Pos)
+	}
+
+	// Should return a command to load preview (not tea.Quit)
+	if cmd == nil {
+		t.Error("Expected preview load command, got nil")
+	}
+}
+
+func TestLogState_Update_QQuitsInNormalMode(t *testing.T) {
+	commits := createTestCommits(5)
+	s := State{
+		Commits:       commits,
+		Cursor:        core.CursorNormal{Pos: 0},
+		ViewportStart: 0,
+		Preview:       PreviewNone{},
+	}
+	ctx := testutils.MockContext{W: 80, H: 24}
+
+	// Press "q" in normal mode to quit
+	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")}
+	_, cmd := s.Update(msg, ctx)
+
+	// Should return tea.Quit command
+	if cmd == nil {
+		t.Fatal("Expected tea.Quit command, got nil")
+	}
+
+	// Execute the command and check if it's a quit message
+	resultMsg := cmd()
+	if resultMsg != tea.Quit() {
+		t.Errorf("Expected tea.Quit message, got %T", resultMsg)
+	}
+}
