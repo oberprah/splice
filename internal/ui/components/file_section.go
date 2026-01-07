@@ -106,19 +106,19 @@ type FormatFileLineParams struct {
 	Width        int
 	MaxAddWidth  int
 	MaxDelWidth  int
-	ShowSelector bool // If true, shows "> " or "  " prefix
+	ShowSelector bool // If true, shows "→ " or "  " prefix (matches log view cursor)
 }
 
 // FormatFileLine formats a single file line with proper styling
-// Format with selector: > M +17 -13  src/components/App.tsx
+// Format with selector: → M +17 -13  src/components/App.tsx
 // Format without selector: M +17 -13  src/components/App.tsx
 func FormatFileLine(params FormatFileLineParams) string {
 	var line strings.Builder
 
-	// Selection indicator (if enabled)
+	// Selection indicator (if enabled) - uses same cursor as log view for consistency
 	if params.ShowSelector {
 		if params.IsSelected {
-			line.WriteString(">")
+			line.WriteString("→")
 		} else {
 			line.WriteString(" ")
 		}

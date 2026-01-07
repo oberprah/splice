@@ -1,7 +1,7 @@
 0000000..0000000 (3 commits)
 
 4 files · +110 -25
-> M +45 -12  auth/login.go
+→ M +45 -12  auth/login.go
   A +28 - 0  auth/validation.go
   M +15 - 8  models/user.go
   M +22 - 5  routes/auth.go

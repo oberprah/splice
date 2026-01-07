@@ -110,10 +110,10 @@ func TestFileSection_WithSelection(t *testing.T) {
 		t.Errorf("Expected space prefix for unselected file, got: %q", firstFileLine)
 	}
 
-	// Second file line should have ">" prefix (selected)
+	// Second file line should have "→" prefix (selected)
 	secondFileLine := ansi.Strip(lines[3])
-	if !strings.HasPrefix(secondFileLine, ">") {
-		t.Errorf("Expected '>' prefix for selected file, got: %q", secondFileLine)
+	if !strings.HasPrefix(secondFileLine, "→") {
+		t.Errorf("Expected '→' prefix for selected file, got: %q", secondFileLine)
 	}
 }
 
@@ -126,8 +126,8 @@ func TestFileSection_WithoutSelector(t *testing.T) {
 
 	// File line should NOT have selector prefix
 	fileLine := ansi.Strip(lines[2])
-	// Should start with status letter, not a space or ">"
-	if strings.HasPrefix(fileLine, " ") || strings.HasPrefix(fileLine, ">") {
+	// Should start with status letter, not a space or "→"
+	if strings.HasPrefix(fileLine, " ") || strings.HasPrefix(fileLine, "→") {
 		t.Errorf("Expected no selector prefix, got: %q", fileLine)
 	}
 	if !strings.HasPrefix(fileLine, "M") {
@@ -378,8 +378,8 @@ func TestFormatFileLine_WithSelector(t *testing.T) {
 	selectedLine := FormatFileLine(selectedParams)
 	plainSelected := ansi.Strip(selectedLine)
 
-	if !strings.HasPrefix(plainSelected, ">") {
-		t.Errorf("Expected '>' prefix for selected line, got: %q", plainSelected)
+	if !strings.HasPrefix(plainSelected, "→") {
+		t.Errorf("Expected '→' prefix for selected line, got: %q", plainSelected)
 	}
 
 	// Unselected line with selector
