@@ -327,23 +327,42 @@
 
 ## Final Verification
 
-- [ ] Full test suite passes (`go test ./...`)
-- [ ] Lint passes (`go tool golangci-lint run`)
-- [ ] Build succeeds (`go build -o splice .`)
-- [ ] All requirements verified:
-  - [ ] `v` enters visual mode, anchors current commit
-  - [ ] Navigation keys extend selection
-  - [ ] `Enter` opens FilesState with combined diff
-  - [ ] `Escape` cancels selection
-  - [ ] Cursor indicators: → (normal), ▌ (selected), █ (visual cursor)
-  - [ ] Range header displays `abc123..def456 (N commits)`
-  - [ ] Diff uses `git diff <older>..<newer>`
-- [ ] Design decisions followed:
-  - [ ] CursorState sum type (no illegal states)
-  - [ ] CommitRange for all navigation
-  - [ ] LineDisplayState enum (no invalid boolean combos)
-  - [ ] Git functions unified to range syntax
+- [x] Full test suite passes (`go test ./...`)
+- [x] Lint passes (`go tool golangci-lint run`)
+- [x] Build succeeds (`go build -o splice .`)
+- [x] All requirements verified:
+  - [x] `v` enters visual mode, anchors current commit
+  - [x] Navigation keys extend selection
+  - [x] `Enter` opens FilesState with combined diff
+  - [x] `Escape` cancels selection
+  - [x] Cursor indicators: → (normal), ▌ (selected), █ (visual cursor)
+  - [x] Range header displays `abc123..def456 (N commits)`
+  - [x] Diff uses `git diff <older>..<newer>`
+- [x] Design decisions followed:
+  - [x] CursorState sum type (no illegal states)
+  - [x] CommitRange for all navigation
+  - [x] LineDisplayState enum (no invalid boolean combos)
+  - [x] Git functions unified to range syntax
 
 ## Summary
 
-*To be completed after implementation*
+The multi-commit selection feature has been successfully implemented across 6 steps:
+
+**What was built:**
+- Visual mode selection in LogState using `v` key to toggle
+- CursorState sum type (`CursorNormal`/`CursorVisual`) making illegal states unrepresentable
+- CommitRange type for unified single/range commit handling throughout the app
+- LineDisplayState enum for commit line rendering states
+- Updated git functions to accept range parameters (`fromHash..toHash`)
+- Range-aware display in FilesState header (`abc123d..def456e (N commits)`)
+- Range-aware display in DiffState header (`abc123d..def456e · file.go · +N -M`)
+
+**Key commits:**
+- Step 1: `4057566` - Core types (CursorState, CommitRange, LineDisplayState)
+- Step 2: `07e89d7` - Git function range support
+- Step 3: `a8340cb` - Navigation messages with CommitRange
+- Step 4: `60d7d93` - LogState visual mode
+- Step 5: `5696618` - CommitInfo range support
+- Step 6: `0043013` - FilesState and DiffState range support
+
+**Deviations from design:** None. Implementation follows the design document exactly.
