@@ -69,6 +69,7 @@ Navigation uses typed messages (`core.Push*ScreenMsg`, `core.PopScreenMsg`) hand
 - **Pure functions**: Favor pure functions; isolate side effects at boundaries
 - **Minimal comments**: Code should be self-explanatory; comment only for non-obvious "why"
 - **Make illegal states unrepresentable**: Use sum types and type design to prevent invalid states
+- **Enums over multiple booleans**: When multiple booleans represent related states, use an enum instead. Multiple booleans create 2^n possible states, most of which are usually invalid.
 - **TDD**: Write tests first when implementing new functionality
 
 ## Testing
