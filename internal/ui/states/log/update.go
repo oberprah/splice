@@ -56,9 +56,23 @@ func (s State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 			// Toggle visual mode
 			switch cursor := s.Cursor.(type) {
 			case core.CursorNormal:
+				// Entering visual mode - cursor stays at same position, so no preview reload needed
 				s.Cursor = core.CursorVisual{Pos: cursor.Pos, Anchor: cursor.Pos}
+				return s, nil
 			case core.CursorVisual:
+				// Exiting visual mode - may need to reload preview if selection changed
 				s.Cursor = core.CursorNormal{Pos: cursor.Pos}
+				// Check if selection actually changed (i.e., was a multi-commit range)
+				if cursor.Pos != cursor.Anchor {
+					// Selection changed from range to single commit, reload preview
+					if len(s.Commits) > 0 {
+						commitRange := s.GetSelectedRange()
+						rangeHash := getRangeHash(commitRange)
+						s.Preview = PreviewLoading{ForHash: rangeHash}
+						return s, LoadPreview(commitRange, ctx.FetchFileChanges())
+					}
+				}
+				return s, nil
 			}
 			return s, nil
 
@@ -66,6 +80,13 @@ func (s State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 			// Exit visual mode if active
 			if visual, ok := s.Cursor.(core.CursorVisual); ok {
 				s.Cursor = core.CursorNormal{Pos: visual.Pos}
+				// Trigger preview loading for the new single-commit selection
+				if len(s.Commits) > 0 {
+					commitRange := s.GetSelectedRange()
+					rangeHash := getRangeHash(commitRange)
+					s.Preview = PreviewLoading{ForHash: rangeHash}
+					return s, LoadPreview(commitRange, ctx.FetchFileChanges())
+				}
 			}
 			return s, nil
 

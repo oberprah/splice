@@ -139,30 +139,139 @@ func TestVisualModeEscape(t *testing.T) {
 
 	fixedNow := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
 
+	// Create a mock fetch function that returns DIFFERENT files depending on the commit range
+	// This allows us to verify that the correct files are loaded after escape
+	mockFetchFileChanges := func(commitRange core.CommitRange) ([]core.FileChange, error) {
+		if commitRange.IsSingleCommit() {
+			// Single commit - return files based on which commit
+			switch commitRange.End.Hash {
+			case commits[0].Hash:
+				// First commit
+				return []core.FileChange{
+					{Path: "first.go", Status: "M", Additions: 10, Deletions: 5},
+					{Path: "shared.go", Status: "A", Additions: 20, Deletions: 0},
+				}, nil
+			case commits[1].Hash:
+				// Second commit - different files to distinguish from first commit
+				return []core.FileChange{
+					{Path: "second.go", Status: "M", Additions: 15, Deletions: 3},
+					{Path: "another.go", Status: "A", Additions: 8, Deletions: 2},
+				}, nil
+			default:
+				// Third commit or other
+				return []core.FileChange{
+					{Path: "third.go", Status: "M", Additions: 5, Deletions: 1},
+				}, nil
+			}
+		}
+		// Multi-commit range - return combined files
+		return []core.FileChange{
+			{Path: "combined1.go", Status: "M", Additions: 25, Deletions: 8},
+			{Path: "combined2.go", Status: "A", Additions: 28, Deletions: 2},
+		}, nil
+	}
+
 	m := app.NewModel(
 		app.WithInitialState(loading.State{}),
 		app.WithFetchCommits(testutils.MockFetchCommits(commits, nil)),
-		app.WithFetchFileChanges(testutils.MockFetchFileChanges([]core.FileChange{}, nil)),
+		app.WithFetchFileChanges(mockFetchFileChanges),
 		app.WithNow(func() time.Time { return fixedNow }),
 	)
 
 	runner := NewE2ETestRunner(t, m)
 
-	// Set initial window size
-	runner.Send(tea.WindowSizeMsg{Width: 80, Height: 24})
+	// Set initial window size (wide enough to show split view with preview)
+	// Step 0: Detail view needs to be visible (wide terminal, split view)
+	runner.Send(tea.WindowSizeMsg{Width: 160, Height: 24})
+	// Step 1: Start with files already loaded in the preview for the initial commit
 	runner.AssertGolden("visual_mode_escape/1_initial.golden")
 
-	// Enter visual mode
+	// Step 2: Enter visual mode with 'v'
 	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("v")})
 	runner.AssertGolden("visual_mode_escape/2_visual_mode.golden")
 
-	// Extend selection
+	// Step 3: Select at least 2 commits by pressing 'j'
 	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	// Step 4: Verify files of both commits (combined) are visible in preview
 	runner.AssertGolden("visual_mode_escape/3_selection_extended.golden")
 
-	// Press Escape to exit visual mode
+	// Step 5: Exit visual mode with Escape
 	runner.Send(tea.KeyMsg{Type: tea.KeyEsc})
+	// Step 6 & 7: Verify commit message of the selected commit is visible
+	// AND files show the actual files for that single commit (not "loading files..." or combined files)
 	runner.AssertGolden("visual_mode_escape/4_after_escape.golden")
+
+	// Quit
+	runner.Quit()
+}
+
+// TestVisualModeToggleOut tests exiting visual mode by pressing 'v' again
+func TestVisualModeToggleOut(t *testing.T) {
+	commits := testutils.CreateTestCommitsWithMessages([]string{
+		"First commit",
+		"Second commit",
+		"Third commit",
+	})
+
+	fixedNow := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	// Create a mock fetch function that returns DIFFERENT files depending on the commit range
+	mockFetchFileChanges := func(commitRange core.CommitRange) ([]core.FileChange, error) {
+		if commitRange.IsSingleCommit() {
+			// Single commit - return files based on which commit
+			switch commitRange.End.Hash {
+			case commits[0].Hash:
+				// First commit
+				return []core.FileChange{
+					{Path: "first.go", Status: "M", Additions: 10, Deletions: 5},
+					{Path: "shared.go", Status: "A", Additions: 20, Deletions: 0},
+				}, nil
+			case commits[1].Hash:
+				// Second commit - different files to distinguish from first commit
+				return []core.FileChange{
+					{Path: "second.go", Status: "M", Additions: 15, Deletions: 3},
+					{Path: "another.go", Status: "A", Additions: 8, Deletions: 2},
+				}, nil
+			default:
+				// Third commit or other
+				return []core.FileChange{
+					{Path: "third.go", Status: "M", Additions: 5, Deletions: 1},
+				}, nil
+			}
+		}
+		// Multi-commit range - return combined files
+		return []core.FileChange{
+			{Path: "combined1.go", Status: "M", Additions: 25, Deletions: 8},
+			{Path: "combined2.go", Status: "A", Additions: 28, Deletions: 2},
+		}, nil
+	}
+
+	m := app.NewModel(
+		app.WithInitialState(loading.State{}),
+		app.WithFetchCommits(testutils.MockFetchCommits(commits, nil)),
+		app.WithFetchFileChanges(mockFetchFileChanges),
+		app.WithNow(func() time.Time { return fixedNow }),
+	)
+
+	runner := NewE2ETestRunner(t, m)
+
+	// Set initial window size (wide enough to show split view with preview)
+	runner.Send(tea.WindowSizeMsg{Width: 160, Height: 24})
+	runner.AssertGolden("visual_mode_toggle_out/1_initial.golden")
+
+	// Enter visual mode with 'v'
+	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("v")})
+	runner.AssertGolden("visual_mode_toggle_out/2_visual_mode.golden")
+
+	// Select 2 commits by pressing 'j'
+	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	// Verify files of both commits (combined) are visible in preview
+	runner.AssertGolden("visual_mode_toggle_out/3_selection_extended.golden")
+
+	// Exit visual mode by pressing 'v' again (toggle out)
+	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("v")})
+	// Verify: back in normal mode with files for single commit at position 1
+	runner.AssertGolden("visual_mode_toggle_out/4_after_toggle_out.golden")
 
 	// Quit
 	runner.Quit()
