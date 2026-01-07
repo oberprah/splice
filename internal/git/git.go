@@ -346,15 +346,6 @@ func FetchFileChanges(commitRange core.CommitRange) ([]core.FileChange, error) {
 	return changes, nil
 }
 
-// FetchFileChangesForCommit fetches file changes for a single commit.
-// This is a convenience wrapper that compares the commit against its parent.
-func FetchFileChangesForCommit(commitHash string) ([]core.FileChange, error) {
-	// This is deprecated - callers should use FetchFileChanges with CommitRange
-	// But we keep it for backward compatibility during migration
-	commit := core.GitCommit{Hash: commitHash}
-	return FetchFileChanges(core.NewSingleCommitRange(commit))
-}
-
 // FetchFileContent retrieves the content of a file at a specific commit.
 // Returns empty string without error if the file doesn't exist at that commit.
 func FetchFileContent(commitHash, filePath string) (string, error) {
@@ -447,15 +438,6 @@ func FetchFullFileDiff(commitRange core.CommitRange, change core.FileChange) (*c
 	result.DiffOutput = diffOutput
 
 	return result, nil
-}
-
-// FetchFullFileDiffForCommit fetches the full diff for a single commit.
-// This is a convenience wrapper that compares the commit against its parent.
-func FetchFullFileDiffForCommit(commitHash string, change core.FileChange) (*core.FullFileDiffResult, error) {
-	// This is deprecated - callers should use FetchFullFileDiff with CommitRange
-	// But we keep it for backward compatibility during migration
-	commit := core.GitCommit{Hash: commitHash}
-	return FetchFullFileDiff(core.NewSingleCommitRange(commit), change)
 }
 
 // FetchFileDiff retrieves the unified diff for a specific file in a commit.

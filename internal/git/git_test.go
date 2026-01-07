@@ -10,6 +10,11 @@ import (
 	"github.com/oberprah/splice/internal/core"
 )
 
+// singleCommitRange is a test helper that creates a CommitRange for a single commit hash.
+func singleCommitRange(hash string) core.CommitRange {
+	return core.NewSingleCommitRange(core.GitCommit{Hash: hash})
+}
+
 func TestParseGitLogOutput(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -549,16 +554,16 @@ func TestFetchFileChanges_Integration(t *testing.T) {
 	}
 	commitHash := strings.TrimSpace(string(out))
 
-	// Fetch file changes for the commit using the wrapper function
-	changes, err := FetchFileChangesForCommit(commitHash)
+	// Fetch file changes for the commit
+	changes, err := FetchFileChanges(singleCommitRange(commitHash))
 	if err != nil {
-		t.Fatalf("FetchFileChangesForCommit() error = %v", err)
+		t.Fatalf("FetchFileChanges() error = %v", err)
 	}
 
 	// Basic validation - we should have at least some structure
 	// (We can't make strong assertions about content since it depends on the actual commit)
 	if changes == nil {
-		t.Error("FetchFileChangesForCommit() returned nil changes")
+		t.Error("FetchFileChanges() returned nil changes")
 	}
 
 	// Each file change should have a valid path
@@ -600,14 +605,14 @@ func TestFetchFileChanges_InvalidCommit(t *testing.T) {
 	}
 
 	// Try to fetch file changes for an invalid commit hash
-	changes, err := FetchFileChangesForCommit("invalid_commit_hash_12345")
+	changes, err := FetchFileChanges(singleCommitRange("invalid_commit_hash_12345"))
 
 	if err == nil {
-		t.Fatal("FetchFileChangesForCommit() expected error for invalid commit, got nil")
+		t.Fatal("FetchFileChanges() expected error for invalid commit, got nil")
 	}
 
 	if changes != nil {
-		t.Errorf("FetchFileChangesForCommit() expected nil changes on error, got %d changes", len(changes))
+		t.Errorf("FetchFileChanges() expected nil changes on error, got %d changes", len(changes))
 	}
 }
 
@@ -627,9 +632,9 @@ func TestFetchFileDiff_Integration(t *testing.T) {
 	commitHash := strings.TrimSpace(string(out))
 
 	// Get file changes for this commit to find a file to test
-	changes, err := FetchFileChangesForCommit(commitHash)
+	changes, err := FetchFileChanges(singleCommitRange(commitHash))
 	if err != nil {
-		t.Fatalf("FetchFileChangesForCommit() error = %v", err)
+		t.Fatalf("FetchFileChanges() error = %v", err)
 	}
 
 	if len(changes) == 0 {
@@ -763,29 +768,29 @@ func TestFetchFullFileDiff_Integration(t *testing.T) {
 	commitHash := strings.TrimSpace(string(out))
 
 	// Get file changes for this commit
-	changes, err := FetchFileChangesForCommit(commitHash)
+	changes, err := FetchFileChanges(singleCommitRange(commitHash))
 	if err != nil {
-		t.Fatalf("FetchFileChangesForCommit() error = %v", err)
+		t.Fatalf("FetchFileChanges() error = %v", err)
 	}
 
 	if len(changes) == 0 {
 		t.Skip("No file changes in HEAD commit, skipping test")
 	}
 
-	// Test FetchFullFileDiff for the first changed file using the wrapper
-	result, err := FetchFullFileDiffForCommit(commitHash, changes[0])
+	// Test FetchFullFileDiff for the first changed file
+	result, err := FetchFullFileDiff(singleCommitRange(commitHash), changes[0])
 	if err != nil {
-		t.Fatalf("FetchFullFileDiffForCommit() error = %v", err)
+		t.Fatalf("FetchFullFileDiff() error = %v", err)
 	}
 
 	// Result should not be nil
 	if result == nil {
-		t.Fatal("FetchFullFileDiffForCommit() returned nil result")
+		t.Fatal("FetchFullFileDiff() returned nil result")
 	}
 
 	// DiffOutput should contain diff markers
 	if !strings.Contains(result.DiffOutput, "diff --git") && result.DiffOutput != "" {
-		t.Error("FetchFullFileDiffForCommit() DiffOutput should contain 'diff --git' header")
+		t.Error("FetchFullFileDiff() DiffOutput should contain 'diff --git' header")
 	}
 }
 
@@ -806,9 +811,9 @@ func TestFetchFullFileDiff_NewFile(t *testing.T) {
 	commitHash := strings.TrimSpace(string(out))
 
 	// Get file changes for this commit
-	changes, err := FetchFileChangesForCommit(commitHash)
+	changes, err := FetchFileChanges(singleCommitRange(commitHash))
 	if err != nil {
-		t.Fatalf("FetchFileChangesForCommit() error = %v", err)
+		t.Fatalf("FetchFileChanges() error = %v", err)
 	}
 
 	// Find an added file
@@ -824,20 +829,20 @@ func TestFetchFullFileDiff_NewFile(t *testing.T) {
 		t.Skip("No added file found in commit, skipping test")
 	}
 
-	result, err := FetchFullFileDiffForCommit(commitHash, *addedFile)
+	result, err := FetchFullFileDiff(singleCommitRange(commitHash), *addedFile)
 	if err != nil {
-		t.Fatalf("FetchFullFileDiffForCommit() error = %v", err)
+		t.Fatalf("FetchFullFileDiff() error = %v", err)
 	}
 
 	// For a new file, OldContent should be empty
 	if result.OldContent != "" {
-		t.Errorf("FetchFullFileDiffForCommit() for new file: OldContent should be empty, got %d bytes", len(result.OldContent))
+		t.Errorf("FetchFullFileDiff() for new file: OldContent should be empty, got %d bytes", len(result.OldContent))
 	}
 
 	// NewContent should not be empty (unless it's an empty file)
 	// We just verify the result is valid
 	if result == nil {
-		t.Error("FetchFullFileDiffForCommit() returned nil for new file")
+		t.Error("FetchFullFileDiff() returned nil for new file")
 	}
 }
 
