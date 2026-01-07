@@ -39,7 +39,7 @@ func TestLogState_Update_NavigationDown(t *testing.T) {
 	commits := createTestCommits(10)
 	s := State{
 		Commits:       commits,
-		Cursor:        0,
+		Cursor:        core.CursorNormal{Pos: 0},
 		ViewportStart: 0,
 		Preview:       PreviewNone{},
 	}
@@ -54,8 +54,8 @@ func TestLogState_Update_NavigationDown(t *testing.T) {
 	}
 
 	listState := newState.(State)
-	if listState.Cursor != 1 {
-		t.Errorf("Expected cursor at 1, got %d", listState.Cursor)
+	if listState.CursorPosition() != 1 {
+		t.Errorf("Expected cursor at 1, got %d", listState.CursorPosition())
 	}
 }
 
@@ -63,7 +63,7 @@ func TestLogState_Update_NavigationUp(t *testing.T) {
 	commits := createTestCommits(10)
 	s := State{
 		Commits:       commits,
-		Cursor:        5,
+		Cursor:        core.CursorNormal{Pos: 5},
 		ViewportStart: 0,
 		Preview:       PreviewNone{},
 	}
@@ -78,8 +78,8 @@ func TestLogState_Update_NavigationUp(t *testing.T) {
 	}
 
 	listState := newState.(State)
-	if listState.Cursor != 4 {
-		t.Errorf("Expected cursor at 4, got %d", listState.Cursor)
+	if listState.CursorPosition() != 4 {
+		t.Errorf("Expected cursor at 4, got %d", listState.CursorPosition())
 	}
 }
 
@@ -102,7 +102,7 @@ func TestLogState_Update_CursorBoundaries(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			s := State{
 				Commits:       commits,
-				Cursor:        tt.initialCursor,
+				Cursor:        core.CursorNormal{Pos: tt.initialCursor},
 				ViewportStart: 0,
 				Preview:       PreviewNone{},
 			}
@@ -121,8 +121,8 @@ func TestLogState_Update_CursorBoundaries(t *testing.T) {
 			newState, _ := s.Update(msg, ctx)
 			listState := newState.(State)
 
-			if listState.Cursor != tt.expectedCursor {
-				t.Errorf("Expected cursor at %d, got %d", tt.expectedCursor, listState.Cursor)
+			if listState.CursorPosition() != tt.expectedCursor {
+				t.Errorf("Expected cursor at %d, got %d", tt.expectedCursor, listState.CursorPosition())
 			}
 		})
 	}
@@ -132,7 +132,7 @@ func TestLogState_Update_JumpToTop(t *testing.T) {
 	commits := createTestCommits(10)
 	s := State{
 		Commits:       commits,
-		Cursor:        5,
+		Cursor:        core.CursorNormal{Pos: 5},
 		ViewportStart: 3,
 		Preview:       PreviewNone{},
 	}
@@ -147,8 +147,8 @@ func TestLogState_Update_JumpToTop(t *testing.T) {
 	}
 
 	listState := newState.(State)
-	if listState.Cursor != 0 {
-		t.Errorf("Expected cursor at 0, got %d", listState.Cursor)
+	if listState.CursorPosition() != 0 {
+		t.Errorf("Expected cursor at 0, got %d", listState.CursorPosition())
 	}
 	if listState.ViewportStart != 0 {
 		t.Errorf("Expected viewportStart at 0, got %d", listState.ViewportStart)
@@ -159,7 +159,7 @@ func TestLogState_Update_JumpToBottom(t *testing.T) {
 	commits := createTestCommits(10)
 	s := State{
 		Commits:       commits,
-		Cursor:        0,
+		Cursor:        core.CursorNormal{Pos: 0},
 		ViewportStart: 0,
 		Preview:       PreviewNone{},
 	}
@@ -174,8 +174,8 @@ func TestLogState_Update_JumpToBottom(t *testing.T) {
 	}
 
 	listState := newState.(State)
-	if listState.Cursor != 9 {
-		t.Errorf("Expected cursor at 9, got %d", listState.Cursor)
+	if listState.CursorPosition() != 9 {
+		t.Errorf("Expected cursor at 9, got %d", listState.CursorPosition())
 	}
 }
 
@@ -183,7 +183,7 @@ func TestLogState_Update_ViewportScrolling(t *testing.T) {
 	commits := createTestCommits(30)
 	s := State{
 		Commits:       commits,
-		Cursor:        0,
+		Cursor:        core.CursorNormal{Pos: 0},
 		ViewportStart: 0,
 		Preview:       PreviewNone{},
 	}
@@ -197,8 +197,8 @@ func TestLogState_Update_ViewportScrolling(t *testing.T) {
 	}
 
 	// Cursor should be at 15
-	if s.Cursor != 15 {
-		t.Errorf("Expected cursor at 15, got %d", s.Cursor)
+	if s.CursorPosition() != 15 {
+		t.Errorf("Expected cursor at 15, got %d", s.CursorPosition())
 	}
 
 	// Viewport should have scrolled to keep cursor visible
@@ -212,7 +212,7 @@ func TestLogState_Update_QuitKeys(t *testing.T) {
 	commits := createTestCommits(5)
 	s := State{
 		Commits:       commits,
-		Cursor:        0,
+		Cursor:        core.CursorNormal{Pos: 0},
 		ViewportStart: 0,
 		Preview:       PreviewNone{},
 	}
@@ -261,7 +261,7 @@ func TestLogState_Update_NavigationTriggersPreviewLoading(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			s := State{
 				Commits:       commits,
-				Cursor:        tt.initialCursor,
+				Cursor:        core.CursorNormal{Pos: tt.initialCursor},
 				ViewportStart: 0,
 				Preview:       PreviewNone{},
 			}
@@ -281,8 +281,8 @@ func TestLogState_Update_NavigationTriggersPreviewLoading(t *testing.T) {
 			listState := newState.(State)
 
 			// Check cursor moved to expected position
-			if listState.Cursor != tt.expectedCursor {
-				t.Errorf("Expected cursor at %d, got %d", tt.expectedCursor, listState.Cursor)
+			if listState.CursorPosition() != tt.expectedCursor {
+				t.Errorf("Expected cursor at %d, got %d", tt.expectedCursor, listState.CursorPosition())
 			}
 
 			// Check if command was returned
@@ -314,7 +314,7 @@ func TestLogState_Update_FilesPreviewLoadedMsg_Success(t *testing.T) {
 
 	s := State{
 		Commits:       commits,
-		Cursor:        1,
+		Cursor:        core.CursorNormal{Pos: 1},
 		ViewportStart: 0,
 		Preview:       PreviewLoading{ForHash: commits[1].Hash},
 	}
@@ -355,7 +355,7 @@ func TestLogState_Update_FilesPreviewLoadedMsg_Error(t *testing.T) {
 
 	s := State{
 		Commits:       commits,
-		Cursor:        1,
+		Cursor:        core.CursorNormal{Pos: 1},
 		ViewportStart: 0,
 		Preview:       PreviewLoading{ForHash: commits[1].Hash},
 	}
@@ -398,7 +398,7 @@ func TestLogState_Update_FilesPreviewLoadedMsg_StaleResponse(t *testing.T) {
 
 	s := State{
 		Commits:       commits,
-		Cursor:        2, // User navigated to commit 2
+		Cursor:        core.CursorNormal{Pos: 2}, // User navigated to commit 2
 		ViewportStart: 0,
 		Preview:       PreviewLoading{ForHash: commits[2].Hash},
 	}

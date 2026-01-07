@@ -38,10 +38,9 @@ func (s State) renderSimpleView(ctx core.Context) core.ViewRenderer {
 	// Render only visible commits
 	for i := s.ViewportStart; i < viewportEnd; i++ {
 		commit := s.Commits[i]
-		isSelected := i == s.Cursor
 
 		// Prepare all components (impure operations happen here)
-		lineComponents := s.buildCommitLineComponents(commit, i, isSelected, ctx)
+		lineComponents := s.buildCommitLineComponents(commit, i, false, ctx)
 
 		// Call pure function with all components
 		line := components.FormatCommitLine(lineComponents, ctx.Width())
@@ -83,10 +82,9 @@ func (s State) buildCommitListColumn(width int, ctx core.Context) core.ViewRende
 		logIdx := s.ViewportStart + i
 		if logIdx < viewportEnd && logIdx < len(s.Commits) {
 			commit := s.Commits[logIdx]
-			isSelected := logIdx == s.Cursor
 
 			// Prepare all components (impure operations happen here)
-			lineComponents := s.buildCommitLineComponents(commit, logIdx, isSelected, ctx)
+			lineComponents := s.buildCommitLineComponents(commit, logIdx, false, ctx)
 
 			// Call pure function with all components
 			line = components.FormatCommitLine(lineComponents, width)
@@ -125,14 +123,36 @@ func (s State) buildDetailsColumn(width int, ctx core.Context) core.ViewRenderer
 // This is where impure operations (time formatting, graph lookup) happen.
 func (s State) buildCommitLineComponents(commit git.GitCommit, commitIndex int, isSelected bool, ctx core.Context) components.CommitLineComponents {
 	return components.CommitLineComponents{
-		IsSelected: isSelected,
-		Graph:      s.buildGraphForCommit(commitIndex),
-		Hash:       format.ToShortHash(commit.Hash),
-		Refs:       commit.Refs,
-		Message:    commit.Message,
-		Author:     commit.Author,
-		Time:       format.ToRelativeTimeFrom(commit.Date, ctx.Now()),
+		DisplayState: s.getLineDisplayState(commitIndex),
+		Graph:        s.buildGraphForCommit(commitIndex),
+		Hash:         format.ToShortHash(commit.Hash),
+		Refs:         commit.Refs,
+		Message:      commit.Message,
+		Author:       commit.Author,
+		Time:         format.ToRelativeTimeFrom(commit.Date, ctx.Now()),
 	}
+}
+
+// getLineDisplayState computes the display state for a commit line based on cursor mode and position.
+func (s State) getLineDisplayState(index int) components.LineDisplayState {
+	pos := s.CursorPosition()
+
+	switch cursor := s.Cursor.(type) {
+	case core.CursorNormal:
+		if index == pos {
+			return components.LineStateCursor
+		}
+		return components.LineStateNone
+	case core.CursorVisual:
+		if index == pos {
+			return components.LineStateVisualCursor
+		}
+		if core.IsInSelection(cursor, index) {
+			return components.LineStateSelected
+		}
+		return components.LineStateNone
+	}
+	return components.LineStateNone
 }
 
 // buildGraphForCommit returns the graph symbols for a commit at the given index.
@@ -151,11 +171,12 @@ func (s State) renderDetailsPanel(width, height int, ctx core.Context) []string 
 	var lines []string
 
 	// If no commits or cursor out of bounds, return empty panel
-	if len(s.Commits) == 0 || s.Cursor < 0 || s.Cursor >= len(s.Commits) {
+	pos := s.CursorPosition()
+	if len(s.Commits) == 0 || pos < 0 || pos >= len(s.Commits) {
 		return lines
 	}
 
-	commit := s.Commits[s.Cursor]
+	commit := s.Commits[pos]
 
 	// Always show commit info immediately (all data available in memory)
 	commitInfoLines := components.CommitInfo(commit, width, commitBodyMaxLines, ctx)
@@ -191,7 +212,7 @@ func (s State) renderFileList(width, maxLines int) []string {
 
 	case PreviewLoaded:
 		// Check that the preview is for the current commit
-		commit := s.Commits[s.Cursor]
+		commit := s.Commits[s.CursorPosition()]
 		if preview.ForHash != commit.Hash {
 			// Stale data, show loading
 			lines = append(lines, "")

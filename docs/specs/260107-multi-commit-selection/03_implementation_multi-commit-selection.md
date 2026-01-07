@@ -174,7 +174,44 @@
 - `internal/ui/states/log/view.go`
 - `internal/ui/components/log_line_format.go`
 
-**Status:** Pending
+**Status:** Complete
+
+**Implementation Notes:**
+- Updated `internal/ui/states/log/state.go`:
+  - Changed `Cursor int` to `Cursor core.CursorState`
+  - Added helper methods: `CursorPosition()`, `IsVisualMode()`, `GetSelectedRange()`
+  - `GetSelectedRange()` properly handles git log ordering (index 0 = newest, higher index = older)
+- Updated `internal/ui/states/log/update.go`:
+  - Added `v` key handler to toggle between `CursorNormal` and `CursorVisual`
+  - Added `esc` key handler to exit visual mode
+  - Updated all navigation keys (j/k/g/G) to work with CursorState (maintain Anchor in visual mode)
+  - Updated `Enter` key to call `GetSelectedRange()` and pass CommitRange to FilesLoadedMsg
+  - Updated `updateViewport()` to use `CursorPosition()` method
+- Updated `internal/ui/states/log/view.go`:
+  - Added `getLineDisplayState()` method to compute LineDisplayState for each line
+  - Updated `buildCommitLineComponents()` to use `DisplayState` instead of `IsSelected`
+  - Updated all cursor position access to use `CursorPosition()` method
+- Updated `internal/ui/components/log_line_format.go`:
+  - Changed `CommitLineComponents.IsSelected bool` to `CommitLineComponents.DisplayState LineDisplayState`
+  - Updated `assembleLine()` to accept DisplayState and apply selected styles for both `LineStateSelected` and `LineStateVisualCursor`
+  - Updated `FormatCommitLine()` to use `DisplayState.SelectorString()` for cursor indicators
+- Updated all tests:
+  - `internal/ui/states/log/update_test.go`: Updated all State literals to use `core.CursorNormal{Pos: n}`
+  - `internal/ui/states/log/view_test.go`: Added core import, updated all State literals
+  - `internal/ui/components/log_line_format_test.go`: Updated all CommitLineComponents to use DisplayState
+  - Updated golden files for new cursor character (→ instead of >)
+  - E2E golden files also updated
+
+**Verification:**
+- ✓ `go build ./...` succeeds
+- ✓ `go test ./...` passes (all tests in all packages)
+- ✓ `go tool golangci-lint run` passes with 0 issues
+- ✓ All golden files updated and verified
+- ✓ Visual mode toggle works (v key)
+- ✓ Navigation extends selection in visual mode (j/k/g/G)
+- ✓ Escape cancels visual mode
+- ✓ Enter opens files view with range
+- ✓ Cursor indicators render correctly: → (normal), ▌ (selected), █ (visual cursor)
 
 ---
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
+	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/domain/graph"
 	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/ui/components"
@@ -51,7 +52,7 @@ func TestLogState_View_RendersCommits(t *testing.T) {
 	}
 
 	s := createLogStateWithGraph(commits)
-	s.Cursor = 0
+	s.Cursor = core.CursorNormal{Pos: 0}
 	s.ViewportStart = 0
 	s.Preview = PreviewNone{}
 	ctx := testutils.MockContext{W: 80, H: 24}
@@ -77,7 +78,7 @@ func TestLogState_View_SelectionIndicator(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := createLogStateWithGraph(commits)
-			s.Cursor = tt.cursor
+			s.Cursor = core.CursorNormal{Pos: tt.cursor}
 			s.ViewportStart = 0
 			s.Preview = PreviewNone{}
 			ctx := testutils.MockContext{W: 80, H: 24}
@@ -94,7 +95,7 @@ func TestLogState_View_ViewportLimits(t *testing.T) {
 	commits := createTestCommits(20)
 
 	s := createLogStateWithGraph(commits)
-	s.Cursor = 10
+	s.Cursor = core.CursorNormal{Pos: 10}
 	s.ViewportStart = 5
 	s.Preview = PreviewNone{}
 	ctx := testutils.MockContext{W: 80, H: 10}
@@ -109,7 +110,7 @@ func TestLogState_View_EmptyViewport(t *testing.T) {
 	commits := createTestCommits(5)
 
 	s := createLogStateWithGraph(commits)
-	s.Cursor = 0
+	s.Cursor = core.CursorNormal{Pos: 0}
 	s.ViewportStart = 10 // Beyond end
 	s.Preview = PreviewNone{}
 	ctx := testutils.MockContext{W: 80, H: 10}
@@ -138,7 +139,7 @@ func TestLogState_View_LineTruncation(t *testing.T) {
 	}
 
 	s := createLogStateWithGraph(commits)
-	s.Cursor = 0
+	s.Cursor = core.CursorNormal{Pos: 0}
 	s.ViewportStart = 0
 	s.Preview = PreviewNone{}
 
@@ -164,7 +165,7 @@ func TestLogState_View_SplitView_WideTerminal(t *testing.T) {
 	}
 
 	s := createLogStateWithGraph(commits)
-	s.Cursor = 0
+	s.Cursor = core.CursorNormal{Pos: 0}
 	s.ViewportStart = 0
 	s.Preview = PreviewLoaded{ForHash: "abc123", Files: files}
 
@@ -188,7 +189,7 @@ func TestLogState_View_SplitView_NarrowTerminal(t *testing.T) {
 	}
 
 	s := createLogStateWithGraph(commits)
-	s.Cursor = 0
+	s.Cursor = core.CursorNormal{Pos: 0}
 	s.ViewportStart = 0
 	s.Preview = PreviewLoaded{ForHash: "abc123", Files: files}
 
@@ -208,7 +209,7 @@ func TestLogState_View_SplitView_PreviewLoading(t *testing.T) {
 	}
 
 	s := createLogStateWithGraph(commits)
-	s.Cursor = 0
+	s.Cursor = core.CursorNormal{Pos: 0}
 	s.ViewportStart = 0
 	s.Preview = PreviewLoading{ForHash: "abc123"}
 
@@ -228,7 +229,7 @@ func TestLogState_View_SplitView_PreviewError(t *testing.T) {
 	}
 
 	s := createLogStateWithGraph(commits)
-	s.Cursor = 0
+	s.Cursor = core.CursorNormal{Pos: 0}
 	s.ViewportStart = 0
 	s.Preview = PreviewError{ForHash: "abc123", Err: nil}
 
@@ -300,7 +301,7 @@ func TestLogState_View_MergeBranchGraph(t *testing.T) {
 	}
 
 	s := createLogStateWithGraph(commits)
-	s.Cursor = 0
+	s.Cursor = core.CursorNormal{Pos: 0}
 	s.ViewportStart = 0
 	s.Preview = PreviewNone{}
 	ctx := testutils.MockContext{W: 80, H: 24}

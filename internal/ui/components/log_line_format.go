@@ -27,13 +27,13 @@ const (
 // CommitLineComponents holds all pre-computed components for a commit line.
 // This struct enables FormatCommitLine to be a pure function.
 type CommitLineComponents struct {
-	IsSelected bool
-	Graph      string
-	Hash       string
-	Refs       []git.RefInfo
-	Message    string
-	Author     string
-	Time       string
+	DisplayState LineDisplayState
+	Graph        string
+	Hash         string
+	Refs         []git.RefInfo
+	Message      string
+	Author       string
+	Time         string
 }
 
 // capMessage truncates a message to maxLen characters with "…" suffix.
@@ -266,15 +266,16 @@ func measureLineWidth(selector, graph, hash, refs, message, author, time string)
 
 // assembleLine assembles the final commit line with proper spacing, separators, and styling.
 // This is a pure function that builds the styled string from plain components.
-func assembleLine(selector, graph, hash, refs, message, author, time string, isSelected bool) string {
+func assembleLine(selector, graph, hash, refs, message, author, time string, displayState LineDisplayState) string {
 	var line strings.Builder
 
 	// Add selector and graph (no styling)
 	line.WriteString(selector)
 	line.WriteString(graph)
 
-	// Choose styles based on selection
+	// Choose styles based on display state
 	var hashStyle, messageStyle, authorStyle, timeStyle lipgloss.Style
+	isSelected := displayState == LineStateSelected || displayState == LineStateVisualCursor
 	if isSelected {
 		hashStyle = styles.SelectedHashStyle
 		messageStyle = styles.SelectedMessageStyle
@@ -317,11 +318,8 @@ func assembleLine(selector, graph, hash, refs, message, author, time string, isS
 // FormatCommitLine applies progressive truncation to fit a commit line within available width.
 // Pure function - all inputs provided via CommitLineComponents struct, no side effects.
 func FormatCommitLine(components CommitLineComponents, availableWidth int) string {
-	// 1. Build selector based on selection state
-	selector := "  "
-	if components.IsSelected {
-		selector = "> "
-	}
+	// 1. Build selector based on display state
+	selector := components.DisplayState.SelectorString()
 
 	// 2. Extract components (already computed by caller)
 	graph := components.Graph
@@ -387,11 +385,11 @@ func FormatCommitLine(components CommitLineComponents, availableWidth int) strin
 			}
 
 			// NOW assemble with styling - all components fit
-			return assembleLine(selector, graph, hash, refs, message, author, time, components.IsSelected)
+			return assembleLine(selector, graph, hash, refs, message, author, time, components.DisplayState)
 		}
 		level++
 	}
 
 	// 4. Assemble and style the line
-	return assembleLine(selector, graph, hash, refs, message, author, time, components.IsSelected)
+	return assembleLine(selector, graph, hash, refs, message, author, time, components.DisplayState)
 }
