@@ -105,7 +105,41 @@
 - `internal/core/messages.go`
 - All files that reference these messages (log, files, diff states)
 
-**Status:** Pending
+**Status:** Complete
+
+**Implementation Notes:**
+- Updated message structs in `internal/core/navigation.go`:
+  - Changed `PushFilesScreenMsg.Commit` to `PushFilesScreenMsg.Range CommitRange`
+  - Changed `PushDiffScreenMsg.Commit` to `PushDiffScreenMsg.Range CommitRange`
+- Updated message structs in `internal/core/messages.go`:
+  - Changed `FilesLoadedMsg.Commit` to `FilesLoadedMsg.Range CommitRange`
+  - Changed `DiffLoadedMsg.Commit` to `DiffLoadedMsg.Range CommitRange`
+- Updated state structs:
+  - `internal/ui/states/files/state.go`: Changed `Commit` field to `Range CommitRange`, updated constructor `New()`
+  - `internal/ui/states/diff/state.go`: Changed `Commit` field to `Range CommitRange`, updated constructor `New()`
+- Updated all message producers to wrap single commits in `core.NewSingleCommitRange()`:
+  - `internal/ui/states/log/update.go`: Wraps commit when creating `FilesLoadedMsg` and `PushFilesScreenMsg`
+  - `internal/ui/states/files/update.go`: Uses `s.Range` instead of `s.Commit`, wraps in messages
+- Updated view files to access commit via `Range.End`:
+  - `internal/ui/states/files/view.go`: Uses `s.Range.End` for displaying commit info
+  - `internal/ui/states/diff/view.go`: Uses `s.Range.End.Hash` in header rendering
+- Updated navigation handler in `internal/app/model.go`:
+  - Changed to pass `msg.Range` instead of `msg.Commit` to state constructors
+- Updated all test files to wrap commits in `core.NewSingleCommitRange()`:
+  - `internal/ui/states/files/update_test.go`: All State literals updated
+  - `internal/ui/states/files/view_test.go`: All State literals updated
+  - `internal/ui/states/diff/update_test.go`: All State literals updated
+  - `internal/ui/states/diff/view_test.go`: All State literals updated
+  - `internal/app/model_navigation_test.go`: Updated PushFilesScreenMsg and PushDiffScreenMsg usage
+
+**Verification:**
+- ✓ `go build ./...` succeeds
+- ✓ `go test ./...` passes (all tests in app, core, domain, git, ui packages)
+- ✓ `go tool golangci-lint run` passes with 0 issues
+- ✓ All state tests pass with CommitRange
+- ✓ Navigation tests verify correct range passing
+- ✓ Backward compatibility maintained: single commits wrapped in NewSingleCommitRange()
+- ✓ View rendering works correctly using Range.End for single commits
 
 ---
 

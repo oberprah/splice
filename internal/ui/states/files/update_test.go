@@ -17,7 +17,7 @@ func TestFilesState_Update_NavigationDown(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(10)
 	s := State{
-		Commit:        commit,
+		Range:         core.NewSingleCommitRange(commit),
 		Files:         files,
 		Cursor:        0,
 		ViewportStart: 0,
@@ -42,7 +42,7 @@ func TestFilesState_Update_NavigationUp(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(10)
 	s := State{
-		Commit:        commit,
+		Range:         core.NewSingleCommitRange(commit),
 		Files:         files,
 		Cursor:        5,
 		ViewportStart: 0,
@@ -67,7 +67,7 @@ func TestFilesState_Update_NavigationJumpToTop(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(10)
 	s := State{
-		Commit:        commit,
+		Range:         core.NewSingleCommitRange(commit),
 		Files:         files,
 		Cursor:        5,
 		ViewportStart: 3,
@@ -96,7 +96,7 @@ func TestFilesState_Update_NavigationJumpToBottom(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(10)
 	s := State{
-		Commit:        commit,
+		Range:         core.NewSingleCommitRange(commit),
 		Files:         files,
 		Cursor:        0,
 		ViewportStart: 0,
@@ -134,7 +134,7 @@ func TestFilesState_Update_NavigationBoundaries(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := State{
-				Commit:        commit,
+				Range:         core.NewSingleCommitRange(commit),
 				Files:         files,
 				Cursor:        tt.initialCursor,
 				ViewportStart: 0,
@@ -173,7 +173,7 @@ func TestFilesState_Update_ArrowKeyNavigation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := State{
-				Commit:        commit,
+				Range:         core.NewSingleCommitRange(commit),
 				Files:         files,
 				Cursor:        tt.initialCursor,
 				ViewportStart: 0,
@@ -199,7 +199,7 @@ func TestFilesState_Update_ViewportScrolling(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(20)
 	s := State{
-		Commit:        commit,
+		Range:         core.NewSingleCommitRange(commit),
 		Files:         files,
 		Cursor:        5,
 		ViewportStart: 0,
@@ -229,7 +229,7 @@ func TestFilesState_Update_BackNavigation(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(5)
 	s := State{
-		Commit:        commit,
+		Range:         core.NewSingleCommitRange(commit),
 		Files:         files,
 		Cursor:        2,
 		ViewportStart: 0,
@@ -271,7 +271,7 @@ func TestFilesState_Update_SingleFileList(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(1)
 	s := State{
-		Commit:        commit,
+		Range:         core.NewSingleCommitRange(commit),
 		Files:         files,
 		Cursor:        0,
 		ViewportStart: 0,
@@ -296,7 +296,7 @@ func TestFilesState_Update_EmptyFileList(t *testing.T) {
 	commit := createTestCommit()
 	files := []git.FileChange{}
 	s := State{
-		Commit:        commit,
+		Range:         core.NewSingleCommitRange(commit),
 		Files:         files,
 		Cursor:        0,
 		ViewportStart: 0,
@@ -321,7 +321,7 @@ func TestFilesState_Update_EnterKeyReturnsCommand(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(5)
 	s := State{
-		Commit:        commit,
+		Range:         core.NewSingleCommitRange(commit),
 		Files:         files,
 		Cursor:        2,
 		ViewportStart: 0,
@@ -347,7 +347,7 @@ func TestFilesState_Update_EnterOnEmptyFiles(t *testing.T) {
 	commit := createTestCommit()
 	files := []git.FileChange{}
 	s := State{
-		Commit: commit,
+		Range:  core.NewSingleCommitRange(commit),
 		Files:  files,
 		Cursor: 0,
 	}
@@ -372,7 +372,7 @@ func TestFilesState_Update_DiffLoadedMsgSuccess(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(5)
 	s := State{
-		Commit:        commit,
+		Range:         core.NewSingleCommitRange(commit),
 		Files:         files,
 		Cursor:        2,
 		ViewportStart: 1,
@@ -381,8 +381,8 @@ func TestFilesState_Update_DiffLoadedMsgSuccess(t *testing.T) {
 
 	// Simulate DiffLoadedMsg with success
 	msg := core.DiffLoadedMsg{
-		Commit: commit,
-		File:   files[2],
+		Range: core.NewSingleCommitRange(commit),
+		File:  files[2],
 		Diff: &diff.AlignedFileDiff{
 			Left: diff.FileContent{
 				Path: "file.go",
@@ -442,7 +442,7 @@ func TestFilesState_Update_DiffLoadedMsgError(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(5)
 	s := State{
-		Commit: commit,
+		Range:  core.NewSingleCommitRange(commit),
 		Files:  files,
 		Cursor: 2,
 	}
@@ -450,9 +450,9 @@ func TestFilesState_Update_DiffLoadedMsgError(t *testing.T) {
 
 	// Simulate DiffLoadedMsg with error
 	msg := core.DiffLoadedMsg{
-		Commit: commit,
-		File:   files[2],
-		Err:    fmt.Errorf("failed to load diff"),
+		Range: core.NewSingleCommitRange(commit),
+		File:  files[2],
+		Err:   fmt.Errorf("failed to load diff"),
 	}
 	newState, _ := s.Update(msg, ctx)
 

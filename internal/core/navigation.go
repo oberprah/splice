@@ -19,13 +19,13 @@ type PushLogScreenMsg struct {
 
 // PushFilesScreenMsg signals navigation to the files screen
 type PushFilesScreenMsg struct {
-	Commit git.GitCommit
-	Files  []git.FileChange
+	Range CommitRange
+	Files []git.FileChange
 }
 
 // PushDiffScreenMsg signals navigation to the diff screen
 type PushDiffScreenMsg struct {
-	Commit        git.GitCommit
+	Range         CommitRange
 	File          git.FileChange
 	Diff          *diff.AlignedFileDiff
 	ChangeIndices []int

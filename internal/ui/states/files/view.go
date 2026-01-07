@@ -10,7 +10,8 @@ func (s *State) View(ctx core.Context) core.ViewRenderer {
 	vb := components.NewViewBuilder()
 
 	// Render commit info using shared component
-	commitInfoLines := components.CommitInfo(s.Commit, ctx.Width(), 0, ctx) // 0 = unlimited body lines
+	// For now, we display the End commit (for single commit, Start and End are the same)
+	commitInfoLines := components.CommitInfo(s.Range.End, ctx.Width(), 0, ctx) // 0 = unlimited body lines
 	for _, line := range commitInfoLines {
 		vb.AddLine(line)
 	}

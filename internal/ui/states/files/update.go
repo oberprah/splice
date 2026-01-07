@@ -22,7 +22,7 @@ func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 		// Return command that produces PushDiffScreenMsg to navigate to DiffState
 		return s, func() tea.Msg {
 			return core.PushDiffScreenMsg{
-				Commit:        msg.Commit,
+				Range:         msg.Range,
 				File:          msg.File,
 				Diff:          msg.Diff,
 				ChangeIndices: msg.ChangeIndices,
@@ -103,16 +103,20 @@ func (s *State) updateViewport(height int) {
 
 // loadDiff creates a command to fetch and parse the diff for a file
 func (s *State) loadDiff(file git.FileChange, fetchFullFileDiff core.FetchFullFileDiffFunc) tea.Cmd {
-	commit := s.Commit
+	commitRange := s.Range
 
 	return func() tea.Msg {
+		// For now, we only handle single commits
+		// Use End commit for the diff (for single commit, Start and End are the same)
+		commit := commitRange.End
+
 		// Fetch full file content and diff
 		fullDiffResult, err := fetchFullFileDiff(commit.Hash+"^", commit.Hash, file)
 		if err != nil {
 			return core.DiffLoadedMsg{
-				Commit: commit,
-				File:   file,
-				Err:    err,
+				Range: commitRange,
+				File:  file,
+				Err:   err,
 			}
 		}
 
@@ -125,14 +129,14 @@ func (s *State) loadDiff(file git.FileChange, fetchFullFileDiff core.FetchFullFi
 		)
 		if err != nil {
 			return core.DiffLoadedMsg{
-				Commit: commit,
-				File:   file,
-				Err:    err,
+				Range: commitRange,
+				File:  file,
+				Err:   err,
 			}
 		}
 
 		return core.DiffLoadedMsg{
-			Commit:        commit,
+			Range:         commitRange,
 			File:          file,
 			Diff:          alignedDiff,
 			ChangeIndices: changeIndices,

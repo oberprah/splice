@@ -19,8 +19,8 @@ func (s State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 		// Transition to files state using navigation pattern
 		return s, func() tea.Msg {
 			return core.PushFilesScreenMsg{
-				Commit: msg.Commit,
-				Files:  msg.Files,
+				Range: msg.Range,
+				Files: msg.Files,
 			}
 		}
 
@@ -59,9 +59,9 @@ func (s State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 				return s, func() tea.Msg {
 					fileChanges, err := fetchFileChanges(selectedCommit.Hash+"^", selectedCommit.Hash)
 					return core.FilesLoadedMsg{
-						Commit: selectedCommit,
-						Files:  fileChanges,
-						Err:    err,
+						Range: core.NewSingleCommitRange(selectedCommit),
+						Files: fileChanges,
+						Err:   err,
 					}
 				}
 			}

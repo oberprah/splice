@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/alecthomas/chroma/v2"
+	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/domain/diff"
 	"github.com/oberprah/splice/internal/domain/highlight"
 	"github.com/oberprah/splice/internal/git"
@@ -27,10 +28,10 @@ func TestDiffState_View_AllLineTypes(t *testing.T) {
 	dmp := diffmatchpatch.New()
 
 	state := &State{
-		Commit: git.GitCommit{
+		Range: core.NewSingleCommitRange(git.GitCommit{
 			Hash:    "abc123def456789012345678901234567890abcd",
 			Message: "Refactor authentication module",
-		},
+		}),
 		File: git.FileChange{
 			Path:      "internal/auth/handler.go",
 			Additions: 2,
@@ -94,8 +95,8 @@ func TestDiffState_View_AllLineTypes(t *testing.T) {
 
 func TestDiffState_View_TokenRendering(t *testing.T) {
 	state := &State{
-		Commit: git.GitCommit{Hash: "abc123"},
-		File:   git.FileChange{Path: "test.go"},
+		Range: core.NewSingleCommitRange(git.GitCommit{Hash: "abc123"}),
+		File:  git.FileChange{Path: "test.go"},
 		Diff: &diff.AlignedFileDiff{
 			Left: diff.FileContent{
 				Path: "test.go",
@@ -178,8 +179,8 @@ func TestDiffState_View_InlineDiffRendering(t *testing.T) {
 	dmp := diffmatchpatch.New()
 
 	state := &State{
-		Commit: git.GitCommit{Hash: "abc123"},
-		File:   git.FileChange{Path: "test.go"},
+		Range: core.NewSingleCommitRange(git.GitCommit{Hash: "abc123"}),
+		File:  git.FileChange{Path: "test.go"},
 		Diff: &diff.AlignedFileDiff{
 			Left: diff.FileContent{
 				Path: "test.go",
@@ -279,8 +280,8 @@ func TestDiffState_View_InlineDiffRendering(t *testing.T) {
 
 func TestDiffState_View_EmptyDiff(t *testing.T) {
 	state := &State{
-		Commit: git.GitCommit{Hash: "abc123"},
-		File:   git.FileChange{Path: "file.go"},
+		Range: core.NewSingleCommitRange(git.GitCommit{Hash: "abc123"}),
+		File:  git.FileChange{Path: "file.go"},
 		Diff: &diff.AlignedFileDiff{
 			Left: diff.FileContent{
 				Path:  "file.go",
@@ -319,8 +320,8 @@ func TestDiffState_View_Viewport(t *testing.T) {
 	}
 
 	state := &State{
-		Commit: git.GitCommit{Hash: "abc123"},
-		File:   git.FileChange{Path: "file.go"},
+		Range: core.NewSingleCommitRange(git.GitCommit{Hash: "abc123"}),
+		File:  git.FileChange{Path: "file.go"},
 		Diff: &diff.AlignedFileDiff{
 			Left: diff.FileContent{
 				Path:  "file.go",

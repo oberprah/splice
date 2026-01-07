@@ -35,8 +35,8 @@ func createTestDiffState(numLines int) *State {
 	}
 
 	return &State{
-		Commit: git.GitCommit{Hash: "abc123"},
-		File:   git.FileChange{Path: "file.go", Additions: 5, Deletions: 3},
+		Range: core.NewSingleCommitRange(git.GitCommit{Hash: "abc123"}),
+		File:  git.FileChange{Path: "file.go", Additions: 5, Deletions: 3},
 		Diff: &diff.AlignedFileDiff{
 			Left: diff.FileContent{
 				Path:  "file.go",
@@ -390,8 +390,8 @@ func createTestDiffStateWithChanges(numLines int, changeIndices []int) *State {
 	}
 
 	return &State{
-		Commit: git.GitCommit{Hash: "abc123"},
-		File:   git.FileChange{Path: "file.go", Additions: 5, Deletions: 3},
+		Range: core.NewSingleCommitRange(git.GitCommit{Hash: "abc123"}),
+		File:  git.FileChange{Path: "file.go", Additions: 5, Deletions: 3},
 		Diff: &diff.AlignedFileDiff{
 			Left: diff.FileContent{
 				Path:  "file.go",

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/ui/components"
 	"github.com/oberprah/splice/internal/ui/testutils"
@@ -55,7 +56,7 @@ func TestFilesState_View_RendersHeader(t *testing.T) {
 	}
 
 	s := State{
-		Commit:        commit,
+		Range:         core.NewSingleCommitRange(commit),
 		Files:         files,
 		Cursor:        0,
 		ViewportStart: 0,
@@ -76,7 +77,7 @@ func TestFilesState_View_RendersFileList(t *testing.T) {
 	}
 
 	s := State{
-		Commit:        commit,
+		Range:         core.NewSingleCommitRange(commit),
 		Files:         files,
 		Cursor:        0,
 		ViewportStart: 0,
@@ -105,7 +106,7 @@ func TestFilesState_View_SelectionIndicator(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := State{
-				Commit:        commit,
+				Range:         core.NewSingleCommitRange(commit),
 				Files:         files,
 				Cursor:        tt.cursor,
 				ViewportStart: 0,
@@ -124,7 +125,7 @@ func TestFilesState_View_ViewportLimits(t *testing.T) {
 	files := createTestFileChanges(20)
 
 	s := State{
-		Commit:        commit,
+		Range:         core.NewSingleCommitRange(commit),
 		Files:         files,
 		Cursor:        10,
 		ViewportStart: 5,
@@ -144,7 +145,7 @@ func TestFilesState_View_BinaryFiles(t *testing.T) {
 	}
 
 	s := State{
-		Commit:        commit,
+		Range:         core.NewSingleCommitRange(commit),
 		Files:         files,
 		Cursor:        0,
 		ViewportStart: 0,
@@ -161,7 +162,7 @@ func TestFilesState_View_EmptyFileList(t *testing.T) {
 	files := []git.FileChange{}
 
 	s := State{
-		Commit:        commit,
+		Range:         core.NewSingleCommitRange(commit),
 		Files:         files,
 		Cursor:        0,
 		ViewportStart: 0,
@@ -184,7 +185,7 @@ func TestFilesState_View_LongFilePaths(t *testing.T) {
 	}
 
 	s := State{
-		Commit:        commit,
+		Range:         core.NewSingleCommitRange(commit),
 		Files:         files,
 		Cursor:        0,
 		ViewportStart: 0,
@@ -207,7 +208,7 @@ func TestFilesState_View_FileStatsSummary(t *testing.T) {
 	}
 
 	s := State{
-		Commit:        commit,
+		Range:         core.NewSingleCommitRange(commit),
 		Files:         files,
 		Cursor:        0,
 		ViewportStart: 0,
@@ -288,7 +289,7 @@ func TestFilesState_View_StatusDisplay(t *testing.T) {
 	}
 
 	s := State{
-		Commit:        commit,
+		Range:         core.NewSingleCommitRange(commit),
 		Files:         files,
 		Cursor:        0,
 		ViewportStart: 0,
@@ -308,7 +309,7 @@ func TestFilesState_View_DynamicAlignment(t *testing.T) {
 	}
 
 	s := State{
-		Commit:        commit,
+		Range:         core.NewSingleCommitRange(commit),
 		Files:         files,
 		Cursor:        0,
 		ViewportStart: 0,
@@ -332,7 +333,7 @@ func TestFilesState_View_WithRefs(t *testing.T) {
 	}
 
 	s := State{
-		Commit:        commit,
+		Range:         core.NewSingleCommitRange(commit),
 		Files:         files,
 		Cursor:        0,
 		ViewportStart: 0,

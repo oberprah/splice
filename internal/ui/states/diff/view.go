@@ -80,7 +80,8 @@ func (s *State) renderHeader() string {
 	// Format: abc123d · path/to/file.go · +15 -8
 	var b strings.Builder
 
-	b.WriteString(styles.HashStyle.Render(format.ToShortHash(s.Commit.Hash)))
+	// For now, we display the End commit (for single commit, Start and End are the same)
+	b.WriteString(styles.HashStyle.Render(format.ToShortHash(s.Range.End.Hash)))
 	b.WriteString(styles.HeaderStyle.Render(" · "))
 	b.WriteString(styles.FilePathStyle.Render(s.File.Path))
 	b.WriteString(styles.HeaderStyle.Render(" · "))
