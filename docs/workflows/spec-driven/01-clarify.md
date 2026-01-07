@@ -17,7 +17,7 @@ Establish shared understanding of **what** we're building and **why**. End with 
 ## Outputs
 
 Created in `docs/specs/<yymmdd-feature-name>/`:
-- `01-requirements.md` - Validated requirements document
+- `01_requirements_<feature-name>.md` - Validated requirements document
 - `research/<topic>.md` - Research findings (as needed)
 
 ## Process
@@ -54,11 +54,11 @@ Example topics to clarify:
 - Understand existing code/features being extended
 - Investigate technical constraints
 - Explore patterns, APIs, data models
-- Document findings in `research/<topic>.md`
+- Subagents document their findings in `research/<topic>.md`
 
 ### 3. Document Requirements
 
-Write `01-requirements.md` containing:
+Write `01_requirements_<feature-name>.md` containing:
 - Problem statement
 - Goals and non-goals
 - User impact
