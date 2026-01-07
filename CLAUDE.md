@@ -4,76 +4,81 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Splice is a terminal-based git diff viewer built with Go and Bubbletea. The goal is to provide a superior diff viewing experience compared to existing tools, with easy distribution as a single binary.
-
-## Technology Stack
-
-- **Go** (primary language)
-- **Bubbletea** (TUI framework using The Elm Architecture: Model-Update-View pattern)
-- **Charm Bracelet ecosystem** (Bubbles, Lip Gloss, Glamour for UI components)
-
-See `docs/adr/adr-002-acc-go-bubbletea-stack.md` for the rationale behind this stack choice.
-
-## Project Structure
-
-The project uses a simplified structure with `main.go` at the root and `/internal` for private application code.
-
-UI components follow the Elm Architecture (Model-Update-View) with states organized into subpackages:
-- Each state (loading, list, error) has its own package under `internal/ui/state/`
-- Within each state package: `state.go` (struct), `view.go` (rendering), `update.go` (event handling)
-- States implement the `state.State` interface and receive a `state.Context` for accessing model properties
-
-## Architecture & Data Flow
-
-The app is a state machine where each screen (loading, log, files, diff) is a separate state:
-
-```
-LoadingState → LogState → FilesState → DiffState
-                  ↑______________|          |
-                  |_________________________|
-```
-
-**State file organization** (`internal/ui/states/`):
-- `*_state.go` - State struct definition
-- `*_view.go` - Rendering logic (View method)
-- `*_update.go` - Event handling (Update method)
-
-**Async data loading pattern**:
-1. User action triggers `tea.Cmd` (e.g., `loadDiff()` in `files_update.go`)
-2. Cmd executes async, returns a message (e.g., `DiffLoadedMsg`)
-3. Message routed to current state's `Update()` method
-4. Update returns new state + optional new command
-
-**Message definitions**: `internal/ui/messages/messages.go`
-
-When modifying a state's data structure, typically need to update:
-- The message struct in `messages.go`
-- The state struct in `*_state.go`
-- View rendering in `*_view.go`
-- The code that creates the message (e.g., `loadDiff()`)
-- Corresponding `*_test.go` files
+Splice is a terminal-native git log/diff viewer. Lean interface, intuitive navigation, fast keyboard-driven workflow.
 
 ## Development Commands
 
 ```bash
 go run .                        # Run application
 go build -o splice .            # Build binary
-
 go tool golangci-lint run       # Lint
-
-go mod tidy                     # Update dependencies
-
-go test ./...                   # Run tests
+go test ./...                   # Run all tests
+go test ./internal/ui/states/log/...  # Run tests for a specific package
 go test ./... -update           # Update golden files
 ```
 
+Setup git hooks (runs lint, tests, build on commit):
+```bash
+git config core.hooksPath .githooks
+```
+
+## Package Architecture
+
+The project follows a layered architecture with strict import rules:
+
+```
+internal/
+├── core/       # Interfaces and messages (no dependencies on other internal packages)
+├── domain/     # Pure business logic (diff parsing, graph layout, syntax highlighting)
+├── git/        # Git command execution
+├── ui/         # UI layer
+│   ├── states/     # Screen states (loading, log, files, diff, error)
+│   ├── components/ # Reusable view components
+│   ├── styles/     # Lip Gloss styling
+│   ├── format/     # Formatting utilities
+│   └── testutils/  # Test helpers and mocks
+└── app/        # Application model and Bubbletea integration
+```
+
+**Import direction**: `app` → `ui/states` → `ui/components` → `domain` → `git` (`core/` is shared by all layers)
+
+## State Machine Architecture
+
+The app is a navigation stack where each screen is a separate state implementing `core.State`:
+
+```
+LoadingState → LogState ⇄ FilesState ⇄ DiffState
+```
+
+Navigation uses typed messages (`core.Push*ScreenMsg`, `core.PopScreenMsg`) handled by `app.Model`.
+
+**State file organization** (`internal/ui/states/<name>/`):
+- `state.go` - State struct and constructor
+- `view.go` - Rendering logic (View method)
+- `update.go` - Event handling (Update method)
+
+**Async data loading pattern**:
+1. User action triggers `tea.Cmd` (e.g., `loadDiff()`)
+2. Cmd executes async, returns a message (e.g., `DiffLoadedMsg`)
+3. Message routed to current state's `Update()` method
+4. Update returns `Push*ScreenMsg` to navigate or new state + command
+
+## Coding Principles
+
+- **Deep functions**: Prefer fewer, more capable functions over many shallow ones
+- **Pure functions**: Favor pure functions; isolate side effects at boundaries
+- **Minimal comments**: Code should be self-explanatory; comment only for non-obvious "why"
+- **Make illegal states unrepresentable**: Use sum types and type design to prevent invalid states
+- **TDD**: Write tests first when implementing new functionality
+
 ## Testing
 
-**When implementing tests, you MUST read `docs/guidelines/testing-guidelines.md` first.**
+**Read `docs/guidelines/testing-guidelines.md` before implementing tests.**
 
-The project uses three types of tests:
-- **Unit tests** for most functionality
-- **Golden file tests** for TUI rendering (snapshot comparisons)
-- **E2E tests** for critical user workflows
+- **Unit tests**: Most functionality
+- **Golden file tests**: TUI rendering (run with `-update` to regenerate)
+- **E2E tests**: Full user workflows (`test/e2e/`)
 
-All external dependencies (git commands) are mocked via dependency injection.
+All external dependencies (git commands, time) are mocked via functional options on `app.Model`. Test helpers are in `internal/ui/testutils/`.
+
+**Golden file updates**: After running `go test ./... -update`, always review the git diff of `.golden` files to verify changes are intentional before committing.
