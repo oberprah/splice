@@ -40,6 +40,6 @@ func WithNow(fn func() time.Time) ModelOption {
 // WithInitialState allows setting a custom initial state for testing
 func WithInitialState(state core.State) ModelOption {
 	return func(m *Model) {
-		m.currentState = state
+		m.stack = []core.State{state}
 	}
 }

@@ -4,9 +4,9 @@
 
 This design restructures the codebase into clear architectural layers (`domain/`, `app/`, `ui/`) and introduces a navigation stack to decouple states from each other. The key insight is that states currently embed parent state data for back-navigation, creating tight coupling. With a navigation stack, the Model preserves previous states directly, eliminating this coupling and enabling states to live in separate packages without circular imports.
 
-The State and Context interfaces move to `app/`, and states register themselves via init-time registration to avoid import cycles. Navigation happens through messages (`PushScreenMsg`, `PopScreenMsg`) that the Model intercepts, rather than states constructing each other directly.
+The State and Context interfaces live in `core/` (a neutral package that breaks import cycles). Navigation happens through typed messages (`PushLogScreenMsg`, `PushFilesScreenMsg`, etc.) that the Model intercepts, rather than states constructing each other directly. The Model uses a single stack where the current state is always `stack[len-1]`.
 
-Implementation proceeds in three phases: (1) navigation stack with factory registration, (2) package reorganization, (3) state subfolders and component extraction.
+Implementation proceeded in phases: (1) navigation stack with typed messages, (2) package reorganization, (3) state subfolders and component extraction, (4) stack simplification (removing `currentState` and `firstPush` fields).
 
 ## Context & Problem Statement
 
@@ -76,12 +76,14 @@ internal/
 │   ├── diff/
 │   ├── graph/
 │   └── highlight/
+├── core/             # Shared interfaces (breaks import cycles)
+│   ├── state.go      # State, Context, ViewRenderer interfaces
+│   ├── navigation.go # Typed navigation messages (PushLogScreenMsg, etc.)
+│   └── messages.go   # Domain messages (CommitsLoadedMsg, etc.)
 ├── app/              # Application core
-│   ├── state.go      # State, Context interfaces
-│   ├── navigation.go # Navigation messages, Screen enum
-│   ├── messages.go   # Domain messages (merged)
-│   ├── model.go      # Model struct
-│   └── factory.go    # State factory with registration
+│   ├── model.go      # Model struct (Bubbletea lifecycle)
+│   ├── options.go    # Functional options (WithFetchCommits, etc.)
+│   └── accessors.go  # Context interface implementation
 └── ui/               # Presentation
     ├── states/       # State implementations
     │   ├── loading/
@@ -96,35 +98,58 @@ internal/
 
 ### 2. Navigation Stack
 
-> **Decision:** Model maintains a stack of states. States signal navigation via messages, Model intercepts and manages transitions.
+> **Decision:** Model maintains a single stack of states where current state is always `stack[len-1]`. States signal navigation via typed messages, Model intercepts and manages transitions.
 
 #### Stack Mechanism
 
 ```go
 // app/model.go
 type Model struct {
-    stack        []State   // Previous states (preserved exactly)
-    currentState State
-    // ...existing fields
+    stack []core.State  // Current state is always stack[len-1]
+    // ...other fields (width, height, fetchers)
+}
+
+// current returns the current state (top of stack)
+func (m *Model) current() core.State {
+    return m.stack[len(m.stack)-1]
+}
+
+// pushState adds a new state. LoadingState is transient - replaced, not stacked.
+func (m *Model) pushState(newState core.State) {
+    if _, isLoading := m.current().(loading.State); isLoading {
+        m.stack[len(m.stack)-1] = newState  // Replace LoadingState
+    } else {
+        m.stack = append(m.stack, newState)  // Normal push
+    }
 }
 ```
 
 #### Navigation Messages
 
+Typed messages provide compile-time safety (no `any` type assertions):
+
 ```go
-// app/navigation.go
-type Screen int
+// core/navigation.go
+type PushLogScreenMsg struct {
+    Commits     []git.GitCommit
+    GraphLayout *graph.Layout
+    InitCmd     tea.Cmd
+}
 
-const (
-    LogScreen Screen = iota
-    FilesScreen
-    DiffScreen
-    ErrorScreen
-)
+type PushFilesScreenMsg struct {
+    Commit git.GitCommit
+    Files  []git.FileChange
+}
 
-type PushScreenMsg struct {
-    Screen Screen
-    Data   any  // Screen-specific data
+type PushDiffScreenMsg struct {
+    Commit        git.GitCommit
+    File          git.FileChange
+    Diff          *diff.AlignedFileDiff
+    ChangeIndices []int
+}
+
+type PushErrorScreenMsg struct {
+    Err error
 }
 
 type PopScreenMsg struct{}
@@ -136,8 +161,9 @@ type PopScreenMsg struct{}
 ┌───────────────────────────────────────────────────────────────┐
 │                          Model                                │
 │  ┌────────────────────────────────────────────────────────┐   │
-│  │ stack: [LogState, FilesState]                          │   │
-│  │ current: DiffState                                     │   │
+│  │ stack: [LogState, FilesState, DiffState]               │   │
+│  │         ↑                      ↑                       │   │
+│  │      history              current()                    │   │
 │  └────────────────────────────────────────────────────────┘   │
 │                              │                                │
 │                              ▼                                │
@@ -145,14 +171,12 @@ type PopScreenMsg struct{}
 │  │                    Model.Update(msg)                    │  │
 │  │  ┌──────────────────────────────────────────────────┐   │  │
 │  │  │ switch msg.(type) {                              │   │  │
-│  │  │ case PushScreenMsg:                              │   │  │
-│  │  │     stack = append(stack, currentState)          │   │  │
-│  │  │     currentState = createState(msg.Screen, data) │   │  │
-│  │  │ case PopScreenMsg:                               │   │  │
-│  │  │     currentState = stack[len-1]                  │   │  │
-│  │  │     stack = stack[:len-1]                        │   │  │
+│  │  │ case core.PushFilesScreenMsg:                    │   │  │
+│  │  │     m.pushState(&files.State{...})               │   │  │
+│  │  │ case core.PopScreenMsg:                          │   │  │
+│  │  │     m.stack = m.stack[:len-1]                    │   │  │
 │  │  │ default:                                         │   │  │
-│  │  │     delegate to currentState.Update()            │   │  │
+│  │  │     m.current().Update(msg, &m)                  │   │  │
 │  │  │ }                                                │   │  │
 │  │  └──────────────────────────────────────────────────┘   │  │
 │  └─────────────────────────────────────────────────────────┘  │
@@ -161,81 +185,62 @@ type PopScreenMsg struct{}
 
 #### State Transitions (New)
 
-States return commands that produce navigation messages:
+States return commands that produce typed navigation messages:
 
 ```go
 // states/log/update.go - NO import of files package
-func (s *State) Update(msg tea.Msg, ctx app.Context) (app.State, tea.Cmd) {
-    case messages.FilesLoadedMsg:
-        // Return command that sends PushScreenMsg
+func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
+    case core.FilesLoadedMsg:
+        // Return command that sends typed PushFilesScreenMsg
         return s, func() tea.Msg {
-            return app.PushScreenMsg{
-                Screen: app.FilesScreen,
-                Data: app.FilesScreenData{
-                    Commit: msg.Commit,
-                    Files:  msg.Files,
-                },
+            return core.PushFilesScreenMsg{
+                Commit: msg.Commit,
+                Files:  msg.Files,
             }
         }
 }
 
 // states/files/update.go - NO import of log or diff packages
-func (s *State) Update(msg tea.Msg, ctx app.Context) (app.State, tea.Cmd) {
-    case "q":
-        // Return command that sends PopScreenMsg
-        return s, func() tea.Msg {
-            return app.PopScreenMsg{}
+func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
+    case tea.KeyMsg:
+        if msg.String() == "q" {
+            return s, func() tea.Msg {
+                return core.PopScreenMsg{}
+            }
         }
 }
 ```
 
-#### State Factory (Registration Pattern)
+#### Direct State Creation (No Factory)
 
-> **Decision:** Use init-time registration to avoid Model importing state packages directly.
+> **Decision:** Model creates states directly in Update handlers. This is simpler than factory registration and still avoids import cycles because typed messages carry all data needed.
 
 ```go
-// app/factory.go
-var stateFactories = map[Screen]func(any) State{}
-
-func RegisterStateFactory(screen Screen, factory func(any) State) {
-    stateFactories[screen] = factory
-}
-
-func CreateState(screen Screen, data any) State {
-    factory, ok := stateFactories[screen]
-    if !ok {
-        panic(fmt.Sprintf("no factory registered for screen %v", screen))
+// app/model.go - imports all state packages directly
+case core.PushFilesScreenMsg:
+    newState := &files.State{
+        Commit: msg.Commit,
+        Files:  msg.Files,
     }
-    return factory(data)
-}
+    m.pushState(newState)
+    return m, nil
 ```
 
-```go
-// states/log/state.go
-func init() {
-    app.RegisterStateFactory(app.LogScreen, func(data any) app.State {
-        d := data.(app.LogScreenData)
-        return New(d.Commits, d.GraphLayout)
-    })
-}
-```
-
-This breaks the import cycle:
-- `app/` defines interfaces, doesn't import states
-- State packages import `app/` and register at init
-- `main.go` imports state packages (triggering init registration)
-- Model uses `app.CreateState()` at runtime
+Import cycle is broken by the `core` package:
+- `core/` defines interfaces and messages (no imports of `app/` or states)
+- `app/` imports `core/` and all state packages
+- State packages import `core/` (not `app/`)
 
 ### 3. Interface Locations
 
-> **Decision:** Move State and Context interfaces to `app/` package.
+> **Decision:** State and Context interfaces live in `core/` package.
 
-Rationale: The Model implements Context and consumes State. Moving interfaces to `app/` makes the dependency direction clear: states depend on `app/`, not the other way around.
+Rationale: The `core/` package is a neutral ground that breaks import cycles. Both `app/` and state packages can import `core/` without creating cycles.
 
 ```go
-// app/state.go
+// core/state.go
 type State interface {
-    View(ctx Context) *ViewBuilder
+    View(ctx Context) ViewRenderer
     Update(msg tea.Msg, ctx Context) (State, tea.Cmd)
 }
 
@@ -247,84 +252,85 @@ type Context interface {
     Now() time.Time
 }
 
+type ViewRenderer interface {
+    String() string
+}
+
 type FetchFileChangesFunc func(commitHash string) ([]git.FileChange, error)
 type FetchFullFileDiffFunc func(commitHash string, change git.FileChange) (*git.FullFileDiffResult, error)
 ```
 
 ### 4. Screen Data Types
 
-> **Decision:** Define screen data types in `app/navigation.go` alongside Screen enum.
+> **Decision:** Screen data is embedded directly in typed navigation messages. No separate data types needed.
+
+Each `Push*ScreenMsg` contains exactly the data needed for that screen:
 
 ```go
-// app/navigation.go
-type LogScreenData struct {
+// core/navigation.go - data is part of the message
+type PushLogScreenMsg struct {
     Commits     []git.GitCommit
     GraphLayout *graph.Layout
+    InitCmd     tea.Cmd  // Command to start preview loading
 }
 
-type FilesScreenData struct {
+type PushFilesScreenMsg struct {
     Commit git.GitCommit
     Files  []git.FileChange
 }
-
-type DiffScreenData struct {
-    Commit        git.GitCommit
-    File          git.FileChange
-    Diff          *diff.AlignedFileDiff
-    ChangeIndices []int
-}
-
-type ErrorScreenData struct {
-    Err error
-}
+// etc.
 ```
+
+This is simpler than separate `*ScreenData` types - no indirection, no type assertions.
 
 ### 5. Message Consolidation
 
-> **Decision:** Merge `messages/messages.go` into `app/messages.go`.
+> **Decision:** Messages live in `core/` package, split by purpose.
 
-Currently messages are in `internal/ui/messages/`. With the new structure, they belong in `app/` since they're part of application orchestration.
-
-The navigation messages (`PushScreenMsg`, `PopScreenMsg`) go in `app/navigation.go`.
-Domain messages (`FilesLoadedMsg`, `DiffLoadedMsg`, `FilesPreviewLoadedMsg`) go in `app/messages.go`.
-
-Note: `CommitsLoadedMsg` is currently defined in `loading_update.go`. It should move to `app/messages.go` for consistency.
+- `core/navigation.go` - Navigation messages (`PushLogScreenMsg`, `PushFilesScreenMsg`, `PushDiffScreenMsg`, `PushErrorScreenMsg`, `PopScreenMsg`)
+- `core/messages.go` - Domain messages (`CommitsLoadedMsg`, `FilesLoadedMsg`, `FilesPreviewLoadedMsg`, `DiffLoadedMsg`)
 
 ### 6. Special State Handling
 
 #### LoadingState
 
-> **Decision:** LoadingState is the initial state, never pushed to stack.
+> **Decision:** LoadingState is transient - it gets replaced instead of stacked.
+
+LoadingState is set as the initial state in `main.go`:
 
 ```go
-func NewModel(opts ...ModelOption) Model {
-    m := Model{
-        currentState: loading.New(),  // Initial state
-        stack:        nil,            // Empty stack
-        // ...
+// main.go
+initialModel := app.NewModel(
+    app.WithInitialState(loading.State{}),
+)
+```
+
+When any Push message arrives while LoadingState is current, Model replaces it instead of stacking:
+
+```go
+// app/model.go
+func (m *Model) pushState(newState core.State) {
+    // LoadingState is transient - replace instead of stacking
+    if _, isLoading := m.current().(loading.State); isLoading {
+        m.stack[len(m.stack)-1] = newState
+    } else {
+        m.stack = append(m.stack, newState)
     }
 }
 ```
 
-When LoadingState completes, it returns `PushScreenMsg{LogScreen, ...}`. The Model handles this specially: since there's nothing to push (LoadingState shouldn't be on stack), it replaces currentState directly.
-
-```go
-case PushScreenMsg:
-    if len(m.stack) == 0 && isLoadingState(m.currentState) {
-        // First transition from LoadingState - replace, don't push
-        m.currentState = CreateState(msg.Screen, msg.Data)
-    } else {
-        // Normal push
-        m.stack = append(m.stack, m.currentState)
-        m.currentState = CreateState(msg.Screen, msg.Data)
-    }
-```
+This ensures:
+- LoadingState never appears in navigation history
+- User can't "go back" to the loading screen
+- Simple type check, no special flags needed
 
 #### ErrorState
 
 > **Decision:** ErrorState is pushed onto stack. User can go back.
 
 If an error occurs while loading files, push ErrorState. User presses 'q' → PopScreenMsg → returns to previous state.
+
+Exception: If error occurs during initial loading (LoadingState → Error), the ErrorState replaces LoadingState (same transient behavior).
 
 ### 7. Shared Components
 
@@ -347,12 +353,17 @@ ui/components/
          ┌─────────────┼─────────────┐
          │             │             │
          ▼             ▼             ▼
-    states/log    states/files   states/diff ...
-         │             │             │
-         └─────────────┼─────────────┘
+       app/      states/loading   (initial state)
+         │
+         ├─────────────────────────────────────┐
+         │             │             │         │
+         ▼             ▼             ▼         ▼
+    states/log   states/files  states/diff  states/error
+         │             │             │         │
+         └─────────────┴─────────────┴─────────┘
                        │
                        ▼
-                     app/
+                     core/  ←─────────────────── app/ also imports
                        │
          ┌─────────────┼─────────────┐
          │             │             │
@@ -366,10 +377,12 @@ ui/components/
        git/
 ```
 
-- `main.go` imports all state packages (triggers init registration)
-- State packages import `app/` (interfaces, navigation, messages)
+- `main.go` imports `app/` and `loading` (to set initial state)
+- `app/` imports `core/` and all state packages (to create states in Update)
+- State packages import `core/` (interfaces, messages) - NOT `app/`
 - State packages import `ui/components/`, `ui/styles/`, `ui/format/`
 - State packages import `domain/*` as needed
+- `core/` is the neutral ground that breaks import cycles
 - No circular imports
 
 ### 9. State Struct Changes
@@ -403,38 +416,41 @@ type State struct {
 
 **DiffState** goes from 14 fields to 7 fields.
 
-### 10. Migration Strategy
+### 10. Migration Strategy (Completed)
 
-> **Decision:** Incremental migration in three phases.
+The migration was completed incrementally:
 
-**Phase 1: Navigation Stack**
-1. Add stack to Model
-2. Add navigation messages to existing `messages/` package
-3. Add factory registration pattern
-4. Update states one-by-one to use `PushScreenMsg`/`PopScreenMsg`
-5. Remove preserved parent fields from state structs
-6. All tests pass at each step
+**Phase 1: Navigation Stack with Typed Messages**
+1. Added stack to Model with `firstPush` flag for LoadingState handling
+2. Created typed navigation messages (`PushLogScreenMsg`, etc.) instead of generic `PushScreenMsg{Screen, Data any}`
+3. Created `core/` package to break import cycles (interfaces + messages)
+4. Updated states to use typed messages via `core/`
+5. Removed preserved parent fields from state structs
 
 **Phase 2: Package Reorganization**
-1. Create `internal/domain/` and move `diff/`, `graph/`, `highlight/`
-2. Create `internal/app/` and move Model, messages, navigation
-3. Update all import paths
-4. Verify no circular imports
+1. Created `internal/domain/` and moved `diff/`, `graph/`, `highlight/`
+2. Created `internal/app/` with Model, options, accessors
+3. Created `internal/core/` with State, Context interfaces and all messages
+4. Updated all import paths
 
 **Phase 3: State Subfolders + Components**
-1. Create `ui/components/` and extract shared view utilities
-2. Move each state to its subfolder (`states/log/`, etc.)
-3. Rename files (`log_state.go` → `state.go`, etc.)
+1. Created `ui/components/` and extracted shared view utilities
+2. Moved each state to its subfolder (`states/log/`, etc.)
+3. Renamed files (`log_state.go` → `state.go`, etc.)
 
-Rationale: Phase 1 is the riskiest (changes behavior). Doing it first while structure is familiar reduces risk. Phases 2-3 are mechanical refactors.
+**Phase 4: Stack Simplification**
+1. Removed `currentState` field - current is now `stack[len-1]`
+2. Removed `firstPush` flag - replaced with LoadingState type check
+3. Added `current()` and `pushState()` helper methods
+4. Split `model.go` into `model.go`, `options.go`, `accessors.go`
 
-## Open Questions
+## Summary
 
-None. All decisions have been made:
-
-| Question | Decision |
-|----------|----------|
-| Message location | `app/messages.go` (domain), `app/navigation.go` (nav) |
-| Context interface | `app/state.go` |
-| Screen data types | `app/navigation.go` |
-| Migration strategy | Incremental: stack → packages → subfolders |
+| Aspect | Decision |
+|--------|----------|
+| Message location | `core/navigation.go` (nav), `core/messages.go` (domain) |
+| Interfaces | `core/state.go` (State, Context, ViewRenderer) |
+| Screen data | Embedded in typed messages (no separate types) |
+| Stack model | Single `stack []core.State`, current = `stack[len-1]` |
+| LoadingState | Transient - replaced via type check, not stacked |
+| Import cycles | Broken by `core/` package as neutral ground |

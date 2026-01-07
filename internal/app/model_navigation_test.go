@@ -8,14 +8,17 @@ import (
 
 	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/git"
+	"github.com/oberprah/splice/internal/ui/states/loading"
 )
 
-// TestNavigationStack tests that the navigation stack works correctly
+// TestNavigationStack tests that the navigation stack works correctly.
+// With the stack-only model, current state is always stack[len-1].
+// LoadingState is transient - it gets replaced on first push, not stacked.
 func TestNavigationStack(t *testing.T) {
-	// Create a model with mocks and a mock initial state
+	// Create a model with LoadingState as initial state
 	fixedTime := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
 	m := NewModel(
-		WithInitialState(mockState{}),
+		WithInitialState(loading.State{}),
 		WithFetchCommits(func(int) ([]git.GitCommit, error) {
 			return []git.GitCommit{{Hash: "abc123", Message: "Test", Author: "Test", Date: fixedTime}}, nil
 		}),
@@ -31,20 +34,20 @@ func TestNavigationStack(t *testing.T) {
 	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
 	m = m2.(Model)
 
-	// Initial stack should be empty
-	if len(m.stack) != 0 {
-		t.Errorf("Initial stack should be empty, got %d", len(m.stack))
+	// Initial stack should have LoadingState
+	if len(m.stack) != 1 {
+		t.Errorf("Initial stack should have 1 item (LoadingState), got %d", len(m.stack))
 	}
 
-	// Push LogScreen - this is the first push, so it replaces the initial state (doesn't add to stack)
+	// Push LogScreen - LoadingState is transient, so it gets replaced (stack stays at 1)
 	m2, cmd := m.Update(core.PushLogScreenMsg{
 		Commits:     []git.GitCommit{{Hash: "abc123"}},
 		GraphLayout: nil,
 	})
 	m = m2.(Model)
 
-	if len(m.stack) != 0 {
-		t.Errorf("After first push (from loading), stack should still be empty, got %d", len(m.stack))
+	if len(m.stack) != 1 {
+		t.Errorf("After first push (replacing LoadingState), stack should have 1 item, got %d", len(m.stack))
 	}
 	if cmd != nil {
 		// Execute the command if any
@@ -53,60 +56,41 @@ func TestNavigationStack(t *testing.T) {
 		m = m2.(Model)
 	}
 
-	// Push FilesScreen
-	t.Logf("Before pushing FilesScreen: stack len = %d", len(m.stack))
+	// Push FilesScreen - normal push, adds to stack
 	m2, _ = m.Update(core.PushFilesScreenMsg{
 		Commit: git.GitCommit{Hash: "abc123"},
 		Files:  []git.FileChange{{Path: "test.go"}},
 	})
 	m = m2.(Model)
-	t.Logf("After pushing FilesScreen: stack len = %d", len(m.stack))
 
-	if len(m.stack) != 1 {
-		t.Errorf("After pushing FilesScreen, stack should have 1 item, got %d", len(m.stack))
+	if len(m.stack) != 2 {
+		t.Errorf("After pushing FilesScreen, stack should have 2 items, got %d", len(m.stack))
 	}
 
-	// Push DiffScreen
+	// Push DiffScreen - normal push, adds to stack
 	m2, _ = m.Update(core.PushDiffScreenMsg{
 		Commit: git.GitCommit{Hash: "abc123"},
 		File:   git.FileChange{Path: "test.go"},
 	})
 	m = m2.(Model)
 
-	if len(m.stack) != 2 {
-		t.Errorf("After pushing DiffScreen, stack should have 2 items, got %d", len(m.stack))
+	if len(m.stack) != 3 {
+		t.Errorf("After pushing DiffScreen, stack should have 3 items, got %d", len(m.stack))
 	}
 
 	// Pop back to FilesScreen
 	m2, _ = m.Update(core.PopScreenMsg{})
 	m = m2.(Model)
 
-	if len(m.stack) != 1 {
-		t.Errorf("After popping once, stack should have 1 item, got %d", len(m.stack))
+	if len(m.stack) != 2 {
+		t.Errorf("After popping once, stack should have 2 items, got %d", len(m.stack))
 	}
 
 	// Pop back to LogScreen
 	m2, _ = m.Update(core.PopScreenMsg{})
 	m = m2.(Model)
 
-	if len(m.stack) != 0 {
-		t.Errorf("After popping twice, stack should be empty, got %d", len(m.stack))
+	if len(m.stack) != 1 {
+		t.Errorf("After popping twice, stack should have 1 item (LogState), got %d", len(m.stack))
 	}
-}
-
-// mockState is a simple mock state for testing
-type mockState struct{}
-
-func (m mockState) View(ctx core.Context) core.ViewRenderer {
-	return mockViewRenderer{}
-}
-
-func (m mockState) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
-	return m, nil
-}
-
-type mockViewRenderer struct{}
-
-func (m mockViewRenderer) String() string {
-	return "mock"
 }
