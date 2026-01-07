@@ -286,10 +286,15 @@ func ParseFileChangesOutput(output string) ([]FileChange, error) {
 	return changes, nil
 }
 
-// FetchFileChanges executes git diff and returns a slice of file changes for a commit
-func FetchFileChanges(commitHash string) ([]FileChange, error) {
+// FetchFileChanges executes git diff and returns a slice of file changes for a range of commits.
+// fromHash is the older commit, toHash is the newer commit.
+// Use the format "fromHash..toHash" to compare two commits.
+func FetchFileChanges(fromHash, toHash string) ([]FileChange, error) {
+	rangeSpec := fromHash + ".." + toHash
+
 	// First, get file statuses (A/M/D/R)
-	statusCmd := exec.Command("git", "diff-tree", "--no-commit-id", "--name-status", "-r", commitHash)
+	// Note: diff-tree doesn't work well with ranges, so we use git diff for status
+	statusCmd := exec.Command("git", "diff", "--name-status", rangeSpec)
 	var statusOut bytes.Buffer
 	var statusErr bytes.Buffer
 	statusCmd.Stdout = &statusOut
@@ -302,9 +307,9 @@ func FetchFileChanges(commitHash string) ([]FileChange, error) {
 			return nil, fmt.Errorf("not a git repository")
 		}
 		if strings.Contains(stderrStr, "unknown revision") || strings.Contains(stderrStr, "bad revision") {
-			return nil, fmt.Errorf("invalid commit: %s", commitHash)
+			return nil, fmt.Errorf("invalid commit range: %s..%s", fromHash, toHash)
 		}
-		return nil, fmt.Errorf("git diff-tree failed: %v - %s", err, stderrStr)
+		return nil, fmt.Errorf("git diff failed: %v - %s", err, stderrStr)
 	}
 
 	// Parse status information into a map
@@ -323,7 +328,7 @@ func FetchFileChanges(commitHash string) ([]FileChange, error) {
 	}
 
 	// Now get numstat information
-	cmd := exec.Command("git", "diff-tree", "--no-commit-id", "--numstat", "-r", commitHash)
+	cmd := exec.Command("git", "diff", "--numstat", rangeSpec)
 	var out bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &out
@@ -336,9 +341,9 @@ func FetchFileChanges(commitHash string) ([]FileChange, error) {
 			return nil, fmt.Errorf("not a git repository")
 		}
 		if strings.Contains(stderrStr, "unknown revision") || strings.Contains(stderrStr, "bad revision") {
-			return nil, fmt.Errorf("invalid commit: %s", commitHash)
+			return nil, fmt.Errorf("invalid commit range: %s..%s", fromHash, toHash)
 		}
-		return nil, fmt.Errorf("git diff-tree failed: %v - %s", err, stderrStr)
+		return nil, fmt.Errorf("git diff failed: %v - %s", err, stderrStr)
 	}
 
 	// Parse file changes and add status
@@ -357,6 +362,12 @@ func FetchFileChanges(commitHash string) ([]FileChange, error) {
 	}
 
 	return changes, nil
+}
+
+// FetchFileChangesForCommit fetches file changes for a single commit.
+// This is a convenience wrapper that compares the commit against its parent.
+func FetchFileChangesForCommit(commitHash string) ([]FileChange, error) {
+	return FetchFileChanges(commitHash+"^", commitHash)
 }
 
 // FullFileDiffResult contains the full file content before and after a change
@@ -404,7 +415,8 @@ func FetchFileContent(commitHash, filePath string) (string, error) {
 
 // FetchFullFileDiff fetches the complete file content before and after a change,
 // along with the diff output. This enables showing the full file with changes highlighted.
-func FetchFullFileDiff(commitHash string, change FileChange) (*FullFileDiffResult, error) {
+// fromHash is the older commit, toHash is the newer commit.
+func FetchFullFileDiff(fromHash, toHash string, change FileChange) (*FullFileDiffResult, error) {
 	result := &FullFileDiffResult{
 		NewPath: change.Path,
 		OldPath: change.Path,
@@ -415,24 +427,24 @@ func FetchFullFileDiff(commitHash string, change FileChange) (*FullFileDiffResul
 	// In our FileChange struct, we only have Path (the new path)
 	// We need to handle this differently - for now assume same path
 
-	// Fetch new content (at commitHash)
+	// Fetch new content (at toHash)
 	switch change.Status {
 	case "D": // Deleted file - no new content
 		result.NewContent = ""
 	default:
-		newContent, err := FetchFileContent(commitHash, change.Path)
+		newContent, err := FetchFileContent(toHash, change.Path)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch new content: %w", err)
 		}
 		result.NewContent = newContent
 	}
 
-	// Fetch old content (at commitHash^, the parent commit)
+	// Fetch old content (at fromHash)
 	switch change.Status {
 	case "A": // Added file - no old content
 		result.OldContent = ""
 	default:
-		oldContent, err := FetchFileContent(commitHash+"^", result.OldPath)
+		oldContent, err := FetchFileContent(fromHash, result.OldPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch old content: %w", err)
 		}
@@ -440,13 +452,20 @@ func FetchFullFileDiff(commitHash string, change FileChange) (*FullFileDiffResul
 	}
 
 	// Fetch the diff
-	diffOutput, err := FetchFileDiff(commitHash, change.Path)
+	rangeSpec := fromHash + ".." + toHash
+	diffOutput, err := FetchFileDiffRange(rangeSpec, change.Path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch diff: %w", err)
 	}
 	result.DiffOutput = diffOutput
 
 	return result, nil
+}
+
+// FetchFullFileDiffForCommit fetches the full diff for a single commit.
+// This is a convenience wrapper that compares the commit against its parent.
+func FetchFullFileDiffForCommit(commitHash string, change FileChange) (*FullFileDiffResult, error) {
+	return FetchFullFileDiff(commitHash+"^", commitHash, change)
 }
 
 // FetchFileDiff retrieves the unified diff for a specific file in a commit.
@@ -470,6 +489,33 @@ func FetchFileDiff(commitHash, filePath string) (string, error) {
 			return "", fmt.Errorf("invalid commit: %s", commitHash)
 		}
 		return "", fmt.Errorf("git show failed: %v - %s", err, stderrStr)
+	}
+
+	return out.String(), nil
+}
+
+// FetchFileDiffRange retrieves the unified diff for a specific file in a commit range.
+// The rangeSpec should be in the format "fromHash..toHash".
+// The filePath should be relative to the repository root.
+func FetchFileDiffRange(rangeSpec, filePath string) (string, error) {
+	// Use :(top) pathspec to ensure path is relative to repo root regardless of cwd
+	cmd := exec.Command("git", "diff", rangeSpec, "--", ":(top)"+filePath)
+
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		stderrStr := stderr.String()
+		if strings.Contains(stderrStr, "not a git repository") {
+			return "", fmt.Errorf("not a git repository")
+		}
+		if strings.Contains(stderrStr, "unknown revision") || strings.Contains(stderrStr, "bad revision") {
+			return "", fmt.Errorf("invalid commit range: %s", rangeSpec)
+		}
+		return "", fmt.Errorf("git diff failed: %v - %s", err, stderrStr)
 	}
 
 	return out.String(), nil

@@ -22,10 +22,10 @@ func TestNavigationStack(t *testing.T) {
 		WithFetchCommits(func(int) ([]git.GitCommit, error) {
 			return []git.GitCommit{{Hash: "abc123", Message: "Test", Author: "Test", Date: fixedTime}}, nil
 		}),
-		WithFetchFileChanges(func(string) ([]git.FileChange, error) {
+		WithFetchFileChanges(func(fromHash, toHash string) ([]git.FileChange, error) {
 			return []git.FileChange{{Path: "test.go", Status: "M"}}, nil
 		}),
-		WithFetchFullFileDiff(func(string, git.FileChange) (*git.FullFileDiffResult, error) {
+		WithFetchFullFileDiff(func(fromHash, toHash string, change git.FileChange) (*git.FullFileDiffResult, error) {
 			return &git.FullFileDiffResult{DiffOutput: "test"}, nil
 		}),
 	)

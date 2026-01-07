@@ -29,13 +29,13 @@ func (m MockContext) Height() int {
 }
 
 func (m MockContext) FetchFileChanges() core.FetchFileChangesFunc {
-	return func(commitHash string) ([]git.FileChange, error) {
+	return func(fromHash, toHash string) ([]git.FileChange, error) {
 		return []git.FileChange{}, nil
 	}
 }
 
 func (m MockContext) FetchFullFileDiff() core.FetchFullFileDiffFunc {
-	return func(commitHash string, change git.FileChange) (*git.FullFileDiffResult, error) {
+	return func(fromHash, toHash string, change git.FileChange) (*git.FullFileDiffResult, error) {
 		return &git.FullFileDiffResult{}, nil
 	}
 }
@@ -164,9 +164,9 @@ func MockFetchCommits(commits []git.GitCommit, err error) func(int) ([]git.GitCo
 	}
 }
 
-// MockFetchFileChanges creates a mock function that returns file changes for a commit
-func MockFetchFileChanges(files []git.FileChange, err error) func(string) ([]git.FileChange, error) {
-	return func(commitHash string) ([]git.FileChange, error) {
+// MockFetchFileChanges creates a mock function that returns file changes for a commit range
+func MockFetchFileChanges(files []git.FileChange, err error) func(string, string) ([]git.FileChange, error) {
+	return func(fromHash, toHash string) ([]git.FileChange, error) {
 		if err != nil {
 			return nil, err
 		}
@@ -175,8 +175,8 @@ func MockFetchFileChanges(files []git.FileChange, err error) func(string) ([]git
 }
 
 // MockFetchFullFileDiff creates a mock function that returns full file diff result
-func MockFetchFullFileDiff(result *git.FullFileDiffResult, err error) func(string, git.FileChange) (*git.FullFileDiffResult, error) {
-	return func(commitHash string, change git.FileChange) (*git.FullFileDiffResult, error) {
+func MockFetchFullFileDiff(result *git.FullFileDiffResult, err error) func(string, string, git.FileChange) (*git.FullFileDiffResult, error) {
+	return func(fromHash, toHash string, change git.FileChange) (*git.FullFileDiffResult, error) {
 		if err != nil {
 			return nil, err
 		}

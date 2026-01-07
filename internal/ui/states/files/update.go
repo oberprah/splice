@@ -107,7 +107,7 @@ func (s *State) loadDiff(file git.FileChange, fetchFullFileDiff core.FetchFullFi
 
 	return func() tea.Msg {
 		// Fetch full file content and diff
-		fullDiffResult, err := fetchFullFileDiff(commit.Hash, file)
+		fullDiffResult, err := fetchFullFileDiff(commit.Hash+"^", commit.Hash, file)
 		if err != nil {
 			return core.DiffLoadedMsg{
 				Commit: commit,

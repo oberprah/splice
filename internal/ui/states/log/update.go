@@ -57,7 +57,7 @@ func (s State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 				selectedCommit := s.Commits[s.Cursor]
 				fetchFileChanges := ctx.FetchFileChanges()
 				return s, func() tea.Msg {
-					fileChanges, err := fetchFileChanges(selectedCommit.Hash)
+					fileChanges, err := fetchFileChanges(selectedCommit.Hash+"^", selectedCommit.Hash)
 					return core.FilesLoadedMsg{
 						Commit: selectedCommit,
 						Files:  fileChanges,
@@ -138,7 +138,7 @@ func (s *State) updateViewport(height int) {
 // LoadPreview creates a command to load file changes for a commit (for preview in log view)
 func LoadPreview(commitHash string, fetchFileChanges core.FetchFileChangesFunc) tea.Cmd {
 	return func() tea.Msg {
-		files, err := fetchFileChanges(commitHash)
+		files, err := fetchFileChanges(commitHash+"^", commitHash)
 		return core.FilesPreviewLoadedMsg{
 			ForHash: commitHash,
 			Files:   files,

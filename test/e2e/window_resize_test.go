@@ -111,10 +111,10 @@ func TestWindowResize(t *testing.T) {
 			}
 			return commits, nil
 		}),
-		app.WithFetchFileChanges(func(commitHash string) ([]git.FileChange, error) {
+		app.WithFetchFileChanges(func(fromHash, toHash string) ([]git.FileChange, error) {
 			return fileChanges, nil
 		}),
-		app.WithFetchFullFileDiff(func(commitHash string, change git.FileChange) (*git.FullFileDiffResult, error) {
+		app.WithFetchFullFileDiff(func(fromHash, toHash string, change git.FileChange) (*git.FullFileDiffResult, error) {
 			return &git.FullFileDiffResult{
 				OldContent: oldContent,
 				NewContent: newContent,
