@@ -6,8 +6,10 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/oberprah/splice/internal/app"
 	"github.com/oberprah/splice/internal/git"
-	"github.com/oberprah/splice/internal/ui"
+	"github.com/oberprah/splice/internal/ui/states/loading"
 )
 
 // createLongCommits creates test commits with long messages and authors to demonstrate truncation
@@ -101,17 +103,18 @@ func TestWindowResize(t *testing.T) {
 	// Fixed time for deterministic date formatting (commits are exactly 1 year old)
 	fixedNow := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
 
-	m := ui.NewModel(
-		ui.WithFetchCommits(func(limit int) ([]git.GitCommit, error) {
+	m := app.NewModel(
+		app.WithInitialState(loading.State{}),
+		app.WithFetchCommits(func(limit int) ([]git.GitCommit, error) {
 			if limit < len(commits) {
 				return commits[:limit], nil
 			}
 			return commits, nil
 		}),
-		ui.WithFetchFileChanges(func(commitHash string) ([]git.FileChange, error) {
+		app.WithFetchFileChanges(func(commitHash string) ([]git.FileChange, error) {
 			return fileChanges, nil
 		}),
-		ui.WithFetchFullFileDiff(func(commitHash string, change git.FileChange) (*git.FullFileDiffResult, error) {
+		app.WithFetchFullFileDiff(func(commitHash string, change git.FileChange) (*git.FullFileDiffResult, error) {
 			return &git.FullFileDiffResult{
 				OldContent: oldContent,
 				NewContent: newContent,
@@ -120,7 +123,7 @@ func TestWindowResize(t *testing.T) {
 				NewPath:    change.Path,
 			}, nil
 		}),
-		ui.WithNow(func() time.Time { return fixedNow }),
+		app.WithNow(func() time.Time { return fixedNow }),
 	)
 
 	runner := NewE2ETestRunner(t, m)

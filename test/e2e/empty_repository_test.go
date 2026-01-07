@@ -4,8 +4,10 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/oberprah/splice/internal/app"
 	"github.com/oberprah/splice/internal/git"
-	"github.com/oberprah/splice/internal/ui"
+	"github.com/oberprah/splice/internal/ui/states/loading"
 	"github.com/oberprah/splice/internal/ui/testutils"
 )
 
@@ -13,9 +15,10 @@ import (
 func TestEmptyRepository(t *testing.T) {
 	// Create model with empty commits (returns empty slice, not an error)
 	emptyCommits := []git.GitCommit{}
-	m := ui.NewModel(
-		ui.WithFetchCommits(testutils.MockFetchCommits(emptyCommits, nil)),
-		ui.WithFetchFileChanges(testutils.MockFetchFileChanges([]git.FileChange{}, nil)),
+	m := app.NewModel(
+		app.WithInitialState(loading.State{}),
+		app.WithFetchCommits(testutils.MockFetchCommits(emptyCommits, nil)),
+		app.WithFetchFileChanges(testutils.MockFetchFileChanges([]git.FileChange{}, nil)),
 	)
 
 	runner := NewE2ETestRunner(t, m)

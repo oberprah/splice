@@ -47,15 +47,16 @@ ui.WithFetchCommits(testutils.MockFetchCommits(nil, errors.New("git failed")))
 
 Golden files are snapshot tests comparing rendered output against saved `.golden` files. Use them for all View tests.
 
-Each state package has helpers in `testhelpers_test.go`: `mockContext` for terminal dimensions and `assert*Golden` functions for comparisons.
+Use `testutils.MockContext` for terminal dimensions and `testutils.AssertGolden` for comparisons. For tests with colors, call `testutils.SetupColorProfile()` at the start.
 
 ```go
 func TestLogState_View_RendersCommits(t *testing.T) {
+    testutils.SetupColorProfile()
     commits := []git.GitCommit{
         {Hash: "abc123", Message: "First commit", Author: "Alice"},
     }
     s := LogState{Commits: commits, Cursor: 0}
-    ctx := mockContext{width: 80, height: 24}
+    ctx := testutils.MockContext{W: 80, H: 24}
 
     output := s.View(ctx)
     assertLogViewGolden(t, output, "renders_commits.golden")

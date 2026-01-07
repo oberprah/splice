@@ -1,0 +1,35 @@
+package diff
+
+import (
+	"github.com/oberprah/splice/internal/domain/diff"
+	"github.com/oberprah/splice/internal/git"
+)
+
+// DiffState represents the state when viewing a file diff
+type State struct {
+	// Current diff data
+	Commit git.GitCommit
+	File   git.FileChange
+	Diff   *diff.AlignedFileDiff
+
+	// Viewport control
+	ViewportStart    int
+	CurrentChangeIdx int   // Index into ChangeIndices for navigation
+	ChangeIndices    []int // Indices of alignments that have changes (for navigation)
+}
+
+// New creates a new DiffState with viewport positioned at the first change.
+func New(commit git.GitCommit, file git.FileChange, d *diff.AlignedFileDiff, changeIndices []int) *State {
+	viewportStart := 0
+	if d != nil && len(changeIndices) > 0 {
+		viewportStart = changeIndices[0]
+	}
+	return &State{
+		Commit:           commit,
+		File:             file,
+		Diff:             d,
+		ChangeIndices:    changeIndices,
+		ViewportStart:    viewportStart,
+		CurrentChangeIdx: 0,
+	}
+}

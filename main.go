@@ -4,14 +4,17 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/oberprah/splice/internal/ui"
-
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/oberprah/splice/internal/app"
+	"github.com/oberprah/splice/internal/ui/states/loading"
 )
 
 func main() {
-	// Create the initial model
-	initialModel := ui.NewModel()
+	// Create the initial model with LoadingState
+	initialModel := app.NewModel(
+		app.WithInitialState(loading.State{}),
+	)
 
 	// Start the Bubbletea program with alternate screen (fullscreen mode)
 	p := tea.NewProgram(initialModel, tea.WithAltScreen())

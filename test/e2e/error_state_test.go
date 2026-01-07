@@ -5,17 +5,20 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/oberprah/splice/internal/app"
 	"github.com/oberprah/splice/internal/git"
-	"github.com/oberprah/splice/internal/ui"
+	"github.com/oberprah/splice/internal/ui/states/loading"
 	"github.com/oberprah/splice/internal/ui/testutils"
 )
 
 // TestErrorState tests error handling when git command fails
 func TestErrorState(t *testing.T) {
 	// Create model with error-returning mock
-	m := ui.NewModel(
-		ui.WithFetchCommits(testutils.MockFetchCommits(nil, fmt.Errorf("not a git repository"))),
-		ui.WithFetchFileChanges(testutils.MockFetchFileChanges([]git.FileChange{}, nil)),
+	m := app.NewModel(
+		app.WithInitialState(loading.State{}),
+		app.WithFetchCommits(testutils.MockFetchCommits(nil, fmt.Errorf("not a git repository"))),
+		app.WithFetchFileChanges(testutils.MockFetchFileChanges([]git.FileChange{}, nil)),
 	)
 
 	runner := NewE2ETestRunner(t, m)
