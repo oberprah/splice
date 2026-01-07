@@ -292,7 +292,36 @@
 - `internal/ui/states/diff/state.go`, `view.go`, `update.go`
 - `internal/app/model.go`
 
-**Status:** Pending
+**Status:** Complete
+
+**Implementation Notes:**
+- Updated `internal/ui/states/files/update.go`:
+  - Modified `loadDiff()` to properly handle both single commits and ranges
+  - For single commits: uses `commitRange.End.Hash + "^"` to `commitRange.End.Hash`
+  - For ranges: uses `commitRange.Start.Hash + "^"` to `commitRange.End.Hash`
+  - This ensures the diff spans the correct range of commits
+- Updated `internal/ui/states/diff/view.go`:
+  - Modified `renderHeader()` to display range format for multi-commit ranges
+  - Single commit: `abc123d · path/to/file.go · +15 -8`
+  - Range: `abc123d..def456e · path/to/file.go · +15 -8`
+  - Uses `format.ToShortHash()` for consistent 7-character hash display
+  - Applies `styles.HashStyle` to entire range string for consistent styling
+- Added test in `internal/ui/states/diff/view_test.go`:
+  - `TestDiffState_View_RangeHeader`: Verifies range header format with 4-commit range
+  - Creates golden file `range_header.golden` showing proper range display
+  - Uses `core.NewCommitRange()` to create multi-commit range for testing
+- Note: FilesState and DiffState already had Range field from Step 3
+- Note: FilesState view already used CommitInfoFromRange from Step 5
+
+**Verification:**
+- ✓ `go build ./...` succeeds
+- ✓ `go test ./...` passes (all tests in all packages)
+- ✓ `go tool golangci-lint run` passes with 0 issues
+- ✓ New golden file created and verified: `internal/ui/states/diff/testdata/range_header.golden`
+- ✓ Range header shows format: `abc123d..def456a · internal/auth/handler.go · +25 -13`
+- ✓ Single commit behavior unchanged
+- ✓ FilesState correctly determines hash range for diff loading
+- ✓ DiffState displays appropriate header based on range type
 
 ---
 

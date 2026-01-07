@@ -77,11 +77,19 @@ func (s *State) View(ctx core.Context) core.ViewRenderer {
 
 // renderHeader formats the diff view header
 func (s *State) renderHeader() string {
-	// Format: abc123d · path/to/file.go · +15 -8
+	// Format for single commit: abc123d · path/to/file.go · +15 -8
+	// Format for range: abc123d..def456e · path/to/file.go · +15 -8
 	var b strings.Builder
 
-	// For now, we display the End commit (for single commit, Start and End are the same)
-	b.WriteString(styles.HashStyle.Render(format.ToShortHash(s.Range.End.Hash)))
+	// Display commit hash or range
+	if s.Range.IsSingleCommit() {
+		b.WriteString(styles.HashStyle.Render(format.ToShortHash(s.Range.End.Hash)))
+	} else {
+		startHash := format.ToShortHash(s.Range.Start.Hash)
+		endHash := format.ToShortHash(s.Range.End.Hash)
+		b.WriteString(styles.HashStyle.Render(fmt.Sprintf("%s..%s", startHash, endHash)))
+	}
+
 	b.WriteString(styles.HeaderStyle.Render(" · "))
 	b.WriteString(styles.FilePathStyle.Render(s.File.Path))
 	b.WriteString(styles.HeaderStyle.Render(" · "))

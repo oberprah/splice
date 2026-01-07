@@ -106,12 +106,20 @@ func (s *State) loadDiff(file git.FileChange, fetchFullFileDiff core.FetchFullFi
 	commitRange := s.Range
 
 	return func() tea.Msg {
-		// For now, we only handle single commits
-		// Use End commit for the diff (for single commit, Start and End are the same)
-		commit := commitRange.End
+		// Determine the from and to hashes based on whether this is a single commit or range
+		var fromHash, toHash string
+		if commitRange.IsSingleCommit() {
+			// Single commit: compare commit with its parent
+			fromHash = commitRange.End.Hash + "^"
+			toHash = commitRange.End.Hash
+		} else {
+			// Range: compare Start commit's parent with End commit
+			fromHash = commitRange.Start.Hash + "^"
+			toHash = commitRange.End.Hash
+		}
 
 		// Fetch full file content and diff
-		fullDiffResult, err := fetchFullFileDiff(commit.Hash+"^", commit.Hash, file)
+		fullDiffResult, err := fetchFullFileDiff(fromHash, toHash, file)
 		if err != nil {
 			return core.DiffLoadedMsg{
 				Range: commitRange,

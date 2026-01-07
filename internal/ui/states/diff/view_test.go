@@ -341,3 +341,59 @@ func TestDiffState_View_Viewport(t *testing.T) {
 
 	assertDiffViewGolden(t, output.(*components.ViewBuilder), "viewport.golden")
 }
+
+func TestDiffState_View_RangeHeader(t *testing.T) {
+	// Test that the header displays range format for multi-commit ranges
+	state := &State{
+		Range: core.NewCommitRange(
+			git.GitCommit{
+				Hash:    "abc123def456789012345678901234567890abcd",
+				Message: "Start commit",
+			},
+			git.GitCommit{
+				Hash:    "def456abc123456789012345678901234567890abc",
+				Message: "End commit",
+			},
+			4, // 4 commits in range
+		),
+		File: git.FileChange{
+			Path:      "internal/auth/handler.go",
+			Additions: 25,
+			Deletions: 13,
+		},
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path: "internal/auth/handler.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Keyword, Value: "package"}, {Type: chroma.Text, Value: " "}, {Type: chroma.NameNamespace, Value: "auth"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Keyword, Value: "func"}, {Type: chroma.Text, Value: " "}, {Type: chroma.NameFunction, Value: "Old"}, {Type: chroma.Punctuation, Value: "() {"}}},
+				},
+			},
+			Right: diff.FileContent{
+				Path: "internal/auth/handler.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Keyword, Value: "package"}, {Type: chroma.Text, Value: " "}, {Type: chroma.NameNamespace, Value: "auth"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Keyword, Value: "func"}, {Type: chroma.Text, Value: " "}, {Type: chroma.NameFunction, Value: "New"}, {Type: chroma.Punctuation, Value: "() {"}}},
+				},
+			},
+			Alignments: []diff.Alignment{
+				diff.UnchangedAlignment{LeftIdx: 0, RightIdx: 0},
+				diff.ModifiedAlignment{
+					LeftIdx:  1,
+					RightIdx: 1,
+					InlineDiff: []diffmatchpatch.Diff{
+						{Type: diffmatchpatch.DiffEqual, Text: "func "},
+						{Type: diffmatchpatch.DiffDelete, Text: "Old"},
+						{Type: diffmatchpatch.DiffInsert, Text: "New"},
+						{Type: diffmatchpatch.DiffEqual, Text: "() {"},
+					},
+				},
+			},
+		},
+	}
+
+	ctx := testutils.MockContext{W: 80, H: 24}
+	output := state.View(ctx)
+
+	assertDiffViewGolden(t, output.(*components.ViewBuilder), "range_header.golden")
+}
