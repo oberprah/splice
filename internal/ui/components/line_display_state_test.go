@@ -11,7 +11,6 @@ func TestLineDisplayState_String(t *testing.T) {
 		{LineStateCursor, "Cursor"},
 		{LineStateSelected, "Selected"},
 		{LineStateVisualCursor, "VisualCursor"},
-		{LineDisplayState(999), "Unknown"}, // Invalid state
 	}
 
 	for _, tt := range tests {
@@ -19,6 +18,17 @@ func TestLineDisplayState_String(t *testing.T) {
 			t.Errorf("LineDisplayState(%d).String() = %q, want %q", tt.state, got, tt.want)
 		}
 	}
+}
+
+func TestLineDisplayState_String_InvalidState(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("Expected panic for invalid LineDisplayState, but did not panic")
+		}
+	}()
+
+	invalidState := LineDisplayState(999)
+	_ = invalidState.String()
 }
 
 func TestLineDisplayState_SelectorString(t *testing.T) {
@@ -30,7 +40,6 @@ func TestLineDisplayState_SelectorString(t *testing.T) {
 		{LineStateCursor, "→ "},
 		{LineStateSelected, "▌ "},
 		{LineStateVisualCursor, "█ "},
-		{LineDisplayState(999), "  "}, // Invalid state
 	}
 
 	for _, tt := range tests {
@@ -38,6 +47,17 @@ func TestLineDisplayState_SelectorString(t *testing.T) {
 			t.Errorf("LineDisplayState(%d).SelectorString() = %q, want %q", tt.state, got, tt.want)
 		}
 	}
+}
+
+func TestLineDisplayState_SelectorString_InvalidState(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("Expected panic for invalid LineDisplayState, but did not panic")
+		}
+	}()
+
+	invalidState := LineDisplayState(999)
+	_ = invalidState.SelectorString()
 }
 
 func TestLineDisplayState_Values(t *testing.T) {

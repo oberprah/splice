@@ -1,5 +1,7 @@
 package core
 
+import "fmt"
+
 // CursorState represents the cursor position and mode in a list view.
 // It is either CursorNormal (single position) or CursorVisual (position + anchor for selection).
 type CursorState interface {
@@ -37,8 +39,7 @@ func SelectionRange(cursor CursorState) (int, int) {
 		}
 		return c.Anchor, c.Pos
 	default:
-		// Should never happen with sealed interface
-		return 0, 0
+		panic(fmt.Sprintf("unhandled CursorState type: %T", cursor))
 	}
 }
 

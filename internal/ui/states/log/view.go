@@ -150,8 +150,9 @@ func (s State) getLineDisplayState(index int) components.LineDisplayState {
 			return components.LineStateSelected
 		}
 		return components.LineStateNone
+	default:
+		panic(fmt.Sprintf("unhandled CursorState type: %T", s.Cursor))
 	}
-	return components.LineStateNone
 }
 
 // buildGraphForCommit returns the graph symbols for a commit at the given index.

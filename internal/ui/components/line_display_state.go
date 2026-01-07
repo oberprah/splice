@@ -1,5 +1,7 @@
 package components
 
+import "fmt"
+
 // LineDisplayState represents the visual state of a commit line in the log view.
 type LineDisplayState int
 
@@ -22,7 +24,7 @@ func (s LineDisplayState) String() string {
 	case LineStateVisualCursor:
 		return "VisualCursor"
 	default:
-		return "Unknown"
+		panic(fmt.Sprintf("unhandled LineDisplayState: %d", s))
 	}
 }
 
@@ -38,6 +40,6 @@ func (s LineDisplayState) SelectorString() string {
 	case LineStateVisualCursor:
 		return "█ "
 	default:
-		return "  "
+		panic(fmt.Sprintf("unhandled LineDisplayState: %d", s))
 	}
 }

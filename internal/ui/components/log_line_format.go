@@ -235,7 +235,7 @@ func buildRefs(refs []core.RefInfo, level RefsLevel) string {
 	case RefsLevelCountOnly:
 		return fmt.Sprintf("(%d refs) ", len(refs))
 	default:
-		return formatRefsFull(refs)
+		panic(fmt.Sprintf("unhandled RefsLevel: %d", level))
 	}
 }
 
