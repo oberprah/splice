@@ -429,3 +429,89 @@ func TestLogState_Update_FilesPreviewLoadedMsg_StaleResponse(t *testing.T) {
 		t.Errorf("Expected ForHash %s, got %s", commits[2].Hash, previewLoading.ForHash)
 	}
 }
+
+func TestLogState_Update_VisualMode_NavigationLoadsRangePreview(t *testing.T) {
+	commits := createTestCommits(5)
+
+	// Start in visual mode with anchor at position 1
+	s := State{
+		Commits:       commits,
+		Cursor:        core.CursorVisual{Pos: 1, Anchor: 1},
+		ViewportStart: 0,
+		Preview:       PreviewNone{},
+	}
+
+	// Mock FetchFileChanges to track what was requested
+	var fromHashCalled, toHashCalled string
+	mockFetchFileChanges := func(fromHash, toHash string) ([]git.FileChange, error) {
+		fromHashCalled = fromHash
+		toHashCalled = toHash
+		return []git.FileChange{
+			{Path: "file1.go", Status: "M"},
+			{Path: "file2.go", Status: "A"},
+			{Path: "file3.go", Status: "M"},
+		}, nil
+	}
+
+	ctx := testutils.MockContext{
+		W:                    80,
+		H:                    24,
+		MockFetchFileChanges: mockFetchFileChanges,
+	}
+
+	// Press "j" to move cursor down to position 2 (selecting commits 1-2)
+	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")}
+	newState, cmd := s.Update(msg, ctx)
+
+	if cmd == nil {
+		t.Fatal("Expected loadPreview command, got nil")
+	}
+
+	listState := newState.(State)
+
+	// Verify cursor moved to position 2
+	if listState.CursorPosition() != 2 {
+		t.Errorf("Expected cursor at 2, got %d", listState.CursorPosition())
+	}
+
+	// Verify Preview state is PreviewLoading for the range
+	previewLoading, ok := listState.Preview.(PreviewLoading)
+	if !ok {
+		t.Fatalf("Expected Preview to be PreviewLoading, got %T", listState.Preview)
+	}
+
+	// In visual mode selecting commits 1-2 (where 1 is older, 2 is newer in log order):
+	// - The range should be from commit[2]^ to commit[1]
+	// - ForHash should represent this range (e.g., "c..b" for commits c and b)
+	expectedRangeHash := commits[2].Hash + ".." + commits[1].Hash
+	if previewLoading.ForHash != expectedRangeHash {
+		t.Errorf("Expected ForHash %s, got %s", expectedRangeHash, previewLoading.ForHash)
+	}
+
+	// Execute the command to trigger the fetch
+	resultMsg := cmd()
+
+	// Verify the fetch was called with correct range hashes
+	expectedFromHash := commits[2].Hash + "^" // Parent of older commit
+	expectedToHash := commits[1].Hash         // Newer commit
+	if fromHashCalled != expectedFromHash {
+		t.Errorf("Expected fromHash %s, got %s", expectedFromHash, fromHashCalled)
+	}
+	if toHashCalled != expectedToHash {
+		t.Errorf("Expected toHash %s, got %s", expectedToHash, toHashCalled)
+	}
+
+	// Verify the message contains the combined files
+	previewMsg, ok := resultMsg.(core.FilesPreviewLoadedMsg)
+	if !ok {
+		t.Fatalf("Expected FilesPreviewLoadedMsg, got %T", resultMsg)
+	}
+
+	if len(previewMsg.Files) != 3 {
+		t.Errorf("Expected 3 combined files, got %d", len(previewMsg.Files))
+	}
+
+	if previewMsg.ForHash != expectedRangeHash {
+		t.Errorf("Expected message ForHash %s, got %s", expectedRangeHash, previewMsg.ForHash)
+	}
+}

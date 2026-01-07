@@ -45,12 +45,13 @@ func (s State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 
 		// Return a command that produces PushLogScreenMsg to navigate to LogState
 		// Include InitCmd to load preview for the first commit
-		initialCommitHash := msg.Commits[0].Hash
+		firstCommit := msg.Commits[0]
+		initialRange := core.NewCommitRange(firstCommit, firstCommit, 1)
 		return s, func() tea.Msg {
 			return core.PushLogScreenMsg{
 				Commits:     msg.Commits,
 				GraphLayout: layout,
-				InitCmd:     log.LoadPreview(initialCommitHash, ctx.FetchFileChanges()),
+				InitCmd:     log.LoadPreview(initialRange, ctx.FetchFileChanges()),
 			}
 		}
 	}

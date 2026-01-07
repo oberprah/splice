@@ -16,8 +16,9 @@ import (
 // MockContext is a test helper that implements the core.Context interface.
 // Use with named fields: testutils.MockContext{W: 80, H: 24}
 type MockContext struct {
-	W int
-	H int
+	W                    int
+	H                    int
+	MockFetchFileChanges core.FetchFileChangesFunc
 }
 
 func (m MockContext) Width() int {
@@ -29,6 +30,9 @@ func (m MockContext) Height() int {
 }
 
 func (m MockContext) FetchFileChanges() core.FetchFileChangesFunc {
+	if m.MockFetchFileChanges != nil {
+		return m.MockFetchFileChanges
+	}
 	return func(fromHash, toHash string) ([]git.FileChange, error) {
 		return []git.FileChange{}, nil
 	}

@@ -52,11 +52,13 @@ type State struct {
 // New creates a new LogState with the given commits and graph layout.
 // Cursor starts at position 0 with preview loading for the first commit.
 func New(commits []git.GitCommit, layout *graph.Layout) *State {
+	// Initial state is always a single commit at position 0
+	initialHash := commits[0].Hash
 	return &State{
 		Commits:       commits,
 		Cursor:        core.CursorNormal{Pos: 0},
 		ViewportStart: 0,
-		Preview:       PreviewLoading{ForHash: commits[0].Hash},
+		Preview:       PreviewLoading{ForHash: initialHash},
 		GraphLayout:   layout,
 	}
 }

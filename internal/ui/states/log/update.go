@@ -26,8 +26,9 @@ func (s State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 
 	case core.FilesPreviewLoadedMsg:
 		// Handle preview loading result
-		// Check if the response is for the current cursor commit (stale response detection)
-		if len(s.Commits) == 0 || s.Commits[s.CursorPosition()].Hash != msg.ForHash {
+		// Check if the response is for the current selection (stale response detection)
+		currentRangeHash := getRangeHash(s.GetSelectedRange())
+		if len(s.Commits) == 0 || currentRangeHash != msg.ForHash {
 			// Response is stale (user navigated away), discard it
 			return s, nil
 		}
@@ -103,10 +104,11 @@ func (s State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 					s.Cursor = core.CursorVisual{Pos: newPos, Anchor: cursor.Anchor}
 				}
 				s.updateViewport(ctx.Height())
-				// Trigger preview loading for the new cursor position
-				commitHash := s.Commits[newPos].Hash
-				s.Preview = PreviewLoading{ForHash: commitHash}
-				return s, LoadPreview(commitHash, ctx.FetchFileChanges())
+				// Trigger preview loading for the new selection
+				commitRange := s.GetSelectedRange()
+				rangeHash := getRangeHash(commitRange)
+				s.Preview = PreviewLoading{ForHash: rangeHash}
+				return s, LoadPreview(commitRange, ctx.FetchFileChanges())
 			}
 			return s, nil
 
@@ -121,10 +123,11 @@ func (s State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 					s.Cursor = core.CursorVisual{Pos: newPos, Anchor: cursor.Anchor}
 				}
 				s.updateViewport(ctx.Height())
-				// Trigger preview loading for the new cursor position
-				commitHash := s.Commits[newPos].Hash
-				s.Preview = PreviewLoading{ForHash: commitHash}
-				return s, LoadPreview(commitHash, ctx.FetchFileChanges())
+				// Trigger preview loading for the new selection
+				commitRange := s.GetSelectedRange()
+				rangeHash := getRangeHash(commitRange)
+				s.Preview = PreviewLoading{ForHash: rangeHash}
+				return s, LoadPreview(commitRange, ctx.FetchFileChanges())
 			}
 			return s, nil
 
@@ -137,11 +140,12 @@ func (s State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 				s.Cursor = core.CursorVisual{Pos: newPos, Anchor: cursor.Anchor}
 			}
 			s.ViewportStart = 0
-			// Trigger preview loading for the top commit
+			// Trigger preview loading for the new selection
 			if len(s.Commits) > 0 {
-				commitHash := s.Commits[newPos].Hash
-				s.Preview = PreviewLoading{ForHash: commitHash}
-				return s, LoadPreview(commitHash, ctx.FetchFileChanges())
+				commitRange := s.GetSelectedRange()
+				rangeHash := getRangeHash(commitRange)
+				s.Preview = PreviewLoading{ForHash: rangeHash}
+				return s, LoadPreview(commitRange, ctx.FetchFileChanges())
 			}
 			return s, nil
 
@@ -154,11 +158,12 @@ func (s State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 				s.Cursor = core.CursorVisual{Pos: newPos, Anchor: cursor.Anchor}
 			}
 			s.updateViewport(ctx.Height())
-			// Trigger preview loading for the bottom commit
+			// Trigger preview loading for the new selection
 			if len(s.Commits) > 0 {
-				commitHash := s.Commits[newPos].Hash
-				s.Preview = PreviewLoading{ForHash: commitHash}
-				return s, LoadPreview(commitHash, ctx.FetchFileChanges())
+				commitRange := s.GetSelectedRange()
+				rangeHash := getRangeHash(commitRange)
+				s.Preview = PreviewLoading{ForHash: rangeHash}
+				return s, LoadPreview(commitRange, ctx.FetchFileChanges())
 			}
 			return s, nil
 		}
@@ -187,15 +192,32 @@ func (s *State) updateViewport(height int) {
 	}
 }
 
-// loadPreview returns a command that loads file changes for the preview panel
-// LoadPreview creates a command to load file changes for a commit (for preview in log view)
-func LoadPreview(commitHash string, fetchFileChanges core.FetchFileChangesFunc) tea.Cmd {
+// LoadPreview creates a command to load file changes for a commit or range (for preview in log view)
+func LoadPreview(commitRange core.CommitRange, fetchFileChanges core.FetchFileChangesFunc) tea.Cmd {
 	return func() tea.Msg {
-		files, err := fetchFileChanges(commitHash+"^", commitHash)
+		// Calculate from/to hashes using the same logic as Enter key handler
+		var fromHash string
+		if commitRange.IsSingleCommit() {
+			fromHash = commitRange.End.Hash + "^"
+		} else {
+			fromHash = commitRange.Start.Hash + "^"
+		}
+		toHash := commitRange.End.Hash
+
+		files, err := fetchFileChanges(fromHash, toHash)
 		return core.FilesPreviewLoadedMsg{
-			ForHash: commitHash,
+			ForHash: getRangeHash(commitRange),
 			Files:   files,
 			Err:     err,
 		}
 	}
+}
+
+// getRangeHash returns a string representation of the commit range for tracking preview state.
+// For single commits, returns just the hash. For ranges, returns "start..end".
+func getRangeHash(commitRange core.CommitRange) string {
+	if commitRange.IsSingleCommit() {
+		return commitRange.End.Hash
+	}
+	return commitRange.Start.Hash + ".." + commitRange.End.Hash
 }

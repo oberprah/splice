@@ -210,9 +210,9 @@ func (s State) renderFileList(width, maxLines int) []string {
 		lines = append(lines, styles.DeletionsStyle.Render("Unable to load files"))
 
 	case PreviewLoaded:
-		// Check that the preview is for the current commit
-		commit := s.Commits[s.CursorPosition()]
-		if preview.ForHash != commit.Hash {
+		// Check that the preview is for the current selection
+		currentRangeHash := getRangeHash(s.GetSelectedRange())
+		if preview.ForHash != currentRangeHash {
 			// Stale data, show loading
 			lines = append(lines, "")
 			lines = append(lines, styles.TimeStyle.Render("Loading files..."))

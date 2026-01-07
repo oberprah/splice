@@ -330,7 +330,8 @@ func TestLogState_View_SplitView_VisualMode_ShowsRangeInfo(t *testing.T) {
 	// Visual mode with anchor at 0, cursor at 2 (selecting 3 commits)
 	s.Cursor = core.CursorVisual{Anchor: 0, Pos: 2}
 	s.ViewportStart = 0
-	s.Preview = PreviewLoaded{ForHash: "ghi789", Files: files}
+	// In visual mode selecting commits 0-2: range is ghi789..abc123
+	s.Preview = PreviewLoaded{ForHash: "ghi789..abc123", Files: files}
 
 	ctx := testutils.MockContext{W: 160, H: 24}
 
