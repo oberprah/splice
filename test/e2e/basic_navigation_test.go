@@ -5,8 +5,10 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/oberprah/splice/internal/app"
 	"github.com/oberprah/splice/internal/git"
-	"github.com/oberprah/splice/internal/ui"
+	_ "github.com/oberprah/splice/internal/ui/states"
+	"github.com/oberprah/splice/internal/ui/states/loading"
 	"github.com/oberprah/splice/internal/ui/testutils"
 )
 
@@ -25,10 +27,12 @@ func TestBasicNavigation(t *testing.T) {
 	fixedNow := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
 
 	// Create model with mocked commits and file changes
-	m := ui.NewModel(
-		ui.WithFetchCommits(testutils.MockFetchCommits(commits, nil)),
-		ui.WithFetchFileChanges(testutils.MockFetchFileChanges([]git.FileChange{}, nil)),
-		ui.WithNow(func() time.Time { return fixedNow }),
+	m := app.NewModel(
+		app.WithInitialState(loading.State{}),
+		app.WithInitialState(loading.State{}),
+		app.WithFetchCommits(testutils.MockFetchCommits(commits, nil)),
+		app.WithFetchFileChanges(testutils.MockFetchFileChanges([]git.FileChange{}, nil)),
+		app.WithNow(func() time.Time { return fixedNow }),
 	)
 
 	runner := NewE2ETestRunner(t, m)
