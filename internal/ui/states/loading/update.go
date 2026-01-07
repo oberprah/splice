@@ -7,6 +7,7 @@ import (
 
 	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/domain/graph"
+	"github.com/oberprah/splice/internal/ui/states/log"
 )
 
 // Update handles messages during loading
@@ -43,10 +44,13 @@ func (s State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 		layout := graph.ComputeLayout(graphCommits)
 
 		// Return a command that produces PushLogScreenMsg to navigate to LogState
+		// Include InitCmd to load preview for the first commit
+		initialCommitHash := msg.Commits[0].Hash
 		return s, func() tea.Msg {
 			return core.PushLogScreenMsg{
 				Commits:     msg.Commits,
 				GraphLayout: layout,
+				InitCmd:     log.LoadPreview(initialCommitHash, ctx.FetchFileChanges()),
 			}
 		}
 	}
