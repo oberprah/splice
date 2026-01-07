@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/ui/testutils"
 )
@@ -529,5 +530,98 @@ func TestWrapText_ZeroWidth(t *testing.T) {
 	// Should return original text when width is 0
 	if len(lines) != 1 || lines[0] != text {
 		t.Errorf("Expected original text for zero width, got %v", lines)
+	}
+}
+
+// TestCommitInfoFromRange tests the CommitInfoFromRange function
+func TestCommitInfoFromRange_SingleCommit(t *testing.T) {
+	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	commit := git.GitCommit{
+		Hash:    "abc123def456789012345678901234567890abcd",
+		Message: "Add new feature",
+		Body:    "This is the body",
+		Author:  "Alice",
+		Date:    fixedTime,
+		Refs:    []git.RefInfo{},
+	}
+
+	commitRange := core.NewSingleCommitRange(commit)
+	ctx := testutils.MockContext{W: 80, H: 24}
+	lines := CommitInfoFromRange(commitRange, 80, 0, ctx)
+
+	// For single commit, should delegate to CommitInfo
+	// Should have: metadata, blank, subject, blank, body
+	if len(lines) < 5 {
+		t.Errorf("Expected at least 5 lines (delegated to CommitInfo), got %d", len(lines))
+	}
+
+	// Check that first line contains hash (metadata)
+	firstLine := stripANSI(lines[0])
+	if !strings.Contains(firstLine, "abc123d") {
+		t.Errorf("Expected hash in first line, got: %q", firstLine)
+	}
+}
+
+func TestCommitInfoFromRange_MultipleCommits(t *testing.T) {
+	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	startCommit := git.GitCommit{
+		Hash:    "abc123def456789012345678901234567890abcd",
+		Message: "First commit",
+		Author:  "Alice",
+		Date:    fixedTime,
+	}
+	endCommit := git.GitCommit{
+		Hash:    "def456abc123789012345678901234567890def4",
+		Message: "Last commit",
+		Author:  "Bob",
+		Date:    fixedTime,
+	}
+
+	commitRange := core.NewCommitRange(startCommit, endCommit, 3)
+	ctx := testutils.MockContext{W: 80, H: 24}
+	lines := CommitInfoFromRange(commitRange, 80, 0, ctx)
+
+	// For range, should only show range header (1 line)
+	if len(lines) != 1 {
+		t.Errorf("Expected 1 line for range, got %d", len(lines))
+	}
+
+	// Check format: abc123d..def456a (3 commits)
+	line := stripANSI(lines[0])
+	if !strings.Contains(line, "abc123d") {
+		t.Errorf("Expected start hash in range header, got: %q", line)
+	}
+	if !strings.Contains(line, "def456a") {
+		t.Errorf("Expected end hash in range header, got: %q", line)
+	}
+	if !strings.Contains(line, "3 commits") {
+		t.Errorf("Expected commit count in range header, got: %q", line)
+	}
+	if !strings.Contains(line, "..") {
+		t.Errorf("Expected '..' separator in range header, got: %q", line)
+	}
+}
+
+func TestCommitInfoFromRange_RangeFormat(t *testing.T) {
+	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	startCommit := git.GitCommit{
+		Hash:   "1234567890123456789012345678901234567890",
+		Author: "Alice",
+		Date:   fixedTime,
+	}
+	endCommit := git.GitCommit{
+		Hash:   "abcdefabcdefabcdefabcdefabcdefabcdefabcd",
+		Author: "Bob",
+		Date:   fixedTime,
+	}
+
+	commitRange := core.NewCommitRange(startCommit, endCommit, 5)
+	ctx := testutils.MockContext{W: 80, H: 24}
+	lines := CommitInfoFromRange(commitRange, 80, 0, ctx)
+
+	line := stripANSI(lines[0])
+	expected := "1234567..abcdefa (5 commits)"
+	if line != expected {
+		t.Errorf("Expected %q, got %q", expected, line)
 	}
 }

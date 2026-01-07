@@ -233,7 +233,32 @@
 **Read:**
 - `internal/ui/components/commit_info.go`
 
-**Status:** Pending
+**Status:** Complete
+
+**Implementation Notes:**
+- Added `CommitInfoFromRange(commitRange CommitRange, width int, bodyMaxLines int, ctx Context)` function to `internal/ui/components/commit_info.go`
+  - For single commits (IsSingleCommit() == true), delegates to existing `CommitInfo()` function
+  - For ranges (multiple commits), renders a header line with format: `{startHash}..{endHash} (N commits)`
+  - Uses `format.ToShortHash()` to format hashes (7 characters)
+  - Uses `styles.HashStyle` for styling the range header
+- Updated `internal/ui/states/files/view.go`:
+  - Changed from `CommitInfo(s.Range.End, ...)` to `CommitInfoFromRange(s.Range, ...)`
+  - Now properly handles both single commits and ranges
+- Added comprehensive tests in `internal/ui/components/commit_info_test.go`:
+  - `TestCommitInfoFromRange_SingleCommit`: Verifies delegation to CommitInfo for single commits
+  - `TestCommitInfoFromRange_MultipleCommits`: Verifies range header format and content
+  - `TestCommitInfoFromRange_RangeFormat`: Verifies exact formatting of range header
+  - All three tests verify correct handling of hash formatting, commit counts, and message structure
+- Updated imports in commit_info_test.go to include `core` package for CommitRange types
+
+**Verification:**
+- ✓ `go build ./...` succeeds
+- ✓ `go test ./...` passes (all tests in all packages)
+- ✓ `go tool golangci-lint run` passes with 0 issues
+- ✓ Single commit rendering unchanged (delegates to CommitInfo)
+- ✓ Range rendering shows proper format: `abc123d..def456a (3 commits)`
+- ✓ Hash formatting uses ToShortHash (7 characters)
+- ✓ Range header uses HashStyle for consistent styling
 
 ---
 

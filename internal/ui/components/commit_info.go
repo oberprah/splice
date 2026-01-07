@@ -11,6 +11,27 @@ import (
 	"github.com/oberprah/splice/internal/ui/styles"
 )
 
+// CommitInfoFromRange renders commit info for either a single commit or a range.
+// For single commits, delegates to CommitInfo().
+// For ranges, renders a header showing the range and commit count.
+func CommitInfoFromRange(commitRange core.CommitRange, width int, bodyMaxLines int, ctx core.Context) []string {
+	if commitRange.IsSingleCommit() {
+		return CommitInfo(commitRange.End, width, bodyMaxLines, ctx)
+	}
+
+	// Range display - just header, no subject/body
+	var lines []string
+
+	// Format: abc123d..def456e (3 commits)
+	startHash := format.ToShortHash(commitRange.Start.Hash)
+	endHash := format.ToShortHash(commitRange.End.Hash)
+
+	header := fmt.Sprintf("%s..%s (%d commits)", startHash, endHash, commitRange.Count)
+	lines = append(lines, styles.HashStyle.Render(header))
+
+	return lines
+}
+
 // CommitInfo renders complete commit information
 // Returns lines to display (metadata, refs, blank, subject, blank, body with truncation indicator)
 //
