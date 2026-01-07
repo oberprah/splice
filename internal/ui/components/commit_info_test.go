@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/oberprah/splice/internal/git"
+	"github.com/oberprah/splice/internal/ui/testutils"
 )
 
 // TestCommitInfo tests the complete CommitInfo function
@@ -20,7 +21,7 @@ func TestCommitInfo_BasicCommit(t *testing.T) {
 		Refs:    []git.RefInfo{},
 	}
 
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 	lines := CommitInfo(commit, 80, 0, ctx)
 
 	// Should have: metadata, blank, subject
@@ -49,7 +50,7 @@ func TestCommitInfo_WithRefs(t *testing.T) {
 		},
 	}
 
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 	lines := CommitInfo(commit, 80, 0, ctx)
 
 	// Should have: metadata, refs, blank, subject
@@ -75,7 +76,7 @@ func TestCommitInfo_WithBody(t *testing.T) {
 		Refs:    []git.RefInfo{},
 	}
 
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 	lines := CommitInfo(commit, 80, 0, ctx)
 
 	// Should have: metadata, blank, subject, blank, body lines (3)
@@ -103,7 +104,7 @@ func TestCommitInfo_BodyTruncation(t *testing.T) {
 		Refs:    []git.RefInfo{},
 	}
 
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 	lines := CommitInfo(commit, 80, 5, ctx) // Limit to 5 body lines
 
 	// Should have: metadata, blank, subject, blank, 5 body lines, truncation indicator
@@ -135,7 +136,7 @@ func TestCommitInfo_BodyTruncationWithWrapping(t *testing.T) {
 		Refs:    []git.RefInfo{},
 	}
 
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 	lines := CommitInfo(commit, 40, 3, ctx) // Narrow width, limit to 3 lines
 
 	// The long line should wrap to multiple lines and be truncated
@@ -154,7 +155,7 @@ func TestRenderMetadataLine_Full(t *testing.T) {
 		Date:   fixedTime,
 	}
 
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 	line := renderMetadataLine(commit, 80, ctx)
 
 	// Strip ANSI codes to check plain text
@@ -183,7 +184,7 @@ func TestRenderMetadataLine_TruncateAuthor(t *testing.T) {
 		Date:   fixedTime,
 	}
 
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 	line := renderMetadataLine(commit, 50, ctx) // Narrow width forces truncation
 
 	plainText := stripANSI(line)
@@ -210,7 +211,7 @@ func TestRenderMetadataLine_DropCommitted(t *testing.T) {
 		Date:   fixedTime,
 	}
 
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 	line := renderMetadataLine(commit, 35, ctx) // Very narrow width
 
 	plainText := stripANSI(line)
@@ -235,7 +236,7 @@ func TestRenderMetadataLine_DropAuthor(t *testing.T) {
 		Date:   fixedTime,
 	}
 
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 	line := renderMetadataLine(commit, 20, ctx) // Extremely narrow width
 
 	plainText := stripANSI(line)
@@ -260,7 +261,7 @@ func TestRenderMetadataLine_UTF8Author(t *testing.T) {
 		Date:   fixedTime,
 	}
 
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 	line := renderMetadataLine(commit, 80, ctx)
 
 	plainText := stripANSI(line)

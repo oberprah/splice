@@ -1,6 +1,8 @@
 package diff
 
 import (
+	"flag"
+	"path/filepath"
 	"testing"
 
 	"github.com/alecthomas/chroma/v2"
@@ -8,13 +10,17 @@ import (
 	"github.com/oberprah/splice/internal/domain/highlight"
 	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/ui/components"
+	"github.com/oberprah/splice/internal/ui/testutils"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
+
+var update = flag.Bool("update", false, "update golden files")
 
 // Per-file helper that adds subdirectory prefix
 func assertDiffViewGolden(t *testing.T, output *components.ViewBuilder, filename string) {
 	t.Helper()
-	assertGolden(t, output.String(), ""+filename, *update)
+	goldenPath := filepath.Join("testdata", filename)
+	testutils.AssertGolden(t, output.String(), goldenPath, *update)
 }
 
 func TestDiffState_View_AllLineTypes(t *testing.T) {
@@ -80,7 +86,7 @@ func TestDiffState_View_AllLineTypes(t *testing.T) {
 		},
 	}
 
-	ctx := &mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 	output := state.View(ctx)
 
 	assertDiffViewGolden(t, output.(*components.ViewBuilder), "all_line_types.golden")
@@ -162,7 +168,7 @@ func TestDiffState_View_TokenRendering(t *testing.T) {
 	}
 
 	// Test with narrow width to trigger truncation
-	ctx := &mockContext{width: 60, height: 24}
+	ctx := testutils.MockContext{W: 60, H: 24}
 	output := state.View(ctx)
 
 	assertDiffViewGolden(t, output.(*components.ViewBuilder), "token_rendering.golden")
@@ -265,7 +271,7 @@ func TestDiffState_View_InlineDiffRendering(t *testing.T) {
 		},
 	}
 
-	ctx := &mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 	output := state.View(ctx)
 
 	assertDiffViewGolden(t, output.(*components.ViewBuilder), "inline_diff_rendering.golden")
@@ -288,7 +294,7 @@ func TestDiffState_View_EmptyDiff(t *testing.T) {
 		},
 	}
 
-	ctx := &mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 	output := state.View(ctx)
 
 	assertDiffViewGolden(t, output.(*components.ViewBuilder), "empty_diff.golden")
@@ -329,7 +335,7 @@ func TestDiffState_View_Viewport(t *testing.T) {
 		ViewportStart: 50, // Start at line 50
 	}
 
-	ctx := &mockContext{width: 80, height: 10}
+	ctx := testutils.MockContext{W: 80, H: 10}
 	output := state.View(ctx)
 
 	assertDiffViewGolden(t, output.(*components.ViewBuilder), "viewport.golden")

@@ -10,6 +10,7 @@ import (
 	"github.com/oberprah/splice/internal/domain/diff"
 	"github.com/oberprah/splice/internal/domain/highlight"
 	"github.com/oberprah/splice/internal/git"
+	"github.com/oberprah/splice/internal/ui/testutils"
 )
 
 func TestFilesState_Update_NavigationDown(t *testing.T) {
@@ -21,7 +22,7 @@ func TestFilesState_Update_NavigationDown(t *testing.T) {
 		Cursor:        0,
 		ViewportStart: 0,
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Press "j" to move down
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}}
@@ -46,7 +47,7 @@ func TestFilesState_Update_NavigationUp(t *testing.T) {
 		Cursor:        5,
 		ViewportStart: 0,
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Press "k" to move up
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}}
@@ -71,7 +72,7 @@ func TestFilesState_Update_NavigationJumpToTop(t *testing.T) {
 		Cursor:        5,
 		ViewportStart: 3,
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Press "g" to jump to top
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
@@ -100,7 +101,7 @@ func TestFilesState_Update_NavigationJumpToBottom(t *testing.T) {
 		Cursor:        0,
 		ViewportStart: 0,
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Press "G" to jump to bottom
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'G'}}
@@ -138,7 +139,7 @@ func TestFilesState_Update_NavigationBoundaries(t *testing.T) {
 				Cursor:        tt.initialCursor,
 				ViewportStart: 0,
 			}
-			ctx := mockContext{width: 80, height: 24}
+			ctx := testutils.MockContext{W: 80, H: 24}
 
 			msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{tt.key}}
 			newState, _ := s.Update(msg, ctx)
@@ -177,7 +178,7 @@ func TestFilesState_Update_ArrowKeyNavigation(t *testing.T) {
 				Cursor:        tt.initialCursor,
 				ViewportStart: 0,
 			}
-			ctx := mockContext{width: 80, height: 24}
+			ctx := testutils.MockContext{W: 80, H: 24}
 
 			msg := tea.KeyMsg{Type: tt.keyType}
 			newState, _ := s.Update(msg, ctx)
@@ -203,7 +204,7 @@ func TestFilesState_Update_ViewportScrolling(t *testing.T) {
 		Cursor:        5,
 		ViewportStart: 0,
 	}
-	ctx := mockContext{width: 80, height: 10}
+	ctx := testutils.MockContext{W: 80, H: 10}
 
 	// Move cursor down multiple times to trigger viewport scrolling
 	state := &s
@@ -233,7 +234,7 @@ func TestFilesState_Update_BackNavigation(t *testing.T) {
 		Cursor:        2,
 		ViewportStart: 0,
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Press "q" to go back
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}}
@@ -275,7 +276,7 @@ func TestFilesState_Update_SingleFileList(t *testing.T) {
 		Cursor:        0,
 		ViewportStart: 0,
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Try to move down (should stay at 0)
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}}
@@ -300,7 +301,7 @@ func TestFilesState_Update_EmptyFileList(t *testing.T) {
 		Cursor:        0,
 		ViewportStart: 0,
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Try to move down (should stay at 0)
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}}
@@ -325,7 +326,7 @@ func TestFilesState_Update_EnterKeyReturnsCommand(t *testing.T) {
 		Cursor:        2,
 		ViewportStart: 0,
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Press "enter" to select a file
 	msg := tea.KeyMsg{Type: tea.KeyEnter}
@@ -350,7 +351,7 @@ func TestFilesState_Update_EnterOnEmptyFiles(t *testing.T) {
 		Files:  files,
 		Cursor: 0,
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Press "enter" with no files
 	msg := tea.KeyMsg{Type: tea.KeyEnter}
@@ -376,7 +377,7 @@ func TestFilesState_Update_DiffLoadedMsgSuccess(t *testing.T) {
 		Cursor:        2,
 		ViewportStart: 1,
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Simulate DiffLoadedMsg with success
 	msg := core.DiffLoadedMsg{
@@ -445,7 +446,7 @@ func TestFilesState_Update_DiffLoadedMsgError(t *testing.T) {
 		Files:  files,
 		Cursor: 2,
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Simulate DiffLoadedMsg with error
 	msg := core.DiffLoadedMsg{

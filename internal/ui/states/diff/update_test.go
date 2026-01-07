@@ -9,6 +9,7 @@ import (
 	"github.com/oberprah/splice/internal/domain/diff"
 	"github.com/oberprah/splice/internal/domain/highlight"
 	"github.com/oberprah/splice/internal/git"
+	"github.com/oberprah/splice/internal/ui/testutils"
 )
 
 func createTestDiffState(numLines int) *State {
@@ -55,7 +56,7 @@ func createTestDiffState(numLines int) *State {
 
 func TestDiffState_Update_ScrollDown(t *testing.T) {
 	s := createTestDiffState(50)
-	ctx := &mockContext{width: 80, height: 20}
+	ctx := testutils.MockContext{W: 80, H: 20}
 
 	// Press "j" to scroll down
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}}
@@ -74,7 +75,7 @@ func TestDiffState_Update_ScrollDown(t *testing.T) {
 func TestDiffState_Update_ScrollUp(t *testing.T) {
 	s := createTestDiffState(50)
 	s.ViewportStart = 10
-	ctx := &mockContext{width: 80, height: 20}
+	ctx := testutils.MockContext{W: 80, H: 20}
 
 	// Press "k" to scroll up
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}}
@@ -93,7 +94,7 @@ func TestDiffState_Update_ScrollUp(t *testing.T) {
 func TestDiffState_Update_JumpToTop(t *testing.T) {
 	s := createTestDiffState(50)
 	s.ViewportStart = 25
-	ctx := &mockContext{width: 80, height: 20}
+	ctx := testutils.MockContext{W: 80, H: 20}
 
 	// Press "g" to jump to top
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
@@ -111,7 +112,7 @@ func TestDiffState_Update_JumpToTop(t *testing.T) {
 
 func TestDiffState_Update_JumpToBottom(t *testing.T) {
 	s := createTestDiffState(50)
-	ctx := &mockContext{width: 80, height: 20}
+	ctx := testutils.MockContext{W: 80, H: 20}
 
 	// Press "G" to jump to bottom
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'G'}}
@@ -132,7 +133,7 @@ func TestDiffState_Update_JumpToBottom(t *testing.T) {
 func TestDiffState_Update_ScrollBoundaryTop(t *testing.T) {
 	s := createTestDiffState(50)
 	s.ViewportStart = 0
-	ctx := &mockContext{width: 80, height: 20}
+	ctx := testutils.MockContext{W: 80, H: 20}
 
 	// Press "k" at top boundary
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}}
@@ -152,7 +153,7 @@ func TestDiffState_Update_ScrollBoundaryTop(t *testing.T) {
 func TestDiffState_Update_ScrollBoundaryBottom(t *testing.T) {
 	s := createTestDiffState(50)
 	s.ViewportStart = 32 // Already at max
-	ctx := &mockContext{width: 80, height: 20}
+	ctx := testutils.MockContext{W: 80, H: 20}
 
 	// Press "j" at bottom boundary
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}}
@@ -171,7 +172,7 @@ func TestDiffState_Update_ScrollBoundaryBottom(t *testing.T) {
 
 func TestDiffState_Update_BackNavigation(t *testing.T) {
 	s := createTestDiffState(50)
-	ctx := &mockContext{width: 80, height: 20}
+	ctx := testutils.MockContext{W: 80, H: 20}
 
 	// Press "q" to go back
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}}
@@ -218,7 +219,7 @@ func TestDiffState_Update_QuitKeys(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := createTestDiffState(10)
-			ctx := &mockContext{width: 80, height: 20}
+			ctx := testutils.MockContext{W: 80, H: 20}
 
 			msg := tea.KeyMsg{Type: tt.keyType, Runes: tt.runes}
 			_, cmd := s.Update(msg, ctx)
@@ -246,7 +247,7 @@ func TestDiffState_Update_ArrowKeys(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			s := createTestDiffState(50)
 			s.ViewportStart = tt.initialVP
-			ctx := &mockContext{width: 80, height: 20}
+			ctx := testutils.MockContext{W: 80, H: 20}
 
 			msg := tea.KeyMsg{Type: tt.keyType}
 			newState, _ := s.Update(msg, ctx)
@@ -265,7 +266,7 @@ func TestDiffState_Update_ArrowKeys(t *testing.T) {
 
 func TestDiffState_Update_EmptyDiff(t *testing.T) {
 	s := createTestDiffState(0) // Empty diff
-	ctx := &mockContext{width: 80, height: 20}
+	ctx := testutils.MockContext{W: 80, H: 20}
 
 	// Try to scroll in empty diff
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}}
@@ -285,7 +286,7 @@ func TestDiffState_Update_JumpToNextChange(t *testing.T) {
 	// Create a diff with changes at specific positions
 	s := createTestDiffStateWithChanges(50, []int{5, 15, 30, 45})
 	s.ViewportStart = 0
-	ctx := &mockContext{width: 80, height: 20}
+	ctx := testutils.MockContext{W: 80, H: 20}
 
 	// Press "n" to jump to next change
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}}
@@ -315,7 +316,7 @@ func TestDiffState_Update_JumpToPreviousChange(t *testing.T) {
 	// Create a diff with changes at specific positions
 	s := createTestDiffStateWithChanges(50, []int{5, 15, 30, 45})
 	s.ViewportStart = 30
-	ctx := &mockContext{width: 80, height: 20}
+	ctx := testutils.MockContext{W: 80, H: 20}
 
 	// Press "N" to jump to previous change
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'N'}}
@@ -336,7 +337,7 @@ func TestDiffState_Update_NoChanges(t *testing.T) {
 	// Create a diff with no changes
 	s := createTestDiffState(50)
 	s.ViewportStart = 10
-	ctx := &mockContext{width: 80, height: 20}
+	ctx := testutils.MockContext{W: 80, H: 20}
 
 	// Press "n" - should stay at current position
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}}

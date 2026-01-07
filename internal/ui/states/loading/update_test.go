@@ -9,6 +9,7 @@ import (
 
 	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/git"
+	"github.com/oberprah/splice/internal/ui/testutils"
 )
 
 func TestLoadingState_Update_CommitsLoaded(t *testing.T) {
@@ -105,7 +106,7 @@ func TestLoadingState_Update_CommitsLoaded(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := State{}
-			ctx := mockContext{width: 80, height: 24}
+			ctx := testutils.MockContext{W: 80, H: 24}
 
 			newState, cmd := s.Update(tt.msg, ctx)
 
@@ -124,7 +125,7 @@ func TestLoadingState_Update_CommitsLoaded(t *testing.T) {
 
 func TestLoadingState_Update_OtherMessages(t *testing.T) {
 	s := State{}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Test that other message types don't change the state
 	newState, cmd := s.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")}, ctx)

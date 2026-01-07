@@ -1,17 +1,23 @@
 package files
 
 import (
+	"flag"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/ui/components"
+	"github.com/oberprah/splice/internal/ui/testutils"
 )
+
+var update = flag.Bool("update", false, "update golden files")
 
 // Per-file helper that adds subdirectory prefix
 func assertFilesViewGolden(t *testing.T, output *components.ViewBuilder, filename string) {
 	t.Helper()
-	assertGolden(t, output.String(), ""+filename, *update)
+	goldenPath := filepath.Join("testdata", filename)
+	testutils.AssertGolden(t, output.String(), goldenPath, *update)
 }
 
 func createTestCommit() git.GitCommit {
@@ -54,7 +60,7 @@ func TestFilesState_View_RendersHeader(t *testing.T) {
 		Cursor:        0,
 		ViewportStart: 0,
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	output := s.View(ctx)
 
@@ -75,7 +81,7 @@ func TestFilesState_View_RendersFileList(t *testing.T) {
 		Cursor:        0,
 		ViewportStart: 0,
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	output := s.View(ctx)
 
@@ -104,7 +110,7 @@ func TestFilesState_View_SelectionIndicator(t *testing.T) {
 				Cursor:        tt.cursor,
 				ViewportStart: 0,
 			}
-			ctx := mockContext{width: 80, height: 24}
+			ctx := testutils.MockContext{W: 80, H: 24}
 
 			output := s.View(ctx)
 
@@ -123,7 +129,7 @@ func TestFilesState_View_ViewportLimits(t *testing.T) {
 		Cursor:        10,
 		ViewportStart: 5,
 	}
-	ctx := mockContext{width: 80, height: 10}
+	ctx := testutils.MockContext{W: 80, H: 10}
 
 	output := s.View(ctx)
 
@@ -143,7 +149,7 @@ func TestFilesState_View_BinaryFiles(t *testing.T) {
 		Cursor:        0,
 		ViewportStart: 0,
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	output := s.View(ctx)
 
@@ -160,7 +166,7 @@ func TestFilesState_View_EmptyFileList(t *testing.T) {
 		Cursor:        0,
 		ViewportStart: 0,
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	output := s.View(ctx)
 
@@ -185,7 +191,7 @@ func TestFilesState_View_LongFilePaths(t *testing.T) {
 	}
 
 	// Test with narrow terminal
-	ctx := mockContext{width: 50, height: 24}
+	ctx := testutils.MockContext{W: 50, H: 24}
 
 	output := s.View(ctx)
 
@@ -206,7 +212,7 @@ func TestFilesState_View_FileStatsSummary(t *testing.T) {
 		Cursor:        0,
 		ViewportStart: 0,
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	output := s.View(ctx)
 
@@ -287,7 +293,7 @@ func TestFilesState_View_StatusDisplay(t *testing.T) {
 		Cursor:        0,
 		ViewportStart: 0,
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	output := s.View(ctx)
 
@@ -307,7 +313,7 @@ func TestFilesState_View_DynamicAlignment(t *testing.T) {
 		Cursor:        0,
 		ViewportStart: 0,
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	output := s.View(ctx)
 
@@ -331,7 +337,7 @@ func TestFilesState_View_WithRefs(t *testing.T) {
 		Cursor:        0,
 		ViewportStart: 0,
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	output := s.View(ctx)
 

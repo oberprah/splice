@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/oberprah/splice/internal/core"
+	"github.com/oberprah/splice/internal/ui/testutils"
 )
 
 func TestErrorState_Update_QuitKeys(t *testing.T) {
@@ -23,7 +24,7 @@ func TestErrorState_Update_QuitKeys(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := State{Err: fmt.Errorf("test error")}
-			ctx := mockContext{width: 80, height: 24}
+			ctx := testutils.MockContext{W: 80, H: 24}
 
 			msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(tt.key)}
 			if tt.key == "ctrl+c" {
@@ -62,7 +63,7 @@ func TestErrorState_Update_QuitKeys(t *testing.T) {
 
 func TestErrorState_Update_OtherKeys(t *testing.T) {
 	s := State{Err: fmt.Errorf("test error")}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Test various other keys that should do nothing
 	keys := []string{"j", "k", "enter", "esc"}

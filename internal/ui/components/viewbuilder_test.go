@@ -1,13 +1,19 @@
 package components
 
 import (
+	"flag"
+	"path/filepath"
 	"testing"
+
+	"github.com/oberprah/splice/internal/ui/testutils"
 )
 
-// Per-file helper that adds subdirectory prefix
+var update = flag.Bool("update", false, "update golden files")
+
 func assertViewBuilderGolden(t *testing.T, output *ViewBuilder, filename string) {
 	t.Helper()
-	assertGolden(t, output.String(), "viewbuilder/"+filename, *update)
+	goldenPath := filepath.Join("testdata", filename)
+	testutils.AssertGolden(t, output.String(), goldenPath, *update)
 }
 
 func TestAddSplitView_EqualLineCounts(t *testing.T) {

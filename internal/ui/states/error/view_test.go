@@ -1,16 +1,22 @@
 package error
 
 import (
+	"flag"
 	"fmt"
+	"path/filepath"
 	"testing"
 
 	"github.com/oberprah/splice/internal/ui/components"
+	"github.com/oberprah/splice/internal/ui/testutils"
 )
+
+var update = flag.Bool("update", false, "update golden files")
 
 // Per-file helper that adds subdirectory prefix
 func assertErrorViewGolden(t *testing.T, output *components.ViewBuilder, filename string) {
 	t.Helper()
-	assertGolden(t, output.String(), ""+filename, *update)
+	goldenPath := filepath.Join("testdata", filename)
+	testutils.AssertGolden(t, output.String(), goldenPath, *update)
 }
 
 func TestErrorState_View(t *testing.T) {
@@ -39,7 +45,7 @@ func TestErrorState_View(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := State{Err: tt.err}
-			ctx := mockContext{width: 80, height: 24}
+			ctx := testutils.MockContext{W: 80, H: 24}
 
 			output := s.View(ctx)
 

@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/git"
+	"github.com/oberprah/splice/internal/ui/testutils"
 )
 
 func createTestCommits(count int) []git.GitCommit {
@@ -42,7 +43,7 @@ func TestLogState_Update_NavigationDown(t *testing.T) {
 		ViewportStart: 0,
 		Preview:       PreviewNone{},
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Press "j" to move down
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")}
@@ -66,7 +67,7 @@ func TestLogState_Update_NavigationUp(t *testing.T) {
 		ViewportStart: 0,
 		Preview:       PreviewNone{},
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Press "k" to move up
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("k")}
@@ -105,7 +106,7 @@ func TestLogState_Update_CursorBoundaries(t *testing.T) {
 				ViewportStart: 0,
 				Preview:       PreviewNone{},
 			}
-			ctx := mockContext{width: 80, height: 24}
+			ctx := testutils.MockContext{W: 80, H: 24}
 
 			var msg tea.Msg
 			switch tt.key {
@@ -135,7 +136,7 @@ func TestLogState_Update_JumpToTop(t *testing.T) {
 		ViewportStart: 3,
 		Preview:       PreviewNone{},
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Press "g" to jump to top
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("g")}
@@ -162,7 +163,7 @@ func TestLogState_Update_JumpToBottom(t *testing.T) {
 		ViewportStart: 0,
 		Preview:       PreviewNone{},
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Press "G" to jump to bottom
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("G")}
@@ -186,7 +187,7 @@ func TestLogState_Update_ViewportScrolling(t *testing.T) {
 		ViewportStart: 0,
 		Preview:       PreviewNone{},
 	}
-	ctx := mockContext{width: 80, height: 10}
+	ctx := testutils.MockContext{W: 80, H: 10}
 
 	// Move cursor down beyond viewport
 	for range 15 {
@@ -215,7 +216,7 @@ func TestLogState_Update_QuitKeys(t *testing.T) {
 		ViewportStart: 0,
 		Preview:       PreviewNone{},
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	tests := []struct {
 		name string
@@ -264,7 +265,7 @@ func TestLogState_Update_NavigationTriggersPreviewLoading(t *testing.T) {
 				ViewportStart: 0,
 				Preview:       PreviewNone{},
 			}
-			ctx := mockContext{width: 80, height: 24}
+			ctx := testutils.MockContext{W: 80, H: 24}
 
 			var msg tea.Msg
 			switch tt.key {
@@ -317,7 +318,7 @@ func TestLogState_Update_FilesPreviewLoadedMsg_Success(t *testing.T) {
 		ViewportStart: 0,
 		Preview:       PreviewLoading{ForHash: commits[1].Hash},
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	msg := core.FilesPreviewLoadedMsg{
 		ForHash: commits[1].Hash,
@@ -358,7 +359,7 @@ func TestLogState_Update_FilesPreviewLoadedMsg_Error(t *testing.T) {
 		ViewportStart: 0,
 		Preview:       PreviewLoading{ForHash: commits[1].Hash},
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	msg := core.FilesPreviewLoadedMsg{
 		ForHash: commits[1].Hash,
@@ -401,7 +402,7 @@ func TestLogState_Update_FilesPreviewLoadedMsg_StaleResponse(t *testing.T) {
 		ViewportStart: 0,
 		Preview:       PreviewLoading{ForHash: commits[2].Hash},
 	}
-	ctx := mockContext{width: 80, height: 24}
+	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Stale response for commit 1 arrives
 	msg := core.FilesPreviewLoadedMsg{

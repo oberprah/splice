@@ -2,10 +2,85 @@ package testutils
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"testing"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
+	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/git"
 )
+
+// MockContext is a test helper that implements the core.Context interface.
+// Use with named fields: testutils.MockContext{W: 80, H: 24}
+type MockContext struct {
+	W int
+	H int
+}
+
+func (m MockContext) Width() int {
+	return m.W
+}
+
+func (m MockContext) Height() int {
+	return m.H
+}
+
+func (m MockContext) FetchFileChanges() core.FetchFileChangesFunc {
+	return func(commitHash string) ([]git.FileChange, error) {
+		return []git.FileChange{}, nil
+	}
+}
+
+func (m MockContext) FetchFullFileDiff() core.FetchFullFileDiffFunc {
+	return func(commitHash string, change git.FileChange) (*git.FullFileDiffResult, error) {
+		return &git.FullFileDiffResult{}, nil
+	}
+}
+
+func (m MockContext) Now() time.Time {
+	// Return fixed time for deterministic tests (commits are exactly 1 year old)
+	return time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+}
+
+// SetupColorProfile enables TrueColor for deterministic test output.
+// Call at the start of individual tests that need consistent color rendering.
+func SetupColorProfile() {
+	lipgloss.SetColorProfile(termenv.TrueColor)
+}
+
+// AssertGolden compares the output against a golden file.
+// If update is true, it updates the golden file instead.
+// The goldenPath should be relative to the caller's testdata directory.
+func AssertGolden(t *testing.T, output, goldenPath string, update bool) {
+	t.Helper()
+
+	if update {
+		dir := filepath.Dir(goldenPath)
+		err := os.MkdirAll(dir, 0755)
+		if err != nil {
+			t.Fatalf("Failed to create directory %s: %v", dir, err)
+		}
+		err = os.WriteFile(goldenPath, []byte(output), 0644)
+		if err != nil {
+			t.Fatalf("Failed to write golden file: %v", err)
+		}
+		t.Logf("Updated golden file: %s", goldenPath)
+		return
+	}
+
+	expected, err := os.ReadFile(goldenPath)
+	if err != nil {
+		t.Fatalf("Failed to read golden file: %v\nRun with -update to create it", err)
+	}
+
+	if string(expected) != output {
+		t.Errorf("Output does not match golden file %s.\nRun with -update to update golden files.\n\nExpected:\n%s\n\nGot:\n%s",
+			goldenPath, string(expected), output)
+	}
+}
 
 // CreateTestCommits generates n mock git commits for testing
 // Uses fixed dates that are exactly 1 year old to ensure deterministic formatting
