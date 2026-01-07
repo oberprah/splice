@@ -3,15 +3,15 @@ package files
 import (
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/oberprah/splice/internal/app"
+	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/domain/diff"
 	"github.com/oberprah/splice/internal/git"
 )
 
 // Update handles messages for the files state
-func (s *State) Update(msg tea.Msg, ctx app.Context) (app.State, tea.Cmd) {
+func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 	switch msg := msg.(type) {
-	case app.DiffLoadedMsg:
+	case core.DiffLoadedMsg:
 		// Handle diff loading result
 		if msg.Err != nil {
 			// For now, just stay in files state on error
@@ -19,17 +19,13 @@ func (s *State) Update(msg tea.Msg, ctx app.Context) (app.State, tea.Cmd) {
 			return s, nil
 		}
 
-		// Return command that produces PushScreenMsg to navigate to DiffState
-		// The DiffState factory will calculate the initial viewport position
+		// Return command that produces PushDiffScreenMsg to navigate to DiffState
 		return s, func() tea.Msg {
-			return app.PushScreenMsg{
-				Screen: app.DiffScreen,
-				Data: app.DiffScreenData{
-					Commit:        msg.Commit,
-					File:          msg.File,
-					Diff:          msg.Diff,
-					ChangeIndices: msg.ChangeIndices,
-				},
+			return core.PushDiffScreenMsg{
+				Commit:        msg.Commit,
+				File:          msg.File,
+				Diff:          msg.Diff,
+				ChangeIndices: msg.ChangeIndices,
 			}
 		}
 
@@ -38,7 +34,7 @@ func (s *State) Update(msg tea.Msg, ctx app.Context) (app.State, tea.Cmd) {
 		case "q":
 			// Go back to the previous state using navigation pattern
 			return s, func() tea.Msg {
-				return app.PopScreenMsg{}
+				return core.PopScreenMsg{}
 			}
 
 		case "ctrl+c", "Q":
@@ -106,14 +102,14 @@ func (s *State) updateViewport(height int) {
 }
 
 // loadDiff creates a command to fetch and parse the diff for a file
-func (s *State) loadDiff(file git.FileChange, fetchFullFileDiff app.FetchFullFileDiffFunc) tea.Cmd {
+func (s *State) loadDiff(file git.FileChange, fetchFullFileDiff core.FetchFullFileDiffFunc) tea.Cmd {
 	commit := s.Commit
 
 	return func() tea.Msg {
 		// Fetch full file content and diff
 		fullDiffResult, err := fetchFullFileDiff(commit.Hash, file)
 		if err != nil {
-			return app.DiffLoadedMsg{
+			return core.DiffLoadedMsg{
 				Commit: commit,
 				File:   file,
 				Err:    err,
@@ -128,14 +124,14 @@ func (s *State) loadDiff(file git.FileChange, fetchFullFileDiff app.FetchFullFil
 			fullDiffResult.DiffOutput,
 		)
 		if err != nil {
-			return app.DiffLoadedMsg{
+			return core.DiffLoadedMsg{
 				Commit: commit,
 				File:   file,
 				Err:    err,
 			}
 		}
 
-		return app.DiffLoadedMsg{
+		return core.DiffLoadedMsg{
 			Commit:        commit,
 			File:          file,
 			Diff:          alignedDiff,

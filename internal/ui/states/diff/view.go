@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/oberprah/splice/internal/app"
+	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/domain/diff"
 	"github.com/oberprah/splice/internal/domain/highlight"
 	"github.com/oberprah/splice/internal/ui/components"
@@ -15,7 +15,7 @@ import (
 )
 
 // View renders the diff state
-func (s *State) View(ctx app.Context) app.ViewRenderer {
+func (s *State) View(ctx core.Context) core.ViewRenderer {
 	vb := components.NewViewBuilder()
 
 	// Render header

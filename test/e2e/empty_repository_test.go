@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/oberprah/splice/internal/app"
 	"github.com/oberprah/splice/internal/git"
-	_ "github.com/oberprah/splice/internal/ui/states"
 	"github.com/oberprah/splice/internal/ui/states/loading"
 	"github.com/oberprah/splice/internal/ui/testutils"
 )

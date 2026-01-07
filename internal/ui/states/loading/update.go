@@ -4,34 +4,27 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/oberprah/splice/internal/app"
+
+	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/domain/graph"
 )
 
 // Update handles messages during loading
-func (s State) Update(msg tea.Msg, ctx app.Context) (app.State, tea.Cmd) {
+func (s State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 	switch msg := msg.(type) {
-	case app.CommitsLoadedMsg:
+	case core.CommitsLoadedMsg:
 		// Handle errors
 		if msg.Err != nil {
 			return s, func() tea.Msg {
-				return app.PushScreenMsg{
-					Screen: app.ErrorScreen,
-					Data: app.ErrorScreenData{
-						Err: msg.Err,
-					},
-				}
+				return core.PushErrorScreenMsg{Err: msg.Err}
 			}
 		}
 
 		// Treat empty repositories as an error
 		if len(msg.Commits) == 0 {
 			return s, func() tea.Msg {
-				return app.PushScreenMsg{
-					Screen: app.ErrorScreen,
-					Data: app.ErrorScreenData{
-						Err: fmt.Errorf("no commits found in repository"),
-					},
+				return core.PushErrorScreenMsg{
+					Err: fmt.Errorf("no commits found in repository"),
 				}
 			}
 		}
@@ -49,15 +42,11 @@ func (s State) Update(msg tea.Msg, ctx app.Context) (app.State, tea.Cmd) {
 		// Compute graph layout
 		layout := graph.ComputeLayout(graphCommits)
 
-		// Return a command that produces PushScreenMsg to navigate to LogState
-		// The log state factory in register.go will handle the initial preview loading
+		// Return a command that produces PushLogScreenMsg to navigate to LogState
 		return s, func() tea.Msg {
-			return app.PushScreenMsg{
-				Screen: app.LogScreen,
-				Data: app.LogScreenData{
-					Commits:     msg.Commits,
-					GraphLayout: layout,
-				},
+			return core.PushLogScreenMsg{
+				Commits:     msg.Commits,
+				GraphLayout: layout,
 			}
 		}
 	}

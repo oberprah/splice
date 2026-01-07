@@ -10,7 +10,6 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	_ "github.com/oberprah/splice/internal/ui/states"
 )
 
 var update = flag.Bool("update", false, "update golden files")

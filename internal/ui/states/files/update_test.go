@@ -6,7 +6,7 @@ import (
 
 	"github.com/alecthomas/chroma/v2"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/oberprah/splice/internal/app"
+	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/domain/diff"
 	"github.com/oberprah/splice/internal/domain/highlight"
 	"github.com/oberprah/splice/internal/git"
@@ -257,7 +257,7 @@ func TestFilesState_Update_BackNavigation(t *testing.T) {
 
 	// Execute the command to get the message
 	cmdMsg := cmd()
-	popMsg, ok := cmdMsg.(app.PopScreenMsg)
+	popMsg, ok := cmdMsg.(core.PopScreenMsg)
 	if !ok {
 		t.Fatalf("Expected PopScreenMsg, got %T", cmdMsg)
 	}
@@ -379,7 +379,7 @@ func TestFilesState_Update_DiffLoadedMsgSuccess(t *testing.T) {
 	ctx := mockContext{width: 80, height: 24}
 
 	// Simulate DiffLoadedMsg with success
-	msg := app.DiffLoadedMsg{
+	msg := core.DiffLoadedMsg{
 		Commit: commit,
 		File:   files[2],
 		Diff: &diff.AlignedFileDiff{
@@ -421,24 +421,14 @@ func TestFilesState_Update_DiffLoadedMsgSuccess(t *testing.T) {
 		t.Fatal("Expected command to return a message")
 	}
 
-	// Verify it's a PushScreenMsg with DiffScreen
-	pushMsg, ok := result.(app.PushScreenMsg)
+	// Verify it's a PushDiffScreenMsg
+	pushMsg, ok := result.(core.PushDiffScreenMsg)
 	if !ok {
-		t.Fatalf("Expected PushScreenMsg, got %T", result)
+		t.Fatalf("Expected PushDiffScreenMsg, got %T", result)
 	}
 
-	if pushMsg.Screen != app.DiffScreen {
-		t.Errorf("Expected DiffScreen, got %v", pushMsg.Screen)
-	}
-
-	// Verify the data is DiffScreenData with correct content
-	diffData, ok := pushMsg.Data.(app.DiffScreenData)
-	if !ok {
-		t.Fatalf("Expected DiffScreenData, got %T", pushMsg.Data)
-	}
-
-	if len(diffData.Diff.Alignments) != 1 {
-		t.Errorf("Expected 1 diff alignment, got %d", len(diffData.Diff.Alignments))
+	if len(pushMsg.Diff.Alignments) != 1 {
+		t.Errorf("Expected 1 diff alignment, got %d", len(pushMsg.Diff.Alignments))
 	}
 
 	// Verify state hasn't changed (stays FilesState until Model handles PushScreenMsg)
@@ -458,7 +448,7 @@ func TestFilesState_Update_DiffLoadedMsgError(t *testing.T) {
 	ctx := mockContext{width: 80, height: 24}
 
 	// Simulate DiffLoadedMsg with error
-	msg := app.DiffLoadedMsg{
+	msg := core.DiffLoadedMsg{
 		Commit: commit,
 		File:   files[2],
 		Err:    fmt.Errorf("failed to load diff"),

@@ -9,7 +9,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
-	"github.com/oberprah/splice/internal/app"
+	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/git"
 )
 
@@ -40,14 +40,14 @@ func (m mockContext) Height() int {
 	return m.height
 }
 
-func (m mockContext) FetchFileChanges() app.FetchFileChangesFunc {
+func (m mockContext) FetchFileChanges() core.FetchFileChangesFunc {
 	// Return a mock function that returns empty file changes
 	return func(commitHash string) ([]git.FileChange, error) {
 		return []git.FileChange{}, nil
 	}
 }
 
-func (m mockContext) FetchFullFileDiff() app.FetchFullFileDiffFunc {
+func (m mockContext) FetchFullFileDiff() core.FetchFullFileDiffFunc {
 	// Return a mock function that returns an empty diff result
 	return func(commitHash string, change git.FileChange) (*git.FullFileDiffResult, error) {
 		return &git.FullFileDiffResult{}, nil

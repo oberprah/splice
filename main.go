@@ -4,15 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/oberprah/splice/internal/app"
-	_ "github.com/oberprah/splice/internal/ui/states" // Trigger init() for state factory registration
-	"github.com/oberprah/splice/internal/ui/states/loading"
-
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/oberprah/splice/internal/app"
+	"github.com/oberprah/splice/internal/ui/states/loading"
 )
 
 func main() {
-
 	// Create the initial model with LoadingState
 	initialModel := app.NewModel(
 		app.WithInitialState(loading.State{}),

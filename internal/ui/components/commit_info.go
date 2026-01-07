@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/oberprah/splice/internal/app"
+	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/ui/format"
 	"github.com/oberprah/splice/internal/ui/styles"
@@ -27,7 +27,7 @@ import (
 //   - Subject (wrapped if needed)
 //   - (blank, if body exists)
 //   - Body (wrapped, truncated to bodyMaxLines with indicator)
-func CommitInfo(commit git.GitCommit, width int, bodyMaxLines int, ctx app.Context) []string {
+func CommitInfo(commit git.GitCommit, width int, bodyMaxLines int, ctx core.Context) []string {
 	var lines []string
 
 	// 1. Metadata line
@@ -63,7 +63,7 @@ func CommitInfo(commit git.GitCommit, width int, bodyMaxLines int, ctx app.Conte
 // renderMetadataLine renders the metadata line with smart truncation
 // Format: {hash} · {author} committed {time}
 // Priority: hash > time > author
-func renderMetadataLine(commit git.GitCommit, width int, ctx app.Context) string {
+func renderMetadataLine(commit git.GitCommit, width int, ctx core.Context) string {
 	shortHash := format.ToShortHash(commit.Hash)
 	relativeTime := format.ToRelativeTimeFrom(commit.Date, ctx.Now())
 	author := commit.Author

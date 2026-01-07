@@ -3,11 +3,11 @@ package error
 import (
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/oberprah/splice/internal/app"
+	"github.com/oberprah/splice/internal/core"
 )
 
 // Update handles messages in error state
-func (s State) Update(msg tea.Msg, ctx app.Context) (app.State, tea.Cmd) {
+func (s State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -15,7 +15,7 @@ func (s State) Update(msg tea.Msg, ctx app.Context) (app.State, tea.Cmd) {
 			// Go back to the previous state using navigation pattern
 			// If there's no previous state (error from LoadingState), quit the app
 			return s, func() tea.Msg {
-				return app.PopScreenMsg{}
+				return core.PopScreenMsg{}
 			}
 		case "ctrl+c", "Q":
 			return s, tea.Quit

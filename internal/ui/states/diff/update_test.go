@@ -5,7 +5,7 @@ import (
 
 	"github.com/alecthomas/chroma/v2"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/oberprah/splice/internal/app"
+	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/domain/diff"
 	"github.com/oberprah/splice/internal/domain/highlight"
 	"github.com/oberprah/splice/internal/git"
@@ -195,7 +195,7 @@ func TestDiffState_Update_BackNavigation(t *testing.T) {
 	}
 
 	// Verify it's a PopScreenMsg
-	if _, ok := result.(app.PopScreenMsg); !ok {
+	if _, ok := result.(core.PopScreenMsg); !ok {
 		t.Fatalf("Expected PopScreenMsg, got %T", result)
 	}
 

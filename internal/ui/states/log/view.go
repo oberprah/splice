@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/oberprah/splice/internal/app"
+	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/domain/graph"
 	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/ui/components"
@@ -20,7 +20,7 @@ const (
 )
 
 // View renders the list of commits
-func (s State) View(ctx app.Context) app.ViewRenderer {
+func (s State) View(ctx core.Context) core.ViewRenderer {
 	// Check if terminal is wide enough for split view
 	if ctx.Width() >= splitThreshold {
 		return s.renderSplitView(ctx)
@@ -29,7 +29,7 @@ func (s State) View(ctx app.Context) app.ViewRenderer {
 }
 
 // renderSimpleView renders the traditional single-column log view
-func (s State) renderSimpleView(ctx app.Context) app.ViewRenderer {
+func (s State) renderSimpleView(ctx core.Context) core.ViewRenderer {
 	vb := components.NewViewBuilder()
 
 	// Calculate the end of the viewport
@@ -52,7 +52,7 @@ func (s State) renderSimpleView(ctx app.Context) app.ViewRenderer {
 }
 
 // renderSplitView renders the log list on the left and details panel on the right
-func (s State) renderSplitView(ctx app.Context) app.ViewRenderer {
+func (s State) renderSplitView(ctx core.Context) core.ViewRenderer {
 	// Calculate widths
 	logWidth := ctx.Width() - splitPanelWidth - separatorWidth
 	detailsWidth := splitPanelWidth
@@ -68,7 +68,7 @@ func (s State) renderSplitView(ctx app.Context) app.ViewRenderer {
 }
 
 // buildCommitListColumn builds the left column (commit list) independently
-func (s State) buildCommitListColumn(width int, ctx app.Context) app.ViewRenderer {
+func (s State) buildCommitListColumn(width int, ctx core.Context) core.ViewRenderer {
 	vb := components.NewViewBuilder()
 
 	// Create style for fixed-width column
@@ -99,7 +99,7 @@ func (s State) buildCommitListColumn(width int, ctx app.Context) app.ViewRendere
 }
 
 // buildDetailsColumn builds the right column (details panel) independently
-func (s State) buildDetailsColumn(width int, ctx app.Context) app.ViewRenderer {
+func (s State) buildDetailsColumn(width int, ctx core.Context) core.ViewRenderer {
 	vb := components.NewViewBuilder()
 
 	// Create style for fixed-width column
@@ -123,7 +123,7 @@ func (s State) buildDetailsColumn(width int, ctx app.Context) app.ViewRenderer {
 
 // buildCommitLineComponents prepares all components for formatting a commit line.
 // This is where impure operations (time formatting, graph lookup) happen.
-func (s State) buildCommitLineComponents(commit git.GitCommit, commitIndex int, isSelected bool, ctx app.Context) components.CommitLineComponents {
+func (s State) buildCommitLineComponents(commit git.GitCommit, commitIndex int, isSelected bool, ctx core.Context) components.CommitLineComponents {
 	return components.CommitLineComponents{
 		IsSelected: isSelected,
 		Graph:      s.buildGraphForCommit(commitIndex),
@@ -147,7 +147,7 @@ func (s State) buildGraphForCommit(commitIndex int) string {
 
 // renderDetailsPanel renders the details panel content for the currently selected commit
 // Returns a slice of lines to display in the panel
-func (s State) renderDetailsPanel(width, height int, ctx app.Context) []string {
+func (s State) renderDetailsPanel(width, height int, ctx core.Context) []string {
 	var lines []string
 
 	// If no commits or cursor out of bounds, return empty panel

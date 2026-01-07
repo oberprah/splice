@@ -6,20 +6,21 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/oberprah/splice/internal/app"
+
+	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/git"
 )
 
 func TestLoadingState_Update_CommitsLoaded(t *testing.T) {
 	tests := []struct {
 		name               string
-		msg                app.CommitsLoadedMsg
+		msg                core.CommitsLoadedMsg
 		expectLoadingState bool
 		checkCmd           func(t *testing.T, cmd tea.Cmd)
 	}{
 		{
 			name: "successful load with commits",
-			msg: app.CommitsLoadedMsg{
+			msg: core.CommitsLoadedMsg{
 				Commits: []git.GitCommit{
 					{Hash: "abc123", Message: "Test", Body: "", Author: "Author", Date: time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)},
 					{Hash: "def456", Message: "Test2", Body: "", Author: "Author2", Date: time.Date(2024, 1, 1, 11, 0, 0, 0, time.UTC)},
@@ -32,37 +33,25 @@ func TestLoadingState_Update_CommitsLoaded(t *testing.T) {
 					t.Fatal("Expected a command to be returned")
 				}
 
-				// Execute the command - it should return PushScreenMsg
+				// Execute the command - it should return PushLogScreenMsg
 				msg := cmd()
-				pushMsg, ok := msg.(app.PushScreenMsg)
+				pushMsg, ok := msg.(core.PushLogScreenMsg)
 				if !ok {
-					t.Fatalf("Expected PushScreenMsg, got %T", msg)
+					t.Fatalf("Expected PushLogScreenMsg, got %T", msg)
 				}
 
-				if pushMsg.Screen != app.LogScreen {
-					t.Errorf("Expected LogScreen, got %v", pushMsg.Screen)
+				if len(pushMsg.Commits) != 2 {
+					t.Errorf("Expected 2 commits, got %d", len(pushMsg.Commits))
 				}
 
-				data, ok := pushMsg.Data.(app.LogScreenData)
-				if !ok {
-					t.Fatalf("Expected LogScreenData, got %T", pushMsg.Data)
-				}
-
-				if len(data.Commits) != 2 {
-					t.Errorf("Expected 2 commits, got %d", len(data.Commits))
-				}
-
-				if data.GraphLayout == nil {
+				if pushMsg.GraphLayout == nil {
 					t.Error("Expected GraphLayout to be set")
 				}
-
-				// Note: InitCmd is not set here anymore. The log state factory in
-				// register.go handles setting up the initial preview loading state.
 			},
 		},
 		{
 			name: "load error",
-			msg: app.CommitsLoadedMsg{
+			msg: core.CommitsLoadedMsg{
 				Commits: nil,
 				Err:     fmt.Errorf("not a git repository"),
 			},
@@ -72,33 +61,24 @@ func TestLoadingState_Update_CommitsLoaded(t *testing.T) {
 					t.Fatal("Expected a command to be returned")
 				}
 
-				// Execute the command - it should return PushScreenMsg
+				// Execute the command - it should return PushErrorScreenMsg
 				msg := cmd()
-				pushMsg, ok := msg.(app.PushScreenMsg)
+				pushMsg, ok := msg.(core.PushErrorScreenMsg)
 				if !ok {
-					t.Fatalf("Expected PushScreenMsg, got %T", msg)
+					t.Fatalf("Expected PushErrorScreenMsg, got %T", msg)
 				}
 
-				if pushMsg.Screen != app.ErrorScreen {
-					t.Errorf("Expected ErrorScreen, got %v", pushMsg.Screen)
-				}
-
-				data, ok := pushMsg.Data.(app.ErrorScreenData)
-				if !ok {
-					t.Fatalf("Expected ErrorScreenData, got %T", pushMsg.Data)
-				}
-
-				if data.Err == nil {
+				if pushMsg.Err == nil {
 					t.Error("Expected error to be set")
 				}
-				if data.Err.Error() != "not a git repository" {
-					t.Errorf("Expected error message 'not a git repository', got %q", data.Err.Error())
+				if pushMsg.Err.Error() != "not a git repository" {
+					t.Errorf("Expected error message 'not a git repository', got %q", pushMsg.Err.Error())
 				}
 			},
 		},
 		{
 			name: "empty repository",
-			msg: app.CommitsLoadedMsg{
+			msg: core.CommitsLoadedMsg{
 				Commits: []git.GitCommit{},
 				Err:     nil,
 			},
@@ -108,23 +88,14 @@ func TestLoadingState_Update_CommitsLoaded(t *testing.T) {
 					t.Fatal("Expected a command to be returned")
 				}
 
-				// Execute the command - it should return PushScreenMsg
+				// Execute the command - it should return PushErrorScreenMsg
 				msg := cmd()
-				pushMsg, ok := msg.(app.PushScreenMsg)
+				pushMsg, ok := msg.(core.PushErrorScreenMsg)
 				if !ok {
-					t.Fatalf("Expected PushScreenMsg, got %T", msg)
+					t.Fatalf("Expected PushErrorScreenMsg, got %T", msg)
 				}
 
-				if pushMsg.Screen != app.ErrorScreen {
-					t.Errorf("Expected ErrorScreen, got %v", pushMsg.Screen)
-				}
-
-				data, ok := pushMsg.Data.(app.ErrorScreenData)
-				if !ok {
-					t.Fatalf("Expected ErrorScreenData, got %T", pushMsg.Data)
-				}
-
-				if data.Err == nil {
+				if pushMsg.Err == nil {
 					t.Error("Expected error to be set for empty repository")
 				}
 			},
@@ -139,7 +110,7 @@ func TestLoadingState_Update_CommitsLoaded(t *testing.T) {
 			newState, cmd := s.Update(tt.msg, ctx)
 
 			if tt.expectLoadingState {
-				// State should remain LoadingState when returning PushScreenMsg
+				// State should remain LoadingState when returning navigation message
 				if _, ok := newState.(State); !ok {
 					t.Errorf("Expected LoadingState, got %T", newState)
 				}

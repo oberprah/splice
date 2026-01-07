@@ -4,11 +4,11 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/oberprah/splice/internal/app"
+	"github.com/oberprah/splice/internal/core"
 )
 
-// Compile-time check that ViewBuilder implements app.ViewRenderer
-var _ app.ViewRenderer = (*ViewBuilder)(nil)
+// Compile-time check that ViewBuilder implements core.ViewRenderer
+var _ core.ViewRenderer = (*ViewBuilder)(nil)
 
 // ViewBuilder builds view output with automatic newline handling.
 // It ensures views never end with a trailing newline by storing

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/oberprah/splice/internal/app"
+	"github.com/oberprah/splice/internal/core"
 )
 
 func TestErrorState_Update_QuitKeys(t *testing.T) {
@@ -45,7 +45,7 @@ func TestErrorState_Update_QuitKeys(t *testing.T) {
 					t.Errorf("Expected tea.QuitMsg from command, got %T", resultMsg)
 				}
 			} else if tt.expectPopScreen {
-				if _, ok := resultMsg.(app.PopScreenMsg); !ok {
+				if _, ok := resultMsg.(core.PopScreenMsg); !ok {
 					t.Errorf("Expected PopScreenMsg from command, got %T", resultMsg)
 				}
 			}

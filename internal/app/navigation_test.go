@@ -5,23 +5,14 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/git"
 )
 
 // TestNavigationStack tests that the navigation stack works correctly
 func TestNavigationStack(t *testing.T) {
-	// Register mock factories for each screen type
-	RegisterStateFactory(LogScreen, func(data any) State {
-		return mockState{}
-	})
-	RegisterStateFactory(FilesScreen, func(data any) State {
-		return mockState{}
-	})
-	RegisterStateFactory(DiffScreen, func(data any) State {
-		return mockState{}
-	})
-
-	// Create a model with mocks
+	// Create a model with mocks and a mock initial state
 	fixedTime := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
 	m := NewModel(
 		WithInitialState(mockState{}),
@@ -45,13 +36,10 @@ func TestNavigationStack(t *testing.T) {
 		t.Errorf("Initial stack should be empty, got %d", len(m.stack))
 	}
 
-	// Push LogScreen
-	m2, cmd := m.Update(PushScreenMsg{
-		Screen: LogScreen,
-		Data: LogScreenData{
-			Commits:     []git.GitCommit{{Hash: "abc123"}},
-			GraphLayout: nil,
-		},
+	// Push LogScreen - this is the first push, so it replaces the initial state (doesn't add to stack)
+	m2, cmd := m.Update(core.PushLogScreenMsg{
+		Commits:     []git.GitCommit{{Hash: "abc123"}},
+		GraphLayout: nil,
 	})
 	m = m2.(Model)
 
@@ -67,12 +55,9 @@ func TestNavigationStack(t *testing.T) {
 
 	// Push FilesScreen
 	t.Logf("Before pushing FilesScreen: stack len = %d", len(m.stack))
-	m2, _ = m.Update(PushScreenMsg{
-		Screen: FilesScreen,
-		Data: FilesScreenData{
-			Commit: git.GitCommit{Hash: "abc123"},
-			Files:  []git.FileChange{{Path: "test.go"}},
-		},
+	m2, _ = m.Update(core.PushFilesScreenMsg{
+		Commit: git.GitCommit{Hash: "abc123"},
+		Files:  []git.FileChange{{Path: "test.go"}},
 	})
 	m = m2.(Model)
 	t.Logf("After pushing FilesScreen: stack len = %d", len(m.stack))
@@ -82,12 +67,9 @@ func TestNavigationStack(t *testing.T) {
 	}
 
 	// Push DiffScreen
-	m2, _ = m.Update(PushScreenMsg{
-		Screen: DiffScreen,
-		Data: DiffScreenData{
-			Commit: git.GitCommit{Hash: "abc123"},
-			File:   git.FileChange{Path: "test.go"},
-		},
+	m2, _ = m.Update(core.PushDiffScreenMsg{
+		Commit: git.GitCommit{Hash: "abc123"},
+		File:   git.FileChange{Path: "test.go"},
 	})
 	m = m2.(Model)
 
@@ -96,7 +78,7 @@ func TestNavigationStack(t *testing.T) {
 	}
 
 	// Pop back to FilesScreen
-	m2, _ = m.Update(PopScreenMsg{})
+	m2, _ = m.Update(core.PopScreenMsg{})
 	m = m2.(Model)
 
 	if len(m.stack) != 1 {
@@ -104,10 +86,27 @@ func TestNavigationStack(t *testing.T) {
 	}
 
 	// Pop back to LogScreen
-	m2, _ = m.Update(PopScreenMsg{})
+	m2, _ = m.Update(core.PopScreenMsg{})
 	m = m2.(Model)
 
 	if len(m.stack) != 0 {
 		t.Errorf("After popping twice, stack should be empty, got %d", len(m.stack))
 	}
+}
+
+// mockState is a simple mock state for testing
+type mockState struct{}
+
+func (m mockState) View(ctx core.Context) core.ViewRenderer {
+	return mockViewRenderer{}
+}
+
+func (m mockState) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
+	return m, nil
+}
+
+type mockViewRenderer struct{}
+
+func (m mockViewRenderer) String() string {
+	return "mock"
 }

@@ -2,13 +2,13 @@ package log
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/oberprah/splice/internal/app"
+	"github.com/oberprah/splice/internal/core"
 )
 
 // Update handles messages in list view state
-func (s State) Update(msg tea.Msg, ctx app.Context) (app.State, tea.Cmd) {
+func (s State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 	switch msg := msg.(type) {
-	case app.FilesLoadedMsg:
+	case core.FilesLoadedMsg:
 		// Handle file loading result
 		if msg.Err != nil {
 			// For now, just stay in list state on error
@@ -18,16 +18,13 @@ func (s State) Update(msg tea.Msg, ctx app.Context) (app.State, tea.Cmd) {
 
 		// Transition to files state using navigation pattern
 		return s, func() tea.Msg {
-			return app.PushScreenMsg{
-				Screen: app.FilesScreen,
-				Data: app.FilesScreenData{
-					Commit: msg.Commit,
-					Files:  msg.Files,
-				},
+			return core.PushFilesScreenMsg{
+				Commit: msg.Commit,
+				Files:  msg.Files,
 			}
 		}
 
-	case app.FilesPreviewLoadedMsg:
+	case core.FilesPreviewLoadedMsg:
 		// Handle preview loading result
 		// Check if the response is for the current cursor commit (stale response detection)
 		if len(s.Commits) == 0 || s.Commits[s.Cursor].Hash != msg.ForHash {
@@ -61,7 +58,7 @@ func (s State) Update(msg tea.Msg, ctx app.Context) (app.State, tea.Cmd) {
 				fetchFileChanges := ctx.FetchFileChanges()
 				return s, func() tea.Msg {
 					fileChanges, err := fetchFileChanges(selectedCommit.Hash)
-					return app.FilesLoadedMsg{
+					return core.FilesLoadedMsg{
 						Commit: selectedCommit,
 						Files:  fileChanges,
 						Err:    err,
@@ -139,10 +136,10 @@ func (s *State) updateViewport(height int) {
 
 // loadPreview returns a command that loads file changes for the preview panel
 // LoadPreview creates a command to load file changes for a commit (for preview in log view)
-func LoadPreview(commitHash string, fetchFileChanges app.FetchFileChangesFunc) tea.Cmd {
+func LoadPreview(commitHash string, fetchFileChanges core.FetchFileChangesFunc) tea.Cmd {
 	return func() tea.Msg {
 		files, err := fetchFileChanges(commitHash)
-		return app.FilesPreviewLoadedMsg{
+		return core.FilesPreviewLoadedMsg{
 			ForHash: commitHash,
 			Files:   files,
 			Err:     err,

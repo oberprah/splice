@@ -6,7 +6,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/oberprah/splice/internal/app"
+	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/git"
 )
 
@@ -319,7 +319,7 @@ func TestLogState_Update_FilesPreviewLoadedMsg_Success(t *testing.T) {
 	}
 	ctx := mockContext{width: 80, height: 24}
 
-	msg := app.FilesPreviewLoadedMsg{
+	msg := core.FilesPreviewLoadedMsg{
 		ForHash: commits[1].Hash,
 		Files:   fileChanges,
 		Err:     nil,
@@ -360,7 +360,7 @@ func TestLogState_Update_FilesPreviewLoadedMsg_Error(t *testing.T) {
 	}
 	ctx := mockContext{width: 80, height: 24}
 
-	msg := app.FilesPreviewLoadedMsg{
+	msg := core.FilesPreviewLoadedMsg{
 		ForHash: commits[1].Hash,
 		Files:   nil,
 		Err:     testErr,
@@ -404,7 +404,7 @@ func TestLogState_Update_FilesPreviewLoadedMsg_StaleResponse(t *testing.T) {
 	ctx := mockContext{width: 80, height: 24}
 
 	// Stale response for commit 1 arrives
-	msg := app.FilesPreviewLoadedMsg{
+	msg := core.FilesPreviewLoadedMsg{
 		ForHash: commits[1].Hash,
 		Files:   fileChanges,
 		Err:     nil,

@@ -3,18 +3,18 @@ package diff
 import (
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/oberprah/splice/internal/app"
+	"github.com/oberprah/splice/internal/core"
 )
 
 // Update handles messages for the diff state
-func (s *State) Update(msg tea.Msg, ctx app.Context) (app.State, tea.Cmd) {
+func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q":
 			// Go back to the previous state using navigation pattern
 			return s, func() tea.Msg {
-				return app.PopScreenMsg{}
+				return core.PopScreenMsg{}
 			}
 
 		case "ctrl+c", "Q":

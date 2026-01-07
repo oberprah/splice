@@ -1,12 +1,12 @@
 package files
 
 import (
-	"github.com/oberprah/splice/internal/app"
+	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/ui/components"
 )
 
 // View renders the files state
-func (s *State) View(ctx app.Context) app.ViewRenderer {
+func (s *State) View(ctx core.Context) core.ViewRenderer {
 	vb := components.NewViewBuilder()
 
 	// Render commit info using shared component

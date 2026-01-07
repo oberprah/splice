@@ -4,24 +4,30 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/oberprah/splice/internal/git"
-)
 
-// FetchCommitsFunc is a function type for fetching git commits
-type FetchCommitsFunc func(limit int) ([]git.GitCommit, error)
+	"github.com/oberprah/splice/internal/core"
+	"github.com/oberprah/splice/internal/git"
+	"github.com/oberprah/splice/internal/ui/states/diff"
+	stateserror "github.com/oberprah/splice/internal/ui/states/error"
+	"github.com/oberprah/splice/internal/ui/states/files"
+	"github.com/oberprah/splice/internal/ui/states/log"
+)
 
 // Model represents the application model using the state pattern
 type Model struct {
-	stack             []State // Navigation stack - previous states preserved exactly
-	currentState      State
+	stack             []core.State // Navigation stack - previous states preserved exactly
+	currentState      core.State
 	firstPush         bool // True until first push occurs (for LoadingState special case)
 	width             int
 	height            int
 	fetchCommits      FetchCommitsFunc
-	fetchFileChanges  FetchFileChangesFunc
-	fetchFullFileDiff FetchFullFileDiffFunc
+	fetchFileChanges  core.FetchFileChangesFunc
+	fetchFullFileDiff core.FetchFullFileDiffFunc
 	nowFunc           func() time.Time
 }
+
+// FetchCommitsFunc is a function type for fetching git commits
+type FetchCommitsFunc func(limit int) ([]git.GitCommit, error)
 
 // Width returns the terminal width
 func (m *Model) Width() int {
@@ -34,12 +40,12 @@ func (m *Model) Height() int {
 }
 
 // FetchFileChanges returns the file changes fetcher function
-func (m *Model) FetchFileChanges() FetchFileChangesFunc {
+func (m *Model) FetchFileChanges() core.FetchFileChangesFunc {
 	return m.fetchFileChanges
 }
 
 // FetchFullFileDiff returns the full file diff fetcher function
-func (m *Model) FetchFullFileDiff() FetchFullFileDiffFunc {
+func (m *Model) FetchFullFileDiff() core.FetchFullFileDiffFunc {
 	return m.fetchFullFileDiff
 }
 
@@ -59,14 +65,14 @@ func WithFetchCommits(fn FetchCommitsFunc) ModelOption {
 }
 
 // WithFetchFileChanges allows injecting a custom file changes fetcher for testing
-func WithFetchFileChanges(fn FetchFileChangesFunc) ModelOption {
+func WithFetchFileChanges(fn core.FetchFileChangesFunc) ModelOption {
 	return func(m *Model) {
 		m.fetchFileChanges = fn
 	}
 }
 
 // WithFetchFullFileDiff allows injecting a custom full file diff fetcher for testing
-func WithFetchFullFileDiff(fn FetchFullFileDiffFunc) ModelOption {
+func WithFetchFullFileDiff(fn core.FetchFullFileDiffFunc) ModelOption {
 	return func(m *Model) {
 		m.fetchFullFileDiff = fn
 	}
@@ -80,15 +86,13 @@ func WithNow(fn func() time.Time) ModelOption {
 }
 
 // WithInitialState allows setting a custom initial state for testing
-func WithInitialState(state State) ModelOption {
+func WithInitialState(state core.State) ModelOption {
 	return func(m *Model) {
 		m.currentState = state
 	}
 }
 
 // NewModel creates a new Model with initial loading state
-// Note: This function requires states to be registered via RegisterStateFactory
-// The loading state must be imported in main.go to trigger its init() registration
 func NewModel(opts ...ModelOption) Model {
 	m := Model{
 		// currentState will be set by WithInitialState option or remain nil
@@ -111,7 +115,7 @@ func NewModel(opts ...ModelOption) Model {
 func (m Model) Init() tea.Cmd {
 	return func() tea.Msg {
 		commits, err := m.fetchCommits(500)
-		return CommitsLoadedMsg{Commits: commits, Err: err}
+		return core.CommitsLoadedMsg{Commits: commits, Err: err}
 	}
 }
 
@@ -123,21 +127,67 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 
-	case PushScreenMsg:
-		// Special case: LoadingState is the initial state and should not be pushed
-		// When LoadingState transitions to LogState, replace currentState directly
+	case core.PushLogScreenMsg:
+		// Create LogState with initial preview loading for the first commit
+		firstCommitHash := msg.Commits[0].Hash
+		newState := &log.State{
+			Commits:       msg.Commits,
+			Cursor:        0,
+			ViewportStart: 0,
+			Preview:       log.PreviewLoading{ForHash: firstCommitHash},
+			GraphLayout:   msg.GraphLayout,
+		}
 		if m.firstPush {
-			// First transition from LoadingState - replace, don't push
 			m.firstPush = false
-			m.currentState = CreateState(msg.Screen, msg.Data)
+			m.currentState = newState
 			return m, msg.InitCmd
 		}
-		// Normal push: save current state and create new one
 		m.stack = append(m.stack, m.currentState)
-		m.currentState = CreateState(msg.Screen, msg.Data)
+		m.currentState = newState
 		return m, msg.InitCmd
 
-	case PopScreenMsg:
+	case core.PushFilesScreenMsg:
+		newState := &files.State{
+			Commit:        msg.Commit,
+			Files:         msg.Files,
+			Cursor:        0,
+			ViewportStart: 0,
+		}
+		m.stack = append(m.stack, m.currentState)
+		m.currentState = newState
+		return m, nil
+
+	case core.PushDiffScreenMsg:
+		// Calculate initial viewport position - scroll to first change
+		viewportStart := 0
+		if msg.Diff != nil && len(msg.ChangeIndices) > 0 {
+			viewportStart = msg.ChangeIndices[0]
+		}
+		newState := &diff.State{
+			Commit:           msg.Commit,
+			File:             msg.File,
+			Diff:             msg.Diff,
+			ChangeIndices:    msg.ChangeIndices,
+			ViewportStart:    viewportStart,
+			CurrentChangeIdx: 0,
+		}
+		m.stack = append(m.stack, m.currentState)
+		m.currentState = newState
+		return m, nil
+
+	case core.PushErrorScreenMsg:
+		newState := stateserror.State{Err: msg.Err}
+		if m.firstPush {
+			// Error during loading - don't push, just replace
+			m.firstPush = false
+			m.currentState = newState
+			return m, nil
+		}
+		m.stack = append(m.stack, m.currentState)
+		m.currentState = newState
+		return m, nil
+
+	case core.PopScreenMsg:
 		// Pop the previous state from the stack
 		if len(m.stack) > 0 {
 			m.currentState = m.stack[len(m.stack)-1]
