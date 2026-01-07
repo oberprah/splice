@@ -310,3 +310,31 @@ func TestLogState_View_MergeBranchGraph(t *testing.T) {
 
 	assertLogViewGolden(t, output.(*components.ViewBuilder), "merge_branch_graph.golden")
 }
+
+func TestLogState_View_SplitView_VisualMode_ShowsRangeInfo(t *testing.T) {
+	testutils.SetupColorProfile()
+	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+
+	commits := []git.GitCommit{
+		{Hash: "abc123", ParentHashes: []string{"def456"}, Message: "Third commit", Body: "", Author: "Alice", Date: fixedTime},
+		{Hash: "def456", ParentHashes: []string{"ghi789"}, Message: "Second commit", Body: "", Author: "Bob", Date: fixedTime.Add(time.Hour)},
+		{Hash: "ghi789", ParentHashes: []string{}, Message: "First commit", Body: "", Author: "Charlie", Date: fixedTime.Add(2 * time.Hour)},
+	}
+
+	files := []git.FileChange{
+		{Path: "src/main.go", Status: "M", Additions: 10, Deletions: 5},
+		{Path: "README.md", Status: "A", Additions: 20, Deletions: 0},
+	}
+
+	s := createLogStateWithGraph(commits)
+	// Visual mode with anchor at 0, cursor at 2 (selecting 3 commits)
+	s.Cursor = core.CursorVisual{Anchor: 0, Pos: 2}
+	s.ViewportStart = 0
+	s.Preview = PreviewLoaded{ForHash: "ghi789", Files: files}
+
+	ctx := testutils.MockContext{W: 160, H: 24}
+
+	output := s.View(ctx)
+
+	assertLogViewGolden(t, output.(*components.ViewBuilder), "split_view_visual_range.golden")
+}

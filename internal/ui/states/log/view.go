@@ -165,7 +165,7 @@ func (s State) buildGraphForCommit(commitIndex int) string {
 	return ""
 }
 
-// renderDetailsPanel renders the details panel content for the currently selected commit
+// renderDetailsPanel renders the details panel content for the currently selected commit or range
 // Returns a slice of lines to display in the panel
 func (s State) renderDetailsPanel(width, height int, ctx core.Context) []string {
 	var lines []string
@@ -176,10 +176,9 @@ func (s State) renderDetailsPanel(width, height int, ctx core.Context) []string 
 		return lines
 	}
 
-	commit := s.Commits[pos]
-
-	// Always show commit info immediately (all data available in memory)
-	commitInfoLines := components.CommitInfo(commit, width, commitBodyMaxLines, ctx)
+	// Use CommitInfoFromRange to handle both single commits and visual mode ranges
+	commitRange := s.GetSelectedRange()
+	commitInfoLines := components.CommitInfoFromRange(commitRange, width, commitBodyMaxLines, ctx)
 	lines = append(lines, commitInfoLines...)
 
 	// Render file section based on Preview state
