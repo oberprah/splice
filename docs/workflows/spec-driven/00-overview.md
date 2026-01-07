@@ -14,9 +14,9 @@ A structured approach for implementing features with AI assistance. Human stays 
 
 | Phase | Purpose | Who Leads | Output | Gate |
 |-------|---------|-----------|--------|------|
-| 1. Clarify | Define what and why | AI (with user Q&A) | `01-requirements.md` | User approves understanding |
-| 2. Design | Define how | AI | `02-design.md` | User approves approach |
-| 3. Implement | Build it | AI (coordinator + subagents) | Code + Tests + `03-implementation.md` | Human tests, then creates PR |
+| 1. Clarify | Define what and why | AI (with user Q&A) | `01_requirements_<feature-name>.md` | User approves understanding |
+| 2. Design | Define how | AI | `02_design_<feature-name>.md` | User approves approach |
+| 3. Implement | Build it | AI (coordinator + subagents) | Code + Tests + `03_implementation_<feature-name>.md` | Human tests, then creates PR |
 
 See detailed instructions:
 - [01-clarify.md](01-clarify.md) - Phase 1: Requirements clarification
@@ -29,10 +29,10 @@ Each feature gets a folder: `docs/specs/<yymmdd-feature-name>/`
 
 ```
 docs/specs/241219-user-export/
-├── 01-requirements.md      # What we're building and why
-├── 02-design.md            # How we're building it (standalone)
-├── 03-implementation.md    # Plan, progress, discoveries
-└── research/               # Research documents (any phase)
+├── 01_requirements_user-export.md   # What we're building and why
+├── 02_design_user-export.md         # How we're building it (standalone)
+├── 03_implementation_user-export.md # Plan, progress, discoveries
+└── research/                        # Research documents (any phase)
     ├── existing-api.md
     └── auth-patterns.md
 ```

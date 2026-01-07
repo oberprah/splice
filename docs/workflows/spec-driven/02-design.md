@@ -15,42 +15,48 @@ Create a design document that lets the developer review and approve the approach
 | Making and documenting decisions | Documenting architecture without rationale |
 | Why this approach over alternatives | How the pieces connect at code level |
 | Risks and unknowns | Implementation order or file-by-file changes |
+| Type definitions and interfaces | Method bodies or implementation logic |
 
 **After approval:** Proceed to [Phase 3: Implement](03-implement.md).
 
 ## Workflow
 
-The AI works autonomously through these steps:
+The AI works autonomously through these steps, using subagents for research and exploration.
 
-### 1. Understand Requirements
-
-Read `01-requirements.md` and any research documents from Phase 1. Be clear on what problem we're solving and what success looks like.
-
-### 2. Research the Codebase
-
-Use subagents to explore the current codebase. Each subagent investigates a specific area and documents findings in the `research/` folder.
+### Working with Subagents
 
 Why subagents?
 - Clean context produces better analysis
 - Each research doc is focused and coherent
 - Main agent synthesizes without getting lost in details
+- Fresh context with complete information produces more coherent output than iteratively updating a document
 
-Example research tasks:
+Give enough context to the subagents. Relevant information you already gathered, links to relevant files, etc.
+
+Subagents document their findings in `research/<topic>.md`.
+
+### 1. Understand Requirements
+
+Read `01_requirements_<feature-name>.md` and any research documents from Phase 1. Be clear on what problem we're solving and what success looks like.
+
+### 2. Research the Codebase
+
+Use subagents to explore the current codebase. Each subagent investigates a specific area.
+
+Example tasks:
 - "How does the current X system work?"
 - "What patterns does this codebase use for Y?"
 - "What are the integration points for Z?"
 
 ### 3. Explore Solution Space
 
-Use subagents to explore different approaches. Each subagent can investigate one potential solution direction and document pros/cons.
+Use subagents to explore different approaches. Each subagent investigates one potential solution direction and documents pros/cons.
 
 The main agent then synthesizes: compare approaches, make decisions, document rationale.
 
-This works better than a single agent iteratively updating a document — fresh context with complete information produces more coherent output.
-
 ### 4. Write the Design Document
 
-Create `02-design.md` in the feature folder using the template below.
+Create `02_design_<feature-name>.md` in the feature folder using the template below.
 
 ## Design Document Template
 
@@ -92,6 +98,8 @@ Structure this section to best match the problem. The goal is clear communicatio
 - What data models or interfaces are involved? (types/schemas are fine — they clarify the design)
 
 **Stay at the right level:** Data models and interfaces are design. Implementation details (which files to change, what order to code things, method bodies) belong in Phase 3.
+
+**Code smell: Extensive code blocks.** If your design document contains more than a few type definitions or interfaces, you're doing implementation work. A design document heavy on code suggests you've skipped past "what and why" into "how" — step back and focus on decisions and rationale instead.
 
 ### Open Questions
 

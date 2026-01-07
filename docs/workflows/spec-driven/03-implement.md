@@ -5,139 +5,137 @@
 
 ## Purpose
 
-This phase executes the approved design through coordinated, autonomous work. The main agent acts as a **coordinator**, delegating high-level implementation steps to subagents who implement, test, commit, and report back.
+This phase executes the approved design through coordinated, autonomous work. The main agent acts as a **coordinator**, delegating implementation steps to subagents who implement, test, commit, and report back.
 
-Why delegate to subagents?
-- **Clean context** — Main agent stays focused on the big picture, subagents handle implementation details
-- **Smart execution** — Subagents are equally capable; they receive full design context and make decisions autonomously
-- **Logical units** — Each step is a coherent piece of work with multiple commits if needed
-- **Fresh perspective** — Each subagent approaches their step without accumulated mental clutter
+Why delegate?
+- **Clean context** — Main agent coordinates; subagents handle implementation details
+- **Autonomous execution** — Subagents are equally capable; they decide implementation within structural boundaries
 - **Recoverable failures** — Issues are isolated to individual steps
 
 **After completion:** Human tests the implementation, then creates PR.
 
 ## The Work
 
-The coordinator works through these stages:
-
 ### 1. Prepare
 
-- Read `02-design.md` and understand the implementation approach
-- Review `01-requirements.md` for verification criteria
-- Read relevant `CLAUDE.md` files for affected components
-- Note the components to modify and testing strategy
+- Read `02_design_<feature-name>.md` — understand the structural decisions
+- Review `01_requirements_<feature-name>.md` — note acceptance criteria
+- Review research files from `research/` folder if they exist — prior exploration may answer your questions
+- **Explore the codebase as needed** — Use subagents to find specific files, understand current patterns not covered in prior research, or verify information is still current. The design doc tells you *what*; exploration tells you *where* and *how things currently work*.
+- Identify component boundaries, interfaces, and key files
 
 ### 2. Create Implementation Plan
 
-Write `03-implementation.md` with a checklist of high-level steps. Each step should be a **logical unit** that a smart, autonomous subagent can execute independently.
+Write `03_implementation_<feature-name>.md` with steps. Each step is a **logical unit** a subagent executes independently.
 
-**Step characteristics:**
-- **Logical scope**: Represents a coherent piece of work
-- **Tests included**: New logic includes its tests—don't create separate "write tests" steps
-- **Not too detailed**: Subagents are equally capable—they don't need line-by-line instructions
-- **Self-contained**: Each step leaves the app compiling and tests passing
-- **Can contain multiple commits**: A step can include several related commits
-- **Clear outcome**: Success is obvious (tests pass, feature works)
+**What makes a good step:**
 
-Include **validation steps** at strategic points—not after every step, but at natural checkpoints and always at the end. Validation steps use the running application (e.g., Playwright MCP for UI verification).
+- **Structural clarity** — Which components are involved? New modules to create? Interfaces to define?
+- **Clear verification** — How does the subagent prove success? Be specific: "unit tests for X logic", "e2e test for Y flow"—not just "tests pass"
+- **Tests included** — New logic includes its tests; never separate "write tests" steps
+- **Right level of detail** — Describe *what* and *where*, not *how*. The subagent decides concrete implementation.
+- **Self-contained** — App compiles and tests pass after the step
 
-**Self-review the plan**: Would an equally capable developer understand the goal and know how to execute it? If you're specifying every file and every line, you're going too deep.
+**The coordinator decides structure:** Which component owns this logic? Should we extract a module? What are the interfaces? The subagent decides implementation within those boundaries.
+
+**Self-review:** Would an equally capable developer know the goal, which components to modify, and how to verify success? Too detailed = specifying every line. Too vague = no interfaces or component boundaries.
 
 ### 3. Execute Steps
 
-For each step in the plan:
+For each step, sequentially — complete one before starting the next:
 
-**Delegate to subagent** with:
-- The full design document (`02-design.md`) — always, for complete context
-- The step to accomplish (high-level, not detailed)
-- Relevant `CLAUDE.md` files for affected components
+#### Delegate
 
-Subagents are equally capable—they figure out implementation details, decide what files to change, make commits as needed, and ensure tests pass before reporting back with what was done, key decisions made, and any issues encountered.
+Pass to the subagent:
+- **Goal** — What to accomplish
+- **Structure** — Components, interfaces, boundaries
+- **Verification** — Specific tests or checks that prove success
+- **Files to read** — Design doc and key source files
+- **Where to report** — The step section in `03_implementation_<feature-name>.md`
 
-**Evaluate the report** and decide next action:
-- **Success** → Proceed to next step
-- **Minor deviation** → Note in `03-implementation.md`, proceed if result is acceptable
-- **Plan adjustment** → Update `03-implementation.md` with new approach and rationale, continue
-- **Blocking issue** → Stop immediately, document blocker, report to developer (may need to return to design phase)
+#### Subagent Work
 
-### 4. Final Verification
+Subagents work autonomously: read context, implement within structural boundaries, commit, run verification, document progress in the implementation file.
 
-Before declaring complete:
-- Run all checks: `./dev backend check`, `./dev frontend check`
-- Run all tests: `./dev backend test`, `./dev frontend e2e`
-- Review `01-requirements.md` — verify each requirement is addressed
-- Run validation step: start application, verify key flows work
-- Document verification results in `03-implementation.md`
+**Default approach:** Write tests first. This clarifies the interface and catches misunderstandings before implementation. Deviate only when testing after makes more sense (e.g., exploratory spikes, UI layout).
 
-### 5. Prepare for Human Testing
+If verification fails, iterate. If still failing after reasonable effort, report as blocker.
 
-Do NOT create a PR. Instead:
-- Ensure all changes are committed
-- Update `03-implementation.md` with:
-  - Summary of what was implemented
-  - Any deviations from the design
-  - Known issues or limitations
-  - Instructions for testing
-- Report completion to developer for manual testing
+#### Coordinator Review
 
-The developer will test, then create the PR when satisfied.
+After each step, do a **structural review**:
 
-## The Implementation Document
+1. Read subagent's notes — what was implemented, any deviations?
+2. Check structural alignment — interfaces match design? Components in right places?
+3. Skim key changes — new interfaces, public APIs. Don't review every line.
 
-Create `03-implementation.md` in the feature folder. The number of steps depends on feature size: small features may have 1-2 steps, larger features may have 5+. Each step is a logical unit.
+Then decide:
+- **Aligned** → Next step
+- **Minor deviation** → Note it, proceed
+- **Structural issue** → Adjust plan or have subagent revise
+- **Blocker** → Stop, document, report to developer
 
-### Structure
+### 4. Complete
+
+**Final verification:**
+- Run full test suite
+- Check each requirement in `01_requirements_<feature-name>.md`
+- Check structural decisions in `02_design_<feature-name>.md` were followed
+
+**Prepare for human testing** (do NOT create PR):
+- All changes committed
+- Update `03_implementation_<feature-name>.md`
+- Report completion to developer
+
+## Implementation Document Template
 
 ```markdown
-# Implementation Plan
+# Implementation: <feature-name>
+
+**Requirements:** `01_requirements_<feature-name>.md`
+**Design:** `02_design_<feature-name>.md`
 
 ## Steps
 
-- [ ] Step 1: High-level description of logical unit
-- [ ] Step 2: ...
-- [ ] Validation: Test key user flows with running app
+### Step 1: <description>
+**Goal:** ...
+**Structure:** Components X, Y. New interface Z.
+**Verify:** Unit tests for X, integration test for X-Y.
+**Read:** `src/services/X.ts`, `src/types/Y.ts`
 
-## Progress
+**Status:** Complete
+**Commits:** abc123, def456
+**Verification:** Passed — unit tests added, integration test green
+**Notes:** Implemented X in `src/services/`. Decision: used adapter pattern for Y because...
+**Coordinator Review:** Structure matches design. → Step 2
 
-### Step 1: Description
-Status: ✅ Complete
-Commits: abc123, def456
-Notes: Subagent implemented X and Y, made design decision Z...
+### Step 2: <description>
+**Goal:** ...
+**Structure:** Component Z, extends interface from Step 1.
+**Verify:** E2E test for user flow.
+**Read:** `src/components/Z.tsx`, `src/hooks/useZ.ts`
 
-### Step 2: Description
-Status: 🔄 In progress
-Notes: ...
+**Status:** In Progress
+**Notes:** ...
 
-## Discoveries
+## Final Verification
 
-- Found that X works differently than expected...
-- Changed approach for Y because...
+- [ ] Full test suite passes
+- [ ] All requirements verified
+- [ ] Design decisions followed
 
-## Verification
+## Summary
 
-- [ ] All tests pass
-- [ ] Requirements verified
-- [ ] Manual validation complete
+- What was built
+- Deviations from design (with rationale)
 ```
-
-## Completion Gate
-
-- All implementation steps completed
-- All tests pass
-- Requirements verified against `01-requirements.md`
-- Final validation passed
-- `03-implementation.md` documents any deviations
-- Branch is ready for human testing (no PR yet)
 
 ## Principles
 
 - **Coordinator, not implementer** — Main agent orchestrates; subagents execute
-- **High-level steps** — Logical units, not detailed instructions; trust subagent intelligence
-- **Always pass design doc** — Subagents need full context to make good decisions
-- **Multiple commits per step** — Each step can include several commits; tests pass after each step
-- **Clean main context** — Subagents handle details so coordinator stays focused on big picture
-- **Sequential execution** — One step at a time; later steps may change based on earlier results
-- **Tests with code** — Tests belong in the same step as the code they verify, not as separate steps
-- **Document deviations** — Note anything different from the design
-- **Stop on blockers** — Don't guess or work around fundamental issues
-- **Human tests first** — No PR until developer verifies the implementation
+- **Context and verification** — Every delegation includes what to build and how to verify
+- **Structural guidance** — Coordinator decides boundaries and interfaces; subagents decide implementation
+- **Review after each step** — Catch structural drift early
+- **Tests with code** — Same step, not separate
+- **Document deviations** — With rationale
+- **Stop on blockers** — Don't work around fundamental issues
