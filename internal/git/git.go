@@ -5,43 +5,15 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+
 	"time"
+
+	"github.com/oberprah/splice/internal/core"
 )
 
-// RefType represents the type of a git reference
-type RefType int
-
-const (
-	RefTypeBranch       RefType = iota // Local branch (e.g., "main")
-	RefTypeRemoteBranch                // Remote branch (e.g., "origin/main")
-	RefTypeTag                         // Tag (e.g., "v1.0")
-)
-
-// RefInfo represents a git reference (branch, tag, or HEAD pointer)
-type RefInfo struct {
-	Name   string  // e.g., "main", "v1.0", "origin/main"
-	Type   RefType // Branch, RemoteBranch, or Tag
-	IsHead bool    // true if this is the current HEAD
-}
-
-// GitCommit represents a single git commit with all necessary display information
-type GitCommit struct {
-	Hash         string    // Full 40-char hash
-	ParentHashes []string  // Parent commit hashes (empty for root commits, space-separated in git output)
-	Refs         []RefInfo // Branch/tag decorations
-	Message      string    // First line of commit message (subject)
-	Body         string    // Commit message body (everything after subject line)
-	Author       string    // Author name (not email)
-	Date         time.Time // Commit timestamp
-}
-
-// FileChange represents a file that was changed in a commit
-type FileChange struct {
-	Path      string // File path relative to repository root
-	Status    string // Git status: M (modified), A (added), D (deleted), R (renamed), etc.
-	Additions int    // Number of lines added
-	Deletions int    // Number of lines deleted
-	IsBinary  bool   // True if the file is binary
+// parseDate parses a date string in RFC3339 format
+func parseDate(dateStr string) (time.Time, error) {
+	return time.Parse(time.RFC3339, dateStr)
 }
 
 // parseRefDecorations parses git's %d output into structured RefInfo data.
@@ -53,11 +25,11 @@ type FileChange struct {
 //	" (main)" - local branch
 //	" (origin/main)" - remote branch
 //	"" - no refs
-func parseRefDecorations(refsStr string) []RefInfo {
+func parseRefDecorations(refsStr string) []core.RefInfo {
 	// Trim the leading space and surrounding parentheses
 	refsStr = strings.TrimSpace(refsStr)
 	if refsStr == "" {
-		return []RefInfo{}
+		return []core.RefInfo{}
 	}
 
 	// Remove the surrounding parentheses
@@ -65,12 +37,12 @@ func parseRefDecorations(refsStr string) []RefInfo {
 		refsStr = refsStr[1 : len(refsStr)-1]
 	} else {
 		// No parentheses means no refs
-		return []RefInfo{}
+		return []core.RefInfo{}
 	}
 
 	// Split by comma to get individual refs
 	refParts := strings.Split(refsStr, ",")
-	refs := make([]RefInfo, 0, len(refParts))
+	refs := make([]core.RefInfo, 0, len(refParts))
 
 	headBranch := "" // Track which branch HEAD points to
 
@@ -90,36 +62,36 @@ func parseRefDecorations(refsStr string) []RefInfo {
 			continue
 		}
 
-		var ref RefInfo
+		var ref core.RefInfo
 
 		// Handle "HEAD -> branch" specially
 		if strings.HasPrefix(part, "HEAD -> ") {
 			branchName := strings.TrimPrefix(part, "HEAD -> ")
-			ref = RefInfo{
+			ref = core.RefInfo{
 				Name:   branchName,
-				Type:   RefTypeBranch,
+				Type:   core.RefTypeBranch,
 				IsHead: true,
 			}
 		} else if strings.HasPrefix(part, "tag: ") {
 			// Handle tags
 			tagName := strings.TrimPrefix(part, "tag: ")
-			ref = RefInfo{
+			ref = core.RefInfo{
 				Name:   tagName,
-				Type:   RefTypeTag,
+				Type:   core.RefTypeTag,
 				IsHead: false,
 			}
 		} else if strings.Contains(part, "/") {
 			// Remote branch (contains /)
-			ref = RefInfo{
+			ref = core.RefInfo{
 				Name:   part,
-				Type:   RefTypeRemoteBranch,
+				Type:   core.RefTypeRemoteBranch,
 				IsHead: false,
 			}
 		} else {
 			// Local branch
-			ref = RefInfo{
+			ref = core.RefInfo{
 				Name:   part,
-				Type:   RefTypeBranch,
+				Type:   core.RefTypeBranch,
 				IsHead: part == headBranch,
 			}
 		}
@@ -132,16 +104,16 @@ func parseRefDecorations(refsStr string) []RefInfo {
 
 // ParseGitLogOutput parses git log output into GitCommit structs.
 // Input format: "hash\0parents\0refs\0author\0date\0subject\0body\x1e" (NULL-separated fields, record separator between commits).
-func ParseGitLogOutput(output string) ([]GitCommit, error) {
+func ParseGitLogOutput(output string) ([]core.GitCommit, error) {
 	output = strings.TrimSpace(output)
 	if output == "" {
-		return []GitCommit{}, nil
+		return []core.GitCommit{}, nil
 	}
 
 	// Split by record separator to get individual commits
 	commitRecords := strings.Split(output, "\x1e")
 
-	commits := make([]GitCommit, 0, len(commitRecords))
+	commits := make([]core.GitCommit, 0, len(commitRecords))
 
 	for _, record := range commitRecords {
 		record = strings.TrimSpace(record)
@@ -180,12 +152,12 @@ func ParseGitLogOutput(output string) ([]GitCommit, error) {
 		refs := parseRefDecorations(refsStr)
 
 		// Parse the date
-		date, err := time.Parse(time.RFC3339, dateStr)
+		date, err := parseDate(dateStr)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse date %q: %w", dateStr, err)
 		}
 
-		commit := GitCommit{
+		commit := core.GitCommit{
 			Hash:         hash,
 			ParentHashes: parentHashes,
 			Refs:         refs,
@@ -202,7 +174,7 @@ func ParseGitLogOutput(output string) ([]GitCommit, error) {
 }
 
 // FetchCommits executes git log and returns a slice of commits
-func FetchCommits(limit int) ([]GitCommit, error) {
+func FetchCommits(limit int) ([]core.GitCommit, error) {
 	// Use git log with custom format using NULL separator: hash\0parents\0refs\0author\0date\0subject\0body
 	// NULL character is used as field delimiter since it won't appear in commit messages
 	// ASCII Record Separator (0x1e) is used as commit record separator
@@ -232,9 +204,9 @@ func FetchCommits(limit int) ([]GitCommit, error) {
 
 // ParseFileChangesOutput parses git diff output into FileChange structs.
 // Input format: "additions\tdeletions\tfilepath" (one file per line).
-func ParseFileChangesOutput(output string) ([]FileChange, error) {
+func ParseFileChangesOutput(output string) ([]core.FileChange, error) {
 	lines := strings.Split(strings.TrimSpace(output), "\n")
-	changes := make([]FileChange, 0, len(lines))
+	changes := make([]core.FileChange, 0, len(lines))
 
 	for i, line := range lines {
 		if line == "" {
@@ -273,7 +245,7 @@ func ParseFileChangesOutput(output string) ([]FileChange, error) {
 			}
 		}
 
-		change := FileChange{
+		change := core.FileChange{
 			Path:      path,
 			Additions: additions,
 			Deletions: deletions,
@@ -286,10 +258,25 @@ func ParseFileChangesOutput(output string) ([]FileChange, error) {
 	return changes, nil
 }
 
-// FetchFileChanges executes git diff and returns a slice of file changes for a commit
-func FetchFileChanges(commitHash string) ([]FileChange, error) {
+// FetchFileChanges executes git diff and returns a slice of file changes for a commit range.
+func FetchFileChanges(commitRange core.CommitRange) ([]core.FileChange, error) {
+	// Determine the from and to hashes based on whether this is a single commit or range
+	var fromHash, toHash string
+	if commitRange.IsSingleCommit() {
+		// Single commit: compare commit with its parent
+		fromHash = commitRange.End.Hash + "^"
+		toHash = commitRange.End.Hash
+	} else {
+		// Range: compare Start commit's parent with End commit
+		fromHash = commitRange.Start.Hash + "^"
+		toHash = commitRange.End.Hash
+	}
+
+	rangeSpec := fromHash + ".." + toHash
+
 	// First, get file statuses (A/M/D/R)
-	statusCmd := exec.Command("git", "diff-tree", "--no-commit-id", "--name-status", "-r", commitHash)
+	// Note: diff-tree doesn't work well with ranges, so we use git diff for status
+	statusCmd := exec.Command("git", "diff", "--name-status", rangeSpec)
 	var statusOut bytes.Buffer
 	var statusErr bytes.Buffer
 	statusCmd.Stdout = &statusOut
@@ -302,9 +289,9 @@ func FetchFileChanges(commitHash string) ([]FileChange, error) {
 			return nil, fmt.Errorf("not a git repository")
 		}
 		if strings.Contains(stderrStr, "unknown revision") || strings.Contains(stderrStr, "bad revision") {
-			return nil, fmt.Errorf("invalid commit: %s", commitHash)
+			return nil, fmt.Errorf("invalid commit range: %s..%s", fromHash, toHash)
 		}
-		return nil, fmt.Errorf("git diff-tree failed: %v - %s", err, stderrStr)
+		return nil, fmt.Errorf("git diff failed: %v - %s", err, stderrStr)
 	}
 
 	// Parse status information into a map
@@ -323,7 +310,7 @@ func FetchFileChanges(commitHash string) ([]FileChange, error) {
 	}
 
 	// Now get numstat information
-	cmd := exec.Command("git", "diff-tree", "--no-commit-id", "--numstat", "-r", commitHash)
+	cmd := exec.Command("git", "diff", "--numstat", rangeSpec)
 	var out bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &out
@@ -336,9 +323,9 @@ func FetchFileChanges(commitHash string) ([]FileChange, error) {
 			return nil, fmt.Errorf("not a git repository")
 		}
 		if strings.Contains(stderrStr, "unknown revision") || strings.Contains(stderrStr, "bad revision") {
-			return nil, fmt.Errorf("invalid commit: %s", commitHash)
+			return nil, fmt.Errorf("invalid commit range: %s..%s", fromHash, toHash)
 		}
-		return nil, fmt.Errorf("git diff-tree failed: %v - %s", err, stderrStr)
+		return nil, fmt.Errorf("git diff failed: %v - %s", err, stderrStr)
 	}
 
 	// Parse file changes and add status
@@ -357,15 +344,6 @@ func FetchFileChanges(commitHash string) ([]FileChange, error) {
 	}
 
 	return changes, nil
-}
-
-// FullFileDiffResult contains the full file content before and after a change
-type FullFileDiffResult struct {
-	OldContent string // Content of the file before the change (empty for new files)
-	NewContent string // Content of the file after the change (empty for deleted files)
-	DiffOutput string // Raw unified diff output
-	OldPath    string // Path of the file before the change (for renames)
-	NewPath    string // Path of the file after the change
 }
 
 // FetchFileContent retrieves the content of a file at a specific commit.
@@ -404,8 +382,20 @@ func FetchFileContent(commitHash, filePath string) (string, error) {
 
 // FetchFullFileDiff fetches the complete file content before and after a change,
 // along with the diff output. This enables showing the full file with changes highlighted.
-func FetchFullFileDiff(commitHash string, change FileChange) (*FullFileDiffResult, error) {
-	result := &FullFileDiffResult{
+func FetchFullFileDiff(commitRange core.CommitRange, change core.FileChange) (*core.FullFileDiffResult, error) {
+	// Determine the from and to hashes based on whether this is a single commit or range
+	var fromHash, toHash string
+	if commitRange.IsSingleCommit() {
+		// Single commit: compare commit with its parent
+		fromHash = commitRange.End.Hash + "^"
+		toHash = commitRange.End.Hash
+	} else {
+		// Range: compare Start commit's parent with End commit
+		fromHash = commitRange.Start.Hash + "^"
+		toHash = commitRange.End.Hash
+	}
+
+	result := &core.FullFileDiffResult{
 		NewPath: change.Path,
 		OldPath: change.Path,
 	}
@@ -415,24 +405,24 @@ func FetchFullFileDiff(commitHash string, change FileChange) (*FullFileDiffResul
 	// In our FileChange struct, we only have Path (the new path)
 	// We need to handle this differently - for now assume same path
 
-	// Fetch new content (at commitHash)
+	// Fetch new content (at toHash)
 	switch change.Status {
 	case "D": // Deleted file - no new content
 		result.NewContent = ""
 	default:
-		newContent, err := FetchFileContent(commitHash, change.Path)
+		newContent, err := FetchFileContent(toHash, change.Path)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch new content: %w", err)
 		}
 		result.NewContent = newContent
 	}
 
-	// Fetch old content (at commitHash^, the parent commit)
+	// Fetch old content (at fromHash)
 	switch change.Status {
 	case "A": // Added file - no old content
 		result.OldContent = ""
 	default:
-		oldContent, err := FetchFileContent(commitHash+"^", result.OldPath)
+		oldContent, err := FetchFileContent(fromHash, result.OldPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch old content: %w", err)
 		}
@@ -440,7 +430,8 @@ func FetchFullFileDiff(commitHash string, change FileChange) (*FullFileDiffResul
 	}
 
 	// Fetch the diff
-	diffOutput, err := FetchFileDiff(commitHash, change.Path)
+	rangeSpec := fromHash + ".." + toHash
+	diffOutput, err := FetchFileDiffRange(rangeSpec, change.Path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch diff: %w", err)
 	}
@@ -470,6 +461,33 @@ func FetchFileDiff(commitHash, filePath string) (string, error) {
 			return "", fmt.Errorf("invalid commit: %s", commitHash)
 		}
 		return "", fmt.Errorf("git show failed: %v - %s", err, stderrStr)
+	}
+
+	return out.String(), nil
+}
+
+// FetchFileDiffRange retrieves the unified diff for a specific file in a commit range.
+// The rangeSpec should be in the format "fromHash..toHash".
+// The filePath should be relative to the repository root.
+func FetchFileDiffRange(rangeSpec, filePath string) (string, error) {
+	// Use :(top) pathspec to ensure path is relative to repo root regardless of cwd
+	cmd := exec.Command("git", "diff", rangeSpec, "--", ":(top)"+filePath)
+
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		stderrStr := stderr.String()
+		if strings.Contains(stderrStr, "not a git repository") {
+			return "", fmt.Errorf("not a git repository")
+		}
+		if strings.Contains(stderrStr, "unknown revision") || strings.Contains(stderrStr, "bad revision") {
+			return "", fmt.Errorf("invalid commit range: %s", rangeSpec)
+		}
+		return "", fmt.Errorf("git diff failed: %v - %s", err, stderrStr)
 	}
 
 	return out.String(), nil

@@ -4,10 +4,11 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"github.com/oberprah/splice/internal/core"
+
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/muesli/termenv"
-	"github.com/oberprah/splice/internal/git"
 )
 
 // Pure function tests - testing truncation logic
@@ -180,41 +181,41 @@ func TestTruncateEntireLine(t *testing.T) {
 func TestFormatRefsFull(t *testing.T) {
 	tests := []struct {
 		name     string
-		refs     []git.RefInfo
+		refs     []core.RefInfo
 		expected string
 	}{
 		{
 			name:     "no refs",
-			refs:     []git.RefInfo{},
+			refs:     []core.RefInfo{},
 			expected: "",
 		},
 		{
 			name: "single local branch",
-			refs: []git.RefInfo{
-				{Name: "main", Type: git.RefTypeBranch, IsHead: true},
+			refs: []core.RefInfo{
+				{Name: "main", Type: core.RefTypeBranch, IsHead: true},
 			},
 			expected: "(main) ",
 		},
 		{
 			name: "multiple refs",
-			refs: []git.RefInfo{
-				{Name: "main", Type: git.RefTypeBranch, IsHead: true},
-				{Name: "origin/main", Type: git.RefTypeRemoteBranch, IsHead: false},
-				{Name: "v1.0", Type: git.RefTypeTag, IsHead: false},
+			refs: []core.RefInfo{
+				{Name: "main", Type: core.RefTypeBranch, IsHead: true},
+				{Name: "origin/main", Type: core.RefTypeRemoteBranch, IsHead: false},
+				{Name: "v1.0", Type: core.RefTypeTag, IsHead: false},
 			},
 			expected: "(main, origin/main, tag: v1.0) ",
 		},
 		{
 			name: "tag only",
-			refs: []git.RefInfo{
-				{Name: "v2.1.0", Type: git.RefTypeTag, IsHead: false},
+			refs: []core.RefInfo{
+				{Name: "v2.1.0", Type: core.RefTypeTag, IsHead: false},
 			},
 			expected: "(tag: v2.1.0) ",
 		},
 		{
 			name: "long branch name",
-			refs: []git.RefInfo{
-				{Name: "feature/implement-advanced-user-authentication-system", Type: git.RefTypeBranch, IsHead: true},
+			refs: []core.RefInfo{
+				{Name: "feature/implement-advanced-user-authentication-system", Type: core.RefTypeBranch, IsHead: true},
 			},
 			expected: "(feature/implement-advanced-user-authentication-system) ",
 		},
@@ -233,55 +234,55 @@ func TestFormatRefsFull(t *testing.T) {
 func TestFormatRefsShortenedIndividual(t *testing.T) {
 	tests := []struct {
 		name     string
-		refs     []git.RefInfo
+		refs     []core.RefInfo
 		maxLen   int
 		expected string
 	}{
 		{
 			name:     "no refs",
-			refs:     []git.RefInfo{},
+			refs:     []core.RefInfo{},
 			maxLen:   30,
 			expected: "",
 		},
 		{
 			name: "short refs no truncation",
-			refs: []git.RefInfo{
-				{Name: "main", Type: git.RefTypeBranch, IsHead: true},
-				{Name: "v1.0", Type: git.RefTypeTag, IsHead: false},
+			refs: []core.RefInfo{
+				{Name: "main", Type: core.RefTypeBranch, IsHead: true},
+				{Name: "v1.0", Type: core.RefTypeTag, IsHead: false},
 			},
 			maxLen:   30,
 			expected: "(main, tag: v1.0) ",
 		},
 		{
 			name: "long branch name truncated",
-			refs: []git.RefInfo{
-				{Name: "feature/implement-advanced-user-auth", Type: git.RefTypeBranch, IsHead: true},
+			refs: []core.RefInfo{
+				{Name: "feature/implement-advanced-user-auth", Type: core.RefTypeBranch, IsHead: true},
 			},
 			maxLen:   30,
 			expected: "(feature/implement-advanced-…) ",
 		},
 		{
 			name: "multiple refs with truncation",
-			refs: []git.RefInfo{
-				{Name: "feature/implement-advanced-user-auth", Type: git.RefTypeBranch, IsHead: true},
-				{Name: "origin/feature/implement-advanced-user-auth", Type: git.RefTypeRemoteBranch, IsHead: false},
-				{Name: "v2.1.0", Type: git.RefTypeTag, IsHead: false},
+			refs: []core.RefInfo{
+				{Name: "feature/implement-advanced-user-auth", Type: core.RefTypeBranch, IsHead: true},
+				{Name: "origin/feature/implement-advanced-user-auth", Type: core.RefTypeRemoteBranch, IsHead: false},
+				{Name: "v2.1.0", Type: core.RefTypeTag, IsHead: false},
 			},
 			maxLen:   30,
 			expected: "(feature/implement-advanced-…, origin/feature/implement-ad…, tag: v2.1.0) ",
 		},
 		{
 			name: "maxLen 1",
-			refs: []git.RefInfo{
-				{Name: "main", Type: git.RefTypeBranch, IsHead: true},
+			refs: []core.RefInfo{
+				{Name: "main", Type: core.RefTypeBranch, IsHead: true},
 			},
 			maxLen:   1,
 			expected: "() ",
 		},
 		{
 			name: "maxLen 0",
-			refs: []git.RefInfo{
-				{Name: "main", Type: git.RefTypeBranch, IsHead: true},
+			refs: []core.RefInfo{
+				{Name: "main", Type: core.RefTypeBranch, IsHead: true},
 			},
 			maxLen:   0,
 			expected: "() ",
@@ -301,57 +302,57 @@ func TestFormatRefsShortenedIndividual(t *testing.T) {
 func TestFormatRefsFirstPlusCount(t *testing.T) {
 	tests := []struct {
 		name     string
-		refs     []git.RefInfo
+		refs     []core.RefInfo
 		maxLen   int
 		expected string
 	}{
 		{
 			name:     "no refs",
-			refs:     []git.RefInfo{},
+			refs:     []core.RefInfo{},
 			maxLen:   30,
 			expected: "",
 		},
 		{
 			name: "single ref",
-			refs: []git.RefInfo{
-				{Name: "main", Type: git.RefTypeBranch, IsHead: true},
+			refs: []core.RefInfo{
+				{Name: "main", Type: core.RefTypeBranch, IsHead: true},
 			},
 			maxLen:   30,
 			expected: "(main) ",
 		},
 		{
 			name: "multiple refs shows HEAD",
-			refs: []git.RefInfo{
-				{Name: "main", Type: git.RefTypeBranch, IsHead: true},
-				{Name: "origin/main", Type: git.RefTypeRemoteBranch, IsHead: false},
-				{Name: "v1.0", Type: git.RefTypeTag, IsHead: false},
+			refs: []core.RefInfo{
+				{Name: "main", Type: core.RefTypeBranch, IsHead: true},
+				{Name: "origin/main", Type: core.RefTypeRemoteBranch, IsHead: false},
+				{Name: "v1.0", Type: core.RefTypeTag, IsHead: false},
 			},
 			maxLen:   30,
 			expected: "(main +2 more) ",
 		},
 		{
 			name: "multiple refs no HEAD shows first",
-			refs: []git.RefInfo{
-				{Name: "origin/main", Type: git.RefTypeRemoteBranch, IsHead: false},
-				{Name: "v1.0", Type: git.RefTypeTag, IsHead: false},
+			refs: []core.RefInfo{
+				{Name: "origin/main", Type: core.RefTypeRemoteBranch, IsHead: false},
+				{Name: "v1.0", Type: core.RefTypeTag, IsHead: false},
 			},
 			maxLen:   30,
 			expected: "(origin/main +1 more) ",
 		},
 		{
 			name: "long ref name truncated",
-			refs: []git.RefInfo{
-				{Name: "feature/implement-advanced-user-authentication", Type: git.RefTypeBranch, IsHead: true},
-				{Name: "origin/feature/implement-advanced-user-authentication", Type: git.RefTypeRemoteBranch, IsHead: false},
+			refs: []core.RefInfo{
+				{Name: "feature/implement-advanced-user-authentication", Type: core.RefTypeBranch, IsHead: true},
+				{Name: "origin/feature/implement-advanced-user-authentication", Type: core.RefTypeRemoteBranch, IsHead: false},
 			},
 			maxLen:   30,
 			expected: "(feature/implement-advanced-… +1 more) ",
 		},
 		{
 			name: "tag as first ref",
-			refs: []git.RefInfo{
-				{Name: "v2.1.0-beta-very-long-tag-name", Type: git.RefTypeTag, IsHead: false},
-				{Name: "main", Type: git.RefTypeBranch, IsHead: false},
+			refs: []core.RefInfo{
+				{Name: "v2.1.0-beta-very-long-tag-name", Type: core.RefTypeTag, IsHead: false},
+				{Name: "main", Type: core.RefTypeBranch, IsHead: false},
 			},
 			maxLen:   20,
 			expected: "(tag: v2.1.0-beta-very-… +1 more) ",
@@ -369,21 +370,21 @@ func TestFormatRefsFirstPlusCount(t *testing.T) {
 }
 
 func TestBuildRefs(t *testing.T) {
-	refs := []git.RefInfo{
-		{Name: "feature/implement-advanced-user-authentication", Type: git.RefTypeBranch, IsHead: true},
-		{Name: "origin/feature/implement-advanced-user-authentication", Type: git.RefTypeRemoteBranch, IsHead: false},
-		{Name: "v2.1.0", Type: git.RefTypeTag, IsHead: false},
+	refs := []core.RefInfo{
+		{Name: "feature/implement-advanced-user-authentication", Type: core.RefTypeBranch, IsHead: true},
+		{Name: "origin/feature/implement-advanced-user-authentication", Type: core.RefTypeRemoteBranch, IsHead: false},
+		{Name: "v2.1.0", Type: core.RefTypeTag, IsHead: false},
 	}
 
 	tests := []struct {
 		name     string
-		refs     []git.RefInfo
+		refs     []core.RefInfo
 		level    RefsLevel
 		expected string
 	}{
 		{
 			name:     "empty refs",
-			refs:     []git.RefInfo{},
+			refs:     []core.RefInfo{},
 			level:    RefsLevelFull,
 			expected: "",
 		},
@@ -516,13 +517,13 @@ func TestFormatCommitLine_VariousTerminalWidths(t *testing.T) {
 		{
 			name: "very wide terminal - everything fits",
 			components: CommitLineComponents{
-				IsSelected: true,
-				Graph:      "├─╮ ",
-				Hash:       "abc123d",
-				Refs: []git.RefInfo{
-					{Name: "feature/user-authentication", Type: git.RefTypeBranch, IsHead: true},
-					{Name: "origin/feature/user-authentication", Type: git.RefTypeRemoteBranch, IsHead: false},
-					{Name: "v2.1.0", Type: git.RefTypeTag, IsHead: false},
+				DisplayState: LineStateCursor,
+				Graph:        "├─╮ ",
+				Hash:         "abc123d",
+				Refs: []core.RefInfo{
+					{Name: "feature/user-authentication", Type: core.RefTypeBranch, IsHead: true},
+					{Name: "origin/feature/user-authentication", Type: core.RefTypeRemoteBranch, IsHead: false},
+					{Name: "v2.1.0", Type: core.RefTypeTag, IsHead: false},
 				},
 				Message: "Implement advanced user authentication system with OAuth2 support",
 				Author:  "Alice Johnson",
@@ -536,13 +537,13 @@ func TestFormatCommitLine_VariousTerminalWidths(t *testing.T) {
 		{
 			name: "wide terminal - message capped at 72",
 			components: CommitLineComponents{
-				IsSelected: false,
-				Graph:      "",
-				Hash:       "def456a",
-				Refs:       []git.RefInfo{},
-				Message:    "This is a very long commit message that exceeds the 72 character limit and should be truncated at that boundary for readability",
-				Author:     "Bob Smith",
-				Time:       "3 hours ago",
+				DisplayState: LineStateNone,
+				Graph:        "",
+				Hash:         "def456a",
+				Refs:         []core.RefInfo{},
+				Message:      "This is a very long commit message that exceeds the 72 character limit and should be truncated at that boundary for readability",
+				Author:       "Bob Smith",
+				Time:         "3 hours ago",
 			},
 			availableWidth:   120,
 			expectedMaxLen:   120,
@@ -552,12 +553,12 @@ func TestFormatCommitLine_VariousTerminalWidths(t *testing.T) {
 		{
 			name: "medium terminal - refs shortened, author truncated",
 			components: CommitLineComponents{
-				IsSelected: true,
-				Graph:      "│ ",
-				Hash:       "ghi789b",
-				Refs: []git.RefInfo{
-					{Name: "feature/implement-advanced-caching-strategy", Type: git.RefTypeBranch, IsHead: true},
-					{Name: "origin/feature/implement-advanced-caching-strategy", Type: git.RefTypeRemoteBranch, IsHead: false},
+				DisplayState: LineStateCursor,
+				Graph:        "│ ",
+				Hash:         "ghi789b",
+				Refs: []core.RefInfo{
+					{Name: "feature/implement-advanced-caching-strategy", Type: core.RefTypeBranch, IsHead: true},
+					{Name: "origin/feature/implement-advanced-caching-strategy", Type: core.RefTypeRemoteBranch, IsHead: false},
 				},
 				Message: "Add distributed caching layer for improved performance",
 				Author:  "Christopher Williamson-Henderson",
@@ -570,11 +571,11 @@ func TestFormatCommitLine_VariousTerminalWidths(t *testing.T) {
 		{
 			name: "narrow terminal - time dropped, message shortened",
 			components: CommitLineComponents{
-				IsSelected: false,
-				Graph:      "├ ",
-				Hash:       "jkl012c",
-				Refs: []git.RefInfo{
-					{Name: "main", Type: git.RefTypeBranch, IsHead: true},
+				DisplayState: LineStateNone,
+				Graph:        "├ ",
+				Hash:         "jkl012c",
+				Refs: []core.RefInfo{
+					{Name: "main", Type: core.RefTypeBranch, IsHead: true},
 				},
 				Message: "Refactor database connection pool management",
 				Author:  "Diana Prince",
@@ -588,13 +589,13 @@ func TestFormatCommitLine_VariousTerminalWidths(t *testing.T) {
 		{
 			name: "very narrow terminal - minimal format, author dropped",
 			components: CommitLineComponents{
-				IsSelected: true,
-				Graph:      "",
-				Hash:       "mno345d",
-				Refs:       []git.RefInfo{},
-				Message:    "Fix critical security vulnerability in auth module",
-				Author:     "Edward Norton",
-				Time:       "just now",
+				DisplayState: LineStateCursor,
+				Graph:        "",
+				Hash:         "mno345d",
+				Refs:         []core.RefInfo{},
+				Message:      "Fix critical security vulnerability in auth module",
+				Author:       "Edward Norton",
+				Time:         "just now",
 			},
 			availableWidth:   40,
 			expectedMaxLen:   40,
@@ -604,11 +605,11 @@ func TestFormatCommitLine_VariousTerminalWidths(t *testing.T) {
 		{
 			name: "extreme narrow terminal - entire line truncated",
 			components: CommitLineComponents{
-				IsSelected: false,
-				Graph:      "├─┬─╮─┬─╮ ", // Large graph (8 runes)
-				Hash:       "pqr678e",
-				Refs: []git.RefInfo{
-					{Name: "feature/x", Type: git.RefTypeBranch, IsHead: true},
+				DisplayState: LineStateNone,
+				Graph:        "├─┬─╮─┬─╮ ", // Large graph (8 runes)
+				Hash:         "pqr678e",
+				Refs: []core.RefInfo{
+					{Name: "feature/x", Type: core.RefTypeBranch, IsHead: true},
 				},
 				Message: "Update",
 				Author:  "Frank",
@@ -658,13 +659,13 @@ func TestFormatCommitLine_ContentCombinations(t *testing.T) {
 		{
 			name: "very long commit message",
 			components: CommitLineComponents{
-				IsSelected: false,
-				Graph:      "",
-				Hash:       "abc123d",
-				Refs:       []git.RefInfo{},
-				Message:    "Implement comprehensive end-to-end testing framework with support for multiple browsers, parallel execution, and detailed reporting capabilities that include screenshots and video recordings of test failures",
-				Author:     "Alice",
-				Time:       "1 day ago",
+				DisplayState: LineStateNone,
+				Graph:        "",
+				Hash:         "abc123d",
+				Refs:         []core.RefInfo{},
+				Message:      "Implement comprehensive end-to-end testing framework with support for multiple browsers, parallel execution, and detailed reporting capabilities that include screenshots and video recordings of test failures",
+				Author:       "Alice",
+				Time:         "1 day ago",
 			},
 			availableWidth: 100,
 			description:    "Message should be capped at 72 chars",
@@ -672,13 +673,13 @@ func TestFormatCommitLine_ContentCombinations(t *testing.T) {
 		{
 			name: "very long author name",
 			components: CommitLineComponents{
-				IsSelected: true,
-				Graph:      "",
-				Hash:       "def456a",
-				Refs:       []git.RefInfo{},
-				Message:    "Update documentation",
-				Author:     "Christopher Alexander Montgomery-Worthington III",
-				Time:       "2 hours ago",
+				DisplayState: LineStateCursor,
+				Graph:        "",
+				Hash:         "def456a",
+				Refs:         []core.RefInfo{},
+				Message:      "Update documentation",
+				Author:       "Christopher Alexander Montgomery-Worthington III",
+				Time:         "2 hours ago",
 			},
 			availableWidth: 80,
 			description:    "Author should be truncated to 25 chars",
@@ -686,13 +687,13 @@ func TestFormatCommitLine_ContentCombinations(t *testing.T) {
 		{
 			name: "multiple long branch names",
 			components: CommitLineComponents{
-				IsSelected: false,
-				Graph:      "├ ",
-				Hash:       "ghi789b",
-				Refs: []git.RefInfo{
-					{Name: "feature/implement-distributed-caching-with-redis", Type: git.RefTypeBranch, IsHead: true},
-					{Name: "origin/feature/implement-distributed-caching-with-redis", Type: git.RefTypeRemoteBranch, IsHead: false},
-					{Name: "staging/feature/implement-distributed-caching-with-redis", Type: git.RefTypeRemoteBranch, IsHead: false},
+				DisplayState: LineStateNone,
+				Graph:        "├ ",
+				Hash:         "ghi789b",
+				Refs: []core.RefInfo{
+					{Name: "feature/implement-distributed-caching-with-redis", Type: core.RefTypeBranch, IsHead: true},
+					{Name: "origin/feature/implement-distributed-caching-with-redis", Type: core.RefTypeRemoteBranch, IsHead: false},
+					{Name: "staging/feature/implement-distributed-caching-with-redis", Type: core.RefTypeRemoteBranch, IsHead: false},
 				},
 				Message: "Add Redis caching layer",
 				Author:  "Bob",
@@ -704,20 +705,20 @@ func TestFormatCommitLine_ContentCombinations(t *testing.T) {
 		{
 			name: "many refs",
 			components: CommitLineComponents{
-				IsSelected: true,
-				Graph:      "",
-				Hash:       "jkl012c",
-				Refs: []git.RefInfo{
-					{Name: "main", Type: git.RefTypeBranch, IsHead: true},
-					{Name: "develop", Type: git.RefTypeBranch, IsHead: false},
-					{Name: "staging", Type: git.RefTypeBranch, IsHead: false},
-					{Name: "production", Type: git.RefTypeBranch, IsHead: false},
-					{Name: "v1.0", Type: git.RefTypeTag, IsHead: false},
-					{Name: "v1.1", Type: git.RefTypeTag, IsHead: false},
-					{Name: "v1.2", Type: git.RefTypeTag, IsHead: false},
-					{Name: "v2.0-beta", Type: git.RefTypeTag, IsHead: false},
-					{Name: "release-candidate", Type: git.RefTypeBranch, IsHead: false},
-					{Name: "hotfix", Type: git.RefTypeBranch, IsHead: false},
+				DisplayState: LineStateCursor,
+				Graph:        "",
+				Hash:         "jkl012c",
+				Refs: []core.RefInfo{
+					{Name: "main", Type: core.RefTypeBranch, IsHead: true},
+					{Name: "develop", Type: core.RefTypeBranch, IsHead: false},
+					{Name: "staging", Type: core.RefTypeBranch, IsHead: false},
+					{Name: "production", Type: core.RefTypeBranch, IsHead: false},
+					{Name: "v1.0", Type: core.RefTypeTag, IsHead: false},
+					{Name: "v1.1", Type: core.RefTypeTag, IsHead: false},
+					{Name: "v1.2", Type: core.RefTypeTag, IsHead: false},
+					{Name: "v2.0-beta", Type: core.RefTypeTag, IsHead: false},
+					{Name: "release-candidate", Type: core.RefTypeBranch, IsHead: false},
+					{Name: "hotfix", Type: core.RefTypeBranch, IsHead: false},
 				},
 				Message: "Release version 2.0",
 				Author:  "Release Manager",
@@ -729,13 +730,13 @@ func TestFormatCommitLine_ContentCombinations(t *testing.T) {
 		{
 			name: "no refs",
 			components: CommitLineComponents{
-				IsSelected: false,
-				Graph:      "│ ",
-				Hash:       "mno345d",
-				Refs:       []git.RefInfo{},
-				Message:    "Fix typo in documentation",
-				Author:     "Charlie",
-				Time:       "just now",
+				DisplayState: LineStateNone,
+				Graph:        "│ ",
+				Hash:         "mno345d",
+				Refs:         []core.RefInfo{},
+				Message:      "Fix typo in documentation",
+				Author:       "Charlie",
+				Time:         "just now",
 			},
 			availableWidth: 70,
 			description:    "Should render cleanly without refs",
@@ -743,13 +744,13 @@ func TestFormatCommitLine_ContentCombinations(t *testing.T) {
 		{
 			name: "empty message",
 			components: CommitLineComponents{
-				IsSelected: true,
-				Graph:      "",
-				Hash:       "pqr678e",
-				Refs:       []git.RefInfo{},
-				Message:    "",
-				Author:     "Dave",
-				Time:       "5 min ago",
+				DisplayState: LineStateCursor,
+				Graph:        "",
+				Hash:         "pqr678e",
+				Refs:         []core.RefInfo{},
+				Message:      "",
+				Author:       "Dave",
+				Time:         "5 min ago",
 			},
 			availableWidth: 60,
 			description:    "Should handle empty message gracefully",
@@ -757,11 +758,11 @@ func TestFormatCommitLine_ContentCombinations(t *testing.T) {
 		{
 			name: "large graph with many parallel branches",
 			components: CommitLineComponents{
-				IsSelected: false,
-				Graph:      "├─┬─┬─╮─┬─╮─┬─╮─┬ ", // 20 chars of graph
-				Hash:       "stu901f",
-				Refs: []git.RefInfo{
-					{Name: "main", Type: git.RefTypeBranch, IsHead: true},
+				DisplayState: LineStateNone,
+				Graph:        "├─┬─┬─╮─┬─╮─┬─╮─┬ ", // 20 chars of graph
+				Hash:         "stu901f",
+				Refs: []core.RefInfo{
+					{Name: "main", Type: core.RefTypeBranch, IsHead: true},
 				},
 				Message: "Merge multiple feature branches",
 				Author:  "Integration Bot",
@@ -803,13 +804,13 @@ func TestFormatCommitLine_TruncationLevels(t *testing.T) {
 		{
 			name: "level 0 - message capped at 72",
 			components: CommitLineComponents{
-				IsSelected: false,
-				Graph:      "",
-				Hash:       "abc123d",
-				Refs:       []git.RefInfo{},
-				Message:    "This is an extremely long commit message that definitely exceeds 72 characters and needs to be capped",
-				Author:     "Alice",
-				Time:       "1 day ago",
+				DisplayState: LineStateNone,
+				Graph:        "",
+				Hash:         "abc123d",
+				Refs:         []core.RefInfo{},
+				Message:      "This is an extremely long commit message that definitely exceeds 72 characters and needs to be capped",
+				Author:       "Alice",
+				Time:         "1 day ago",
 			},
 			availableWidth: 110,
 			expectedLevel:  "Message capped at 72",
@@ -818,13 +819,13 @@ func TestFormatCommitLine_TruncationLevels(t *testing.T) {
 		{
 			name: "level 1 - author truncated to 25",
 			components: CommitLineComponents{
-				IsSelected: false,
-				Graph:      "",
-				Hash:       "def456a",
-				Refs:       []git.RefInfo{},
-				Message:    "Short message",
-				Author:     "Christopher Montgomery-Worthington III",
-				Time:       "1 day ago",
+				DisplayState: LineStateNone,
+				Graph:        "",
+				Hash:         "def456a",
+				Refs:         []core.RefInfo{},
+				Message:      "Short message",
+				Author:       "Christopher Montgomery-Worthington III",
+				Time:         "1 day ago",
 			},
 			availableWidth: 60,
 			expectedLevel:  "Author truncated to 25",
@@ -833,13 +834,13 @@ func TestFormatCommitLine_TruncationLevels(t *testing.T) {
 		{
 			name: "level 2-4 - refs degradation",
 			components: CommitLineComponents{
-				IsSelected: false,
-				Graph:      "",
-				Hash:       "ghi789b",
-				Refs: []git.RefInfo{
-					{Name: "feature/very-long-branch-name-here", Type: git.RefTypeBranch, IsHead: true},
-					{Name: "origin/feature/very-long-branch-name-here", Type: git.RefTypeRemoteBranch, IsHead: false},
-					{Name: "v1.0", Type: git.RefTypeTag, IsHead: false},
+				DisplayState: LineStateNone,
+				Graph:        "",
+				Hash:         "ghi789b",
+				Refs: []core.RefInfo{
+					{Name: "feature/very-long-branch-name-here", Type: core.RefTypeBranch, IsHead: true},
+					{Name: "origin/feature/very-long-branch-name-here", Type: core.RefTypeRemoteBranch, IsHead: false},
+					{Name: "v1.0", Type: core.RefTypeTag, IsHead: false},
 				},
 				Message: "Update feature",
 				Author:  "Bob",
@@ -852,13 +853,13 @@ func TestFormatCommitLine_TruncationLevels(t *testing.T) {
 		{
 			name: "level 5 - author at 5 chars",
 			components: CommitLineComponents{
-				IsSelected: false,
-				Graph:      "",
-				Hash:       "jkl012c",
-				Refs:       []git.RefInfo{},
-				Message:    "This is a moderately long commit message for testing",
-				Author:     "Christopher",
-				Time:       "just now",
+				DisplayState: LineStateNone,
+				Graph:        "",
+				Hash:         "jkl012c",
+				Refs:         []core.RefInfo{},
+				Message:      "This is a moderately long commit message for testing",
+				Author:       "Christopher",
+				Time:         "just now",
 			},
 			availableWidth: 45,
 			expectedLevel:  "Author at 5 chars",
@@ -867,13 +868,13 @@ func TestFormatCommitLine_TruncationLevels(t *testing.T) {
 		{
 			name: "level 6 - time dropped",
 			components: CommitLineComponents{
-				IsSelected: false,
-				Graph:      "├ ",
-				Hash:       "mno345d",
-				Refs:       []git.RefInfo{},
-				Message:    "Implement new caching strategy for database",
-				Author:     "Diana",
-				Time:       "3 hours ago",
+				DisplayState: LineStateNone,
+				Graph:        "├ ",
+				Hash:         "mno345d",
+				Refs:         []core.RefInfo{},
+				Message:      "Implement new caching strategy for database",
+				Author:       "Diana",
+				Time:         "3 hours ago",
 			},
 			availableWidth:   42,
 			expectedLevel:    "Time dropped",
@@ -882,13 +883,13 @@ func TestFormatCommitLine_TruncationLevels(t *testing.T) {
 		{
 			name: "level 7 - message at 40 chars",
 			components: CommitLineComponents{
-				IsSelected: false,
-				Graph:      "",
-				Hash:       "pqr678e",
-				Refs:       []git.RefInfo{},
-				Message:    "Refactor the entire authentication and authorization subsystem",
-				Author:     "Eve",
-				Time:       "yesterday",
+				DisplayState: LineStateNone,
+				Graph:        "",
+				Hash:         "pqr678e",
+				Refs:         []core.RefInfo{},
+				Message:      "Refactor the entire authentication and authorization subsystem",
+				Author:       "Eve",
+				Time:         "yesterday",
 			},
 			availableWidth: 38,
 			expectedLevel:  "Message at 40 chars",
@@ -897,13 +898,13 @@ func TestFormatCommitLine_TruncationLevels(t *testing.T) {
 		{
 			name: "level 8 - author dropped",
 			components: CommitLineComponents{
-				IsSelected: false,
-				Graph:      "",
-				Hash:       "stu901f",
-				Refs:       []git.RefInfo{},
-				Message:    "Update documentation for API endpoints",
-				Author:     "Frank",
-				Time:       "5 min ago",
+				DisplayState: LineStateNone,
+				Graph:        "",
+				Hash:         "stu901f",
+				Refs:         []core.RefInfo{},
+				Message:      "Update documentation for API endpoints",
+				Author:       "Frank",
+				Time:         "5 min ago",
 			},
 			availableWidth:   30,
 			expectedLevel:    "Author dropped",
@@ -912,11 +913,11 @@ func TestFormatCommitLine_TruncationLevels(t *testing.T) {
 		{
 			name: "level 9 - entire line truncated",
 			components: CommitLineComponents{
-				IsSelected: false,
-				Graph:      "├─┬─╮─┬ ",
-				Hash:       "vwx234g",
-				Refs: []git.RefInfo{
-					{Name: "feature/test", Type: git.RefTypeBranch, IsHead: true},
+				DisplayState: LineStateNone,
+				Graph:        "├─┬─╮─┬ ",
+				Hash:         "vwx234g",
+				Refs: []core.RefInfo{
+					{Name: "feature/test", Type: core.RefTypeBranch, IsHead: true},
 				},
 				Message: "Fix bug in payment processing",
 				Author:  "Grace",
@@ -959,12 +960,12 @@ func TestFormatCommitLine_VisualQuality(t *testing.T) {
 		{
 			name: "balanced parentheses for refs",
 			components: CommitLineComponents{
-				IsSelected: false,
-				Graph:      "",
-				Hash:       "abc123d",
-				Refs: []git.RefInfo{
-					{Name: "main", Type: git.RefTypeBranch, IsHead: true},
-					{Name: "v1.0", Type: git.RefTypeTag, IsHead: false},
+				DisplayState: LineStateNone,
+				Graph:        "",
+				Hash:         "abc123d",
+				Refs: []core.RefInfo{
+					{Name: "main", Type: core.RefTypeBranch, IsHead: true},
+					{Name: "v1.0", Type: core.RefTypeTag, IsHead: false},
 				},
 				Message: "Release version 1.0",
 				Author:  "Alice",
@@ -976,13 +977,13 @@ func TestFormatCommitLine_VisualQuality(t *testing.T) {
 		{
 			name: "correct ellipsis for message",
 			components: CommitLineComponents{
-				IsSelected: false,
-				Graph:      "",
-				Hash:       "def456a",
-				Refs:       []git.RefInfo{},
-				Message:    "This is a very long message that will be truncated",
-				Author:     "Bob",
-				Time:       "2 days ago",
+				DisplayState: LineStateNone,
+				Graph:        "",
+				Hash:         "def456a",
+				Refs:         []core.RefInfo{},
+				Message:      "This is a very long message that will be truncated",
+				Author:       "Bob",
+				Time:         "2 days ago",
 			},
 			availableWidth: 40,
 			description:    "Message should use '…' (1 char) for truncation",
@@ -990,13 +991,13 @@ func TestFormatCommitLine_VisualQuality(t *testing.T) {
 		{
 			name: "correct ellipsis for author",
 			components: CommitLineComponents{
-				IsSelected: false,
-				Graph:      "",
-				Hash:       "ghi789b",
-				Refs:       []git.RefInfo{},
-				Message:    "Short message",
-				Author:     "Christopher Montgomery",
-				Time:       "just now",
+				DisplayState: LineStateNone,
+				Graph:        "",
+				Hash:         "ghi789b",
+				Refs:         []core.RefInfo{},
+				Message:      "Short message",
+				Author:       "Christopher Montgomery",
+				Time:         "just now",
 			},
 			availableWidth: 40,
 			description:    "Author should use '…' (1 char) for truncation",
@@ -1004,11 +1005,11 @@ func TestFormatCommitLine_VisualQuality(t *testing.T) {
 		{
 			name: "correct ellipsis for refs",
 			components: CommitLineComponents{
-				IsSelected: false,
-				Graph:      "",
-				Hash:       "jkl012c",
-				Refs: []git.RefInfo{
-					{Name: "feature/very-long-branch-name", Type: git.RefTypeBranch, IsHead: true},
+				DisplayState: LineStateNone,
+				Graph:        "",
+				Hash:         "jkl012c",
+				Refs: []core.RefInfo{
+					{Name: "feature/very-long-branch-name", Type: core.RefTypeBranch, IsHead: true},
 				},
 				Message: "Add feature",
 				Author:  "Diana",
@@ -1105,20 +1106,20 @@ func TestFormatCommitLine_SelectedVsUnselected(t *testing.T) {
 			components := CommitLineComponents{
 				Graph:   "├ ",
 				Hash:    "cc047b2",
-				Refs:    []git.RefInfo{},
+				Refs:    []core.RefInfo{},
 				Message: tt.message,
 				Author:  tt.author,
 				Time:    "5 minutes ago",
 			}
 
-			// Test with IsSelected = false
+			// Test with DisplayState = None
 			componentsUnselected := components
-			componentsUnselected.IsSelected = false
+			componentsUnselected.DisplayState = LineStateNone
 			unselectedLine := FormatCommitLine(componentsUnselected, tt.width)
 
-			// Test with IsSelected = true
+			// Test with DisplayState = Cursor
 			componentsSelected := components
-			componentsSelected.IsSelected = true
+			componentsSelected.DisplayState = LineStateCursor
 			selectedLine := FormatCommitLine(componentsSelected, tt.width)
 
 			t.Logf("\nWidth: %d", tt.width)
@@ -1189,14 +1190,18 @@ func TestFormatCommitLine_Level9Truncation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			displayState := LineStateNone
+			if tt.expectSelected {
+				displayState = LineStateCursor
+			}
 			components := CommitLineComponents{
-				IsSelected: tt.expectSelected,
-				Graph:      "├ ",
-				Hash:       "cc047b2",
-				Refs:       []git.RefInfo{},
-				Message:    tt.message,
-				Author:     tt.author,
-				Time:       "5 minutes ago",
+				DisplayState: displayState,
+				Graph:        "├ ",
+				Hash:         "cc047b2",
+				Refs:         []core.RefInfo{},
+				Message:      tt.message,
+				Author:       tt.author,
+				Time:         "5 minutes ago",
 			}
 
 			line := FormatCommitLine(components, tt.width)
@@ -1235,23 +1240,23 @@ func TestFormatCommitLine_SelectedVsUnselectedLevel9(t *testing.T) {
 	width := 25 // Very narrow to force level 9
 
 	componentsUnselected := CommitLineComponents{
-		IsSelected: false,
-		Graph:      "├ ",
-		Hash:       "cc047b2",
-		Refs:       []git.RefInfo{},
-		Message:    message,
-		Author:     author,
-		Time:       "5 minutes ago",
+		DisplayState: LineStateNone,
+		Graph:        "├ ",
+		Hash:         "cc047b2",
+		Refs:         []core.RefInfo{},
+		Message:      message,
+		Author:       author,
+		Time:         "5 minutes ago",
 	}
 
 	componentsSelected := CommitLineComponents{
-		IsSelected: true,
-		Graph:      "├ ",
-		Hash:       "cc047b2",
-		Refs:       []git.RefInfo{},
-		Message:    message,
-		Author:     author,
-		Time:       "5 minutes ago",
+		DisplayState: LineStateCursor,
+		Graph:        "├ ",
+		Hash:         "cc047b2",
+		Refs:         []core.RefInfo{},
+		Message:      message,
+		Author:       author,
+		Time:         "5 minutes ago",
 	}
 
 	unselectedLine := FormatCommitLine(componentsUnselected, width)
@@ -1304,23 +1309,23 @@ func TestFormatCommitLine_ANSICodeMeasurement(t *testing.T) {
 	graph := "├─┬─╮ "
 
 	componentsUnselected := CommitLineComponents{
-		IsSelected: false,
-		Graph:      graph,
-		Hash:       "cc047b2",
-		Refs:       []git.RefInfo{},
-		Message:    message,
-		Author:     author,
-		Time:       "5 minutes ago",
+		DisplayState: LineStateNone,
+		Graph:        graph,
+		Hash:         "cc047b2",
+		Refs:         []core.RefInfo{},
+		Message:      message,
+		Author:       author,
+		Time:         "5 minutes ago",
 	}
 
 	componentsSelected := CommitLineComponents{
-		IsSelected: true,
-		Graph:      graph,
-		Hash:       "cc047b2",
-		Refs:       []git.RefInfo{},
-		Message:    message,
-		Author:     author,
-		Time:       "5 minutes ago",
+		DisplayState: LineStateCursor,
+		Graph:        graph,
+		Hash:         "cc047b2",
+		Refs:         []core.RefInfo{},
+		Message:      message,
+		Author:       author,
+		Time:         "5 minutes ago",
 	}
 
 	unselectedLine := FormatCommitLine(componentsUnselected, width)

@@ -5,20 +5,20 @@ import (
 	"testing"
 	"time"
 
-	"github.com/oberprah/splice/internal/git"
+	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/ui/testutils"
 )
 
 // TestCommitInfo tests the complete CommitInfo function
 func TestCommitInfo_BasicCommit(t *testing.T) {
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-	commit := git.GitCommit{
+	commit := core.GitCommit{
 		Hash:    "abc123def456789012345678901234567890abcd",
 		Message: "Add new feature",
 		Body:    "",
 		Author:  "Alice",
 		Date:    fixedTime,
-		Refs:    []git.RefInfo{},
+		Refs:    []core.RefInfo{},
 	}
 
 	ctx := testutils.MockContext{W: 80, H: 24}
@@ -37,16 +37,16 @@ func TestCommitInfo_BasicCommit(t *testing.T) {
 
 func TestCommitInfo_WithRefs(t *testing.T) {
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-	commit := git.GitCommit{
+	commit := core.GitCommit{
 		Hash:    "abc123def456789012345678901234567890abcd",
 		Message: "Add new feature",
 		Body:    "",
 		Author:  "Alice",
 		Date:    fixedTime,
-		Refs: []git.RefInfo{
-			{Name: "main", Type: git.RefTypeBranch, IsHead: true},
-			{Name: "origin/main", Type: git.RefTypeRemoteBranch, IsHead: false},
-			{Name: "HEAD", Type: git.RefTypeBranch, IsHead: true},
+		Refs: []core.RefInfo{
+			{Name: "main", Type: core.RefTypeBranch, IsHead: true},
+			{Name: "origin/main", Type: core.RefTypeRemoteBranch, IsHead: false},
+			{Name: "HEAD", Type: core.RefTypeBranch, IsHead: true},
 		},
 	}
 
@@ -67,13 +67,13 @@ func TestCommitInfo_WithRefs(t *testing.T) {
 
 func TestCommitInfo_WithBody(t *testing.T) {
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-	commit := git.GitCommit{
+	commit := core.GitCommit{
 		Hash:    "abc123def456789012345678901234567890abcd",
 		Message: "Add new feature",
 		Body:    "This is a detailed explanation.\n\nIt has multiple paragraphs.",
 		Author:  "Alice",
 		Date:    fixedTime,
-		Refs:    []git.RefInfo{},
+		Refs:    []core.RefInfo{},
 	}
 
 	ctx := testutils.MockContext{W: 80, H: 24}
@@ -95,13 +95,13 @@ func TestCommitInfo_WithBody(t *testing.T) {
 
 func TestCommitInfo_BodyTruncation(t *testing.T) {
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-	commit := git.GitCommit{
+	commit := core.GitCommit{
 		Hash:    "abc123def456789012345678901234567890abcd",
 		Message: "Subject",
 		Body:    "Line 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7\nLine 8",
 		Author:  "Alice",
 		Date:    fixedTime,
-		Refs:    []git.RefInfo{},
+		Refs:    []core.RefInfo{},
 	}
 
 	ctx := testutils.MockContext{W: 80, H: 24}
@@ -127,13 +127,13 @@ func TestCommitInfo_BodyTruncationWithWrapping(t *testing.T) {
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
 	// Create a body with one long line that will wrap to multiple lines
 	longLine := strings.Repeat("word ", 50) // Creates a very long line
-	commit := git.GitCommit{
+	commit := core.GitCommit{
 		Hash:    "abc123def456789012345678901234567890abcd",
 		Message: "Subject",
 		Body:    longLine + "\nShort line",
 		Author:  "Alice",
 		Date:    fixedTime,
-		Refs:    []git.RefInfo{},
+		Refs:    []core.RefInfo{},
 	}
 
 	ctx := testutils.MockContext{W: 80, H: 24}
@@ -149,7 +149,7 @@ func TestCommitInfo_BodyTruncationWithWrapping(t *testing.T) {
 // TestRenderMetadataLine tests metadata line rendering and smart truncation
 func TestRenderMetadataLine_Full(t *testing.T) {
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-	commit := git.GitCommit{
+	commit := core.GitCommit{
 		Hash:   "abc123def456789012345678901234567890abcd",
 		Author: "Alice",
 		Date:   fixedTime,
@@ -178,7 +178,7 @@ func TestRenderMetadataLine_Full(t *testing.T) {
 
 func TestRenderMetadataLine_TruncateAuthor(t *testing.T) {
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-	commit := git.GitCommit{
+	commit := core.GitCommit{
 		Hash:   "abc123def456789012345678901234567890abcd",
 		Author: "Very Long Author Name That Needs Truncation",
 		Date:   fixedTime,
@@ -205,7 +205,7 @@ func TestRenderMetadataLine_TruncateAuthor(t *testing.T) {
 
 func TestRenderMetadataLine_DropCommitted(t *testing.T) {
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-	commit := git.GitCommit{
+	commit := core.GitCommit{
 		Hash:   "abc123def456789012345678901234567890abcd",
 		Author: "Very Long Author Name",
 		Date:   fixedTime,
@@ -230,7 +230,7 @@ func TestRenderMetadataLine_DropCommitted(t *testing.T) {
 
 func TestRenderMetadataLine_DropAuthor(t *testing.T) {
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-	commit := git.GitCommit{
+	commit := core.GitCommit{
 		Hash:   "abc123def456789012345678901234567890abcd",
 		Author: "Alice",
 		Date:   fixedTime,
@@ -255,7 +255,7 @@ func TestRenderMetadataLine_DropAuthor(t *testing.T) {
 
 func TestRenderMetadataLine_UTF8Author(t *testing.T) {
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-	commit := git.GitCommit{
+	commit := core.GitCommit{
 		Hash:   "abc123def456789012345678901234567890abcd",
 		Author: "José García", // UTF-8 characters
 		Date:   fixedTime,
@@ -326,8 +326,8 @@ func TestTruncateWithEllipsis_ZeroWidth(t *testing.T) {
 
 // TestRenderRefsLines tests ref rendering
 func TestRenderRefsLines_SingleRef(t *testing.T) {
-	refs := []git.RefInfo{
-		{Name: "main", Type: git.RefTypeBranch, IsHead: true},
+	refs := []core.RefInfo{
+		{Name: "main", Type: core.RefTypeBranch, IsHead: true},
 	}
 
 	lines := renderRefsLines(refs, 80)
@@ -343,10 +343,10 @@ func TestRenderRefsLines_SingleRef(t *testing.T) {
 }
 
 func TestRenderRefsLines_MultipleRefs(t *testing.T) {
-	refs := []git.RefInfo{
-		{Name: "main", Type: git.RefTypeBranch, IsHead: true},
-		{Name: "origin/main", Type: git.RefTypeRemoteBranch, IsHead: false},
-		{Name: "HEAD", Type: git.RefTypeBranch, IsHead: true},
+	refs := []core.RefInfo{
+		{Name: "main", Type: core.RefTypeBranch, IsHead: true},
+		{Name: "origin/main", Type: core.RefTypeRemoteBranch, IsHead: false},
+		{Name: "HEAD", Type: core.RefTypeBranch, IsHead: true},
 	}
 
 	lines := renderRefsLines(refs, 80)
@@ -364,11 +364,11 @@ func TestRenderRefsLines_MultipleRefs(t *testing.T) {
 
 func TestRenderRefsLines_Wrapping(t *testing.T) {
 	// Create many refs that will need wrapping
-	refs := []git.RefInfo{
-		{Name: "main", Type: git.RefTypeBranch, IsHead: true},
-		{Name: "origin/main", Type: git.RefTypeRemoteBranch, IsHead: false},
-		{Name: "feature-branch-one", Type: git.RefTypeBranch, IsHead: false},
-		{Name: "feature-branch-two", Type: git.RefTypeBranch, IsHead: false},
+	refs := []core.RefInfo{
+		{Name: "main", Type: core.RefTypeBranch, IsHead: true},
+		{Name: "origin/main", Type: core.RefTypeRemoteBranch, IsHead: false},
+		{Name: "feature-branch-one", Type: core.RefTypeBranch, IsHead: false},
+		{Name: "feature-branch-two", Type: core.RefTypeBranch, IsHead: false},
 	}
 
 	lines := renderRefsLines(refs, 30) // Narrow width forces wrapping
@@ -529,5 +529,98 @@ func TestWrapText_ZeroWidth(t *testing.T) {
 	// Should return original text when width is 0
 	if len(lines) != 1 || lines[0] != text {
 		t.Errorf("Expected original text for zero width, got %v", lines)
+	}
+}
+
+// TestCommitInfoFromRange tests the CommitInfoFromRange function
+func TestCommitInfoFromRange_SingleCommit(t *testing.T) {
+	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	commit := core.GitCommit{
+		Hash:    "abc123def456789012345678901234567890abcd",
+		Message: "Add new feature",
+		Body:    "This is the body",
+		Author:  "Alice",
+		Date:    fixedTime,
+		Refs:    []core.RefInfo{},
+	}
+
+	commitRange := core.NewSingleCommitRange(commit)
+	ctx := testutils.MockContext{W: 80, H: 24}
+	lines := CommitInfoFromRange(commitRange, 80, 0, ctx)
+
+	// For single commit, should delegate to CommitInfo
+	// Should have: metadata, blank, subject, blank, body
+	if len(lines) < 5 {
+		t.Errorf("Expected at least 5 lines (delegated to CommitInfo), got %d", len(lines))
+	}
+
+	// Check that first line contains hash (metadata)
+	firstLine := stripANSI(lines[0])
+	if !strings.Contains(firstLine, "abc123d") {
+		t.Errorf("Expected hash in first line, got: %q", firstLine)
+	}
+}
+
+func TestCommitInfoFromRange_MultipleCommits(t *testing.T) {
+	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	startCommit := core.GitCommit{
+		Hash:    "abc123def456789012345678901234567890abcd",
+		Message: "First commit",
+		Author:  "Alice",
+		Date:    fixedTime,
+	}
+	endCommit := core.GitCommit{
+		Hash:    "def456abc123789012345678901234567890def4",
+		Message: "Last commit",
+		Author:  "Bob",
+		Date:    fixedTime,
+	}
+
+	commitRange := core.NewCommitRange(startCommit, endCommit, 3)
+	ctx := testutils.MockContext{W: 80, H: 24}
+	lines := CommitInfoFromRange(commitRange, 80, 0, ctx)
+
+	// For range, should only show range header (1 line)
+	if len(lines) != 1 {
+		t.Errorf("Expected 1 line for range, got %d", len(lines))
+	}
+
+	// Check format: abc123d..def456a (3 commits)
+	line := stripANSI(lines[0])
+	if !strings.Contains(line, "abc123d") {
+		t.Errorf("Expected start hash in range header, got: %q", line)
+	}
+	if !strings.Contains(line, "def456a") {
+		t.Errorf("Expected end hash in range header, got: %q", line)
+	}
+	if !strings.Contains(line, "3 commits") {
+		t.Errorf("Expected commit count in range header, got: %q", line)
+	}
+	if !strings.Contains(line, "..") {
+		t.Errorf("Expected '..' separator in range header, got: %q", line)
+	}
+}
+
+func TestCommitInfoFromRange_RangeFormat(t *testing.T) {
+	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	startCommit := core.GitCommit{
+		Hash:   "1234567890123456789012345678901234567890",
+		Author: "Alice",
+		Date:   fixedTime,
+	}
+	endCommit := core.GitCommit{
+		Hash:   "abcdefabcdefabcdefabcdefabcdefabcdefabcd",
+		Author: "Bob",
+		Date:   fixedTime,
+	}
+
+	commitRange := core.NewCommitRange(startCommit, endCommit, 5)
+	ctx := testutils.MockContext{W: 80, H: 24}
+	lines := CommitInfoFromRange(commitRange, 80, 0, ctx)
+
+	line := stripANSI(lines[0])
+	expected := "1234567..abcdefa (5 commits)"
+	if line != expected {
+		t.Errorf("Expected %q, got %q", expected, line)
 	}
 }

@@ -4,4 +4,4 @@ main, origin/main
 Add automatic light/dark theme support
 
 1 file · +45 -12
-> M +45 -12  internal/ui/app.go
+→ M +45 -12  internal/ui/app.go

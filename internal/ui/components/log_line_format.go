@@ -10,7 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/oberprah/splice/internal/git"
+	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/ui/styles"
 )
 
@@ -27,13 +27,13 @@ const (
 // CommitLineComponents holds all pre-computed components for a commit line.
 // This struct enables FormatCommitLine to be a pure function.
 type CommitLineComponents struct {
-	IsSelected bool
-	Graph      string
-	Hash       string
-	Refs       []git.RefInfo
-	Message    string
-	Author     string
-	Time       string
+	DisplayState LineDisplayState
+	Graph        string
+	Hash         string
+	Refs         []core.RefInfo
+	Message      string
+	Author       string
+	Time         string
 }
 
 // capMessage truncates a message to maxLen characters with "…" suffix.
@@ -94,7 +94,7 @@ func truncateEntireLine(line string, maxWidth int) string {
 
 // formatRefsFull formats all refs with their full names.
 // Returns formatted refs like "(HEAD -> main, tag: v1.0)" with trailing space.
-func formatRefsFull(refs []git.RefInfo) string {
+func formatRefsFull(refs []core.RefInfo) string {
 	if len(refs) == 0 {
 		return ""
 	}
@@ -103,7 +103,7 @@ func formatRefsFull(refs []git.RefInfo) string {
 	for _, ref := range refs {
 		var formatted string
 		switch ref.Type {
-		case git.RefTypeTag:
+		case core.RefTypeTag:
 			formatted = fmt.Sprintf("tag: %s", ref.Name)
 		default:
 			// For branches, just use the name
@@ -118,7 +118,7 @@ func formatRefsFull(refs []git.RefInfo) string {
 // formatRefsShortenedIndividual formats refs with individual names truncated to maxLen.
 // Uses "…" (single ellipsis char) for truncation to save space.
 // Note: maxLen is treated as character count (rune count).
-func formatRefsShortenedIndividual(refs []git.RefInfo, maxLen int) string {
+func formatRefsShortenedIndividual(refs []core.RefInfo, maxLen int) string {
 	if len(refs) == 0 {
 		return ""
 	}
@@ -127,7 +127,7 @@ func formatRefsShortenedIndividual(refs []git.RefInfo, maxLen int) string {
 	for _, ref := range refs {
 		var formatted string
 		switch ref.Type {
-		case git.RefTypeTag:
+		case core.RefTypeTag:
 			name := ref.Name
 			if utf8.RuneCountInString(name) > maxLen {
 				if maxLen < 3 {
@@ -161,13 +161,13 @@ func formatRefsShortenedIndividual(refs []git.RefInfo, maxLen int) string {
 // Prefers showing the current branch (HEAD ref) if present.
 // First ref is still truncated if needed with "…".
 // Note: maxLen is treated as character count (rune count).
-func formatRefsFirstPlusCount(refs []git.RefInfo, maxLen int) string {
+func formatRefsFirstPlusCount(refs []core.RefInfo, maxLen int) string {
 	if len(refs) == 0 {
 		return ""
 	}
 
 	// Find the HEAD ref (current branch) if it exists
-	var firstRef git.RefInfo
+	var firstRef core.RefInfo
 	foundHead := false
 	for _, ref := range refs {
 		if ref.IsHead {
@@ -185,7 +185,7 @@ func formatRefsFirstPlusCount(refs []git.RefInfo, maxLen int) string {
 	// Format the first ref
 	var formatted string
 	switch firstRef.Type {
-	case git.RefTypeTag:
+	case core.RefTypeTag:
 		name := firstRef.Name
 		if utf8.RuneCountInString(name) > maxLen {
 			if maxLen < 3 {
@@ -220,7 +220,7 @@ func formatRefsFirstPlusCount(refs []git.RefInfo, maxLen int) string {
 
 // buildRefs builds the refs string at the specified truncation level.
 // Returns empty string if no refs, otherwise returns formatted string with trailing space.
-func buildRefs(refs []git.RefInfo, level RefsLevel) string {
+func buildRefs(refs []core.RefInfo, level RefsLevel) string {
 	if len(refs) == 0 {
 		return ""
 	}
@@ -235,7 +235,7 @@ func buildRefs(refs []git.RefInfo, level RefsLevel) string {
 	case RefsLevelCountOnly:
 		return fmt.Sprintf("(%d refs) ", len(refs))
 	default:
-		return formatRefsFull(refs)
+		panic(fmt.Sprintf("unhandled RefsLevel: %d", level))
 	}
 }
 
@@ -266,15 +266,16 @@ func measureLineWidth(selector, graph, hash, refs, message, author, time string)
 
 // assembleLine assembles the final commit line with proper spacing, separators, and styling.
 // This is a pure function that builds the styled string from plain components.
-func assembleLine(selector, graph, hash, refs, message, author, time string, isSelected bool) string {
+func assembleLine(selector, graph, hash, refs, message, author, time string, displayState LineDisplayState) string {
 	var line strings.Builder
 
 	// Add selector and graph (no styling)
 	line.WriteString(selector)
 	line.WriteString(graph)
 
-	// Choose styles based on selection
+	// Choose styles based on display state
 	var hashStyle, messageStyle, authorStyle, timeStyle lipgloss.Style
+	isSelected := displayState == LineStateSelected || displayState == LineStateVisualCursor
 	if isSelected {
 		hashStyle = styles.SelectedHashStyle
 		messageStyle = styles.SelectedMessageStyle
@@ -317,11 +318,8 @@ func assembleLine(selector, graph, hash, refs, message, author, time string, isS
 // FormatCommitLine applies progressive truncation to fit a commit line within available width.
 // Pure function - all inputs provided via CommitLineComponents struct, no side effects.
 func FormatCommitLine(components CommitLineComponents, availableWidth int) string {
-	// 1. Build selector based on selection state
-	selector := "  "
-	if components.IsSelected {
-		selector = "> "
-	}
+	// 1. Build selector based on display state
+	selector := components.DisplayState.SelectorString()
 
 	// 2. Extract components (already computed by caller)
 	graph := components.Graph
@@ -387,11 +385,11 @@ func FormatCommitLine(components CommitLineComponents, availableWidth int) strin
 			}
 
 			// NOW assemble with styling - all components fit
-			return assembleLine(selector, graph, hash, refs, message, author, time, components.IsSelected)
+			return assembleLine(selector, graph, hash, refs, message, author, time, components.DisplayState)
 		}
 		level++
 	}
 
 	// 4. Assemble and style the line
-	return assembleLine(selector, graph, hash, refs, message, author, time, components.IsSelected)
+	return assembleLine(selector, graph, hash, refs, message, author, time, components.DisplayState)
 }

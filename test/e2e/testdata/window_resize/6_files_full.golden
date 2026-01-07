@@ -5,7 +5,7 @@ Add comprehensive error handling for network failures in API client with retry l
 Additional context about this change that provides more detailed information.
 
 5 files · +741 -312
-> M +245 -123  internal/authentication/oauth2/providers/github/client.go
+→ M +245 -123  internal/authentication/oauth2/providers/github/client.go
   M +198 - 87  internal/authentication/oauth2/providers/google/client.go
   M + 67 - 12  pkg/database/migrations/v2/user_preferences_schema.sql
   M +142 - 56  cmd/server/handlers/api/v1/users/profile_handler.go

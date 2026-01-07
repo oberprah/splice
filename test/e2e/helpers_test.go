@@ -62,7 +62,8 @@ func (r *E2ETestRunner) Send(msg tea.Msg) {
 	r.program.Send(msg)
 }
 
-// Quit sends a quit key message and waits for the program to finish
+// Quit sends ctrl+c to quit the program and waits for it to finish.
+// Uses ctrl+c instead of 'q' because 'q' exits visual mode when active.
 func (r *E2ETestRunner) Quit(timeout ...time.Duration) {
 	r.t.Helper()
 
@@ -71,7 +72,7 @@ func (r *E2ETestRunner) Quit(timeout ...time.Duration) {
 		quitTimeout = timeout[0]
 	}
 
-	r.program.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	r.program.Send(tea.KeyMsg{Type: tea.KeyCtrlC})
 
 	select {
 	case <-r.done:

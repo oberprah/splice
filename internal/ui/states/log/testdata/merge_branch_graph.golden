@@ -1,4 +1,4 @@
-> ├─╮ [1;38;5;220meeeeeee[0m [1;38;5;231mMerge feature-x[0m - [1;38;5;51mAlice[0m [1;38;5;250m11 months ago[0m
+→ ├─╮ [38;5;214meeeeeee[0m [38;5;252mMerge feature-x[0m - [38;5;86mAlice[0m [38;5;244m11 months ago[0m
   │ ├ [38;5;214mddddddd[0m [38;5;252mAdd feature X part 2[0m - [38;5;86mBob[0m [38;5;244m11 months ago[0m
   │ ├ [38;5;214mccccccc[0m [38;5;252mAdd feature X part 1[0m - [38;5;86mBob[0m [38;5;244m11 months ago[0m
   ├ │ [38;5;214mbbbbbbb[0m [38;5;252mFix bug on main[0m - [38;5;86mAlice[0m [38;5;244m11 months ago[0m

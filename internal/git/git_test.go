@@ -1,27 +1,28 @@
 package git
 
 import (
-	"os/exec"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/oberprah/splice/internal/core"
 )
 
 func TestParseGitLogOutput(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
-		expected []GitCommit
+		expected []core.GitCommit
 	}{
 		{
 			name:  "single commit with parent",
 			input: "abc123def456789012345678901234567890abcd\x00parent1\x00\x00John Doe\x002024-01-15T10:00:00Z\x00Fix memory leak\x00\x1e",
-			expected: []GitCommit{
+			expected: []core.GitCommit{
 				{
 					Hash:         "abc123def456789012345678901234567890abcd",
 					ParentHashes: []string{"parent1"},
-					Refs:         []RefInfo{},
+					Refs:         []core.RefInfo{},
 					Author:       "John Doe",
 					Date:         time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC),
 					Message:      "Fix memory leak",
@@ -32,11 +33,11 @@ func TestParseGitLogOutput(t *testing.T) {
 		{
 			name:  "multiple commits",
 			input: "hash1\x00\x00\x00Author One\x002024-01-01T10:00:00Z\x00First commit\x00\x1ehash2\x00hash1\x00\x00Author Two\x002024-01-02T11:30:00Z\x00Second commit\x00\x1ehash3\x00hash2\x00\x00Author Three\x002024-01-03T15:45:00Z\x00Third commit\x00\x1e",
-			expected: []GitCommit{
+			expected: []core.GitCommit{
 				{
 					Hash:         "hash1",
 					ParentHashes: []string{},
-					Refs:         []RefInfo{},
+					Refs:         []core.RefInfo{},
 					Author:       "Author One",
 					Date:         time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 					Message:      "First commit",
@@ -45,7 +46,7 @@ func TestParseGitLogOutput(t *testing.T) {
 				{
 					Hash:         "hash2",
 					ParentHashes: []string{"hash1"},
-					Refs:         []RefInfo{},
+					Refs:         []core.RefInfo{},
 					Author:       "Author Two",
 					Date:         time.Date(2024, 1, 2, 11, 30, 0, 0, time.UTC),
 					Message:      "Second commit",
@@ -54,7 +55,7 @@ func TestParseGitLogOutput(t *testing.T) {
 				{
 					Hash:         "hash3",
 					ParentHashes: []string{"hash2"},
-					Refs:         []RefInfo{},
+					Refs:         []core.RefInfo{},
 					Author:       "Author Three",
 					Date:         time.Date(2024, 1, 3, 15, 45, 0, 0, time.UTC),
 					Message:      "Third commit",
@@ -65,21 +66,21 @@ func TestParseGitLogOutput(t *testing.T) {
 		{
 			name:     "empty input",
 			input:    "",
-			expected: []GitCommit{},
+			expected: []core.GitCommit{},
 		},
 		{
 			name:     "whitespace only",
 			input:    "   \n\n   ",
-			expected: []GitCommit{},
+			expected: []core.GitCommit{},
 		},
 		{
 			name:  "commit with body",
 			input: "hash\x00parent123\x00\x00Author\x002024-01-01T10:00:00Z\x00Fix memory leak\x00This commit fixes a critical memory leak.\n\nThe issue was in the cleanup code.\x1e",
-			expected: []GitCommit{
+			expected: []core.GitCommit{
 				{
 					Hash:         "hash",
 					ParentHashes: []string{"parent123"},
-					Refs:         []RefInfo{},
+					Refs:         []core.RefInfo{},
 					Author:       "Author",
 					Date:         time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 					Message:      "Fix memory leak",
@@ -90,11 +91,11 @@ func TestParseGitLogOutput(t *testing.T) {
 		{
 			name:  "pipes and special chars in message",
 			input: "hash\x00parent1\x00\x00Author\x002024-01-01T10:00:00Z\x00Fix A | B | C issue\x00\x1e",
-			expected: []GitCommit{
+			expected: []core.GitCommit{
 				{
 					Hash:         "hash",
 					ParentHashes: []string{"parent1"},
-					Refs:         []RefInfo{},
+					Refs:         []core.RefInfo{},
 					Author:       "Author",
 					Date:         time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 					Message:      "Fix A | B | C issue",
@@ -105,11 +106,11 @@ func TestParseGitLogOutput(t *testing.T) {
 		{
 			name:  "multiple commits with bodies",
 			input: "hash1\x00\x00\x00Author\x002024-01-01T10:00:00Z\x00First\x00Body 1\x1ehash2\x00hash1\x00\x00Author\x002024-01-02T10:00:00Z\x00Second\x00Body 2\x1ehash3\x00hash2\x00\x00Author\x002024-01-03T10:00:00Z\x00Third\x00\x1e",
-			expected: []GitCommit{
+			expected: []core.GitCommit{
 				{
 					Hash:         "hash1",
 					ParentHashes: []string{},
-					Refs:         []RefInfo{},
+					Refs:         []core.RefInfo{},
 					Author:       "Author",
 					Date:         time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 					Message:      "First",
@@ -118,7 +119,7 @@ func TestParseGitLogOutput(t *testing.T) {
 				{
 					Hash:         "hash2",
 					ParentHashes: []string{"hash1"},
-					Refs:         []RefInfo{},
+					Refs:         []core.RefInfo{},
 					Author:       "Author",
 					Date:         time.Date(2024, 1, 2, 10, 0, 0, 0, time.UTC),
 					Message:      "Second",
@@ -127,7 +128,7 @@ func TestParseGitLogOutput(t *testing.T) {
 				{
 					Hash:         "hash3",
 					ParentHashes: []string{"hash2"},
-					Refs:         []RefInfo{},
+					Refs:         []core.RefInfo{},
 					Author:       "Author",
 					Date:         time.Date(2024, 1, 3, 10, 0, 0, 0, time.UTC),
 					Message:      "Third",
@@ -138,11 +139,11 @@ func TestParseGitLogOutput(t *testing.T) {
 		{
 			name:  "author with special characters",
 			input: "hash\x00parent\x00\x00José García-López\x002024-01-01T10:00:00Z\x00Add feature\x00\x1e",
-			expected: []GitCommit{
+			expected: []core.GitCommit{
 				{
 					Hash:         "hash",
 					ParentHashes: []string{"parent"},
-					Refs:         []RefInfo{},
+					Refs:         []core.RefInfo{},
 					Author:       "José García-López",
 					Date:         time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 					Message:      "Add feature",
@@ -153,11 +154,11 @@ func TestParseGitLogOutput(t *testing.T) {
 		{
 			name:  "empty message",
 			input: "hash\x00parent\x00\x00Author\x002024-01-01T10:00:00Z\x00\x00\x1e",
-			expected: []GitCommit{
+			expected: []core.GitCommit{
 				{
 					Hash:         "hash",
 					ParentHashes: []string{"parent"},
-					Refs:         []RefInfo{},
+					Refs:         []core.RefInfo{},
 					Author:       "Author",
 					Date:         time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 					Message:      "",
@@ -168,11 +169,11 @@ func TestParseGitLogOutput(t *testing.T) {
 		{
 			name:  "merge commit with two parents",
 			input: "merge123\x00parent1 parent2\x00\x00Author\x002024-01-01T10:00:00Z\x00Merge branch feature\x00\x1e",
-			expected: []GitCommit{
+			expected: []core.GitCommit{
 				{
 					Hash:         "merge123",
 					ParentHashes: []string{"parent1", "parent2"},
-					Refs:         []RefInfo{},
+					Refs:         []core.RefInfo{},
 					Author:       "Author",
 					Date:         time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 					Message:      "Merge branch feature",
@@ -183,11 +184,11 @@ func TestParseGitLogOutput(t *testing.T) {
 		{
 			name:  "octopus merge with three parents",
 			input: "octopus\x00p1 p2 p3\x00\x00Author\x002024-01-01T10:00:00Z\x00Octopus merge\x00\x1e",
-			expected: []GitCommit{
+			expected: []core.GitCommit{
 				{
 					Hash:         "octopus",
 					ParentHashes: []string{"p1", "p2", "p3"},
-					Refs:         []RefInfo{},
+					Refs:         []core.RefInfo{},
 					Author:       "Author",
 					Date:         time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 					Message:      "Octopus merge",
@@ -198,11 +199,11 @@ func TestParseGitLogOutput(t *testing.T) {
 		{
 			name:  "root commit with no parents",
 			input: "root\x00\x00\x00Author\x002024-01-01T10:00:00Z\x00Initial commit\x00\x1e",
-			expected: []GitCommit{
+			expected: []core.GitCommit{
 				{
 					Hash:         "root",
 					ParentHashes: []string{},
-					Refs:         []RefInfo{},
+					Refs:         []core.RefInfo{},
 					Author:       "Author",
 					Date:         time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 					Message:      "Initial commit",
@@ -213,12 +214,12 @@ func TestParseGitLogOutput(t *testing.T) {
 		{
 			name:  "commit with HEAD and branch refs",
 			input: "hash\x00parent\x00 (HEAD -> main)\x00Author\x002024-01-01T10:00:00Z\x00Commit on main\x00\x1e",
-			expected: []GitCommit{
+			expected: []core.GitCommit{
 				{
 					Hash:         "hash",
 					ParentHashes: []string{"parent"},
-					Refs: []RefInfo{
-						{Name: "main", Type: RefTypeBranch, IsHead: true},
+					Refs: []core.RefInfo{
+						{Name: "main", Type: core.RefTypeBranch, IsHead: true},
 					},
 					Author:  "Author",
 					Date:    time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
@@ -230,14 +231,14 @@ func TestParseGitLogOutput(t *testing.T) {
 		{
 			name:  "commit with multiple refs including tag",
 			input: "hash\x00parent\x00 (HEAD -> main, tag: v1.0, origin/main)\x00Author\x002024-01-01T10:00:00Z\x00Release v1.0\x00\x1e",
-			expected: []GitCommit{
+			expected: []core.GitCommit{
 				{
 					Hash:         "hash",
 					ParentHashes: []string{"parent"},
-					Refs: []RefInfo{
-						{Name: "main", Type: RefTypeBranch, IsHead: true},
-						{Name: "v1.0", Type: RefTypeTag, IsHead: false},
-						{Name: "origin/main", Type: RefTypeRemoteBranch, IsHead: false},
+					Refs: []core.RefInfo{
+						{Name: "main", Type: core.RefTypeBranch, IsHead: true},
+						{Name: "v1.0", Type: core.RefTypeTag, IsHead: false},
+						{Name: "origin/main", Type: core.RefTypeRemoteBranch, IsHead: false},
 					},
 					Author:  "Author",
 					Date:    time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
@@ -287,21 +288,21 @@ func TestParseGitLogOutput_IncompleteData(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
-		expected []GitCommit
+		expected []core.GitCommit
 	}{
 		{
 			name:     "incomplete commit with 5 fields only",
 			input:    "hash\x00parent\x00\x00Author\x00Date",
-			expected: []GitCommit{},
+			expected: []core.GitCommit{},
 		},
 		{
 			name:  "valid commit followed by incomplete data",
 			input: "hash1\x00parent1\x00\x00Author\x002024-01-01T10:00:00Z\x00Message\x00Body\x1eincomplete\x00data",
-			expected: []GitCommit{
+			expected: []core.GitCommit{
 				{
 					Hash:         "hash1",
 					ParentHashes: []string{"parent1"},
-					Refs:         []RefInfo{},
+					Refs:         []core.RefInfo{},
 					Author:       "Author",
 					Date:         time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 					Message:      "Message",
@@ -330,12 +331,12 @@ func TestParseFileChangesOutput(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
-		expected []FileChange
+		expected []core.FileChange
 	}{
 		{
 			name:  "single file modified",
 			input: "15\t3\tinternal/ui/app.go",
-			expected: []FileChange{
+			expected: []core.FileChange{
 				{
 					Path:      "internal/ui/app.go",
 					Additions: 15,
@@ -346,7 +347,7 @@ func TestParseFileChangesOutput(t *testing.T) {
 		{
 			name:  "multiple files",
 			input: "45\t12\tinternal/ui/app.go\n3\t1\tinternal/ui/model.go\n120\t0\tinternal/git/git.go",
-			expected: []FileChange{
+			expected: []core.FileChange{
 				{
 					Path:      "internal/ui/app.go",
 					Additions: 45,
@@ -367,17 +368,17 @@ func TestParseFileChangesOutput(t *testing.T) {
 		{
 			name:     "empty input",
 			input:    "",
-			expected: []FileChange{},
+			expected: []core.FileChange{},
 		},
 		{
 			name:     "whitespace only",
 			input:    "   \n\n   ",
-			expected: []FileChange{},
+			expected: []core.FileChange{},
 		},
 		{
 			name:  "binary file",
 			input: "-\t-\timage.png",
-			expected: []FileChange{
+			expected: []core.FileChange{
 				{
 					Path:      "image.png",
 					Additions: 0,
@@ -389,7 +390,7 @@ func TestParseFileChangesOutput(t *testing.T) {
 		{
 			name:  "mixed binary and text files",
 			input: "10\t5\tREADME.md\n-\t-\tlogo.png\n3\t2\tmain.go",
-			expected: []FileChange{
+			expected: []core.FileChange{
 				{
 					Path:      "README.md",
 					Additions: 10,
@@ -411,7 +412,7 @@ func TestParseFileChangesOutput(t *testing.T) {
 		{
 			name:  "new file",
 			input: "50\t0\tnewfile.go",
-			expected: []FileChange{
+			expected: []core.FileChange{
 				{
 					Path:      "newfile.go",
 					Additions: 50,
@@ -422,7 +423,7 @@ func TestParseFileChangesOutput(t *testing.T) {
 		{
 			name:  "deleted file",
 			input: "0\t25\tdeletedfile.go",
-			expected: []FileChange{
+			expected: []core.FileChange{
 				{
 					Path:      "deletedfile.go",
 					Additions: 0,
@@ -433,7 +434,7 @@ func TestParseFileChangesOutput(t *testing.T) {
 		{
 			name:  "file with spaces in path",
 			input: "5\t2\tpath with spaces/file.go",
-			expected: []FileChange{
+			expected: []core.FileChange{
 				{
 					Path:      "path with spaces/file.go",
 					Additions: 5,
@@ -444,7 +445,7 @@ func TestParseFileChangesOutput(t *testing.T) {
 		{
 			name:  "empty lines between files ignored",
 			input: "10\t5\tfile1.go\n\n20\t3\tfile2.go\n\n\n15\t8\tfile3.go",
-			expected: []FileChange{
+			expected: []core.FileChange{
 				{
 					Path:      "file1.go",
 					Additions: 10,
@@ -531,407 +532,99 @@ func TestParseFileChangesOutput_InvalidInput(t *testing.T) {
 	}
 }
 
-func TestFetchFileChanges_Integration(t *testing.T) {
-	// This test requires a git repository with at least one commit
-	// Skip if not in a git repository
-	cmd := exec.Command("git", "rev-parse", "--git-dir")
-	if err := cmd.Run(); err != nil {
-		t.Skip("Not in a git repository, skipping integration test")
-	}
-
-	// Get the latest commit hash
-	cmd = exec.Command("git", "rev-parse", "HEAD")
-	out, err := cmd.Output()
-	if err != nil {
-		t.Fatalf("Failed to get HEAD commit: %v", err)
-	}
-	commitHash := strings.TrimSpace(string(out))
-
-	// Fetch file changes for the commit
-	changes, err := FetchFileChanges(commitHash)
-	if err != nil {
-		t.Fatalf("FetchFileChanges() error = %v", err)
-	}
-
-	// Basic validation - we should have at least some structure
-	// (We can't make strong assertions about content since it depends on the actual commit)
-	if changes == nil {
-		t.Error("FetchFileChanges() returned nil changes")
-	}
-
-	// Each file change should have a valid path
-	for i, change := range changes {
-		if change.Path == "" {
-			t.Errorf("Change %d has empty path", i)
-		}
-		if change.Additions < 0 {
-			t.Errorf("Change %d (%s) has negative additions: %d", i, change.Path, change.Additions)
-		}
-		if change.Deletions < 0 {
-			t.Errorf("Change %d (%s) has negative deletions: %d", i, change.Path, change.Deletions)
-		}
-		// Validate Status field is populated
-		if change.Status == "" {
-			t.Errorf("Change %d (%s) has empty Status field", i, change.Path)
-		}
-		// Status should be one of the valid git status codes
-		validStatuses := []string{"M", "A", "D", "R", "C", "T", "U", "X"}
-		validStatus := false
-		for _, valid := range validStatuses {
-			if strings.HasPrefix(change.Status, valid) {
-				validStatus = true
-				break
-			}
-		}
-		if !validStatus {
-			t.Errorf("Change %d (%s) has invalid Status: %q (expected one of M/A/D/R/C/T/U/X)",
-				i, change.Path, change.Status)
-		}
-	}
-}
-
-func TestFetchFileChanges_InvalidCommit(t *testing.T) {
-	// This test requires a git repository
-	cmd := exec.Command("git", "rev-parse", "--git-dir")
-	if err := cmd.Run(); err != nil {
-		t.Skip("Not in a git repository, skipping integration test")
-	}
-
-	// Try to fetch file changes for an invalid commit hash
-	changes, err := FetchFileChanges("invalid_commit_hash_12345")
-
-	if err == nil {
-		t.Fatal("FetchFileChanges() expected error for invalid commit, got nil")
-	}
-
-	if changes != nil {
-		t.Errorf("FetchFileChanges() expected nil changes on error, got %d changes", len(changes))
-	}
-}
-
-func TestFetchFileDiff_Integration(t *testing.T) {
-	// This test requires a git repository with at least one commit
-	cmd := exec.Command("git", "rev-parse", "--git-dir")
-	if err := cmd.Run(); err != nil {
-		t.Skip("Not in a git repository, skipping integration test")
-	}
-
-	// Get the latest commit hash
-	cmd = exec.Command("git", "rev-parse", "HEAD")
-	out, err := cmd.Output()
-	if err != nil {
-		t.Fatalf("Failed to get HEAD commit: %v", err)
-	}
-	commitHash := strings.TrimSpace(string(out))
-
-	// Get file changes for this commit to find a file to test
-	changes, err := FetchFileChanges(commitHash)
-	if err != nil {
-		t.Fatalf("FetchFileChanges() error = %v", err)
-	}
-
-	if len(changes) == 0 {
-		t.Skip("No file changes in HEAD commit, skipping test")
-	}
-
-	// Fetch diff for the first file
-	filePath := changes[0].Path
-	diff, err := FetchFileDiff(commitHash, filePath)
-	if err != nil {
-		t.Fatalf("FetchFileDiff() error = %v", err)
-	}
-
-	// Basic validation - diff should contain the file path
-	if !strings.Contains(diff, filePath) {
-		t.Errorf("FetchFileDiff() output should contain file path %q", filePath)
-	}
-
-	// Diff should contain diff header markers
-	if !strings.Contains(diff, "diff --git") {
-		t.Error("FetchFileDiff() output should contain 'diff --git' header")
-	}
-}
-
-func TestFetchFileDiff_InvalidCommit(t *testing.T) {
-	cmd := exec.Command("git", "rev-parse", "--git-dir")
-	if err := cmd.Run(); err != nil {
-		t.Skip("Not in a git repository, skipping integration test")
-	}
-
-	diff, err := FetchFileDiff("invalid_commit_hash_12345", "some/file.go")
-
-	if err == nil {
-		t.Fatal("FetchFileDiff() expected error for invalid commit, got nil")
-	}
-
-	if diff != "" {
-		t.Errorf("FetchFileDiff() expected empty diff on error, got: %s", diff)
-	}
-}
-
-func TestFetchFileContent_Integration(t *testing.T) {
-	// This test requires a git repository
-	cmd := exec.Command("git", "rev-parse", "--git-dir")
-	if err := cmd.Run(); err != nil {
-		t.Skip("Not in a git repository, skipping integration test")
-	}
-
-	// Get the latest commit hash
-	cmd = exec.Command("git", "rev-parse", "HEAD")
-	out, err := cmd.Output()
-	if err != nil {
-		t.Fatalf("Failed to get HEAD commit: %v", err)
-	}
-	commitHash := strings.TrimSpace(string(out))
-
-	// Test fetching content for a known file (main.go should exist)
-	content, err := FetchFileContent(commitHash, "main.go")
-	if err != nil {
-		t.Fatalf("FetchFileContent() error = %v", err)
-	}
-
-	// Content should not be empty for main.go
-	if content == "" {
-		t.Error("FetchFileContent() returned empty content for main.go")
-	}
-
-	// Content should contain expected Go code
-	if !strings.Contains(content, "package main") {
-		t.Error("FetchFileContent() main.go should contain 'package main'")
-	}
-}
-
-func TestFetchFileContent_NonExistentFile(t *testing.T) {
-	// This test requires a git repository
-	cmd := exec.Command("git", "rev-parse", "--git-dir")
-	if err := cmd.Run(); err != nil {
-		t.Skip("Not in a git repository, skipping integration test")
-	}
-
-	// Get the latest commit hash
-	cmd = exec.Command("git", "rev-parse", "HEAD")
-	out, err := cmd.Output()
-	if err != nil {
-		t.Fatalf("Failed to get HEAD commit: %v", err)
-	}
-	commitHash := strings.TrimSpace(string(out))
-
-	// Test fetching content for a non-existent file
-	content, err := FetchFileContent(commitHash, "non_existent_file_12345.xyz")
-
-	// Should return empty string without error for non-existent file
-	if err != nil {
-		t.Fatalf("FetchFileContent() should not error for non-existent file, got: %v", err)
-	}
-	if content != "" {
-		t.Errorf("FetchFileContent() expected empty content for non-existent file, got: %s", content)
-	}
-}
-
-func TestFetchFileContent_InvalidCommit(t *testing.T) {
-	cmd := exec.Command("git", "rev-parse", "--git-dir")
-	if err := cmd.Run(); err != nil {
-		t.Skip("Not in a git repository, skipping integration test")
-	}
-
-	content, err := FetchFileContent("invalid_commit_hash_12345", "main.go")
-
-	if err == nil {
-		t.Fatal("FetchFileContent() expected error for invalid commit, got nil")
-	}
-
-	if content != "" {
-		t.Errorf("FetchFileContent() expected empty content on error, got: %s", content)
-	}
-}
-
-func TestFetchFullFileDiff_Integration(t *testing.T) {
-	// This test requires a git repository with at least one commit that modifies a file
-	cmd := exec.Command("git", "rev-parse", "--git-dir")
-	if err := cmd.Run(); err != nil {
-		t.Skip("Not in a git repository, skipping integration test")
-	}
-
-	// Get the latest commit hash
-	cmd = exec.Command("git", "rev-parse", "HEAD")
-	out, err := cmd.Output()
-	if err != nil {
-		t.Fatalf("Failed to get HEAD commit: %v", err)
-	}
-	commitHash := strings.TrimSpace(string(out))
-
-	// Get file changes for this commit
-	changes, err := FetchFileChanges(commitHash)
-	if err != nil {
-		t.Fatalf("FetchFileChanges() error = %v", err)
-	}
-
-	if len(changes) == 0 {
-		t.Skip("No file changes in HEAD commit, skipping test")
-	}
-
-	// Test FetchFullFileDiff for the first changed file
-	result, err := FetchFullFileDiff(commitHash, changes[0])
-	if err != nil {
-		t.Fatalf("FetchFullFileDiff() error = %v", err)
-	}
-
-	// Result should not be nil
-	if result == nil {
-		t.Fatal("FetchFullFileDiff() returned nil result")
-	}
-
-	// DiffOutput should contain diff markers
-	if !strings.Contains(result.DiffOutput, "diff --git") && result.DiffOutput != "" {
-		t.Error("FetchFullFileDiff() DiffOutput should contain 'diff --git' header")
-	}
-}
-
-func TestFetchFullFileDiff_NewFile(t *testing.T) {
-	// This test requires finding a commit that adds a new file
-	// For now, we'll test with a synthetic scenario using a commit that adds files
-	cmd := exec.Command("git", "rev-parse", "--git-dir")
-	if err := cmd.Run(); err != nil {
-		t.Skip("Not in a git repository, skipping integration test")
-	}
-
-	// Find a commit that adds a file
-	cmd = exec.Command("git", "log", "--diff-filter=A", "--pretty=format:%H", "-n", "1")
-	out, err := cmd.Output()
-	if err != nil || strings.TrimSpace(string(out)) == "" {
-		t.Skip("No commits with added files found, skipping test")
-	}
-	commitHash := strings.TrimSpace(string(out))
-
-	// Get file changes for this commit
-	changes, err := FetchFileChanges(commitHash)
-	if err != nil {
-		t.Fatalf("FetchFileChanges() error = %v", err)
-	}
-
-	// Find an added file
-	var addedFile *FileChange
-	for i := range changes {
-		if changes[i].Status == "A" {
-			addedFile = &changes[i]
-			break
-		}
-	}
-
-	if addedFile == nil {
-		t.Skip("No added file found in commit, skipping test")
-	}
-
-	result, err := FetchFullFileDiff(commitHash, *addedFile)
-	if err != nil {
-		t.Fatalf("FetchFullFileDiff() error = %v", err)
-	}
-
-	// For a new file, OldContent should be empty
-	if result.OldContent != "" {
-		t.Errorf("FetchFullFileDiff() for new file: OldContent should be empty, got %d bytes", len(result.OldContent))
-	}
-
-	// NewContent should not be empty (unless it's an empty file)
-	// We just verify the result is valid
-	if result == nil {
-		t.Error("FetchFullFileDiff() returned nil for new file")
-	}
-}
-
 func TestParseRefDecorations(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
-		expected []RefInfo
+		expected []core.RefInfo
 	}{
 		{
 			name:     "empty string",
 			input:    "",
-			expected: []RefInfo{},
+			expected: []core.RefInfo{},
 		},
 		{
 			name:     "no refs - just whitespace",
 			input:    "   ",
-			expected: []RefInfo{},
+			expected: []core.RefInfo{},
 		},
 		{
 			name:  "HEAD pointing to branch",
 			input: " (HEAD -> main)",
-			expected: []RefInfo{
-				{Name: "main", Type: RefTypeBranch, IsHead: true},
+			expected: []core.RefInfo{
+				{Name: "main", Type: core.RefTypeBranch, IsHead: true},
 			},
 		},
 		{
 			name:  "HEAD and remote branch",
 			input: " (HEAD -> main, origin/main)",
-			expected: []RefInfo{
-				{Name: "main", Type: RefTypeBranch, IsHead: true},
-				{Name: "origin/main", Type: RefTypeRemoteBranch, IsHead: false},
+			expected: []core.RefInfo{
+				{Name: "main", Type: core.RefTypeBranch, IsHead: true},
+				{Name: "origin/main", Type: core.RefTypeRemoteBranch, IsHead: false},
 			},
 		},
 		{
 			name:  "tag only",
 			input: " (tag: v1.0)",
-			expected: []RefInfo{
-				{Name: "v1.0", Type: RefTypeTag, IsHead: false},
+			expected: []core.RefInfo{
+				{Name: "v1.0", Type: core.RefTypeTag, IsHead: false},
 			},
 		},
 		{
 			name:  "local branch only",
 			input: " (main)",
-			expected: []RefInfo{
-				{Name: "main", Type: RefTypeBranch, IsHead: false},
+			expected: []core.RefInfo{
+				{Name: "main", Type: core.RefTypeBranch, IsHead: false},
 			},
 		},
 		{
 			name:  "remote branch only",
 			input: " (origin/main)",
-			expected: []RefInfo{
-				{Name: "origin/main", Type: RefTypeRemoteBranch, IsHead: false},
+			expected: []core.RefInfo{
+				{Name: "origin/main", Type: core.RefTypeRemoteBranch, IsHead: false},
 			},
 		},
 		{
 			name:  "multiple refs with HEAD, remote, and tag",
 			input: " (HEAD -> main, origin/main, tag: v1.0)",
-			expected: []RefInfo{
-				{Name: "main", Type: RefTypeBranch, IsHead: true},
-				{Name: "origin/main", Type: RefTypeRemoteBranch, IsHead: false},
-				{Name: "v1.0", Type: RefTypeTag, IsHead: false},
+			expected: []core.RefInfo{
+				{Name: "main", Type: core.RefTypeBranch, IsHead: true},
+				{Name: "origin/main", Type: core.RefTypeRemoteBranch, IsHead: false},
+				{Name: "v1.0", Type: core.RefTypeTag, IsHead: false},
 			},
 		},
 		{
 			name:  "multiple local branches",
 			input: " (main, develop)",
-			expected: []RefInfo{
-				{Name: "main", Type: RefTypeBranch, IsHead: false},
-				{Name: "develop", Type: RefTypeBranch, IsHead: false},
+			expected: []core.RefInfo{
+				{Name: "main", Type: core.RefTypeBranch, IsHead: false},
+				{Name: "develop", Type: core.RefTypeBranch, IsHead: false},
 			},
 		},
 		{
 			name:  "multiple remote branches",
 			input: " (origin/main, upstream/main)",
-			expected: []RefInfo{
-				{Name: "origin/main", Type: RefTypeRemoteBranch, IsHead: false},
-				{Name: "upstream/main", Type: RefTypeRemoteBranch, IsHead: false},
+			expected: []core.RefInfo{
+				{Name: "origin/main", Type: core.RefTypeRemoteBranch, IsHead: false},
+				{Name: "upstream/main", Type: core.RefTypeRemoteBranch, IsHead: false},
 			},
 		},
 		{
 			name:  "multiple tags",
 			input: " (tag: v1.0, tag: v1.0.1)",
-			expected: []RefInfo{
-				{Name: "v1.0", Type: RefTypeTag, IsHead: false},
-				{Name: "v1.0.1", Type: RefTypeTag, IsHead: false},
+			expected: []core.RefInfo{
+				{Name: "v1.0", Type: core.RefTypeTag, IsHead: false},
+				{Name: "v1.0.1", Type: core.RefTypeTag, IsHead: false},
 			},
 		},
 		{
 			name:  "complex scenario - HEAD, local, remote, tags",
 			input: " (HEAD -> feature/branch, origin/feature/branch, main, tag: release-1.0)",
-			expected: []RefInfo{
-				{Name: "feature/branch", Type: RefTypeBranch, IsHead: true},
-				{Name: "origin/feature/branch", Type: RefTypeRemoteBranch, IsHead: false},
-				{Name: "main", Type: RefTypeBranch, IsHead: false},
-				{Name: "release-1.0", Type: RefTypeTag, IsHead: false},
+			expected: []core.RefInfo{
+				{Name: "feature/branch", Type: core.RefTypeBranch, IsHead: true},
+				{Name: "origin/feature/branch", Type: core.RefTypeRemoteBranch, IsHead: false},
+				{Name: "main", Type: core.RefTypeBranch, IsHead: false},
+				{Name: "release-1.0", Type: core.RefTypeTag, IsHead: false},
 			},
 		},
 	}

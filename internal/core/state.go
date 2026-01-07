@@ -4,15 +4,22 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-
-	"github.com/oberprah/splice/internal/git"
 )
 
-// FetchFileChangesFunc is a function type for fetching file changes for a commit
-type FetchFileChangesFunc func(commitHash string) ([]git.FileChange, error)
+// FetchFileChangesFunc is a function type for fetching file changes for a commit range
+type FetchFileChangesFunc func(commitRange CommitRange) ([]FileChange, error)
 
 // FetchFullFileDiffFunc is a function type for fetching full file diff content
-type FetchFullFileDiffFunc func(commitHash string, change git.FileChange) (*git.FullFileDiffResult, error)
+type FetchFullFileDiffFunc func(commitRange CommitRange, change FileChange) (*FullFileDiffResult, error)
+
+// FullFileDiffResult contains the full file content before and after a change
+type FullFileDiffResult struct {
+	OldContent string // Content of the file before the change (empty for new files)
+	NewContent string // Content of the file after the change (empty for deleted files)
+	DiffOutput string // Raw unified diff output
+	OldPath    string // Path of the file before the change (for renames)
+	NewPath    string // Path of the file after the change
+}
 
 // Context is the interface that states use to access what they need from the model
 type Context interface {

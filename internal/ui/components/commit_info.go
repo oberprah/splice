@@ -6,10 +6,30 @@ import (
 	"unicode/utf8"
 
 	"github.com/oberprah/splice/internal/core"
-	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/ui/format"
 	"github.com/oberprah/splice/internal/ui/styles"
 )
+
+// CommitInfoFromRange renders commit info for either a single commit or a range.
+// For single commits, delegates to CommitInfo().
+// For ranges, renders a header showing the range and commit count.
+func CommitInfoFromRange(commitRange core.CommitRange, width int, bodyMaxLines int, ctx core.Context) []string {
+	if commitRange.IsSingleCommit() {
+		return CommitInfo(commitRange.End, width, bodyMaxLines, ctx)
+	}
+
+	// Range display - just header, no subject/body
+	var lines []string
+
+	// Format: abc123d..def456e (3 commits)
+	startHash := format.ToShortHash(commitRange.Start.Hash)
+	endHash := format.ToShortHash(commitRange.End.Hash)
+
+	header := fmt.Sprintf("%s..%s (%d commits)", startHash, endHash, commitRange.Count)
+	lines = append(lines, styles.HashStyle.Render(header))
+
+	return lines
+}
 
 // CommitInfo renders complete commit information
 // Returns lines to display (metadata, refs, blank, subject, blank, body with truncation indicator)
@@ -27,7 +47,7 @@ import (
 //   - Subject (wrapped if needed)
 //   - (blank, if body exists)
 //   - Body (wrapped, truncated to bodyMaxLines with indicator)
-func CommitInfo(commit git.GitCommit, width int, bodyMaxLines int, ctx core.Context) []string {
+func CommitInfo(commit core.GitCommit, width int, bodyMaxLines int, ctx core.Context) []string {
 	var lines []string
 
 	// 1. Metadata line
@@ -63,7 +83,7 @@ func CommitInfo(commit git.GitCommit, width int, bodyMaxLines int, ctx core.Cont
 // renderMetadataLine renders the metadata line with smart truncation
 // Format: {hash} · {author} committed {time}
 // Priority: hash > time > author
-func renderMetadataLine(commit git.GitCommit, width int, ctx core.Context) string {
+func renderMetadataLine(commit core.GitCommit, width int, ctx core.Context) string {
 	shortHash := format.ToShortHash(commit.Hash)
 	relativeTime := format.ToRelativeTimeFrom(commit.Date, ctx.Now())
 	author := commit.Author
@@ -143,7 +163,7 @@ func truncateWithEllipsis(text string, maxLen int) string {
 
 // renderRefsLines renders ref names, wrapping if needed
 // Format: main, origin/main, HEAD
-func renderRefsLines(refs []git.RefInfo, width int) []string {
+func renderRefsLines(refs []core.RefInfo, width int) []string {
 	// Build comma-separated ref names
 	var refNames []string
 	for _, ref := range refs {

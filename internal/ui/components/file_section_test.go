@@ -4,13 +4,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/oberprah/splice/internal/core"
+
 	"github.com/charmbracelet/x/ansi"
-	"github.com/oberprah/splice/internal/git"
 )
 
 // TestFileSection tests the complete FileSection function
 func TestFileSection_SingleFile(t *testing.T) {
-	files := []git.FileChange{
+	files := []core.FileChange{
 		{
 			Path:      "src/main.go",
 			Status:    "M",
@@ -55,7 +56,7 @@ func TestFileSection_SingleFile(t *testing.T) {
 }
 
 func TestFileSection_MultipleFiles(t *testing.T) {
-	files := []git.FileChange{
+	files := []core.FileChange{
 		{Path: "file1.go", Status: "M", Additions: 10, Deletions: 5, IsBinary: false},
 		{Path: "file2.go", Status: "A", Additions: 20, Deletions: 0, IsBinary: false},
 		{Path: "file3.go", Status: "D", Additions: 0, Deletions: 15, IsBinary: false},
@@ -90,7 +91,7 @@ func TestFileSection_MultipleFiles(t *testing.T) {
 }
 
 func TestFileSection_WithSelection(t *testing.T) {
-	files := []git.FileChange{
+	files := []core.FileChange{
 		{Path: "file1.go", Status: "M", Additions: 10, Deletions: 5, IsBinary: false},
 		{Path: "file2.go", Status: "A", Additions: 20, Deletions: 0, IsBinary: false},
 	}
@@ -109,15 +110,15 @@ func TestFileSection_WithSelection(t *testing.T) {
 		t.Errorf("Expected space prefix for unselected file, got: %q", firstFileLine)
 	}
 
-	// Second file line should have ">" prefix (selected)
+	// Second file line should have "→" prefix (selected)
 	secondFileLine := ansi.Strip(lines[3])
-	if !strings.HasPrefix(secondFileLine, ">") {
-		t.Errorf("Expected '>' prefix for selected file, got: %q", secondFileLine)
+	if !strings.HasPrefix(secondFileLine, "→") {
+		t.Errorf("Expected '→' prefix for selected file, got: %q", secondFileLine)
 	}
 }
 
 func TestFileSection_WithoutSelector(t *testing.T) {
-	files := []git.FileChange{
+	files := []core.FileChange{
 		{Path: "file1.go", Status: "M", Additions: 10, Deletions: 5, IsBinary: false},
 	}
 
@@ -125,8 +126,8 @@ func TestFileSection_WithoutSelector(t *testing.T) {
 
 	// File line should NOT have selector prefix
 	fileLine := ansi.Strip(lines[2])
-	// Should start with status letter, not a space or ">"
-	if strings.HasPrefix(fileLine, " ") || strings.HasPrefix(fileLine, ">") {
+	// Should start with status letter, not a space or "→"
+	if strings.HasPrefix(fileLine, " ") || strings.HasPrefix(fileLine, "→") {
 		t.Errorf("Expected no selector prefix, got: %q", fileLine)
 	}
 	if !strings.HasPrefix(fileLine, "M") {
@@ -135,7 +136,7 @@ func TestFileSection_WithoutSelector(t *testing.T) {
 }
 
 func TestFileSection_BinaryFile(t *testing.T) {
-	files := []git.FileChange{
+	files := []core.FileChange{
 		{Path: "image.png", Status: "A", Additions: 0, Deletions: 0, IsBinary: true},
 	}
 
@@ -152,7 +153,7 @@ func TestFileSection_BinaryFile(t *testing.T) {
 }
 
 func TestFileSection_EmptyFileList(t *testing.T) {
-	files := []git.FileChange{}
+	files := []core.FileChange{}
 
 	lines := FileSection(files, 80, nil)
 
@@ -174,7 +175,7 @@ func TestFileSection_EmptyFileList(t *testing.T) {
 }
 
 func TestFileSection_AllFileStatuses(t *testing.T) {
-	files := []git.FileChange{
+	files := []core.FileChange{
 		{Path: "added.go", Status: "A", Additions: 10, Deletions: 0, IsBinary: false},
 		{Path: "modified.go", Status: "M", Additions: 5, Deletions: 3, IsBinary: false},
 		{Path: "deleted.go", Status: "D", Additions: 0, Deletions: 20, IsBinary: false},
@@ -203,7 +204,7 @@ func TestFileSection_AllFileStatuses(t *testing.T) {
 // Test helper functions
 
 func TestCalculateTotalStats_MultipleFiles(t *testing.T) {
-	files := []git.FileChange{
+	files := []core.FileChange{
 		{Additions: 10, Deletions: 5},
 		{Additions: 20, Deletions: 15},
 		{Additions: 5, Deletions: 0},
@@ -220,7 +221,7 @@ func TestCalculateTotalStats_MultipleFiles(t *testing.T) {
 }
 
 func TestCalculateTotalStats_EmptyList(t *testing.T) {
-	files := []git.FileChange{}
+	files := []core.FileChange{}
 
 	additions, deletions := CalculateTotalStats(files)
 
@@ -233,7 +234,7 @@ func TestCalculateTotalStats_EmptyList(t *testing.T) {
 }
 
 func TestCalculateMaxStatWidth_SimpleCase(t *testing.T) {
-	files := []git.FileChange{
+	files := []core.FileChange{
 		{Additions: 5, Deletions: 3, IsBinary: false},
 		{Additions: 10, Deletions: 8, IsBinary: false},
 	}
@@ -251,7 +252,7 @@ func TestCalculateMaxStatWidth_SimpleCase(t *testing.T) {
 }
 
 func TestCalculateMaxStatWidth_LargeNumbers(t *testing.T) {
-	files := []git.FileChange{
+	files := []core.FileChange{
 		{Additions: 999, Deletions: 1234, IsBinary: false},
 		{Additions: 12, Deletions: 5, IsBinary: false},
 	}
@@ -269,7 +270,7 @@ func TestCalculateMaxStatWidth_LargeNumbers(t *testing.T) {
 }
 
 func TestCalculateMaxStatWidth_IgnoresBinaryFiles(t *testing.T) {
-	files := []git.FileChange{
+	files := []core.FileChange{
 		{Additions: 5, Deletions: 3, IsBinary: false},
 		{Additions: 99999, Deletions: 99999, IsBinary: true}, // Should be ignored
 	}
@@ -288,7 +289,7 @@ func TestCalculateMaxStatWidth_IgnoresBinaryFiles(t *testing.T) {
 }
 
 func TestCalculateMaxStatWidth_MinimumWidth(t *testing.T) {
-	files := []git.FileChange{
+	files := []core.FileChange{
 		{Additions: 0, Deletions: 0, IsBinary: false},
 	}
 
@@ -304,7 +305,7 @@ func TestCalculateMaxStatWidth_MinimumWidth(t *testing.T) {
 }
 
 func TestCalculateMaxStatWidth_EmptyList(t *testing.T) {
-	files := []git.FileChange{}
+	files := []core.FileChange{}
 
 	addWidth, delWidth := CalculateMaxStatWidth(files)
 
@@ -320,7 +321,7 @@ func TestCalculateMaxStatWidth_EmptyList(t *testing.T) {
 // Test FormatFileLine function
 
 func TestFormatFileLine_BasicFormatting(t *testing.T) {
-	file := git.FileChange{
+	file := core.FileChange{
 		Path:      "src/main.go",
 		Status:    "M",
 		Additions: 10,
@@ -356,7 +357,7 @@ func TestFormatFileLine_BasicFormatting(t *testing.T) {
 }
 
 func TestFormatFileLine_WithSelector(t *testing.T) {
-	file := git.FileChange{
+	file := core.FileChange{
 		Path:      "file.go",
 		Status:    "M",
 		Additions: 1,
@@ -377,8 +378,8 @@ func TestFormatFileLine_WithSelector(t *testing.T) {
 	selectedLine := FormatFileLine(selectedParams)
 	plainSelected := ansi.Strip(selectedLine)
 
-	if !strings.HasPrefix(plainSelected, ">") {
-		t.Errorf("Expected '>' prefix for selected line, got: %q", plainSelected)
+	if !strings.HasPrefix(plainSelected, "→") {
+		t.Errorf("Expected '→' prefix for selected line, got: %q", plainSelected)
 	}
 
 	// Unselected line with selector
@@ -394,7 +395,7 @@ func TestFormatFileLine_WithSelector(t *testing.T) {
 }
 
 func TestFormatFileLine_BinaryFile(t *testing.T) {
-	file := git.FileChange{
+	file := core.FileChange{
 		Path:      "image.png",
 		Status:    "A",
 		Additions: 0,
@@ -424,7 +425,7 @@ func TestFormatFileLine_BinaryFile(t *testing.T) {
 }
 
 func TestFormatFileLine_DefaultStatus(t *testing.T) {
-	file := git.FileChange{
+	file := core.FileChange{
 		Path:      "file.go",
 		Status:    "", // Empty status
 		Additions: 1,
@@ -451,7 +452,7 @@ func TestFormatFileLine_DefaultStatus(t *testing.T) {
 }
 
 func TestFormatFileLine_WidthAlignment(t *testing.T) {
-	files := []git.FileChange{
+	files := []core.FileChange{
 		{Path: "file1.go", Status: "M", Additions: 5, Deletions: 3, IsBinary: false},
 		{Path: "file2.go", Status: "M", Additions: 100, Deletions: 200, IsBinary: false},
 	}
