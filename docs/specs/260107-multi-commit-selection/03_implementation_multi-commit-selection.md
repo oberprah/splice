@@ -61,7 +61,28 @@
 **Read:**
 - `internal/git/git.go` (current implementations at lines 290-360, 405-450)
 
-**Status:** Pending
+**Status:** Complete
+
+**Commit:** 07e89d7791c70f3c31baa9070c5807e9f1e8e561
+
+**Implementation Notes:**
+- Updated `FetchFileChanges(fromHash, toHash string)` to use `git diff` with range syntax instead of `git diff-tree`
+- Updated `FetchFullFileDiff(fromHash, toHash string, change FileChange)` to fetch content at fromHash/toHash and call new `FetchFileDiffRange()` helper
+- Added `FetchFileChangesForCommit(commitHash)` wrapper: calls `FetchFileChanges(commitHash+"^", commitHash)`
+- Added `FetchFullFileDiffForCommit(commitHash, change)` wrapper: calls `FetchFullFileDiff(commitHash+"^", commitHash, change)`
+- Added `FetchFileDiffRange(rangeSpec, filePath)` helper to fetch diffs for ranges using `git diff`
+- Updated function type signatures in `internal/core/state.go`
+- Updated all callers in `log/update.go`, `files/update.go` to use explicit `hash+"^", hash` syntax
+- Updated test helpers in `internal/ui/testutils/helpers.go` and all test files
+- All existing tests pass without modification (15 git tests, all UI state tests, all e2e tests)
+- Build successful, linting clean
+
+**Verification:**
+- ✓ `go build ./...` succeeds
+- ✓ `go test ./...` passes (all 15 git tests + all UI tests)
+- ✓ `golangci-lint run` passes with 0 issues
+- ✓ Integration tests verify git commands work with actual repository
+- ✓ Backward compatibility maintained through wrapper functions
 
 ---
 
