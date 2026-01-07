@@ -13,7 +13,11 @@ import (
 	"github.com/oberprah/splice/internal/ui/states/log"
 )
 
-// Model represents the application model using the state pattern
+// FetchCommitsFunc is a function type for fetching git commits
+type FetchCommitsFunc func(limit int) ([]git.GitCommit, error)
+
+// Model represents the application model using the state pattern.
+// It implements tea.Model for Bubbletea and core.Context for states.
 type Model struct {
 	stack             []core.State // Navigation stack - previous states preserved exactly
 	currentState      core.State
@@ -26,77 +30,10 @@ type Model struct {
 	nowFunc           func() time.Time
 }
 
-// FetchCommitsFunc is a function type for fetching git commits
-type FetchCommitsFunc func(limit int) ([]git.GitCommit, error)
-
-// Width returns the terminal width
-func (m *Model) Width() int {
-	return m.width
-}
-
-// Height returns the terminal height
-func (m *Model) Height() int {
-	return m.height
-}
-
-// FetchFileChanges returns the file changes fetcher function
-func (m *Model) FetchFileChanges() core.FetchFileChangesFunc {
-	return m.fetchFileChanges
-}
-
-// FetchFullFileDiff returns the full file diff fetcher function
-func (m *Model) FetchFullFileDiff() core.FetchFullFileDiffFunc {
-	return m.fetchFullFileDiff
-}
-
-// Now returns the current time (for testing time-dependent formatting)
-func (m *Model) Now() time.Time {
-	return m.nowFunc()
-}
-
-// ModelOption is a functional option for configuring a Model
-type ModelOption func(*Model)
-
-// WithFetchCommits allows injecting a custom commit fetcher for testing
-func WithFetchCommits(fn FetchCommitsFunc) ModelOption {
-	return func(m *Model) {
-		m.fetchCommits = fn
-	}
-}
-
-// WithFetchFileChanges allows injecting a custom file changes fetcher for testing
-func WithFetchFileChanges(fn core.FetchFileChangesFunc) ModelOption {
-	return func(m *Model) {
-		m.fetchFileChanges = fn
-	}
-}
-
-// WithFetchFullFileDiff allows injecting a custom full file diff fetcher for testing
-func WithFetchFullFileDiff(fn core.FetchFullFileDiffFunc) ModelOption {
-	return func(m *Model) {
-		m.fetchFullFileDiff = fn
-	}
-}
-
-// WithNow allows injecting a custom time function for deterministic testing
-func WithNow(fn func() time.Time) ModelOption {
-	return func(m *Model) {
-		m.nowFunc = fn
-	}
-}
-
-// WithInitialState allows setting a custom initial state for testing
-func WithInitialState(state core.State) ModelOption {
-	return func(m *Model) {
-		m.currentState = state
-	}
-}
-
-// NewModel creates a new Model with initial loading state
+// NewModel creates a new Model with default configuration.
+// Use functional options (WithFetchCommits, WithInitialState, etc.) to customize.
 func NewModel(opts ...ModelOption) Model {
 	m := Model{
-		// currentState will be set by WithInitialState option or remain nil
-		// main.go should provide the initial loading state
 		firstPush:         true,                  // First push will not add to stack (LoadingState)
 		fetchCommits:      git.FetchCommits,      // Default to real git command
 		fetchFileChanges:  git.FetchFileChanges,  // Default to real git command
@@ -119,16 +56,15 @@ func (m Model) Init() tea.Cmd {
 	}
 }
 
-// Update handles messages by delegating to the current state
+// Update handles messages by delegating to the current state.
+// Navigation messages (Push*ScreenMsg, PopScreenMsg) are handled at this level.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// Handle navigation messages at model level before delegating to state
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 
 	case core.PushLogScreenMsg:
-		// Create LogState with initial preview loading for the first commit
 		firstCommitHash := msg.Commits[0].Hash
 		newState := &log.State{
 			Commits:       msg.Commits,
@@ -158,7 +94,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case core.PushDiffScreenMsg:
-		// Calculate initial viewport position - scroll to first change
 		viewportStart := 0
 		if msg.Diff != nil && len(msg.ChangeIndices) > 0 {
 			viewportStart = msg.ChangeIndices[0]
@@ -178,7 +113,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case core.PushErrorScreenMsg:
 		newState := stateserror.State{Err: msg.Err}
 		if m.firstPush {
-			// Error during loading - don't push, just replace
 			m.firstPush = false
 			m.currentState = newState
 			return m, nil
@@ -188,18 +122,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case core.PopScreenMsg:
-		// Pop the previous state from the stack
 		if len(m.stack) > 0 {
 			m.currentState = m.stack[len(m.stack)-1]
 			m.stack = m.stack[:len(m.stack)-1]
 			return m, nil
 		}
-		// If stack is empty, quit the application
-		// This happens when popping from LoadingState or an error that occurred during loading
 		return m, tea.Quit
 	}
 
-	// Delegate to current state's update logic
+	// Delegate to current state
 	newState, cmd := m.currentState.Update(msg, &m)
 	m.currentState = newState
 	return m, cmd
