@@ -47,3 +47,15 @@ type State struct {
 	Preview       PreviewState
 	GraphLayout   *graph.Layout // Computed graph layout for commits
 }
+
+// New creates a new LogState with the given commits and graph layout.
+// Cursor starts at position 0 with preview loading for the first commit.
+func New(commits []git.GitCommit, layout *graph.Layout) *State {
+	return &State{
+		Commits:       commits,
+		Cursor:        0,
+		ViewportStart: 0,
+		Preview:       PreviewLoading{ForHash: commits[0].Hash},
+		GraphLayout:   layout,
+	}
+}

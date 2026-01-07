@@ -11,3 +11,13 @@ type State struct {
 	Cursor        int
 	ViewportStart int
 }
+
+// New creates a new FilesState with cursor at the first file.
+func New(commit git.GitCommit, files []git.FileChange) *State {
+	return &State{
+		Commit:        commit,
+		Files:         files,
+		Cursor:        0,
+		ViewportStart: 0,
+	}
+}

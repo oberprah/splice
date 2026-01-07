@@ -4,3 +4,8 @@ package error
 type State struct {
 	Err error
 }
+
+// New creates a new error State.
+func New(err error) State {
+	return State{Err: err}
+}

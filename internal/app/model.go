@@ -72,46 +72,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 
 	case core.PushLogScreenMsg:
-		firstCommitHash := msg.Commits[0].Hash
-		newState := &log.State{
-			Commits:       msg.Commits,
-			Cursor:        0,
-			ViewportStart: 0,
-			Preview:       log.PreviewLoading{ForHash: firstCommitHash},
-			GraphLayout:   msg.GraphLayout,
-		}
-		m.pushState(newState)
+		m.pushState(log.New(msg.Commits, msg.GraphLayout))
 		return m, msg.InitCmd
 
 	case core.PushFilesScreenMsg:
-		newState := &files.State{
-			Commit:        msg.Commit,
-			Files:         msg.Files,
-			Cursor:        0,
-			ViewportStart: 0,
-		}
-		m.pushState(newState)
+		m.pushState(files.New(msg.Commit, msg.Files))
 		return m, nil
 
 	case core.PushDiffScreenMsg:
-		viewportStart := 0
-		if msg.Diff != nil && len(msg.ChangeIndices) > 0 {
-			viewportStart = msg.ChangeIndices[0]
-		}
-		newState := &diff.State{
-			Commit:           msg.Commit,
-			File:             msg.File,
-			Diff:             msg.Diff,
-			ChangeIndices:    msg.ChangeIndices,
-			ViewportStart:    viewportStart,
-			CurrentChangeIdx: 0,
-		}
-		m.pushState(newState)
+		m.pushState(diff.New(msg.Commit, msg.File, msg.Diff, msg.ChangeIndices))
 		return m, nil
 
 	case core.PushErrorScreenMsg:
-		newState := stateserror.State{Err: msg.Err}
-		m.pushState(newState)
+		m.pushState(stateserror.New(msg.Err))
 		return m, nil
 
 	case core.PopScreenMsg:
