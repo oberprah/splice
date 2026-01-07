@@ -10,7 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/oberprah/splice/internal/git"
+	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/ui/styles"
 )
 
@@ -30,7 +30,7 @@ type CommitLineComponents struct {
 	DisplayState LineDisplayState
 	Graph        string
 	Hash         string
-	Refs         []git.RefInfo
+	Refs         []core.RefInfo
 	Message      string
 	Author       string
 	Time         string
@@ -94,7 +94,7 @@ func truncateEntireLine(line string, maxWidth int) string {
 
 // formatRefsFull formats all refs with their full names.
 // Returns formatted refs like "(HEAD -> main, tag: v1.0)" with trailing space.
-func formatRefsFull(refs []git.RefInfo) string {
+func formatRefsFull(refs []core.RefInfo) string {
 	if len(refs) == 0 {
 		return ""
 	}
@@ -103,7 +103,7 @@ func formatRefsFull(refs []git.RefInfo) string {
 	for _, ref := range refs {
 		var formatted string
 		switch ref.Type {
-		case git.RefTypeTag:
+		case core.RefTypeTag:
 			formatted = fmt.Sprintf("tag: %s", ref.Name)
 		default:
 			// For branches, just use the name
@@ -118,7 +118,7 @@ func formatRefsFull(refs []git.RefInfo) string {
 // formatRefsShortenedIndividual formats refs with individual names truncated to maxLen.
 // Uses "…" (single ellipsis char) for truncation to save space.
 // Note: maxLen is treated as character count (rune count).
-func formatRefsShortenedIndividual(refs []git.RefInfo, maxLen int) string {
+func formatRefsShortenedIndividual(refs []core.RefInfo, maxLen int) string {
 	if len(refs) == 0 {
 		return ""
 	}
@@ -127,7 +127,7 @@ func formatRefsShortenedIndividual(refs []git.RefInfo, maxLen int) string {
 	for _, ref := range refs {
 		var formatted string
 		switch ref.Type {
-		case git.RefTypeTag:
+		case core.RefTypeTag:
 			name := ref.Name
 			if utf8.RuneCountInString(name) > maxLen {
 				if maxLen < 3 {
@@ -161,13 +161,13 @@ func formatRefsShortenedIndividual(refs []git.RefInfo, maxLen int) string {
 // Prefers showing the current branch (HEAD ref) if present.
 // First ref is still truncated if needed with "…".
 // Note: maxLen is treated as character count (rune count).
-func formatRefsFirstPlusCount(refs []git.RefInfo, maxLen int) string {
+func formatRefsFirstPlusCount(refs []core.RefInfo, maxLen int) string {
 	if len(refs) == 0 {
 		return ""
 	}
 
 	// Find the HEAD ref (current branch) if it exists
-	var firstRef git.RefInfo
+	var firstRef core.RefInfo
 	foundHead := false
 	for _, ref := range refs {
 		if ref.IsHead {
@@ -185,7 +185,7 @@ func formatRefsFirstPlusCount(refs []git.RefInfo, maxLen int) string {
 	// Format the first ref
 	var formatted string
 	switch firstRef.Type {
-	case git.RefTypeTag:
+	case core.RefTypeTag:
 		name := firstRef.Name
 		if utf8.RuneCountInString(name) > maxLen {
 			if maxLen < 3 {
@@ -220,7 +220,7 @@ func formatRefsFirstPlusCount(refs []git.RefInfo, maxLen int) string {
 
 // buildRefs builds the refs string at the specified truncation level.
 // Returns empty string if no refs, otherwise returns formatted string with trailing space.
-func buildRefs(refs []git.RefInfo, level RefsLevel) string {
+func buildRefs(refs []core.RefInfo, level RefsLevel) string {
 	if len(refs) == 0 {
 		return ""
 	}

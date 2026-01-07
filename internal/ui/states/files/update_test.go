@@ -9,7 +9,6 @@ import (
 	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/domain/diff"
 	"github.com/oberprah/splice/internal/domain/highlight"
-	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/ui/testutils"
 )
 
@@ -294,7 +293,7 @@ func TestFilesState_Update_SingleFileList(t *testing.T) {
 
 func TestFilesState_Update_EmptyFileList(t *testing.T) {
 	commit := createTestCommit()
-	files := []git.FileChange{}
+	files := []core.FileChange{}
 	s := State{
 		Range:         core.NewSingleCommitRange(commit),
 		Files:         files,
@@ -345,7 +344,7 @@ func TestFilesState_Update_EnterKeyReturnsCommand(t *testing.T) {
 
 func TestFilesState_Update_EnterOnEmptyFiles(t *testing.T) {
 	commit := createTestCommit()
-	files := []git.FileChange{}
+	files := []core.FileChange{}
 	s := State{
 		Range:  core.NewSingleCommitRange(commit),
 		Files:  files,

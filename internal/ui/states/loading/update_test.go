@@ -8,7 +8,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/oberprah/splice/internal/core"
-	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/ui/testutils"
 )
 
@@ -22,7 +21,7 @@ func TestLoadingState_Update_CommitsLoaded(t *testing.T) {
 		{
 			name: "successful load with commits",
 			msg: core.CommitsLoadedMsg{
-				Commits: []git.GitCommit{
+				Commits: []core.GitCommit{
 					{Hash: "abc123", Message: "Test", Body: "", Author: "Author", Date: time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)},
 					{Hash: "def456", Message: "Test2", Body: "", Author: "Author2", Date: time.Date(2024, 1, 1, 11, 0, 0, 0, time.UTC)},
 				},
@@ -80,7 +79,7 @@ func TestLoadingState_Update_CommitsLoaded(t *testing.T) {
 		{
 			name: "empty repository",
 			msg: core.CommitsLoadedMsg{
-				Commits: []git.GitCommit{},
+				Commits: []core.GitCommit{},
 				Err:     nil,
 			},
 			expectLoadingState: true,

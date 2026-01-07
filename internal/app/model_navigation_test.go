@@ -7,7 +7,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/oberprah/splice/internal/core"
-	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/ui/states/loading"
 )
 
@@ -19,14 +18,14 @@ func TestNavigationStack(t *testing.T) {
 	fixedTime := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
 	m := NewModel(
 		WithInitialState(loading.State{}),
-		WithFetchCommits(func(int) ([]git.GitCommit, error) {
-			return []git.GitCommit{{Hash: "abc123", Message: "Test", Author: "Test", Date: fixedTime}}, nil
+		WithFetchCommits(func(int) ([]core.GitCommit, error) {
+			return []core.GitCommit{{Hash: "abc123", Message: "Test", Author: "Test", Date: fixedTime}}, nil
 		}),
-		WithFetchFileChanges(func(fromHash, toHash string) ([]git.FileChange, error) {
-			return []git.FileChange{{Path: "test.go", Status: "M"}}, nil
+		WithFetchFileChanges(func(commitRange core.CommitRange) ([]core.FileChange, error) {
+			return []core.FileChange{{Path: "test.go", Status: "M"}}, nil
 		}),
-		WithFetchFullFileDiff(func(fromHash, toHash string, change git.FileChange) (*git.FullFileDiffResult, error) {
-			return &git.FullFileDiffResult{DiffOutput: "test"}, nil
+		WithFetchFullFileDiff(func(commitRange core.CommitRange, change core.FileChange) (*core.FullFileDiffResult, error) {
+			return &core.FullFileDiffResult{DiffOutput: "test"}, nil
 		}),
 	)
 
@@ -41,7 +40,7 @@ func TestNavigationStack(t *testing.T) {
 
 	// Push LogScreen - LoadingState is transient, so it gets replaced (stack stays at 1)
 	m2, cmd := m.Update(core.PushLogScreenMsg{
-		Commits:     []git.GitCommit{{Hash: "abc123"}},
+		Commits:     []core.GitCommit{{Hash: "abc123"}},
 		GraphLayout: nil,
 	})
 	m = m2.(Model)
@@ -57,10 +56,10 @@ func TestNavigationStack(t *testing.T) {
 	}
 
 	// Push FilesScreen - normal push, adds to stack
-	testCommit := git.GitCommit{Hash: "abc123"}
+	testCommit := core.GitCommit{Hash: "abc123"}
 	m2, _ = m.Update(core.PushFilesScreenMsg{
 		Range: core.NewSingleCommitRange(testCommit),
-		Files: []git.FileChange{{Path: "test.go"}},
+		Files: []core.FileChange{{Path: "test.go"}},
 	})
 	m = m2.(Model)
 
@@ -71,7 +70,7 @@ func TestNavigationStack(t *testing.T) {
 	// Push DiffScreen - normal push, adds to stack
 	m2, _ = m.Update(core.PushDiffScreenMsg{
 		Range: core.NewSingleCommitRange(testCommit),
-		File:  git.FileChange{Path: "test.go"},
+		File:  core.FileChange{Path: "test.go"},
 	})
 	m = m2.(Model)
 

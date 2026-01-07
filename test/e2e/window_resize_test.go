@@ -5,16 +5,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/oberprah/splice/internal/core"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/oberprah/splice/internal/app"
-	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/ui/states/loading"
 )
 
 // createLongCommits creates test commits with long messages and authors to demonstrate truncation
-func createLongCommits(count int) []git.GitCommit {
-	commits := make([]git.GitCommit, count)
+func createLongCommits(count int) []core.GitCommit {
+	commits := make([]core.GitCommit, count)
 	baseTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 
 	messages := []string{
@@ -37,7 +38,7 @@ func createLongCommits(count int) []git.GitCommit {
 	}
 
 	for i := 0; i < count; i++ {
-		commits[i] = git.GitCommit{
+		commits[i] = core.GitCommit{
 			Hash:    fmt.Sprintf("%040d", i),
 			Message: messages[i%len(messages)],
 			Body:    "Additional context about this change that provides more detailed information.",
@@ -53,7 +54,7 @@ func TestWindowResize(t *testing.T) {
 	commits := createLongCommits(15)
 
 	// Create long file paths to demonstrate truncation
-	fileChanges := []git.FileChange{
+	fileChanges := []core.FileChange{
 		{Path: "internal/authentication/oauth2/providers/github/client.go", Additions: 245, Deletions: 123},
 		{Path: "internal/authentication/oauth2/providers/google/client.go", Additions: 198, Deletions: 87},
 		{Path: "pkg/database/migrations/v2/user_preferences_schema.sql", Additions: 67, Deletions: 12},
@@ -105,17 +106,17 @@ func TestWindowResize(t *testing.T) {
 
 	m := app.NewModel(
 		app.WithInitialState(loading.State{}),
-		app.WithFetchCommits(func(limit int) ([]git.GitCommit, error) {
+		app.WithFetchCommits(func(limit int) ([]core.GitCommit, error) {
 			if limit < len(commits) {
 				return commits[:limit], nil
 			}
 			return commits, nil
 		}),
-		app.WithFetchFileChanges(func(fromHash, toHash string) ([]git.FileChange, error) {
+		app.WithFetchFileChanges(func(commitRange core.CommitRange) ([]core.FileChange, error) {
 			return fileChanges, nil
 		}),
-		app.WithFetchFullFileDiff(func(fromHash, toHash string, change git.FileChange) (*git.FullFileDiffResult, error) {
-			return &git.FullFileDiffResult{
+		app.WithFetchFullFileDiff(func(commitRange core.CommitRange, change core.FileChange) (*core.FullFileDiffResult, error) {
+			return &core.FullFileDiffResult{
 				OldContent: oldContent,
 				NewContent: newContent,
 				DiffOutput: diffOutput,

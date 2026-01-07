@@ -3,12 +3,10 @@ package core
 import (
 	"testing"
 	"time"
-
-	"github.com/oberprah/splice/internal/git"
 )
 
-func makeTestCommit(hash string) git.GitCommit {
-	return git.GitCommit{
+func makeTestCommit(hash string) GitCommit {
+	return GitCommit{
 		Hash:    hash,
 		Message: "Test commit",
 		Author:  "Test Author",

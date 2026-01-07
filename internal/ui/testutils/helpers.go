@@ -10,7 +10,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
 	"github.com/oberprah/splice/internal/core"
-	"github.com/oberprah/splice/internal/git"
 )
 
 // MockContext is a test helper that implements the core.Context interface.
@@ -33,14 +32,14 @@ func (m MockContext) FetchFileChanges() core.FetchFileChangesFunc {
 	if m.MockFetchFileChanges != nil {
 		return m.MockFetchFileChanges
 	}
-	return func(fromHash, toHash string) ([]git.FileChange, error) {
-		return []git.FileChange{}, nil
+	return func(commitRange core.CommitRange) ([]core.FileChange, error) {
+		return []core.FileChange{}, nil
 	}
 }
 
 func (m MockContext) FetchFullFileDiff() core.FetchFullFileDiffFunc {
-	return func(fromHash, toHash string, change git.FileChange) (*git.FullFileDiffResult, error) {
-		return &git.FullFileDiffResult{}, nil
+	return func(commitRange core.CommitRange, change core.FileChange) (*core.FullFileDiffResult, error) {
+		return &core.FullFileDiffResult{}, nil
 	}
 }
 
@@ -90,8 +89,8 @@ func AssertGolden(t *testing.T, output, goldenPath string, update bool) {
 // Uses fixed dates that are exactly 1 year old to ensure deterministic formatting
 // Creates linear commit history in display order (newest to oldest)
 // Each commit has the next commit in the array as its parent (linear history)
-func CreateTestCommits(count int) []git.GitCommit {
-	commits := make([]git.GitCommit, count)
+func CreateTestCommits(count int) []core.GitCommit {
+	commits := make([]core.GitCommit, count)
 	// Fixed date exactly 1 year ago from test "now" (2024-01-01 from 2025-01-01)
 	// This ensures "1 year ago" formatting consistently in tests
 	baseTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
@@ -107,10 +106,10 @@ func CreateTestCommits(count int) []git.GitCommit {
 			parentHashes = []string{}
 		}
 
-		commits[i] = git.GitCommit{
+		commits[i] = core.GitCommit{
 			Hash:         fmt.Sprintf("%040d", i), // Full 40-char hash
 			ParentHashes: parentHashes,
-			Refs:         []git.RefInfo{}, // No refs by default
+			Refs:         []core.RefInfo{}, // No refs by default
 			Message:      fmt.Sprintf("Commit message %d", i),
 			Body:         "",
 			Author:       fmt.Sprintf("Author %d", i%3),               // Vary authors
@@ -125,8 +124,8 @@ func CreateTestCommits(count int) []git.GitCommit {
 // Uses fixed dates that are exactly 1 year old to ensure deterministic formatting
 // Creates linear commit history in display order (newest to oldest)
 // Each commit has the next commit in the array as its parent (linear history)
-func CreateTestCommitsWithMessages(messages []string) []git.GitCommit {
-	commits := make([]git.GitCommit, len(messages))
+func CreateTestCommitsWithMessages(messages []string) []core.GitCommit {
+	commits := make([]core.GitCommit, len(messages))
 	// Fixed date exactly 1 year ago from test "now" (2024-01-01 from 2025-01-01)
 	baseTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 
@@ -141,10 +140,10 @@ func CreateTestCommitsWithMessages(messages []string) []git.GitCommit {
 			parentHashes = []string{}
 		}
 
-		commits[i] = git.GitCommit{
+		commits[i] = core.GitCommit{
 			Hash:         fmt.Sprintf("%040d", i),
 			ParentHashes: parentHashes,
-			Refs:         []git.RefInfo{}, // No refs by default
+			Refs:         []core.RefInfo{}, // No refs by default
 			Message:      msg,
 			Body:         "",
 			Author:       "Test Author",
@@ -156,8 +155,8 @@ func CreateTestCommitsWithMessages(messages []string) []git.GitCommit {
 }
 
 // MockFetchCommits creates a mock function that returns test commits
-func MockFetchCommits(commits []git.GitCommit, err error) func(int) ([]git.GitCommit, error) {
-	return func(limit int) ([]git.GitCommit, error) {
+func MockFetchCommits(commits []core.GitCommit, err error) func(int) ([]core.GitCommit, error) {
+	return func(limit int) ([]core.GitCommit, error) {
 		if err != nil {
 			return nil, err
 		}
@@ -169,8 +168,8 @@ func MockFetchCommits(commits []git.GitCommit, err error) func(int) ([]git.GitCo
 }
 
 // MockFetchFileChanges creates a mock function that returns file changes for a commit range
-func MockFetchFileChanges(files []git.FileChange, err error) func(string, string) ([]git.FileChange, error) {
-	return func(fromHash, toHash string) ([]git.FileChange, error) {
+func MockFetchFileChanges(files []core.FileChange, err error) func(core.CommitRange) ([]core.FileChange, error) {
+	return func(commitRange core.CommitRange) ([]core.FileChange, error) {
 		if err != nil {
 			return nil, err
 		}
@@ -179,8 +178,8 @@ func MockFetchFileChanges(files []git.FileChange, err error) func(string, string
 }
 
 // MockFetchFullFileDiff creates a mock function that returns full file diff result
-func MockFetchFullFileDiff(result *git.FullFileDiffResult, err error) func(string, string, git.FileChange) (*git.FullFileDiffResult, error) {
-	return func(fromHash, toHash string, change git.FileChange) (*git.FullFileDiffResult, error) {
+func MockFetchFullFileDiff(result *core.FullFileDiffResult, err error) func(core.CommitRange, core.FileChange) (*core.FullFileDiffResult, error) {
+	return func(commitRange core.CommitRange, change core.FileChange) (*core.FullFileDiffResult, error) {
 		if err != nil {
 			return nil, err
 		}

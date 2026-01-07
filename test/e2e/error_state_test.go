@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/oberprah/splice/internal/core"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/oberprah/splice/internal/app"
-	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/ui/states/loading"
 	"github.com/oberprah/splice/internal/ui/testutils"
 )
@@ -18,7 +19,7 @@ func TestErrorState(t *testing.T) {
 	m := app.NewModel(
 		app.WithInitialState(loading.State{}),
 		app.WithFetchCommits(testutils.MockFetchCommits(nil, fmt.Errorf("not a git repository"))),
-		app.WithFetchFileChanges(testutils.MockFetchFileChanges([]git.FileChange{}, nil)),
+		app.WithFetchFileChanges(testutils.MockFetchFileChanges([]core.FileChange{}, nil)),
 	)
 
 	runner := NewE2ETestRunner(t, m)

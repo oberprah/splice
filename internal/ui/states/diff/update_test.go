@@ -8,7 +8,6 @@ import (
 	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/domain/diff"
 	"github.com/oberprah/splice/internal/domain/highlight"
-	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/ui/testutils"
 )
 
@@ -35,8 +34,8 @@ func createTestDiffState(numLines int) *State {
 	}
 
 	return &State{
-		Range: core.NewSingleCommitRange(git.GitCommit{Hash: "abc123"}),
-		File:  git.FileChange{Path: "file.go", Additions: 5, Deletions: 3},
+		Range: core.NewSingleCommitRange(core.GitCommit{Hash: "abc123"}),
+		File:  core.FileChange{Path: "file.go", Additions: 5, Deletions: 3},
 		Diff: &diff.AlignedFileDiff{
 			Left: diff.FileContent{
 				Path:  "file.go",
@@ -390,8 +389,8 @@ func createTestDiffStateWithChanges(numLines int, changeIndices []int) *State {
 	}
 
 	return &State{
-		Range: core.NewSingleCommitRange(git.GitCommit{Hash: "abc123"}),
-		File:  git.FileChange{Path: "file.go", Additions: 5, Deletions: 3},
+		Range: core.NewSingleCommitRange(core.GitCommit{Hash: "abc123"}),
+		File:  core.FileChange{Path: "file.go", Additions: 5, Deletions: 3},
 		Diff: &diff.AlignedFileDiff{
 			Left: diff.FileContent{
 				Path:  "file.go",

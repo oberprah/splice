@@ -5,14 +5,13 @@ import (
 
 	"github.com/oberprah/splice/internal/domain/diff"
 	"github.com/oberprah/splice/internal/domain/graph"
-	"github.com/oberprah/splice/internal/git"
 )
 
 // Navigation messages - each screen has its own typed message for compile-time safety
 
 // PushLogScreenMsg signals navigation to the log screen
 type PushLogScreenMsg struct {
-	Commits     []git.GitCommit
+	Commits     []GitCommit
 	GraphLayout *graph.Layout
 	InitCmd     tea.Cmd // Optional initialization command to run after creating the state
 }
@@ -20,13 +19,13 @@ type PushLogScreenMsg struct {
 // PushFilesScreenMsg signals navigation to the files screen
 type PushFilesScreenMsg struct {
 	Range CommitRange
-	Files []git.FileChange
+	Files []FileChange
 }
 
 // PushDiffScreenMsg signals navigation to the diff screen
 type PushDiffScreenMsg struct {
 	Range         CommitRange
-	File          git.FileChange
+	File          FileChange
 	Diff          *diff.AlignedFileDiff
 	ChangeIndices []int
 }

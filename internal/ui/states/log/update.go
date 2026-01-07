@@ -75,15 +75,7 @@ func (s State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 				commitRange := s.GetSelectedRange()
 				fetchFileChanges := ctx.FetchFileChanges()
 				return s, func() tea.Msg {
-					// For range diff, we need parent of start..end
-					var fromHash string
-					if commitRange.IsSingleCommit() {
-						fromHash = commitRange.End.Hash + "^"
-					} else {
-						fromHash = commitRange.Start.Hash + "^"
-					}
-
-					fileChanges, err := fetchFileChanges(fromHash, commitRange.End.Hash)
+					fileChanges, err := fetchFileChanges(commitRange)
 					return core.FilesLoadedMsg{
 						Range: commitRange,
 						Files: fileChanges,
@@ -195,16 +187,7 @@ func (s *State) updateViewport(height int) {
 // LoadPreview creates a command to load file changes for a commit or range (for preview in log view)
 func LoadPreview(commitRange core.CommitRange, fetchFileChanges core.FetchFileChangesFunc) tea.Cmd {
 	return func() tea.Msg {
-		// Calculate from/to hashes using the same logic as Enter key handler
-		var fromHash string
-		if commitRange.IsSingleCommit() {
-			fromHash = commitRange.End.Hash + "^"
-		} else {
-			fromHash = commitRange.Start.Hash + "^"
-		}
-		toHash := commitRange.End.Hash
-
-		files, err := fetchFileChanges(fromHash, toHash)
+		files, err := fetchFileChanges(commitRange)
 		return core.FilesPreviewLoadedMsg{
 			ForHash: getRangeHash(commitRange),
 			Files:   files,

@@ -3,14 +3,13 @@ package diff
 import (
 	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/domain/diff"
-	"github.com/oberprah/splice/internal/git"
 )
 
 // DiffState represents the state when viewing a file diff
 type State struct {
 	// Current diff data
 	Range core.CommitRange
-	File  git.FileChange
+	File  core.FileChange
 	Diff  *diff.AlignedFileDiff
 
 	// Viewport control
@@ -20,7 +19,7 @@ type State struct {
 }
 
 // New creates a new DiffState with viewport positioned at the first change.
-func New(commitRange core.CommitRange, file git.FileChange, d *diff.AlignedFileDiff, changeIndices []int) *State {
+func New(commitRange core.CommitRange, file core.FileChange, d *diff.AlignedFileDiff, changeIndices []int) *State {
 	viewportStart := 0
 	if d != nil && len(changeIndices) > 0 {
 		viewportStart = changeIndices[0]

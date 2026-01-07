@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/oberprah/splice/internal/git"
+	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/ui/styles"
 )
 
@@ -24,7 +24,7 @@ import (
 //
 // Note: This component does NOT handle loading/error states or truncate the file list.
 // The caller is responsible for those concerns.
-func FileSection(files []git.FileChange, width int, cursor *int) []string {
+func FileSection(files []core.FileChange, width int, cursor *int) []string {
 	lines := make([]string, 0, len(files)+2)
 
 	// 1. Blank line separator
@@ -67,7 +67,7 @@ func FileSection(files []git.FileChange, width int, cursor *int) []string {
 }
 
 // CalculateTotalStats calculates total additions and deletions across all files
-func CalculateTotalStats(files []git.FileChange) (int, int) {
+func CalculateTotalStats(files []core.FileChange) (int, int) {
 	var totalAdditions, totalDeletions int
 	for _, file := range files {
 		totalAdditions += file.Additions
@@ -77,7 +77,7 @@ func CalculateTotalStats(files []git.FileChange) (int, int) {
 }
 
 // CalculateMaxStatWidth calculates the maximum width needed for additions and deletions
-func CalculateMaxStatWidth(files []git.FileChange) (int, int) {
+func CalculateMaxStatWidth(files []core.FileChange) (int, int) {
 	maxAddWidth := 2 // Minimum: +0
 	maxDelWidth := 2 // Minimum: -0
 
@@ -101,7 +101,7 @@ func CalculateMaxStatWidth(files []git.FileChange) (int, int) {
 
 // FormatFileLineParams contains parameters for formatting a file line
 type FormatFileLineParams struct {
-	File         git.FileChange
+	File         core.FileChange
 	IsSelected   bool
 	Width        int
 	MaxAddWidth  int

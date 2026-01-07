@@ -6,7 +6,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/domain/graph"
-	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/ui/components"
 	"github.com/oberprah/splice/internal/ui/format"
 	"github.com/oberprah/splice/internal/ui/styles"
@@ -121,7 +120,7 @@ func (s State) buildDetailsColumn(width int, ctx core.Context) core.ViewRenderer
 
 // buildCommitLineComponents prepares all components for formatting a commit line.
 // This is where impure operations (time formatting, graph lookup) happen.
-func (s State) buildCommitLineComponents(commit git.GitCommit, commitIndex int, isSelected bool, ctx core.Context) components.CommitLineComponents {
+func (s State) buildCommitLineComponents(commit core.GitCommit, commitIndex int, isSelected bool, ctx core.Context) components.CommitLineComponents {
 	return components.CommitLineComponents{
 		DisplayState: s.getLineDisplayState(commitIndex),
 		Graph:        s.buildGraphForCommit(commitIndex),

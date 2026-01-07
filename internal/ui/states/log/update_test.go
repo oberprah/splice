@@ -7,12 +7,11 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/oberprah/splice/internal/core"
-	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/ui/testutils"
 )
 
-func createTestCommits(count int) []git.GitCommit {
-	commits := make([]git.GitCommit, count)
+func createTestCommits(count int) []core.GitCommit {
+	commits := make([]core.GitCommit, count)
 	baseTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 	for i := range count {
 		// Create linear parent chain (each commit's parent is the next one)
@@ -23,7 +22,7 @@ func createTestCommits(count int) []git.GitCommit {
 			parents = []string{} // Last commit is root
 		}
 
-		commits[i] = git.GitCommit{
+		commits[i] = core.GitCommit{
 			Hash:         string(rune('a' + i)),
 			ParentHashes: parents,
 			Message:      "Commit " + string(rune('0'+i)),
@@ -307,7 +306,7 @@ func TestLogState_Update_NavigationTriggersPreviewLoading(t *testing.T) {
 
 func TestLogState_Update_FilesPreviewLoadedMsg_Success(t *testing.T) {
 	commits := createTestCommits(3)
-	fileChanges := []git.FileChange{
+	fileChanges := []core.FileChange{
 		{Path: "file1.go", Status: "M"},
 		{Path: "file2.go", Status: "A"},
 	}
@@ -392,7 +391,7 @@ func TestLogState_Update_FilesPreviewLoadedMsg_Error(t *testing.T) {
 
 func TestLogState_Update_FilesPreviewLoadedMsg_StaleResponse(t *testing.T) {
 	commits := createTestCommits(3)
-	fileChanges := []git.FileChange{
+	fileChanges := []core.FileChange{
 		{Path: "file1.go", Status: "M"},
 	}
 
@@ -442,11 +441,10 @@ func TestLogState_Update_VisualMode_NavigationLoadsRangePreview(t *testing.T) {
 	}
 
 	// Mock FetchFileChanges to track what was requested
-	var fromHashCalled, toHashCalled string
-	mockFetchFileChanges := func(fromHash, toHash string) ([]git.FileChange, error) {
-		fromHashCalled = fromHash
-		toHashCalled = toHash
-		return []git.FileChange{
+	var rangeCalled core.CommitRange
+	mockFetchFileChanges := func(commitRange core.CommitRange) ([]core.FileChange, error) {
+		rangeCalled = commitRange
+		return []core.FileChange{
 			{Path: "file1.go", Status: "M"},
 			{Path: "file2.go", Status: "A"},
 			{Path: "file3.go", Status: "M"},
@@ -491,14 +489,12 @@ func TestLogState_Update_VisualMode_NavigationLoadsRangePreview(t *testing.T) {
 	// Execute the command to trigger the fetch
 	resultMsg := cmd()
 
-	// Verify the fetch was called with correct range hashes
-	expectedFromHash := commits[2].Hash + "^" // Parent of older commit
-	expectedToHash := commits[1].Hash         // Newer commit
-	if fromHashCalled != expectedFromHash {
-		t.Errorf("Expected fromHash %s, got %s", expectedFromHash, fromHashCalled)
+	// Verify the fetch was called with correct range
+	if rangeCalled.Start.Hash != commits[2].Hash {
+		t.Errorf("Expected range Start hash %s, got %s", commits[2].Hash, rangeCalled.Start.Hash)
 	}
-	if toHashCalled != expectedToHash {
-		t.Errorf("Expected toHash %s, got %s", expectedToHash, toHashCalled)
+	if rangeCalled.End.Hash != commits[1].Hash {
+		t.Errorf("Expected range End hash %s, got %s", commits[1].Hash, rangeCalled.End.Hash)
 	}
 
 	// Verify the message contains the combined files

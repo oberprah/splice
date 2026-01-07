@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/oberprah/splice/internal/core"
-	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/ui/components"
 	"github.com/oberprah/splice/internal/ui/testutils"
 )
@@ -21,8 +20,8 @@ func assertFilesViewGolden(t *testing.T, output *components.ViewBuilder, filenam
 	testutils.AssertGolden(t, output.String(), goldenPath, *update)
 }
 
-func createTestCommit() git.GitCommit {
-	return git.GitCommit{
+func createTestCommit() core.GitCommit {
+	return core.GitCommit{
 		Hash:    "abc123def456789012345678901234567890abcd",
 		Message: "Add automatic light/dark theme support",
 		Body:    "",
@@ -31,15 +30,15 @@ func createTestCommit() git.GitCommit {
 	}
 }
 
-func createTestFileChanges(count int) []git.FileChange {
-	changes := make([]git.FileChange, count)
+func createTestFileChanges(count int) []core.FileChange {
+	changes := make([]core.FileChange, count)
 	statuses := []string{"M", "A", "D", "M", "M"} // Cycle through some statuses
 	for i := range count {
 		status := "M"
 		if i < len(statuses) {
 			status = statuses[i]
 		}
-		changes[i] = git.FileChange{
+		changes[i] = core.FileChange{
 			Path:      "file" + string(rune('0'+i)) + ".go",
 			Status:    status,
 			Additions: i * 10,
@@ -51,7 +50,7 @@ func createTestFileChanges(count int) []git.FileChange {
 
 func TestFilesState_View_RendersHeader(t *testing.T) {
 	commit := createTestCommit()
-	files := []git.FileChange{
+	files := []core.FileChange{
 		{Path: "internal/ui/app.go", Additions: 45, Deletions: 12},
 	}
 
@@ -70,7 +69,7 @@ func TestFilesState_View_RendersHeader(t *testing.T) {
 
 func TestFilesState_View_RendersFileList(t *testing.T) {
 	commit := createTestCommit()
-	files := []git.FileChange{
+	files := []core.FileChange{
 		{Path: "internal/ui/app.go", Additions: 45, Deletions: 12},
 		{Path: "internal/ui/model.go", Additions: 3, Deletions: 1},
 		{Path: "internal/git/git.go", Additions: 120, Deletions: 0},
@@ -139,7 +138,7 @@ func TestFilesState_View_ViewportLimits(t *testing.T) {
 
 func TestFilesState_View_BinaryFiles(t *testing.T) {
 	commit := createTestCommit()
-	files := []git.FileChange{
+	files := []core.FileChange{
 		{Path: "image.png", Additions: 0, Deletions: 0, IsBinary: true},
 		{Path: "main.go", Additions: 10, Deletions: 5, IsBinary: false},
 	}
@@ -159,7 +158,7 @@ func TestFilesState_View_BinaryFiles(t *testing.T) {
 
 func TestFilesState_View_EmptyFileList(t *testing.T) {
 	commit := createTestCommit()
-	files := []git.FileChange{}
+	files := []core.FileChange{}
 
 	s := State{
 		Range:         core.NewSingleCommitRange(commit),
@@ -176,7 +175,7 @@ func TestFilesState_View_EmptyFileList(t *testing.T) {
 
 func TestFilesState_View_LongFilePaths(t *testing.T) {
 	commit := createTestCommit()
-	files := []git.FileChange{
+	files := []core.FileChange{
 		{
 			Path:      "internal/ui/state/files/very/deeply/nested/directory/structure/with/a/very/long/filename.go",
 			Additions: 10,
@@ -201,7 +200,7 @@ func TestFilesState_View_LongFilePaths(t *testing.T) {
 
 func TestFilesState_View_FileStatsSummary(t *testing.T) {
 	commit := createTestCommit()
-	files := []git.FileChange{
+	files := []core.FileChange{
 		{Path: "file1.go", Additions: 10, Deletions: 5},
 		{Path: "file2.go", Additions: 20, Deletions: 3},
 		{Path: "file3.go", Additions: 5, Deletions: 2},
@@ -224,13 +223,13 @@ func TestFilesState_View_FileStatsSummary(t *testing.T) {
 func TestFilesState_CalculateMaxStatWidth(t *testing.T) {
 	tests := []struct {
 		name         string
-		files        []git.FileChange
+		files        []core.FileChange
 		expectedAddW int
 		expectedDelW int
 	}{
 		{
 			name: "small numbers",
-			files: []git.FileChange{
+			files: []core.FileChange{
 				{Path: "a.go", Additions: 1, Deletions: 2},
 				{Path: "b.go", Additions: 9, Deletions: 8},
 			},
@@ -239,7 +238,7 @@ func TestFilesState_CalculateMaxStatWidth(t *testing.T) {
 		},
 		{
 			name: "large numbers",
-			files: []git.FileChange{
+			files: []core.FileChange{
 				{Path: "a.go", Additions: 93, Deletions: 0},
 				{Path: "b.go", Additions: 267, Deletions: 12},
 				{Path: "c.go", Additions: 1234, Deletions: 567},
@@ -249,7 +248,7 @@ func TestFilesState_CalculateMaxStatWidth(t *testing.T) {
 		},
 		{
 			name: "with binary files",
-			files: []git.FileChange{
+			files: []core.FileChange{
 				{Path: "a.png", IsBinary: true},
 				{Path: "b.go", Additions: 10, Deletions: 5},
 			},
@@ -258,7 +257,7 @@ func TestFilesState_CalculateMaxStatWidth(t *testing.T) {
 		},
 		{
 			name: "only zeros",
-			files: []git.FileChange{
+			files: []core.FileChange{
 				{Path: "a.go", Additions: 0, Deletions: 0},
 			},
 			expectedAddW: 2, // +0 = 2 chars (minimum)
@@ -282,7 +281,7 @@ func TestFilesState_CalculateMaxStatWidth(t *testing.T) {
 
 func TestFilesState_View_StatusDisplay(t *testing.T) {
 	commit := createTestCommit()
-	files := []git.FileChange{
+	files := []core.FileChange{
 		{Path: "modified.go", Status: "M", Additions: 10, Deletions: 5},
 		{Path: "added.go", Status: "A", Additions: 50, Deletions: 0},
 		{Path: "deleted.go", Status: "D", Additions: 0, Deletions: 30},
@@ -303,7 +302,7 @@ func TestFilesState_View_StatusDisplay(t *testing.T) {
 
 func TestFilesState_View_DynamicAlignment(t *testing.T) {
 	commit := createTestCommit()
-	files := []git.FileChange{
+	files := []core.FileChange{
 		{Path: "small.go", Status: "M", Additions: 5, Deletions: 2},
 		{Path: "large.go", Status: "M", Additions: 1234, Deletions: 567},
 	}
@@ -324,11 +323,11 @@ func TestFilesState_View_DynamicAlignment(t *testing.T) {
 func TestFilesState_View_WithRefs(t *testing.T) {
 	commit := createTestCommit()
 	// Add refs to the commit
-	commit.Refs = []git.RefInfo{
-		{Name: "main", Type: git.RefTypeBranch, IsHead: true},
-		{Name: "origin/main", Type: git.RefTypeRemoteBranch},
+	commit.Refs = []core.RefInfo{
+		{Name: "main", Type: core.RefTypeBranch, IsHead: true},
+		{Name: "origin/main", Type: core.RefTypeRemoteBranch},
 	}
-	files := []git.FileChange{
+	files := []core.FileChange{
 		{Path: "internal/ui/app.go", Additions: 45, Deletions: 12},
 	}
 

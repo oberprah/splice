@@ -5,7 +5,6 @@ import (
 
 	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/domain/diff"
-	"github.com/oberprah/splice/internal/git"
 )
 
 // Update handles messages for the files state
@@ -102,24 +101,12 @@ func (s *State) updateViewport(height int) {
 }
 
 // loadDiff creates a command to fetch and parse the diff for a file
-func (s *State) loadDiff(file git.FileChange, fetchFullFileDiff core.FetchFullFileDiffFunc) tea.Cmd {
+func (s *State) loadDiff(file core.FileChange, fetchFullFileDiff core.FetchFullFileDiffFunc) tea.Cmd {
 	commitRange := s.Range
 
 	return func() tea.Msg {
-		// Determine the from and to hashes based on whether this is a single commit or range
-		var fromHash, toHash string
-		if commitRange.IsSingleCommit() {
-			// Single commit: compare commit with its parent
-			fromHash = commitRange.End.Hash + "^"
-			toHash = commitRange.End.Hash
-		} else {
-			// Range: compare Start commit's parent with End commit
-			fromHash = commitRange.Start.Hash + "^"
-			toHash = commitRange.End.Hash
-		}
-
 		// Fetch full file content and diff
-		fullDiffResult, err := fetchFullFileDiff(fromHash, toHash, file)
+		fullDiffResult, err := fetchFullFileDiff(commitRange, file)
 		if err != nil {
 			return core.DiffLoadedMsg{
 				Range: commitRange,

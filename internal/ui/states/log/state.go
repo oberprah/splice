@@ -3,7 +3,6 @@ package log
 import (
 	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/domain/graph"
-	"github.com/oberprah/splice/internal/git"
 )
 
 // PreviewState is a sum type representing the state of the preview panel.
@@ -27,7 +26,7 @@ func (PreviewLoading) isPreviewState() {}
 // PreviewLoaded indicates the preview has been successfully loaded
 type PreviewLoaded struct {
 	ForHash string
-	Files   []git.FileChange
+	Files   []core.FileChange
 }
 
 func (PreviewLoaded) isPreviewState() {}
@@ -42,7 +41,7 @@ func (PreviewError) isPreviewState() {}
 
 // LogState represents the state when displaying the commit log
 type State struct {
-	Commits       []git.GitCommit
+	Commits       []core.GitCommit
 	Cursor        core.CursorState
 	ViewportStart int
 	Preview       PreviewState
@@ -51,7 +50,7 @@ type State struct {
 
 // New creates a new LogState with the given commits and graph layout.
 // Cursor starts at position 0 with preview loading for the first commit.
-func New(commits []git.GitCommit, layout *graph.Layout) *State {
+func New(commits []core.GitCommit, layout *graph.Layout) *State {
 	// Initial state is always a single commit at position 0
 	initialHash := commits[0].Hash
 	return &State{

@@ -10,7 +10,6 @@ import (
 	"github.com/muesli/termenv"
 	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/domain/graph"
-	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/ui/components"
 	"github.com/oberprah/splice/internal/ui/testutils"
 )
@@ -24,7 +23,7 @@ func assertLogViewGolden(t *testing.T, output *components.ViewBuilder, filename 
 }
 
 // createLogStateWithGraph creates a LogState with computed GraphLayout
-func createLogStateWithGraph(commits []git.GitCommit) State {
+func createLogStateWithGraph(commits []core.GitCommit) State {
 	// Convert to graph.Commits
 	graphCommits := make([]graph.Commit, len(commits))
 	for i, commit := range commits {
@@ -46,7 +45,7 @@ func createLogStateWithGraph(commits []git.GitCommit) State {
 func TestLogState_View_RendersCommits(t *testing.T) {
 	testutils.SetupColorProfile()
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-	commits := []git.GitCommit{
+	commits := []core.GitCommit{
 		{Hash: "abc123", ParentHashes: []string{"def456"}, Message: "First commit", Body: "", Author: "Alice", Date: fixedTime},
 		{Hash: "def456", ParentHashes: []string{}, Message: "Second commit", Body: "", Author: "Bob", Date: fixedTime.Add(time.Hour)},
 	}
@@ -127,7 +126,7 @@ func TestLogState_View_LineTruncation(t *testing.T) {
 
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
 
-	commits := []git.GitCommit{
+	commits := []core.GitCommit{
 		{
 			Hash:         "abc123def456",
 			ParentHashes: []string{},
@@ -154,12 +153,12 @@ func TestLogState_View_SplitView_WideTerminal(t *testing.T) {
 	testutils.SetupColorProfile()
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
 
-	commits := []git.GitCommit{
+	commits := []core.GitCommit{
 		{Hash: "abc123", ParentHashes: []string{"def456"}, Message: "First commit", Body: "This is the body", Author: "Alice", Date: fixedTime},
 		{Hash: "def456", ParentHashes: []string{}, Message: "Second commit", Body: "", Author: "Bob", Date: fixedTime.Add(time.Hour)},
 	}
 
-	files := []git.FileChange{
+	files := []core.FileChange{
 		{Path: "src/main.go", Status: "M", Additions: 10, Deletions: 5},
 		{Path: "README.md", Status: "A", Additions: 20, Deletions: 0},
 	}
@@ -180,11 +179,11 @@ func TestLogState_View_SplitView_NarrowTerminal(t *testing.T) {
 	testutils.SetupColorProfile()
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
 
-	commits := []git.GitCommit{
+	commits := []core.GitCommit{
 		{Hash: "abc123", ParentHashes: []string{}, Message: "First commit", Body: "This is the body", Author: "Alice", Date: fixedTime},
 	}
 
-	files := []git.FileChange{
+	files := []core.FileChange{
 		{Path: "src/main.go", Status: "M", Additions: 10, Deletions: 5},
 	}
 
@@ -204,7 +203,7 @@ func TestLogState_View_SplitView_PreviewLoading(t *testing.T) {
 	testutils.SetupColorProfile()
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
 
-	commits := []git.GitCommit{
+	commits := []core.GitCommit{
 		{Hash: "abc123", ParentHashes: []string{}, Message: "First commit", Body: "", Author: "Alice", Date: fixedTime},
 	}
 
@@ -224,7 +223,7 @@ func TestLogState_View_SplitView_PreviewError(t *testing.T) {
 	testutils.SetupColorProfile()
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
 
-	commits := []git.GitCommit{
+	commits := []core.GitCommit{
 		{Hash: "abc123", ParentHashes: []string{}, Message: "First commit", Body: "", Author: "Alice", Date: fixedTime},
 	}
 
@@ -257,7 +256,7 @@ func TestLogState_View_MergeBranchGraph(t *testing.T) {
 	// ├─╯  A: Initial commit
 
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-	commits := []git.GitCommit{
+	commits := []core.GitCommit{
 		{
 			Hash:         "eeeeeeee",
 			ParentHashes: []string{"bbbbbbbb", "dddddddd"}, // Merge commit
@@ -315,13 +314,13 @@ func TestLogState_View_SplitView_VisualMode_ShowsRangeInfo(t *testing.T) {
 	testutils.SetupColorProfile()
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
 
-	commits := []git.GitCommit{
+	commits := []core.GitCommit{
 		{Hash: "abc123", ParentHashes: []string{"def456"}, Message: "Third commit", Body: "", Author: "Alice", Date: fixedTime},
 		{Hash: "def456", ParentHashes: []string{"ghi789"}, Message: "Second commit", Body: "", Author: "Bob", Date: fixedTime.Add(time.Hour)},
 		{Hash: "ghi789", ParentHashes: []string{}, Message: "First commit", Body: "", Author: "Charlie", Date: fixedTime.Add(2 * time.Hour)},
 	}
 
-	files := []git.FileChange{
+	files := []core.FileChange{
 		{Path: "src/main.go", Status: "M", Additions: 10, Deletions: 5},
 		{Path: "README.md", Status: "A", Additions: 20, Deletions: 0},
 	}

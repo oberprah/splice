@@ -15,7 +15,7 @@ import (
 )
 
 // FetchCommitsFunc is a function type for fetching git commits
-type FetchCommitsFunc func(limit int) ([]git.GitCommit, error)
+type FetchCommitsFunc func(limit int) ([]core.GitCommit, error)
 
 // Model represents the application model using the state pattern.
 // It implements tea.Model for Bubbletea and core.Context for states.
@@ -42,10 +42,14 @@ func (m *Model) current() core.State {
 // Use functional options (WithFetchCommits, WithInitialState, etc.) to customize.
 func NewModel(opts ...ModelOption) Model {
 	m := Model{
-		fetchCommits:      git.FetchCommits,      // Default to real git command
-		fetchFileChanges:  git.FetchFileChanges,  // Default to real git command
-		fetchFullFileDiff: git.FetchFullFileDiff, // Default to real git command
-		nowFunc:           time.Now,              // Default to real time
+		fetchCommits: git.FetchCommits, // Default to real git command
+		fetchFileChanges: func(commitRange core.CommitRange) ([]core.FileChange, error) {
+			return git.FetchFileChanges(commitRange)
+		},
+		fetchFullFileDiff: func(commitRange core.CommitRange, change core.FileChange) (*core.FullFileDiffResult, error) {
+			return git.FetchFullFileDiff(commitRange, change)
+		},
+		nowFunc: time.Now, // Default to real time
 	}
 
 	for _, opt := range opts {
