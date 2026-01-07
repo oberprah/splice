@@ -82,11 +82,11 @@ func (s *State) renderHeader() string {
 	var b strings.Builder
 
 	// Display commit hash or range
-	if s.Range.IsSingleCommit() {
-		b.WriteString(styles.HashStyle.Render(format.ToShortHash(s.Range.End.Hash)))
+	if s.CommitRange.IsSingleCommit() {
+		b.WriteString(styles.HashStyle.Render(format.ToShortHash(s.CommitRange.End.Hash)))
 	} else {
-		startHash := format.ToShortHash(s.Range.Start.Hash)
-		endHash := format.ToShortHash(s.Range.End.Hash)
+		startHash := format.ToShortHash(s.CommitRange.Start.Hash)
+		endHash := format.ToShortHash(s.CommitRange.End.Hash)
 		b.WriteString(styles.HashStyle.Render(fmt.Sprintf("%s..%s", startHash, endHash)))
 	}
 

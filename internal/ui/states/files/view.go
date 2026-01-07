@@ -11,7 +11,7 @@ func (s *State) View(ctx core.Context) core.ViewRenderer {
 
 	// Render commit info using shared component
 	// CommitInfoFromRange handles both single commits and ranges
-	commitInfoLines := components.CommitInfoFromRange(s.Range, ctx.Width(), 0, ctx) // 0 = unlimited body lines
+	commitInfoLines := components.CommitInfoFromRange(s.CommitRange, ctx.Width(), 0, ctx) // 0 = unlimited body lines
 	for _, line := range commitInfoLines {
 		vb.AddLine(line)
 	}

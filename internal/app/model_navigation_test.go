@@ -58,8 +58,8 @@ func TestNavigationStack(t *testing.T) {
 	// Push FilesScreen - normal push, adds to stack
 	testCommit := core.GitCommit{Hash: "abc123"}
 	m2, _ = m.Update(core.PushFilesScreenMsg{
-		Range: core.NewSingleCommitRange(testCommit),
-		Files: []core.FileChange{{Path: "test.go"}},
+		CommitRange: core.NewSingleCommitRange(testCommit),
+		Files:       []core.FileChange{{Path: "test.go"}},
 	})
 	m = m2.(Model)
 
@@ -69,8 +69,8 @@ func TestNavigationStack(t *testing.T) {
 
 	// Push DiffScreen - normal push, adds to stack
 	m2, _ = m.Update(core.PushDiffScreenMsg{
-		Range: core.NewSingleCommitRange(testCommit),
-		File:  core.FileChange{Path: "test.go"},
+		CommitRange: core.NewSingleCommitRange(testCommit),
+		File:        core.FileChange{Path: "test.go"},
 	})
 	m = m2.(Model)
 

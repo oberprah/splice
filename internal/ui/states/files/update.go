@@ -21,7 +21,7 @@ func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 		// Return command that produces PushDiffScreenMsg to navigate to DiffState
 		return s, func() tea.Msg {
 			return core.PushDiffScreenMsg{
-				Range:         msg.Range,
+				CommitRange:   msg.CommitRange,
 				File:          msg.File,
 				Diff:          msg.Diff,
 				ChangeIndices: msg.ChangeIndices,
@@ -102,16 +102,16 @@ func (s *State) updateViewport(height int) {
 
 // loadDiff creates a command to fetch and parse the diff for a file
 func (s *State) loadDiff(file core.FileChange, fetchFullFileDiff core.FetchFullFileDiffFunc) tea.Cmd {
-	commitRange := s.Range
+	commitRange := s.CommitRange
 
 	return func() tea.Msg {
 		// Fetch full file content and diff
 		fullDiffResult, err := fetchFullFileDiff(commitRange, file)
 		if err != nil {
 			return core.DiffLoadedMsg{
-				Range: commitRange,
-				File:  file,
-				Err:   err,
+				CommitRange: commitRange,
+				File:        file,
+				Err:         err,
 			}
 		}
 
@@ -124,14 +124,14 @@ func (s *State) loadDiff(file core.FileChange, fetchFullFileDiff core.FetchFullF
 		)
 		if err != nil {
 			return core.DiffLoadedMsg{
-				Range: commitRange,
-				File:  file,
-				Err:   err,
+				CommitRange: commitRange,
+				File:        file,
+				Err:         err,
 			}
 		}
 
 		return core.DiffLoadedMsg{
-			Range:         commitRange,
+			CommitRange:   commitRange,
 			File:          file,
 			Diff:          alignedDiff,
 			ChangeIndices: changeIndices,
