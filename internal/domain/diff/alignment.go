@@ -104,4 +104,5 @@ type AlignedFileDiff struct {
 	Left       FileContent // Old version of the file
 	Right      FileContent // New version of the file
 	Alignments []Alignment // One entry per display row, describes line relationships
+	Segments   []Segment   // Segment-based representation for smart scrolling
 }
