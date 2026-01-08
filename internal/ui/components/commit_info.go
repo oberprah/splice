@@ -37,7 +37,7 @@ func CommitInfoFromRange(commitRange core.CommitRange, width int, bodyMaxLines i
 // Parameters:
 //   - commit: The commit to display
 //   - width: Panel width for wrapping/truncation
-//   - bodyMaxLines: 0 for unlimited (files view), 5 for log detail view
+//   - bodyMaxLines: 0 for unlimited (files view), 5 for log files preview
 //   - ctx: For time formatting
 //
 // Structure:

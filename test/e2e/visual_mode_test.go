@@ -181,7 +181,7 @@ func TestVisualModeEscape(t *testing.T) {
 	runner := NewE2ETestRunner(t, m)
 
 	// Set initial window size (wide enough to show split view with preview)
-	// Step 0: Detail view needs to be visible (wide terminal, split view)
+	// Step 0: Files preview needs to be visible (wide terminal, split view)
 	runner.Send(tea.WindowSizeMsg{Width: 160, Height: 24})
 	// Step 1: Start with files already loaded in the preview for the initial commit
 	runner.AssertGolden("visual_mode_escape/1_initial.golden")
