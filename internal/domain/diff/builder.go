@@ -64,14 +64,18 @@ func BuildAlignedFileDiff(
 	// Step 4: Build alignments with line pairing and inline diffs
 	alignments := BuildAlignments(leftContent, rightContent, &parsedDiff)
 
-	// Step 5: Create the final aligned diff structure
+	// Step 5: Build segments for smart scrolling
+	segments := BuildSegments(leftContent, rightContent, &parsedDiff)
+
+	// Step 6: Create the final aligned diff structure
 	alignedDiff := &AlignedFileDiff{
 		Left:       leftContent,
 		Right:      rightContent,
 		Alignments: alignments,
+		Segments:   segments,
 	}
 
-	// Step 6: Calculate change indices for navigation
+	// Step 7: Calculate change indices for navigation
 	// These are the indices into the Alignments slice that represent actual changes
 	changeIndices := make([]int, 0)
 	for i, alignment := range alignments {

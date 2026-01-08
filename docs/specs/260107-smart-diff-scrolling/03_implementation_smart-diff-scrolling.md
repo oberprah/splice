@@ -33,7 +33,7 @@
 **Notes:**
 - Renamed `LineType` to `HunkLineType` (and constants to `HunkLineAdded`, `HunkLineRemoved`, `HunkLineModified`) to avoid conflict with existing `LineType` in parse.go which represents diff line types (Context, Add, Remove)
 - The distinction is semantic: `LineType` in parse.go represents raw diff line types, while `HunkLineType` represents change types within a hunk segment
-**Coordinator Review:**
+**Coordinator Review:** Structure matches design. Naming deviation to `HunkLineType` is appropriate to avoid collision. Types are well-documented. → Step 2
 
 ---
 
@@ -61,10 +61,16 @@
 - `internal/domain/diff/parser.go` (FileDiff structure)
 - `02_design_smart-diff-scrolling.md` (segment building section)
 
-**Status:** Pending
-**Commits:**
-**Verification:**
+**Status:** Complete
+**Commits:** 4629a57
+**Verification:** All tests pass (`go test ./...`), build succeeds (`go build ./...`), lint passes (`go tool golangci-lint run`)
 **Notes:**
+- Created `segment_builder.go` with `BuildSegments` function
+- Algorithm follows the same pattern as `BuildAlignments`: builds line type maps, walks both files with two pointers
+- Accumulates consecutive unchanged lines into `UnchangedSegment`, changed lines into `HunkSegment`
+- All removed lines are marked `HunkLineRemoved`, all added lines are marked `HunkLineAdded` (no pairing/modified detection - deferred per design)
+- Updated `BuildAlignedFileDiff` to call `BuildSegments` and populate the `Segments` field
+- Comprehensive TDD test coverage: 14 test cases covering all scenarios (empty files, pure additions, pure deletions, mixed changes, multiple hunks, changes at start/end, lines outside diff context)
 **Coordinator Review:**
 
 ---
