@@ -791,3 +791,386 @@ func TestCalculateViewportHeight(t *testing.T) {
 		t.Errorf("Expected minimum viewport height of 1, got %d", height)
 	}
 }
+
+// ═══════════════════════════════════════════════════════════
+// TESTS: Jump to Next/Previous Hunk Segment (n/N keys)
+// ═══════════════════════════════════════════════════════════
+
+func TestJumpToNextHunkSegment_FindsNextHunk(t *testing.T) {
+	// Create segments: unchanged, hunk, unchanged, hunk, unchanged
+	segments := []diff.Segment{
+		diff.UnchangedSegment{LeftStart: 0, RightStart: 0, Count: 5},
+		diff.HunkSegment{
+			LeftLines:  []diff.HunkLine{{SourceIdx: 5, Type: diff.HunkLineRemoved}},
+			RightLines: []diff.HunkLine{{SourceIdx: 5, Type: diff.HunkLineAdded}},
+		},
+		diff.UnchangedSegment{LeftStart: 6, RightStart: 6, Count: 5},
+		diff.HunkSegment{
+			LeftLines:  []diff.HunkLine{{SourceIdx: 11, Type: diff.HunkLineRemoved}},
+			RightLines: []diff.HunkLine{{SourceIdx: 11, Type: diff.HunkLineAdded}},
+		},
+		diff.UnchangedSegment{LeftStart: 12, RightStart: 12, Count: 5},
+	}
+	state := createTestStateWithSegments(segments, createTestLines(17), createTestLines(17))
+
+	// Start at first unchanged segment
+	state.SegmentIndex = 0
+	state.LeftOffset = 2
+	state.RightOffset = 2
+	state.ScrollAccumulator = 5
+
+	// Jump to next hunk
+	state.jumpToNextHunkSegment()
+
+	// Should be at segment index 1 (first hunk)
+	if state.SegmentIndex != 1 {
+		t.Errorf("Expected SegmentIndex to be 1, got %d", state.SegmentIndex)
+	}
+	// Offsets should be reset to 0
+	if state.LeftOffset != 0 || state.RightOffset != 0 {
+		t.Errorf("Expected offsets to be (0,0), got (%d,%d)", state.LeftOffset, state.RightOffset)
+	}
+	// ScrollAccumulator should be reset
+	if state.ScrollAccumulator != 0 {
+		t.Errorf("Expected ScrollAccumulator to be 0, got %d", state.ScrollAccumulator)
+	}
+}
+
+func TestJumpToNextHunkSegment_FromHunkToNextHunk(t *testing.T) {
+	// Create segments: hunk, unchanged, hunk
+	segments := []diff.Segment{
+		diff.HunkSegment{
+			LeftLines:  []diff.HunkLine{{SourceIdx: 0, Type: diff.HunkLineRemoved}},
+			RightLines: []diff.HunkLine{{SourceIdx: 0, Type: diff.HunkLineAdded}},
+		},
+		diff.UnchangedSegment{LeftStart: 1, RightStart: 1, Count: 5},
+		diff.HunkSegment{
+			LeftLines:  []diff.HunkLine{{SourceIdx: 6, Type: diff.HunkLineRemoved}},
+			RightLines: []diff.HunkLine{{SourceIdx: 6, Type: diff.HunkLineAdded}},
+		},
+	}
+	state := createTestStateWithSegments(segments, createTestLines(7), createTestLines(7))
+
+	// Start at first hunk
+	state.SegmentIndex = 0
+
+	// Jump to next hunk
+	state.jumpToNextHunkSegment()
+
+	// Should be at segment index 2 (second hunk)
+	if state.SegmentIndex != 2 {
+		t.Errorf("Expected SegmentIndex to be 2, got %d", state.SegmentIndex)
+	}
+}
+
+func TestJumpToNextHunkSegment_AtLastHunkDoesNothing(t *testing.T) {
+	// Create segments: unchanged, hunk
+	segments := []diff.Segment{
+		diff.UnchangedSegment{LeftStart: 0, RightStart: 0, Count: 5},
+		diff.HunkSegment{
+			LeftLines:  []diff.HunkLine{{SourceIdx: 5, Type: diff.HunkLineRemoved}},
+			RightLines: []diff.HunkLine{{SourceIdx: 5, Type: diff.HunkLineAdded}},
+		},
+	}
+	state := createTestStateWithSegments(segments, createTestLines(6), createTestLines(6))
+
+	// Start at last hunk
+	state.SegmentIndex = 1
+	state.LeftOffset = 0
+	state.RightOffset = 0
+
+	// Try to jump to next hunk
+	state.jumpToNextHunkSegment()
+
+	// Should stay at segment index 1 (no more hunks)
+	if state.SegmentIndex != 1 {
+		t.Errorf("Expected SegmentIndex to stay at 1, got %d", state.SegmentIndex)
+	}
+}
+
+func TestJumpToNextHunkSegment_NoHunksDoesNothing(t *testing.T) {
+	// Create segments: only unchanged
+	segments := []diff.Segment{
+		diff.UnchangedSegment{LeftStart: 0, RightStart: 0, Count: 10},
+	}
+	state := createTestStateWithSegments(segments, createTestLines(10), createTestLines(10))
+
+	state.SegmentIndex = 0
+	state.LeftOffset = 5
+
+	// Try to jump to next hunk
+	state.jumpToNextHunkSegment()
+
+	// Should stay at current position
+	if state.SegmentIndex != 0 {
+		t.Errorf("Expected SegmentIndex to stay at 0, got %d", state.SegmentIndex)
+	}
+	if state.LeftOffset != 5 {
+		t.Errorf("Expected LeftOffset to stay at 5, got %d", state.LeftOffset)
+	}
+}
+
+func TestJumpToPreviousHunkSegment_FindsPreviousHunk(t *testing.T) {
+	// Create segments: unchanged, hunk, unchanged, hunk, unchanged
+	segments := []diff.Segment{
+		diff.UnchangedSegment{LeftStart: 0, RightStart: 0, Count: 5},
+		diff.HunkSegment{
+			LeftLines:  []diff.HunkLine{{SourceIdx: 5, Type: diff.HunkLineRemoved}},
+			RightLines: []diff.HunkLine{{SourceIdx: 5, Type: diff.HunkLineAdded}},
+		},
+		diff.UnchangedSegment{LeftStart: 6, RightStart: 6, Count: 5},
+		diff.HunkSegment{
+			LeftLines:  []diff.HunkLine{{SourceIdx: 11, Type: diff.HunkLineRemoved}},
+			RightLines: []diff.HunkLine{{SourceIdx: 11, Type: diff.HunkLineAdded}},
+		},
+		diff.UnchangedSegment{LeftStart: 12, RightStart: 12, Count: 5},
+	}
+	state := createTestStateWithSegments(segments, createTestLines(17), createTestLines(17))
+
+	// Start at last unchanged segment
+	state.SegmentIndex = 4
+	state.LeftOffset = 2
+	state.RightOffset = 2
+	state.ScrollAccumulator = 3
+
+	// Jump to previous hunk
+	state.jumpToPreviousHunkSegment()
+
+	// Should be at segment index 3 (second hunk)
+	if state.SegmentIndex != 3 {
+		t.Errorf("Expected SegmentIndex to be 3, got %d", state.SegmentIndex)
+	}
+	// Offsets should be reset to 0
+	if state.LeftOffset != 0 || state.RightOffset != 0 {
+		t.Errorf("Expected offsets to be (0,0), got (%d,%d)", state.LeftOffset, state.RightOffset)
+	}
+	// ScrollAccumulator should be reset
+	if state.ScrollAccumulator != 0 {
+		t.Errorf("Expected ScrollAccumulator to be 0, got %d", state.ScrollAccumulator)
+	}
+}
+
+func TestJumpToPreviousHunkSegment_FromHunkToPreviousHunk(t *testing.T) {
+	// Create segments: hunk, unchanged, hunk
+	segments := []diff.Segment{
+		diff.HunkSegment{
+			LeftLines:  []diff.HunkLine{{SourceIdx: 0, Type: diff.HunkLineRemoved}},
+			RightLines: []diff.HunkLine{{SourceIdx: 0, Type: diff.HunkLineAdded}},
+		},
+		diff.UnchangedSegment{LeftStart: 1, RightStart: 1, Count: 5},
+		diff.HunkSegment{
+			LeftLines:  []diff.HunkLine{{SourceIdx: 6, Type: diff.HunkLineRemoved}},
+			RightLines: []diff.HunkLine{{SourceIdx: 6, Type: diff.HunkLineAdded}},
+		},
+	}
+	state := createTestStateWithSegments(segments, createTestLines(7), createTestLines(7))
+
+	// Start at second hunk
+	state.SegmentIndex = 2
+
+	// Jump to previous hunk
+	state.jumpToPreviousHunkSegment()
+
+	// Should be at segment index 0 (first hunk)
+	if state.SegmentIndex != 0 {
+		t.Errorf("Expected SegmentIndex to be 0, got %d", state.SegmentIndex)
+	}
+}
+
+func TestJumpToPreviousHunkSegment_AtFirstHunkDoesNothing(t *testing.T) {
+	// Create segments: hunk, unchanged
+	segments := []diff.Segment{
+		diff.HunkSegment{
+			LeftLines:  []diff.HunkLine{{SourceIdx: 0, Type: diff.HunkLineRemoved}},
+			RightLines: []diff.HunkLine{{SourceIdx: 0, Type: diff.HunkLineAdded}},
+		},
+		diff.UnchangedSegment{LeftStart: 1, RightStart: 1, Count: 5},
+	}
+	state := createTestStateWithSegments(segments, createTestLines(6), createTestLines(6))
+
+	// Start at first hunk
+	state.SegmentIndex = 0
+	state.LeftOffset = 0
+	state.RightOffset = 0
+
+	// Try to jump to previous hunk
+	state.jumpToPreviousHunkSegment()
+
+	// Should stay at segment index 0 (no previous hunk)
+	if state.SegmentIndex != 0 {
+		t.Errorf("Expected SegmentIndex to stay at 0, got %d", state.SegmentIndex)
+	}
+}
+
+func TestJumpToPreviousHunkSegment_NoHunksDoesNothing(t *testing.T) {
+	// Create segments: only unchanged
+	segments := []diff.Segment{
+		diff.UnchangedSegment{LeftStart: 0, RightStart: 0, Count: 10},
+	}
+	state := createTestStateWithSegments(segments, createTestLines(10), createTestLines(10))
+
+	state.SegmentIndex = 0
+	state.LeftOffset = 5
+
+	// Try to jump to previous hunk
+	state.jumpToPreviousHunkSegment()
+
+	// Should stay at current position
+	if state.SegmentIndex != 0 {
+		t.Errorf("Expected SegmentIndex to stay at 0, got %d", state.SegmentIndex)
+	}
+	if state.LeftOffset != 5 {
+		t.Errorf("Expected LeftOffset to stay at 5, got %d", state.LeftOffset)
+	}
+}
+
+func TestJumpToNextHunkSegment_FromMiddleOfUnchanged(t *testing.T) {
+	// Create segments: unchanged (10 lines), hunk
+	segments := []diff.Segment{
+		diff.UnchangedSegment{LeftStart: 0, RightStart: 0, Count: 10},
+		diff.HunkSegment{
+			LeftLines:  []diff.HunkLine{{SourceIdx: 10, Type: diff.HunkLineRemoved}},
+			RightLines: []diff.HunkLine{{SourceIdx: 10, Type: diff.HunkLineAdded}},
+		},
+	}
+	state := createTestStateWithSegments(segments, createTestLines(11), createTestLines(11))
+
+	// Start at middle of unchanged segment
+	state.SegmentIndex = 0
+	state.LeftOffset = 5
+	state.RightOffset = 5
+
+	// Jump to next hunk
+	state.jumpToNextHunkSegment()
+
+	// Should be at segment index 1 with offsets reset
+	if state.SegmentIndex != 1 {
+		t.Errorf("Expected SegmentIndex to be 1, got %d", state.SegmentIndex)
+	}
+	if state.LeftOffset != 0 || state.RightOffset != 0 {
+		t.Errorf("Expected offsets to be (0,0), got (%d,%d)", state.LeftOffset, state.RightOffset)
+	}
+}
+
+func TestJumpToPreviousHunkSegment_FromMiddleOfUnchanged(t *testing.T) {
+	// Create segments: hunk, unchanged (10 lines)
+	segments := []diff.Segment{
+		diff.HunkSegment{
+			LeftLines:  []diff.HunkLine{{SourceIdx: 0, Type: diff.HunkLineRemoved}},
+			RightLines: []diff.HunkLine{{SourceIdx: 0, Type: diff.HunkLineAdded}},
+		},
+		diff.UnchangedSegment{LeftStart: 1, RightStart: 1, Count: 10},
+	}
+	state := createTestStateWithSegments(segments, createTestLines(11), createTestLines(11))
+
+	// Start at middle of unchanged segment
+	state.SegmentIndex = 1
+	state.LeftOffset = 5
+	state.RightOffset = 5
+
+	// Jump to previous hunk
+	state.jumpToPreviousHunkSegment()
+
+	// Should be at segment index 0 with offsets reset
+	if state.SegmentIndex != 0 {
+		t.Errorf("Expected SegmentIndex to be 0, got %d", state.SegmentIndex)
+	}
+	if state.LeftOffset != 0 || state.RightOffset != 0 {
+		t.Errorf("Expected offsets to be (0,0), got (%d,%d)", state.LeftOffset, state.RightOffset)
+	}
+}
+
+func TestUpdate_NKey_UsesSegmentNavigation(t *testing.T) {
+	// Create segments with multiple hunks
+	segments := []diff.Segment{
+		diff.UnchangedSegment{LeftStart: 0, RightStart: 0, Count: 5},
+		diff.HunkSegment{
+			LeftLines:  []diff.HunkLine{{SourceIdx: 5, Type: diff.HunkLineRemoved}},
+			RightLines: []diff.HunkLine{{SourceIdx: 5, Type: diff.HunkLineAdded}},
+		},
+		diff.UnchangedSegment{LeftStart: 6, RightStart: 6, Count: 5},
+		diff.HunkSegment{
+			LeftLines:  []diff.HunkLine{{SourceIdx: 11, Type: diff.HunkLineRemoved}},
+			RightLines: []diff.HunkLine{{SourceIdx: 11, Type: diff.HunkLineAdded}},
+		},
+	}
+	state := createTestStateWithSegments(segments, createTestLines(12), createTestLines(12))
+	state.SegmentIndex = 0
+	ctx := testutils.MockContext{W: 80, H: 20}
+
+	// Press "n" to jump to next hunk
+	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}}
+	newState, _ := state.Update(msg, ctx)
+
+	diffState, ok := newState.(*State)
+	if !ok {
+		t.Fatal("Expected state to remain DiffState")
+	}
+
+	// Should be at first hunk (segment index 1)
+	if diffState.SegmentIndex != 1 {
+		t.Errorf("Expected SegmentIndex to be 1, got %d", diffState.SegmentIndex)
+	}
+
+	// Press "n" again to jump to next hunk
+	newState, _ = diffState.Update(msg, ctx)
+	diffState = newState.(*State)
+
+	// Should be at second hunk (segment index 3)
+	if diffState.SegmentIndex != 3 {
+		t.Errorf("Expected SegmentIndex to be 3, got %d", diffState.SegmentIndex)
+	}
+}
+
+func TestUpdate_ShiftNKey_UsesSegmentNavigation(t *testing.T) {
+	// Create segments with multiple hunks
+	segments := []diff.Segment{
+		diff.HunkSegment{
+			LeftLines:  []diff.HunkLine{{SourceIdx: 0, Type: diff.HunkLineRemoved}},
+			RightLines: []diff.HunkLine{{SourceIdx: 0, Type: diff.HunkLineAdded}},
+		},
+		diff.UnchangedSegment{LeftStart: 1, RightStart: 1, Count: 5},
+		diff.HunkSegment{
+			LeftLines:  []diff.HunkLine{{SourceIdx: 6, Type: diff.HunkLineRemoved}},
+			RightLines: []diff.HunkLine{{SourceIdx: 6, Type: diff.HunkLineAdded}},
+		},
+	}
+	state := createTestStateWithSegments(segments, createTestLines(7), createTestLines(7))
+	state.SegmentIndex = 2 // Start at second hunk
+	ctx := testutils.MockContext{W: 80, H: 20}
+
+	// Press "N" to jump to previous hunk
+	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'N'}}
+	newState, _ := state.Update(msg, ctx)
+
+	diffState, ok := newState.(*State)
+	if !ok {
+		t.Fatal("Expected state to remain DiffState")
+	}
+
+	// Should be at first hunk (segment index 0)
+	if diffState.SegmentIndex != 0 {
+		t.Errorf("Expected SegmentIndex to be 0, got %d", diffState.SegmentIndex)
+	}
+}
+
+func TestUpdate_NKey_FallsBackToLegacy(t *testing.T) {
+	// Create a state without segments (legacy mode)
+	state := createTestDiffStateWithChanges(50, []int{5, 15, 30})
+	state.ViewportStart = 0
+	ctx := testutils.MockContext{W: 80, H: 20}
+
+	// Press "n" to jump to next change (legacy)
+	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}}
+	newState, _ := state.Update(msg, ctx)
+
+	diffState, ok := newState.(*State)
+	if !ok {
+		t.Fatal("Expected state to remain DiffState")
+	}
+
+	// Should use legacy navigation (jump to ViewportStart 5)
+	if diffState.ViewportStart != 5 {
+		t.Errorf("Expected ViewportStart to be 5 (legacy), got %d", diffState.ViewportStart)
+	}
+}

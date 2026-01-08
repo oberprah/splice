@@ -200,7 +200,7 @@
 - Updated all key handlers (`j`/`down`, `k`/`up`, `ctrl+d`, `ctrl+u`, `g`, `G`) to use segment-based scrolling when segments are available, with fallback to legacy alignment-based scrolling
 - Comprehensive unit tests for all new functionality (13 new test functions)
 - Differential scrolling uses integer ratio calculation: `ratio = max(leftCount, rightCount) / min(leftCount, rightCount)` rounded up
-**Coordinator Review:**
+**Coordinator Review:** Differential scrolling logic is well-implemented. Clean separation between unchanged and hunk scrolling. `isHunkCentered()` correctly calculates center zone overlap. Scroll accumulator properly tracks when slower side should advance. Comprehensive test coverage with 13 new tests. → Step 6
 
 ---
 
@@ -224,10 +224,15 @@
 - `internal/ui/states/diff/update.go` (current jump logic)
 - `02_design_smart-diff-scrolling.md` (navigation section)
 
-**Status:** Pending
-**Commits:**
-**Verification:**
+**Status:** Complete
+**Commits:** 3a3068b
+**Verification:** All tests pass (`go test ./...`), build succeeds (`go build ./...`), lint passes (`go tool golangci-lint run`)
 **Notes:**
+- Added `jumpToNextHunkSegment()` method to state.go that searches forward from current segment for the next HunkSegment
+- Added `jumpToPreviousHunkSegment()` method to state.go that searches backward from current segment for the previous HunkSegment
+- Both methods reset `LeftOffset`, `RightOffset`, and `ScrollAccumulator` to 0 when jumping to a hunk
+- Updated `n` and `N` key handlers in update.go to use segment-based navigation when segments are available, with fallback to legacy `jumpToNextChange`/`jumpToPreviousChange` methods
+- Comprehensive test coverage: 15 new test functions covering all edge cases (finding next/previous hunk, boundary conditions, no hunks, starting from unchanged segment, key handler integration, legacy fallback)
 **Coordinator Review:**
 
 ---

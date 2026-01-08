@@ -460,3 +460,45 @@ func (s *State) scrollToEnd(viewportHeight int) {
 	s.RightOffset = s.segmentRightLineCount(s.SegmentIndex)
 	s.ScrollAccumulator = 0
 }
+
+// jumpToNextHunkSegment navigates to the next HunkSegment after current position.
+// Resets offsets to 0 to position at the start of the hunk.
+// If already at or past the last hunk, does nothing.
+func (s *State) jumpToNextHunkSegment() {
+	if s.Diff == nil || len(s.Diff.Segments) == 0 {
+		return
+	}
+
+	// Search for next hunk starting from SegmentIndex + 1
+	for i := s.SegmentIndex + 1; i < len(s.Diff.Segments); i++ {
+		if _, isHunk := s.Diff.Segments[i].(diff.HunkSegment); isHunk {
+			s.SegmentIndex = i
+			s.LeftOffset = 0
+			s.RightOffset = 0
+			s.ScrollAccumulator = 0
+			return
+		}
+	}
+	// No next hunk found - stay at current position
+}
+
+// jumpToPreviousHunkSegment navigates to the previous HunkSegment before current position.
+// Resets offsets to 0 to position at the start of the hunk.
+// If already at or before the first hunk, does nothing.
+func (s *State) jumpToPreviousHunkSegment() {
+	if s.Diff == nil || len(s.Diff.Segments) == 0 {
+		return
+	}
+
+	// Search for previous hunk starting from SegmentIndex - 1
+	for i := s.SegmentIndex - 1; i >= 0; i-- {
+		if _, isHunk := s.Diff.Segments[i].(diff.HunkSegment); isHunk {
+			s.SegmentIndex = i
+			s.LeftOffset = 0
+			s.RightOffset = 0
+			s.ScrollAccumulator = 0
+			return
+		}
+	}
+	// No previous hunk found - stay at current position
+}

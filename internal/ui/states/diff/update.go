@@ -100,12 +100,20 @@ func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 
 		case "n":
 			// Jump to next change
-			s.jumpToNextChange(ctx.Height())
+			if s.Diff != nil && len(s.Diff.Segments) > 0 {
+				s.jumpToNextHunkSegment()
+			} else {
+				s.jumpToNextChange(ctx.Height()) // Legacy fallback
+			}
 			return s, nil
 
 		case "N":
 			// Jump to previous change
-			s.jumpToPreviousChange(ctx.Height())
+			if s.Diff != nil && len(s.Diff.Segments) > 0 {
+				s.jumpToPreviousHunkSegment()
+			} else {
+				s.jumpToPreviousChange(ctx.Height()) // Legacy fallback
+			}
 			return s, nil
 		}
 	}
