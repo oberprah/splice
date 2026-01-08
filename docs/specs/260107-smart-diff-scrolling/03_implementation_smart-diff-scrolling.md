@@ -233,16 +233,16 @@
 - Both methods reset `LeftOffset`, `RightOffset`, and `ScrollAccumulator` to 0 when jumping to a hunk
 - Updated `n` and `N` key handlers in update.go to use segment-based navigation when segments are available, with fallback to legacy `jumpToNextChange`/`jumpToPreviousChange` methods
 - Comprehensive test coverage: 15 new test functions covering all edge cases (finding next/previous hunk, boundary conditions, no hunks, starting from unchanged segment, key handler integration, legacy fallback)
-**Coordinator Review:**
+**Coordinator Review:** Navigation implementation is clean. Both methods correctly search for HunkSegments and reset all offsets. Legacy fallback preserved. Test coverage is comprehensive. → Final Verification
 
 ---
 
 ## Final Verification
 
-- [ ] Full test suite passes: `go test ./...`
-- [ ] Lint passes: `go tool golangci-lint run`
-- [ ] Build succeeds: `go build -o splice .`
-- [ ] Manual testing:
+- [x] Full test suite passes: `go test ./...`
+- [x] Lint passes: `go tool golangci-lint run`
+- [x] Build succeeds: `go build -o splice .`
+- [ ] Manual testing (to be done by developer):
   - [ ] Side-by-side diff shows no blank lines
   - [ ] Scrolling through unchanged regions: both panels scroll together
   - [ ] Scrolling through hunks: differential scrolling when hunk centered
@@ -253,20 +253,39 @@
 
 From `01_requirements_smart-diff-scrolling.md`:
 
-- [ ] Remove blank lines from the side-by-side diff view
-- [ ] Implement differential scrolling so corresponding content stays aligned
-- [ ] Keep the hunk centered in the viewport during differential scrolling
-- [ ] Maintain a smooth, intuitive scrolling experience
-- [ ] Normal scrolling: Both panels scroll together when outside of hunks
-- [ ] Differential scrolling at hunks: When a hunk has different sizes on each side
-- [ ] Symmetric behavior: Same logic applies when scrolling up
-- [ ] Multiple hunks: Each hunk independently triggers differential scrolling
-- [ ] Large hunks: Smaller side stays frozen while larger side scrolls through
-- [ ] Page up/down: Same differential scrolling logic applies
+- [x] Remove blank lines from the side-by-side diff view (Step 4: segment-based rendering with filler lines instead of blanks)
+- [x] Implement differential scrolling so corresponding content stays aligned (Step 5: scrollHunkDifferential with ratio-based scrolling)
+- [x] Keep the hunk centered in the viewport during differential scrolling (Step 5: isHunkCentered with 30%-70% center zone)
+- [x] Maintain a smooth, intuitive scrolling experience (Step 5: integer ratio with accumulator for smooth progression)
+- [x] Normal scrolling: Both panels scroll together when outside of hunks (Step 5: UnchangedSegment handling)
+- [x] Differential scrolling at hunks: When a hunk has different sizes on each side (Step 5: HunkSegment handling with differential rates)
+- [x] Symmetric behavior: Same logic applies when scrolling up (Step 5: scrollUpSegment and scrollHunkDifferentialUp)
+- [x] Multiple hunks: Each hunk independently triggers differential scrolling (Step 5: per-segment state tracking)
+- [x] Large hunks: Smaller side stays frozen while larger side scrolls through (Step 5: accumulator pattern freezes smaller side every N steps)
+- [x] Page up/down: Same differential scrolling logic applies (Step 5: ctrl+d/ctrl+u call scroll methods multiple times)
 
 ## Summary
 
-(To be completed after implementation)
+### What Was Built
 
-- What was built
-- Deviations from design (with rationale)
+A complete segment-based data model and rendering system for the side-by-side diff view that eliminates blank line padding and implements smart differential scrolling:
+
+1. **Segment Data Model** (Step 1): `Segment` interface with `UnchangedSegment` and `HunkSegment` types, replacing the flat `Alignments` array for scroll position tracking.
+
+2. **Segment Builder** (Step 2): `BuildSegments()` function that converts parsed diff data into the segment representation.
+
+3. **Segment-Based State** (Step 3): Extended `DiffState` with `SegmentIndex`, `LeftOffset`, `RightOffset`, and `ScrollAccumulator` for independent panel tracking.
+
+4. **Segment-Based Rendering** (Step 4): `collectViewportLines()` method that walks segments and renders each panel independently, using filler lines instead of blank padding.
+
+5. **Differential Scrolling** (Step 5): Core scrolling logic that applies different scroll rates when hunks are centered in the viewport, based on the ratio of line counts between sides.
+
+6. **Hunk Navigation** (Step 6): Updated `n`/`N` keys to jump between `HunkSegment`s instead of using the legacy `ChangeIndices` array.
+
+### Deviations from Design
+
+1. **HunkLineType naming**: Renamed from `LineType` to `HunkLineType` to avoid collision with existing `LineType` in `parse.go`. The distinction is semantic: parse `LineType` represents raw diff line types, while `HunkLineType` represents change types within a hunk segment.
+
+2. **No inline diff highlighting**: As specified in the design, inline (word-level) diff highlighting was omitted from the initial implementation to focus on correct scrolling behavior. All changed lines use simple line-level styling (red for removed, green for added).
+
+3. **Legacy compatibility**: Both alignment-based and segment-based systems coexist, with automatic fallback to legacy behavior when segments aren't available. This allows for safe migration and easier testing.

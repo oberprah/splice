@@ -5,11 +5,11 @@
   3 -         return nil, errors.New("username and password required")                   │   3 +         return nil, fmt.Errorf("authentication failed: username and password are …
   4       }                                                                              │   4       }                                                                             
   5 -     return nil, errors.New("not implemented")                                      │   5 +                                                                                   
-                                                                                         │   6 +     // Validate password complexity requirements before attempting authentication 
-                                                                                         │   7 +     if len(password) < options.MinPasswordLength {                                
+  6   }                                                                                  │   6 +     // Validate password complexity requirements before attempting authentication 
+  7                                                                                      │   7 +     if len(password) < options.MinPasswordLength {                                
                                                                                          │   8 +         return nil, fmt.Errorf("password does not meet minimum length requirement…
                                                                                          │   9 +     }                                                                             
                                                                                          │  10 +                                                                                   
                                                                                          │  11 +     return authenticateWithProvider(username, password, options.Provider)         
-  6   }                                                                                  │  12   }                                                                                 
-  7                                                                                      │  13                                                                                     
+                                                                                         │  12   }                                                                                 
+                                                                                         │  13                                                                                     

@@ -3,5 +3,5 @@
   1   package main                     │   1   package main                    
   2 -     oldLine1()                   │   2 +     newLine1()                  
   3 -     oldLine2()                   │   3 +     newLine2()                  
-  4 -     oldLine3()                   │                                       
-  5   }                                │   4   }                               
+  4 -     oldLine3()                   │   4   }                               
+  5   }                                │                                       

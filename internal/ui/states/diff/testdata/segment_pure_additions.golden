@@ -2,7 +2,7 @@ abc123 · test.go · +3 -0
 ────────────────────────────────────────────────────────────────────────────────
   1   package main                     │   1   package main                    
   2   func main() {                    │   2   func main() {                   
-                                       │   3 +     fmt.Println("hello")        
+  3   }                                │   3 +     fmt.Println("hello")        
                                        │   4 +     fmt.Println("world")        
                                        │   5 +     fmt.Println("!")            
-  3   }                                │   6   }                               
+                                       │   6   }                               

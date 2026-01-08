@@ -2,7 +2,7 @@ def456 · test.go · +0 -3
 ────────────────────────────────────────────────────────────────────────────────
   1   package main                     │   1   package main                    
   2   func main() {                    │   2   func main() {                   
-  3 -     oldFunc1()                   │                                       
+  3 -     oldFunc1()                   │   3   }                               
   4 -     oldFunc2()                   │                                       
   5 -     oldFunc3()                   │                                       
-  6   }                                │   3   }                               
+  6   }                                │                                       
