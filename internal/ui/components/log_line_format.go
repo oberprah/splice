@@ -275,7 +275,9 @@ func assembleLine(selector, graph, hash, refs, message, author, time string, dis
 
 	// Choose styles based on display state
 	var hashStyle, messageStyle, authorStyle, timeStyle lipgloss.Style
-	isSelected := displayState == LineStateSelected || displayState == LineStateVisualCursor
+	isSelected := displayState == LineStateCursor ||
+		displayState == LineStateSelected ||
+		displayState == LineStateVisualCursor
 	if isSelected {
 		hashStyle = styles.SelectedHashStyle
 		messageStyle = styles.SelectedMessageStyle
