@@ -21,8 +21,12 @@ func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 			return s, tea.Quit
 
 		case "j", "down":
-			// Scroll down
-			if s.Diff != nil && len(s.Diff.Alignments) > 0 {
+			// Scroll down using segment-based scrolling if segments available
+			if s.Diff != nil && len(s.Diff.Segments) > 0 {
+				viewportHeight := s.calculateViewportHeight(ctx.Height())
+				s.scrollDownSegment(viewportHeight)
+			} else if s.Diff != nil && len(s.Diff.Alignments) > 0 {
+				// Legacy alignment-based scrolling
 				maxViewportStart := s.calculateMaxViewportStart(ctx.Height())
 				if s.ViewportStart < maxViewportStart {
 					s.ViewportStart++
@@ -31,15 +35,26 @@ func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 			return s, nil
 
 		case "k", "up":
-			// Scroll up
-			if s.ViewportStart > 0 {
+			// Scroll up using segment-based scrolling if segments available
+			if s.Diff != nil && len(s.Diff.Segments) > 0 {
+				viewportHeight := s.calculateViewportHeight(ctx.Height())
+				s.scrollUpSegment(viewportHeight)
+			} else if s.ViewportStart > 0 {
+				// Legacy alignment-based scrolling
 				s.ViewportStart--
 			}
 			return s, nil
 
 		case "ctrl+d":
 			// Scroll down half page
-			if s.Diff != nil && len(s.Diff.Alignments) > 0 {
+			if s.Diff != nil && len(s.Diff.Segments) > 0 {
+				viewportHeight := s.calculateViewportHeight(ctx.Height())
+				halfPage := viewportHeight / 2
+				for i := 0; i < halfPage; i++ {
+					s.scrollDownSegment(viewportHeight)
+				}
+			} else if s.Diff != nil && len(s.Diff.Alignments) > 0 {
+				// Legacy alignment-based scrolling
 				headerLines := 2
 				availableHeight := max(ctx.Height()-headerLines, 1)
 				halfPage := availableHeight / 2
@@ -50,20 +65,35 @@ func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 
 		case "ctrl+u":
 			// Scroll up half page
-			headerLines := 2
-			availableHeight := max(ctx.Height()-headerLines, 1)
-			halfPage := availableHeight / 2
-			s.ViewportStart = max(s.ViewportStart-halfPage, 0)
+			if s.Diff != nil && len(s.Diff.Segments) > 0 {
+				viewportHeight := s.calculateViewportHeight(ctx.Height())
+				halfPage := viewportHeight / 2
+				for i := 0; i < halfPage; i++ {
+					s.scrollUpSegment(viewportHeight)
+				}
+			} else {
+				// Legacy alignment-based scrolling
+				headerLines := 2
+				availableHeight := max(ctx.Height()-headerLines, 1)
+				halfPage := availableHeight / 2
+				s.ViewportStart = max(s.ViewportStart-halfPage, 0)
+			}
 			return s, nil
 
 		case "g":
 			// Jump to top
+			if s.Diff != nil && len(s.Diff.Segments) > 0 {
+				s.resetToStart()
+			}
 			s.ViewportStart = 0
 			return s, nil
 
 		case "G":
 			// Jump to bottom
-			if s.Diff != nil && len(s.Diff.Alignments) > 0 {
+			if s.Diff != nil && len(s.Diff.Segments) > 0 {
+				viewportHeight := s.calculateViewportHeight(ctx.Height())
+				s.scrollToEnd(viewportHeight)
+			} else if s.Diff != nil && len(s.Diff.Alignments) > 0 {
 				s.ViewportStart = s.calculateMaxViewportStart(ctx.Height())
 			}
 			return s, nil
@@ -142,4 +172,11 @@ func (s *State) calculateMaxViewportStart(height int) int {
 		maxStart = 0
 	}
 	return maxStart
+}
+
+// calculateViewportHeight returns the available height for diff content
+// after accounting for header lines.
+func (s *State) calculateViewportHeight(height int) int {
+	headerLines := 2 // header + separator
+	return max(height-headerLines, 1)
 }

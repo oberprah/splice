@@ -407,3 +407,387 @@ func createTestDiffStateWithChanges(numLines int, changeIndices []int) *State {
 		ChangeIndices:    changeIndices,
 	}
 }
+
+// createTestStateWithSegments creates a test State with segment-based diff data
+func createTestStateWithSegments(segments []diff.Segment, leftLines, rightLines []diff.AlignedLine) *State {
+	return &State{
+		CommitRange: core.NewSingleCommitRange(core.GitCommit{Hash: "abc123"}),
+		File:        core.FileChange{Path: "file.go", Additions: 5, Deletions: 3},
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path:  "file.go",
+				Lines: leftLines,
+			},
+			Right: diff.FileContent{
+				Path:  "file.go",
+				Lines: rightLines,
+			},
+			Segments: segments,
+		},
+		SegmentIndex:      0,
+		LeftOffset:        0,
+		RightOffset:       0,
+		ScrollAccumulator: 0,
+	}
+}
+
+// createTestLines creates a slice of test AlignedLines
+func createTestLines(count int) []diff.AlignedLine {
+	lines := make([]diff.AlignedLine, count)
+	for i := 0; i < count; i++ {
+		lines[i] = diff.AlignedLine{
+			Tokens: []highlight.Token{{Type: chroma.Text, Value: "test line"}},
+		}
+	}
+	return lines
+}
+
+func TestIsAtStart(t *testing.T) {
+	state := &State{
+		SegmentIndex: 0,
+		LeftOffset:   0,
+		RightOffset:  0,
+	}
+
+	if !state.isAtStart() {
+		t.Error("Expected isAtStart() to return true when at position 0,0,0")
+	}
+
+	state.LeftOffset = 1
+	if state.isAtStart() {
+		t.Error("Expected isAtStart() to return false when LeftOffset > 0")
+	}
+
+	state.LeftOffset = 0
+	state.SegmentIndex = 1
+	if state.isAtStart() {
+		t.Error("Expected isAtStart() to return false when SegmentIndex > 0")
+	}
+}
+
+func TestIsAtEnd(t *testing.T) {
+	segments := []diff.Segment{
+		diff.UnchangedSegment{LeftStart: 0, RightStart: 0, Count: 10},
+	}
+	state := createTestStateWithSegments(segments, createTestLines(10), createTestLines(10))
+
+	// At start, not at end
+	if state.isAtEnd(5) {
+		t.Error("Expected isAtEnd() to return false when at start")
+	}
+
+	// Not at end when offsets are less than line count
+	state.LeftOffset = 5
+	state.RightOffset = 5
+	if state.isAtEnd(5) {
+		t.Error("Expected isAtEnd() to return false when offsets < line count")
+	}
+
+	// At end when offsets equal line count
+	state.LeftOffset = 10
+	state.RightOffset = 10
+	if !state.isAtEnd(5) {
+		t.Error("Expected isAtEnd() to return true when offsets >= line count")
+	}
+}
+
+func TestScrollDownSegment_UnchangedSegment(t *testing.T) {
+	// Create unchanged segment with 10 lines
+	segments := []diff.Segment{
+		diff.UnchangedSegment{LeftStart: 0, RightStart: 0, Count: 10},
+	}
+	state := createTestStateWithSegments(segments, createTestLines(10), createTestLines(10))
+
+	viewportHeight := 5
+
+	// Scroll down once
+	state.scrollDownSegment(viewportHeight)
+
+	if state.LeftOffset != 1 || state.RightOffset != 1 {
+		t.Errorf("Expected offsets to be (1,1), got (%d,%d)", state.LeftOffset, state.RightOffset)
+	}
+
+	// Both sides should advance together for unchanged segment
+	if state.LeftOffset != state.RightOffset {
+		t.Error("Expected left and right offsets to be equal for unchanged segment")
+	}
+}
+
+func TestScrollDownSegment_HunkWithDifferentialScrolling(t *testing.T) {
+	// Create hunk with 6 left lines and 2 right lines (ratio 3:1)
+	leftHunkLines := []diff.HunkLine{
+		{SourceIdx: 0, Type: diff.HunkLineRemoved},
+		{SourceIdx: 1, Type: diff.HunkLineRemoved},
+		{SourceIdx: 2, Type: diff.HunkLineRemoved},
+		{SourceIdx: 3, Type: diff.HunkLineRemoved},
+		{SourceIdx: 4, Type: diff.HunkLineRemoved},
+		{SourceIdx: 5, Type: diff.HunkLineRemoved},
+	}
+	rightHunkLines := []diff.HunkLine{
+		{SourceIdx: 0, Type: diff.HunkLineAdded},
+		{SourceIdx: 1, Type: diff.HunkLineAdded},
+	}
+
+	segments := []diff.Segment{
+		diff.HunkSegment{LeftLines: leftHunkLines, RightLines: rightHunkLines},
+	}
+	state := createTestStateWithSegments(segments, createTestLines(6), createTestLines(2))
+
+	// Use a viewport where hunk is centered (hunk at row 0, viewport 10 means center is 3-7)
+	viewportHeight := 10
+
+	// Step 1: Left +1, Right stays (accumulator 1)
+	state.scrollDownSegment(viewportHeight)
+	if state.LeftOffset != 1 || state.RightOffset != 0 {
+		t.Errorf("Step 1: Expected (1,0), got (%d,%d)", state.LeftOffset, state.RightOffset)
+	}
+
+	// Step 2: Left +1, Right stays (accumulator 2)
+	state.scrollDownSegment(viewportHeight)
+	if state.LeftOffset != 2 || state.RightOffset != 0 {
+		t.Errorf("Step 2: Expected (2,0), got (%d,%d)", state.LeftOffset, state.RightOffset)
+	}
+
+	// Step 3: Left +1, Right +1 (accumulator resets)
+	state.scrollDownSegment(viewportHeight)
+	if state.LeftOffset != 3 || state.RightOffset != 1 {
+		t.Errorf("Step 3: Expected (3,1), got (%d,%d)", state.LeftOffset, state.RightOffset)
+	}
+}
+
+func TestScrollDownSegment_HunkRightLarger(t *testing.T) {
+	// Create hunk with 2 left lines and 6 right lines (ratio 3:1)
+	leftHunkLines := []diff.HunkLine{
+		{SourceIdx: 0, Type: diff.HunkLineRemoved},
+		{SourceIdx: 1, Type: diff.HunkLineRemoved},
+	}
+	rightHunkLines := []diff.HunkLine{
+		{SourceIdx: 0, Type: diff.HunkLineAdded},
+		{SourceIdx: 1, Type: diff.HunkLineAdded},
+		{SourceIdx: 2, Type: diff.HunkLineAdded},
+		{SourceIdx: 3, Type: diff.HunkLineAdded},
+		{SourceIdx: 4, Type: diff.HunkLineAdded},
+		{SourceIdx: 5, Type: diff.HunkLineAdded},
+	}
+
+	segments := []diff.Segment{
+		diff.HunkSegment{LeftLines: leftHunkLines, RightLines: rightHunkLines},
+	}
+	state := createTestStateWithSegments(segments, createTestLines(2), createTestLines(6))
+
+	viewportHeight := 10
+
+	// Step 1: Right +1, Left stays (accumulator 1)
+	state.scrollDownSegment(viewportHeight)
+	if state.LeftOffset != 0 || state.RightOffset != 1 {
+		t.Errorf("Step 1: Expected (0,1), got (%d,%d)", state.LeftOffset, state.RightOffset)
+	}
+
+	// Step 2: Right +1, Left stays (accumulator 2)
+	state.scrollDownSegment(viewportHeight)
+	if state.LeftOffset != 0 || state.RightOffset != 2 {
+		t.Errorf("Step 2: Expected (0,2), got (%d,%d)", state.LeftOffset, state.RightOffset)
+	}
+
+	// Step 3: Right +1, Left +1 (accumulator resets)
+	state.scrollDownSegment(viewportHeight)
+	if state.LeftOffset != 1 || state.RightOffset != 3 {
+		t.Errorf("Step 3: Expected (1,3), got (%d,%d)", state.LeftOffset, state.RightOffset)
+	}
+}
+
+func TestScrollDownSegment_TransitionToNextSegment(t *testing.T) {
+	// Create two unchanged segments
+	segments := []diff.Segment{
+		diff.UnchangedSegment{LeftStart: 0, RightStart: 0, Count: 3},
+		diff.UnchangedSegment{LeftStart: 3, RightStart: 3, Count: 3},
+	}
+	state := createTestStateWithSegments(segments, createTestLines(6), createTestLines(6))
+
+	viewportHeight := 10
+
+	// Scroll to end of first segment
+	state.LeftOffset = 2
+	state.RightOffset = 2
+
+	// Next scroll should transition to second segment
+	state.scrollDownSegment(viewportHeight)
+
+	if state.SegmentIndex != 1 {
+		t.Errorf("Expected SegmentIndex to be 1, got %d", state.SegmentIndex)
+	}
+	if state.LeftOffset != 0 || state.RightOffset != 0 {
+		t.Errorf("Expected offsets to be reset to (0,0), got (%d,%d)", state.LeftOffset, state.RightOffset)
+	}
+}
+
+func TestScrollUpSegment_UnchangedSegment(t *testing.T) {
+	segments := []diff.Segment{
+		diff.UnchangedSegment{LeftStart: 0, RightStart: 0, Count: 10},
+	}
+	state := createTestStateWithSegments(segments, createTestLines(10), createTestLines(10))
+	state.LeftOffset = 5
+	state.RightOffset = 5
+
+	viewportHeight := 5
+
+	// Scroll up once
+	state.scrollUpSegment(viewportHeight)
+
+	if state.LeftOffset != 4 || state.RightOffset != 4 {
+		t.Errorf("Expected offsets to be (4,4), got (%d,%d)", state.LeftOffset, state.RightOffset)
+	}
+}
+
+func TestScrollUpSegment_AtStart(t *testing.T) {
+	segments := []diff.Segment{
+		diff.UnchangedSegment{LeftStart: 0, RightStart: 0, Count: 10},
+	}
+	state := createTestStateWithSegments(segments, createTestLines(10), createTestLines(10))
+
+	viewportHeight := 5
+
+	// Try to scroll up at start
+	state.scrollUpSegment(viewportHeight)
+
+	// Should stay at start
+	if state.SegmentIndex != 0 || state.LeftOffset != 0 || state.RightOffset != 0 {
+		t.Errorf("Expected to stay at start, got segment=%d, offsets=(%d,%d)",
+			state.SegmentIndex, state.LeftOffset, state.RightOffset)
+	}
+}
+
+func TestScrollUpSegment_TransitionToPreviousSegment(t *testing.T) {
+	segments := []diff.Segment{
+		diff.UnchangedSegment{LeftStart: 0, RightStart: 0, Count: 3},
+		diff.UnchangedSegment{LeftStart: 3, RightStart: 3, Count: 3},
+	}
+	state := createTestStateWithSegments(segments, createTestLines(6), createTestLines(6))
+	state.SegmentIndex = 1
+	state.LeftOffset = 0
+	state.RightOffset = 0
+
+	viewportHeight := 10
+
+	// Scroll up should transition to previous segment
+	state.scrollUpSegment(viewportHeight)
+
+	if state.SegmentIndex != 0 {
+		t.Errorf("Expected SegmentIndex to be 0, got %d", state.SegmentIndex)
+	}
+	// Should be at offset 2 (one less than end of first segment)
+	if state.LeftOffset != 2 || state.RightOffset != 2 {
+		t.Errorf("Expected offsets to be (2,2), got (%d,%d)", state.LeftOffset, state.RightOffset)
+	}
+}
+
+func TestIsHunkCentered(t *testing.T) {
+	leftHunkLines := []diff.HunkLine{
+		{SourceIdx: 0, Type: diff.HunkLineRemoved},
+		{SourceIdx: 1, Type: diff.HunkLineRemoved},
+		{SourceIdx: 2, Type: diff.HunkLineRemoved},
+	}
+	rightHunkLines := []diff.HunkLine{
+		{SourceIdx: 0, Type: diff.HunkLineAdded},
+	}
+
+	segments := []diff.Segment{
+		diff.HunkSegment{LeftLines: leftHunkLines, RightLines: rightHunkLines},
+	}
+	state := createTestStateWithSegments(segments, createTestLines(3), createTestLines(1))
+
+	// With viewport height 10, center zone is rows 3-7 (30%-70%)
+	// Hunk at row 0 with 3 lines (0-2) overlaps center zone? No.
+	// But actually, the hunk extends from row 0 to row 2, and center is 3-7
+	// So hunk does NOT overlap center zone in this case
+
+	// With viewport height 10, center starts at row 3
+	// A hunk at position 0 with 3 lines ends at row 2, which is < 3 (centerStart)
+	viewportHeight := 10
+	if state.isHunkCentered(viewportHeight) {
+		t.Error("Expected isHunkCentered() to return false when hunk doesn't overlap center")
+	}
+
+	// Create a larger hunk that does overlap center
+	largeHunkLines := make([]diff.HunkLine, 8)
+	for i := 0; i < 8; i++ {
+		largeHunkLines[i] = diff.HunkLine{SourceIdx: i, Type: diff.HunkLineRemoved}
+	}
+	state.Diff.Segments = []diff.Segment{
+		diff.HunkSegment{LeftLines: largeHunkLines, RightLines: rightHunkLines},
+	}
+
+	// Hunk with 8 left lines, 1 right line. Visible = 8 lines.
+	// Hunk at row 0, extends to row 7. Center is 3-7.
+	// Row 0-7 overlaps 3-7. So should be centered.
+	if !state.isHunkCentered(viewportHeight) {
+		t.Error("Expected isHunkCentered() to return true when hunk overlaps center")
+	}
+}
+
+func TestIsHunkCentered_NotAHunk(t *testing.T) {
+	segments := []diff.Segment{
+		diff.UnchangedSegment{LeftStart: 0, RightStart: 0, Count: 10},
+	}
+	state := createTestStateWithSegments(segments, createTestLines(10), createTestLines(10))
+
+	if state.isHunkCentered(10) {
+		t.Error("Expected isHunkCentered() to return false for UnchangedSegment")
+	}
+}
+
+func TestResetToStart(t *testing.T) {
+	segments := []diff.Segment{
+		diff.UnchangedSegment{LeftStart: 0, RightStart: 0, Count: 10},
+	}
+	state := createTestStateWithSegments(segments, createTestLines(10), createTestLines(10))
+	state.SegmentIndex = 2
+	state.LeftOffset = 5
+	state.RightOffset = 3
+	state.ScrollAccumulator = 2
+
+	state.resetToStart()
+
+	if state.SegmentIndex != 0 {
+		t.Errorf("Expected SegmentIndex to be 0, got %d", state.SegmentIndex)
+	}
+	if state.LeftOffset != 0 || state.RightOffset != 0 {
+		t.Errorf("Expected offsets to be (0,0), got (%d,%d)", state.LeftOffset, state.RightOffset)
+	}
+	if state.ScrollAccumulator != 0 {
+		t.Errorf("Expected ScrollAccumulator to be 0, got %d", state.ScrollAccumulator)
+	}
+}
+
+func TestScrollToEnd(t *testing.T) {
+	segments := []diff.Segment{
+		diff.UnchangedSegment{LeftStart: 0, RightStart: 0, Count: 20},
+	}
+	state := createTestStateWithSegments(segments, createTestLines(20), createTestLines(20))
+
+	viewportHeight := 5
+
+	state.scrollToEnd(viewportHeight)
+
+	// With 20 lines and viewport of 5, should start at offset 15
+	if state.LeftOffset != 15 || state.RightOffset != 15 {
+		t.Errorf("Expected offsets to be (15,15), got (%d,%d)", state.LeftOffset, state.RightOffset)
+	}
+}
+
+func TestCalculateViewportHeight(t *testing.T) {
+	state := &State{}
+
+	height := state.calculateViewportHeight(24)
+
+	// 24 - 2 (header lines) = 22
+	if height != 22 {
+		t.Errorf("Expected viewport height to be 22, got %d", height)
+	}
+
+	// Test with small height
+	height = state.calculateViewportHeight(2)
+	if height != 1 {
+		t.Errorf("Expected minimum viewport height of 1, got %d", height)
+	}
+}

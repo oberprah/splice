@@ -154,7 +154,7 @@
   - `segment_mixed_changes.golden` - hunk with both additions and deletions (different line counts)
   - `segment_multiple_hunks.golden` - multiple hunks separated by unchanged regions
   - `segment_start_at_hunk.golden` - viewport starting at a hunk segment
-**Coordinator Review:**
+**Coordinator Review:** Rendering structure is clean with good separation of concerns. `collectViewportLines` properly handles both segment types with filler lines for asymmetric hunks. Backward compatibility preserved via `renderWithAlignments`. Golden file tests provide good coverage. → Step 5
 
 ---
 
@@ -183,10 +183,23 @@
 - `02_design_smart-diff-scrolling.md` (scrolling behavior section)
 - `01_requirements_smart-diff-scrolling.md` (visual examples)
 
-**Status:** Pending
-**Commits:**
-**Verification:**
+**Status:** Complete
+**Commits:** feb426f
+**Verification:** All tests pass (`go test ./...`), build succeeds (`go build -o splice .`), lint passes (`go tool golangci-lint run`)
 **Notes:**
+- Added `ScrollAccumulator` field to State struct to track fractional scroll progress
+- Implemented `scrollDownSegment()` with differential scrolling logic:
+  - For unchanged segments: both panels advance together
+  - For hunks: larger side advances every step, smaller side advances every `ratio` steps
+  - Transition to next segment when current segment is exhausted
+- Implemented `scrollUpSegment()` with symmetric differential scrolling for scrolling up
+- Implemented `isHunkCentered()` to detect when a hunk overlaps the viewport center zone (30%-70%)
+- Implemented `isAtStart()` and `isAtEnd()` for bounds checking
+- Implemented `resetToStart()` and `scrollToEnd()` for g/G navigation
+- Added `calculateViewportHeight()` helper
+- Updated all key handlers (`j`/`down`, `k`/`up`, `ctrl+d`, `ctrl+u`, `g`, `G`) to use segment-based scrolling when segments are available, with fallback to legacy alignment-based scrolling
+- Comprehensive unit tests for all new functionality (13 new test functions)
+- Differential scrolling uses integer ratio calculation: `ratio = max(leftCount, rightCount) / min(leftCount, rightCount)` rounded up
 **Coordinator Review:**
 
 ---
