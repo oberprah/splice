@@ -71,7 +71,7 @@
 - All removed lines are marked `HunkLineRemoved`, all added lines are marked `HunkLineAdded` (no pairing/modified detection - deferred per design)
 - Updated `BuildAlignedFileDiff` to call `BuildSegments` and populate the `Segments` field
 - Comprehensive TDD test coverage: 14 test cases covering all scenarios (empty files, pure additions, pure deletions, mixed changes, multiple hunks, changes at start/end, lines outside diff context)
-**Coordinator Review:**
+**Coordinator Review:** Algorithm structure is clean and follows established patterns. Correct use of line type maps and two-pointer walk. Edge cases handled properly. → Step 3
 
 ---
 
@@ -97,10 +97,17 @@
 - `internal/ui/states/diff/state.go` (current State struct)
 - `02_design_smart-diff-scrolling.md` (state section)
 
-**Status:** Pending
-**Commits:**
-**Verification:**
+**Status:** Complete
+**Commits:** cab6cdb
+**Verification:** All tests pass (`go test ./...`), build succeeds (`go build ./...`), lint passes (`go tool golangci-lint run`)
 **Notes:**
+- Added three new fields to State struct: `SegmentIndex`, `LeftOffset`, `RightOffset` for segment-based scroll position tracking
+- Kept existing `ViewportStart` field for backward compatibility during migration
+- Updated `New()` constructor to initialize segment position at first HunkSegment (or index 0 if no hunks)
+- Added helper function `findFirstHunkSegmentIndex()` to locate first hunk
+- Added four helper methods: `segmentLeftLineCount()`, `segmentRightLineCount()`, `totalLeftLines()`, `totalRightLines()`
+- Created comprehensive unit tests in `state_test.go` covering all new functionality
+- Deferred `lineAtOffset()` helper to Step 4 (rendering) as it wasn't needed for this step
 **Coordinator Review:**
 
 ---
