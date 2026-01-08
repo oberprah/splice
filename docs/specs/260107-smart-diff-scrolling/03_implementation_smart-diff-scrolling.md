@@ -108,7 +108,7 @@
 - Added four helper methods: `segmentLeftLineCount()`, `segmentRightLineCount()`, `totalLeftLines()`, `totalRightLines()`
 - Created comprehensive unit tests in `state_test.go` covering all new functionality
 - Deferred `lineAtOffset()` helper to Step 4 (rendering) as it wasn't needed for this step
-**Coordinator Review:**
+**Coordinator Review:** State structure is clean with good separation of legacy vs new scroll tracking. Helper methods are well-documented and tested. Initialization correctly finds first hunk. → Step 4
 
 ---
 
@@ -136,10 +136,24 @@
 - `internal/ui/components/viewbuilder.go` (ViewBuilder API)
 - `02_design_smart-diff-scrolling.md` (rendering section)
 
-**Status:** Pending
-**Commits:**
-**Verification:**
+**Status:** Complete
+**Commits:** 2eafb8c
+**Verification:** All tests pass (`go test ./...`), build succeeds (`go build ./...`), lint passes (`go tool golangci-lint run`)
 **Notes:**
+- Added `collectViewportLines()` method that walks segments from current position and collects rendered lines for both panels
+- Added `renderedLine` type to hold the formatted content for each line
+- Added `hunkLineStyle()` helper to determine indicator and background style based on line type
+- Added `formatFillerLine()` helper to create empty filler rows when one panel has fewer lines than the other
+- Added `calculateSegmentLineNoWidth()` to compute line number width from segments
+- Refactored `View()` to dispatch between segment-based rendering (`renderWithSegments`) and legacy alignment-based rendering (`renderWithAlignments`) based on whether segments are available
+- When segments are available, the new rendering eliminates blank line padding - each panel renders its content independently with filler rows where needed
+- Updated e2e golden files to reflect the new segment-based rendering output
+- Created 5 new golden file tests for segment-based rendering:
+  - `segment_pure_additions.golden` - hunk with only additions (right side has more lines)
+  - `segment_pure_deletions.golden` - hunk with only deletions (left side has more lines)
+  - `segment_mixed_changes.golden` - hunk with both additions and deletions (different line counts)
+  - `segment_multiple_hunks.golden` - multiple hunks separated by unchanged regions
+  - `segment_start_at_hunk.golden` - viewport starting at a hunk segment
 **Coordinator Review:**
 
 ---

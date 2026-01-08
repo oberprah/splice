@@ -1,0 +1,7 @@
+multi12 · test.go · +2 -2
+────────────────────────────────────────────────────────────────────────────────
+  1   package main                     │   1   package main                    
+  2 -     oldFirst()                   │   2 +     newFirst()                  
+  3   // separator                     │   3   // separator                    
+  4 -     oldSecond()                  │   4 +     newSecond()                 
+  5   }                                │   5   }                               

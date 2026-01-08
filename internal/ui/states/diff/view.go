@@ -34,7 +34,7 @@ func (s *State) View(ctx core.Context) core.ViewRenderer {
 	availableHeight := max(ctx.Height()-headerLines, 1)
 
 	// Handle nil or empty diff
-	if s.Diff == nil || len(s.Diff.Alignments) == 0 {
+	if s.Diff == nil || (len(s.Diff.Alignments) == 0 && len(s.Diff.Segments) == 0) {
 		vb.AddLine(styles.TimeStyle.Render("No changes"))
 		return vb
 	}
@@ -45,6 +45,49 @@ func (s *State) View(ctx core.Context) core.ViewRenderer {
 		columnWidth = 20
 	}
 
+	// Use segment-based rendering if segments are available
+	if len(s.Diff.Segments) > 0 {
+		s.renderWithSegments(vb, availableHeight, columnWidth)
+	} else {
+		// Fall back to alignment-based rendering for backward compatibility
+		s.renderWithAlignments(vb, availableHeight, columnWidth)
+	}
+
+	return vb
+}
+
+// renderWithSegments renders the diff using segment-based data model.
+// This eliminates blank line padding by allowing each panel to scroll independently.
+func (s *State) renderWithSegments(vb *components.ViewBuilder, availableHeight, columnWidth int) {
+	// Calculate line number width using segments
+	lineNoWidth := s.calculateSegmentLineNoWidth()
+
+	// Create styles for fixed-width columns
+	leftColStyle := lipgloss.NewStyle().Width(columnWidth)
+	rightColStyle := lipgloss.NewStyle().Width(columnWidth)
+
+	// Collect lines for both panels
+	leftLines, rightLines := s.collectViewportLines(availableHeight, columnWidth, lineNoWidth)
+
+	// Build left and right columns independently
+	leftVb := components.NewViewBuilder()
+	rightVb := components.NewViewBuilder()
+
+	// Add collected lines to ViewBuilders
+	for i := 0; i < len(leftLines); i++ {
+		leftVb.AddLine(leftColStyle.Render(leftLines[i].content))
+	}
+	for i := 0; i < len(rightLines); i++ {
+		rightVb.AddLine(rightColStyle.Render(rightLines[i].content))
+	}
+
+	// Compose the split view
+	vb.AddSplitView(leftVb, rightVb)
+}
+
+// renderWithAlignments renders the diff using the legacy alignment-based data model.
+// This is used for backward compatibility during migration to segment-based rendering.
+func (s *State) renderWithAlignments(vb *components.ViewBuilder, availableHeight, columnWidth int) {
 	// Calculate line number width based on max line numbers
 	lineNoWidth := s.calculateLineNoWidth()
 
@@ -71,8 +114,6 @@ func (s *State) View(ctx core.Context) core.ViewRenderer {
 
 	// Compose the split view
 	vb.AddSplitView(leftVb, rightVb)
-
-	return vb
 }
 
 // renderHeader formats the diff view header
@@ -399,4 +440,181 @@ func (s *State) renderTokensWithInlineDiff(tokens []highlight.Token, maxWidth in
 // expandTabs replaces tab characters with spaces
 func expandTabs(s string, tabWidth int) string {
 	return strings.ReplaceAll(s, "\t", strings.Repeat(" ", tabWidth))
+}
+
+// renderedLine represents a single rendered line for one panel.
+// It contains the formatted string ready to be added to a ViewBuilder.
+type renderedLine struct {
+	content string
+}
+
+// collectViewportLines walks segments and collects lines for rendering.
+// Returns left and right lines (may have different content at same row for hunks).
+// This is the core of segment-based rendering that eliminates blank line padding.
+func (s *State) collectViewportLines(availableHeight, columnWidth, lineNoWidth int) (leftLines, rightLines []renderedLine) {
+	if s.Diff == nil || len(s.Diff.Segments) == 0 {
+		return nil, nil
+	}
+
+	leftLines = make([]renderedLine, 0, availableHeight)
+	rightLines = make([]renderedLine, 0, availableHeight)
+
+	// Calculate content width (column width - lineNo - space - indicator - space)
+	contentWidth := columnWidth - lineNoWidth - 4 // "123 - " = lineNo + space + indicator + space
+	if contentWidth < 5 {
+		contentWidth = 5
+	}
+
+	// Start from current segment position
+	segIdx := s.SegmentIndex
+	leftOff := s.LeftOffset
+	rightOff := s.RightOffset
+
+	// Collect lines until we've filled the viewport for the left panel
+	// (we use left as the primary since we scroll both panels together initially)
+	for len(leftLines) < availableHeight && segIdx < len(s.Diff.Segments) {
+		seg := s.Diff.Segments[segIdx]
+
+		switch segment := seg.(type) {
+		case diff.UnchangedSegment:
+			// Unchanged: same content goes to both panels
+			for i := leftOff; i < segment.Count && len(leftLines) < availableHeight; i++ {
+				leftIdx := segment.LeftStart + i
+				rightIdx := segment.RightStart + i
+
+				// Render left side
+				leftLine := s.Diff.Left.Lines[leftIdx]
+				leftNo := s.Diff.Left.LineNo(leftIdx)
+				leftContent := s.formatColumnContent(leftNo, " ", leftLine.Tokens, lineNoWidth, contentWidth, columnWidth, styles.TimeStyle, nil)
+				leftLines = append(leftLines, renderedLine{content: leftContent})
+
+				// Render right side (same content for unchanged)
+				rightLine := s.Diff.Right.Lines[rightIdx]
+				rightNo := s.Diff.Right.LineNo(rightIdx)
+				rightContent := s.formatColumnContent(rightNo, " ", rightLine.Tokens, lineNoWidth, contentWidth, columnWidth, styles.TimeStyle, nil)
+				rightLines = append(rightLines, renderedLine{content: rightContent})
+			}
+			// Move to next segment
+			segIdx++
+			leftOff = 0
+			rightOff = 0
+
+		case diff.HunkSegment:
+			// Hunk: collect lines independently for each panel
+			leftCount := len(segment.LeftLines)
+			rightCount := len(segment.RightLines)
+
+			// Determine how many lines to collect from this hunk
+			// For now, we use simple synchronized scrolling (same offset for both)
+			// Differential scrolling will be implemented in Step 5
+			maxHunkLines := max(leftCount-leftOff, rightCount-rightOff)
+
+			for i := 0; i < maxHunkLines && len(leftLines) < availableHeight; i++ {
+				// Left panel
+				if leftOff+i < leftCount {
+					hunkLine := segment.LeftLines[leftOff+i]
+					leftIdx := hunkLine.SourceIdx
+					leftLine := s.Diff.Left.Lines[leftIdx]
+					leftNo := s.Diff.Left.LineNo(leftIdx)
+					indicator, bgStyle := s.hunkLineStyle(hunkLine.Type, true)
+					leftContent := s.formatColumnContent(leftNo, indicator, leftLine.Tokens, lineNoWidth, contentWidth, columnWidth, bgStyle, nil)
+					leftLines = append(leftLines, renderedLine{content: leftContent})
+				} else {
+					// Left side exhausted - add filler row
+					fillerContent := s.formatFillerLine(lineNoWidth, columnWidth, styles.TimeStyle)
+					leftLines = append(leftLines, renderedLine{content: fillerContent})
+				}
+
+				// Right panel
+				if rightOff+i < rightCount {
+					hunkLine := segment.RightLines[rightOff+i]
+					rightIdx := hunkLine.SourceIdx
+					rightLine := s.Diff.Right.Lines[rightIdx]
+					rightNo := s.Diff.Right.LineNo(rightIdx)
+					indicator, bgStyle := s.hunkLineStyle(hunkLine.Type, false)
+					rightContent := s.formatColumnContent(rightNo, indicator, rightLine.Tokens, lineNoWidth, contentWidth, columnWidth, bgStyle, nil)
+					rightLines = append(rightLines, renderedLine{content: rightContent})
+				} else {
+					// Right side exhausted - add filler row
+					fillerContent := s.formatFillerLine(lineNoWidth, columnWidth, styles.TimeStyle)
+					rightLines = append(rightLines, renderedLine{content: fillerContent})
+				}
+			}
+			// Move to next segment
+			segIdx++
+			leftOff = 0
+			rightOff = 0
+		}
+	}
+
+	return leftLines, rightLines
+}
+
+// hunkLineStyle returns the indicator and background style for a hunk line type.
+// isLeft determines whether we're rendering the left (removed) or right (added) panel.
+func (s *State) hunkLineStyle(lineType diff.HunkLineType, isLeft bool) (string, lipgloss.Style) {
+	switch lineType {
+	case diff.HunkLineRemoved:
+		return "-", styles.DiffDeletionsStyle
+	case diff.HunkLineAdded:
+		return "+", styles.DiffAdditionsStyle
+	case diff.HunkLineModified:
+		// Modified lines: use removed style on left, added style on right
+		if isLeft {
+			return "-", styles.DiffDeletionsStyle
+		}
+		return "+", styles.DiffAdditionsStyle
+	default:
+		return " ", styles.TimeStyle
+	}
+}
+
+// formatFillerLine creates an empty filler line with proper styling for alignment.
+// This is used when one panel has fewer lines than the other in a hunk.
+func (s *State) formatFillerLine(lineNoWidth, columnWidth int, bgStyle lipgloss.Style) string {
+	// Create empty content with proper width
+	return bgStyle.Width(columnWidth).Render("")
+}
+
+// calculateSegmentLineNoWidth returns the width needed for line numbers using segments.
+func (s *State) calculateSegmentLineNoWidth() int {
+	if s.Diff == nil || len(s.Diff.Segments) == 0 {
+		return 3
+	}
+
+	maxLineNo := 0
+	for _, seg := range s.Diff.Segments {
+		switch segment := seg.(type) {
+		case diff.UnchangedSegment:
+			// Max line number is at the end of this segment
+			leftNo := segment.LeftStart + segment.Count
+			rightNo := segment.RightStart + segment.Count
+			if leftNo > maxLineNo {
+				maxLineNo = leftNo
+			}
+			if rightNo > maxLineNo {
+				maxLineNo = rightNo
+			}
+		case diff.HunkSegment:
+			// Check all lines in the hunk
+			for _, hunkLine := range segment.LeftLines {
+				lineNo := hunkLine.SourceIdx + 1 // 1-indexed
+				if lineNo > maxLineNo {
+					maxLineNo = lineNo
+				}
+			}
+			for _, hunkLine := range segment.RightLines {
+				lineNo := hunkLine.SourceIdx + 1 // 1-indexed
+				if lineNo > maxLineNo {
+					maxLineNo = lineNo
+				}
+			}
+		}
+	}
+
+	width := len(fmt.Sprintf("%d", maxLineNo))
+	if width < 3 {
+		width = 3
+	}
+	return width
 }

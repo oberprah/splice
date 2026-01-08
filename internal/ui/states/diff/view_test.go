@@ -396,3 +396,269 @@ func TestDiffState_View_RangeHeader(t *testing.T) {
 
 	assertDiffViewGolden(t, output.(*components.ViewBuilder), "range_header.golden")
 }
+
+// ═══════════════════════════════════════════════════════════
+// SEGMENT-BASED RENDERING TESTS
+// These tests verify the new segment-based rendering that eliminates blank line padding.
+// ═══════════════════════════════════════════════════════════
+
+func TestDiffState_View_SegmentPureAdditions(t *testing.T) {
+	// Test a hunk with only additions (right side has more lines)
+	state := &State{
+		CommitRange: core.NewSingleCommitRange(core.GitCommit{Hash: "abc123"}),
+		File:        core.FileChange{Path: "test.go", Additions: 3, Deletions: 0},
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path: "test.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Keyword, Value: "package"}, {Type: chroma.Text, Value: " "}, {Type: chroma.NameNamespace, Value: "main"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Keyword, Value: "func"}, {Type: chroma.Text, Value: " "}, {Type: chroma.NameFunction, Value: "main"}, {Type: chroma.Punctuation, Value: "() {"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Punctuation, Value: "}"}}},
+				},
+			},
+			Right: diff.FileContent{
+				Path: "test.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Keyword, Value: "package"}, {Type: chroma.Text, Value: " "}, {Type: chroma.NameNamespace, Value: "main"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Keyword, Value: "func"}, {Type: chroma.Text, Value: " "}, {Type: chroma.NameFunction, Value: "main"}, {Type: chroma.Punctuation, Value: "() {"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "    "}, {Type: chroma.NameFunction, Value: "fmt"}, {Type: chroma.Punctuation, Value: "."}, {Type: chroma.NameFunction, Value: "Println"}, {Type: chroma.Punctuation, Value: "("}, {Type: chroma.LiteralString, Value: "\"hello\""}, {Type: chroma.Punctuation, Value: ")"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "    "}, {Type: chroma.NameFunction, Value: "fmt"}, {Type: chroma.Punctuation, Value: "."}, {Type: chroma.NameFunction, Value: "Println"}, {Type: chroma.Punctuation, Value: "("}, {Type: chroma.LiteralString, Value: "\"world\""}, {Type: chroma.Punctuation, Value: ")"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "    "}, {Type: chroma.NameFunction, Value: "fmt"}, {Type: chroma.Punctuation, Value: "."}, {Type: chroma.NameFunction, Value: "Println"}, {Type: chroma.Punctuation, Value: "("}, {Type: chroma.LiteralString, Value: "\"!\""}, {Type: chroma.Punctuation, Value: ")"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Punctuation, Value: "}"}}},
+				},
+			},
+			Segments: []diff.Segment{
+				diff.UnchangedSegment{LeftStart: 0, RightStart: 0, Count: 2}, // package, func main
+				diff.HunkSegment{
+					LeftLines: []diff.HunkLine{}, // No deletions
+					RightLines: []diff.HunkLine{
+						{SourceIdx: 2, Type: diff.HunkLineAdded},
+						{SourceIdx: 3, Type: diff.HunkLineAdded},
+						{SourceIdx: 4, Type: diff.HunkLineAdded},
+					},
+				},
+				diff.UnchangedSegment{LeftStart: 2, RightStart: 5, Count: 1}, // }
+			},
+		},
+		SegmentIndex: 0,
+		LeftOffset:   0,
+		RightOffset:  0,
+	}
+
+	ctx := testutils.MockContext{W: 80, H: 24}
+	output := state.View(ctx)
+
+	assertDiffViewGolden(t, output.(*components.ViewBuilder), "segment_pure_additions.golden")
+}
+
+func TestDiffState_View_SegmentPureDeletions(t *testing.T) {
+	// Test a hunk with only deletions (left side has more lines)
+	state := &State{
+		CommitRange: core.NewSingleCommitRange(core.GitCommit{Hash: "def456"}),
+		File:        core.FileChange{Path: "test.go", Additions: 0, Deletions: 3},
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path: "test.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Keyword, Value: "package"}, {Type: chroma.Text, Value: " "}, {Type: chroma.NameNamespace, Value: "main"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Keyword, Value: "func"}, {Type: chroma.Text, Value: " "}, {Type: chroma.NameFunction, Value: "main"}, {Type: chroma.Punctuation, Value: "() {"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "    "}, {Type: chroma.NameFunction, Value: "oldFunc1"}, {Type: chroma.Punctuation, Value: "()"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "    "}, {Type: chroma.NameFunction, Value: "oldFunc2"}, {Type: chroma.Punctuation, Value: "()"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "    "}, {Type: chroma.NameFunction, Value: "oldFunc3"}, {Type: chroma.Punctuation, Value: "()"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Punctuation, Value: "}"}}},
+				},
+			},
+			Right: diff.FileContent{
+				Path: "test.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Keyword, Value: "package"}, {Type: chroma.Text, Value: " "}, {Type: chroma.NameNamespace, Value: "main"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Keyword, Value: "func"}, {Type: chroma.Text, Value: " "}, {Type: chroma.NameFunction, Value: "main"}, {Type: chroma.Punctuation, Value: "() {"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Punctuation, Value: "}"}}},
+				},
+			},
+			Segments: []diff.Segment{
+				diff.UnchangedSegment{LeftStart: 0, RightStart: 0, Count: 2}, // package, func main
+				diff.HunkSegment{
+					LeftLines: []diff.HunkLine{
+						{SourceIdx: 2, Type: diff.HunkLineRemoved},
+						{SourceIdx: 3, Type: diff.HunkLineRemoved},
+						{SourceIdx: 4, Type: diff.HunkLineRemoved},
+					},
+					RightLines: []diff.HunkLine{}, // No additions
+				},
+				diff.UnchangedSegment{LeftStart: 5, RightStart: 2, Count: 1}, // }
+			},
+		},
+		SegmentIndex: 0,
+		LeftOffset:   0,
+		RightOffset:  0,
+	}
+
+	ctx := testutils.MockContext{W: 80, H: 24}
+	output := state.View(ctx)
+
+	assertDiffViewGolden(t, output.(*components.ViewBuilder), "segment_pure_deletions.golden")
+}
+
+func TestDiffState_View_SegmentMixedChanges(t *testing.T) {
+	// Test a hunk with both additions and deletions (different line counts)
+	state := &State{
+		CommitRange: core.NewSingleCommitRange(core.GitCommit{Hash: "789abc"}),
+		File:        core.FileChange{Path: "test.go", Additions: 2, Deletions: 3},
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path: "test.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Keyword, Value: "package"}, {Type: chroma.Text, Value: " "}, {Type: chroma.NameNamespace, Value: "main"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "    "}, {Type: chroma.NameFunction, Value: "oldLine1"}, {Type: chroma.Punctuation, Value: "()"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "    "}, {Type: chroma.NameFunction, Value: "oldLine2"}, {Type: chroma.Punctuation, Value: "()"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "    "}, {Type: chroma.NameFunction, Value: "oldLine3"}, {Type: chroma.Punctuation, Value: "()"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Punctuation, Value: "}"}}},
+				},
+			},
+			Right: diff.FileContent{
+				Path: "test.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Keyword, Value: "package"}, {Type: chroma.Text, Value: " "}, {Type: chroma.NameNamespace, Value: "main"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "    "}, {Type: chroma.NameFunction, Value: "newLine1"}, {Type: chroma.Punctuation, Value: "()"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "    "}, {Type: chroma.NameFunction, Value: "newLine2"}, {Type: chroma.Punctuation, Value: "()"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Punctuation, Value: "}"}}},
+				},
+			},
+			Segments: []diff.Segment{
+				diff.UnchangedSegment{LeftStart: 0, RightStart: 0, Count: 1}, // package
+				diff.HunkSegment{
+					LeftLines: []diff.HunkLine{
+						{SourceIdx: 1, Type: diff.HunkLineRemoved},
+						{SourceIdx: 2, Type: diff.HunkLineRemoved},
+						{SourceIdx: 3, Type: diff.HunkLineRemoved},
+					},
+					RightLines: []diff.HunkLine{
+						{SourceIdx: 1, Type: diff.HunkLineAdded},
+						{SourceIdx: 2, Type: diff.HunkLineAdded},
+					},
+				},
+				diff.UnchangedSegment{LeftStart: 4, RightStart: 3, Count: 1}, // }
+			},
+		},
+		SegmentIndex: 0,
+		LeftOffset:   0,
+		RightOffset:  0,
+	}
+
+	ctx := testutils.MockContext{W: 80, H: 24}
+	output := state.View(ctx)
+
+	assertDiffViewGolden(t, output.(*components.ViewBuilder), "segment_mixed_changes.golden")
+}
+
+func TestDiffState_View_SegmentMultipleHunks(t *testing.T) {
+	// Test rendering with multiple hunks separated by unchanged regions
+	state := &State{
+		CommitRange: core.NewSingleCommitRange(core.GitCommit{Hash: "multi12"}),
+		File:        core.FileChange{Path: "test.go", Additions: 2, Deletions: 2},
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path: "test.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Keyword, Value: "package"}, {Type: chroma.Text, Value: " "}, {Type: chroma.NameNamespace, Value: "main"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "    "}, {Type: chroma.NameFunction, Value: "oldFirst"}, {Type: chroma.Punctuation, Value: "()"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Comment, Value: "// separator"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "    "}, {Type: chroma.NameFunction, Value: "oldSecond"}, {Type: chroma.Punctuation, Value: "()"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Punctuation, Value: "}"}}},
+				},
+			},
+			Right: diff.FileContent{
+				Path: "test.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Keyword, Value: "package"}, {Type: chroma.Text, Value: " "}, {Type: chroma.NameNamespace, Value: "main"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "    "}, {Type: chroma.NameFunction, Value: "newFirst"}, {Type: chroma.Punctuation, Value: "()"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Comment, Value: "// separator"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "    "}, {Type: chroma.NameFunction, Value: "newSecond"}, {Type: chroma.Punctuation, Value: "()"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Punctuation, Value: "}"}}},
+				},
+			},
+			Segments: []diff.Segment{
+				diff.UnchangedSegment{LeftStart: 0, RightStart: 0, Count: 1}, // package
+				diff.HunkSegment{ // First hunk
+					LeftLines: []diff.HunkLine{
+						{SourceIdx: 1, Type: diff.HunkLineRemoved},
+					},
+					RightLines: []diff.HunkLine{
+						{SourceIdx: 1, Type: diff.HunkLineAdded},
+					},
+				},
+				diff.UnchangedSegment{LeftStart: 2, RightStart: 2, Count: 1}, // separator
+				diff.HunkSegment{ // Second hunk
+					LeftLines: []diff.HunkLine{
+						{SourceIdx: 3, Type: diff.HunkLineRemoved},
+					},
+					RightLines: []diff.HunkLine{
+						{SourceIdx: 3, Type: diff.HunkLineAdded},
+					},
+				},
+				diff.UnchangedSegment{LeftStart: 4, RightStart: 4, Count: 1}, // }
+			},
+		},
+		SegmentIndex: 0,
+		LeftOffset:   0,
+		RightOffset:  0,
+	}
+
+	ctx := testutils.MockContext{W: 80, H: 24}
+	output := state.View(ctx)
+
+	assertDiffViewGolden(t, output.(*components.ViewBuilder), "segment_multiple_hunks.golden")
+}
+
+func TestDiffState_View_SegmentStartAtHunk(t *testing.T) {
+	// Test rendering when viewport starts at a hunk segment (simulating navigation to change)
+	state := &State{
+		CommitRange: core.NewSingleCommitRange(core.GitCommit{Hash: "start12"}),
+		File:        core.FileChange{Path: "test.go", Additions: 2, Deletions: 1},
+		Diff: &diff.AlignedFileDiff{
+			Left: diff.FileContent{
+				Path: "test.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Keyword, Value: "package"}, {Type: chroma.Text, Value: " "}, {Type: chroma.NameNamespace, Value: "main"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Comment, Value: "// line 2"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Comment, Value: "// line 3"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "    "}, {Type: chroma.NameFunction, Value: "oldLine"}, {Type: chroma.Punctuation, Value: "()"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Punctuation, Value: "}"}}},
+				},
+			},
+			Right: diff.FileContent{
+				Path: "test.go",
+				Lines: []diff.AlignedLine{
+					{Tokens: []highlight.Token{{Type: chroma.Keyword, Value: "package"}, {Type: chroma.Text, Value: " "}, {Type: chroma.NameNamespace, Value: "main"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Comment, Value: "// line 2"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Comment, Value: "// line 3"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "    "}, {Type: chroma.NameFunction, Value: "newLine1"}, {Type: chroma.Punctuation, Value: "()"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "    "}, {Type: chroma.NameFunction, Value: "newLine2"}, {Type: chroma.Punctuation, Value: "()"}}},
+					{Tokens: []highlight.Token{{Type: chroma.Punctuation, Value: "}"}}},
+				},
+			},
+			Segments: []diff.Segment{
+				diff.UnchangedSegment{LeftStart: 0, RightStart: 0, Count: 3}, // package, line 2, line 3
+				diff.HunkSegment{
+					LeftLines: []diff.HunkLine{
+						{SourceIdx: 3, Type: diff.HunkLineRemoved},
+					},
+					RightLines: []diff.HunkLine{
+						{SourceIdx: 3, Type: diff.HunkLineAdded},
+						{SourceIdx: 4, Type: diff.HunkLineAdded},
+					},
+				},
+				diff.UnchangedSegment{LeftStart: 4, RightStart: 5, Count: 1}, // }
+			},
+		},
+		SegmentIndex: 1, // Start at the hunk segment
+		LeftOffset:   0,
+		RightOffset:  0,
+	}
+
+	ctx := testutils.MockContext{W: 80, H: 24}
+	output := state.View(ctx)
+
+	assertDiffViewGolden(t, output.(*components.ViewBuilder), "segment_start_at_hunk.golden")
+}
