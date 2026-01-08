@@ -1,0 +1,38 @@
+unchanged          unchanged
+unchanged          unchanged
+modified     ███   modified
+modified     ███   modified
+modified     ◤     unchanged
+unchanged          unchanged
+unchanged      ◢   modified
+modified     ███   modified
+modified     ██◤   unchanged
+modified     ██    unchanged
+modified     █◤◢   modified
+modified     ◤◢█   modified
+unchanged     █◤   unchanged
+unchanged    ◢█    unchanged
+modified     █◤    unchanged
+modified     █     unchanged
+modified     ◤     unchanged
+
+
+unchanged          unchanged
+unchanged          unchanged
+modified     ███   modified
+modified     ███   modified
+modified     ◤     unchanged
+unchanged          unchanged
+unchanged      ◢   modified
+modified     ███   modified
+modified     ██◤   unchanged
+modified     ██    unchanged
+modified     █◤    modified
+modified     ◤     modified
+unchanged    ◢     unchanged
+deleted      █
+deleted      ◤
+unchanged    ◢█    unchanged
+modified     █◤    unchanged
+modified     █     unchanged
+modified     ◤     unchanged
