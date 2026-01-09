@@ -9,16 +9,16 @@ import (
 	"time"
 )
 
-// Checkpoint represents a point where a screenshot should be taken
+// Checkpoint represents a point where a text snapshot should be taken
 type Checkpoint struct {
 	Name    string   // Optional name for the checkpoint
 	Actions []string // Actions to perform before this checkpoint
 }
 
 type Config struct {
-	Width       int
-	Height      int
-	FontSize    int
+	Width       int    // Terminal width in columns
+	Height      int    // Terminal height in rows
+	Format      string // Output format: "text", "png", or "both"
 	Checkpoints []Checkpoint
 }
 
@@ -48,26 +48,28 @@ func run() error {
 
 	fmt.Printf("Output directory: %s\n", outputDir)
 
-	// Generate tape file
-	tapeFile := filepath.Join(outputDir, "test.tape")
-	if err := generateTapeFile(config, outputDir, tapeFile); err != nil {
-		return fmt.Errorf("failed to generate tape file: %w", err)
+	// Run test with tmux
+	if err := runWithTmux(config, outputDir); err != nil {
+		return fmt.Errorf("failed to run test: %w", err)
 	}
 
-	// Run VHS
-	if err := runVHS(tapeFile); err != nil {
-		return fmt.Errorf("failed to run VHS: %w", err)
+	// Print appropriate message based on format
+	switch config.Format {
+	case "text":
+		fmt.Printf("Text snapshots saved to: %s\n", outputDir)
+	case "png":
+		fmt.Printf("PNG images saved to: %s\n", outputDir)
+	case "both":
+		fmt.Printf("Text snapshots and PNG images saved to: %s\n", outputDir)
 	}
-
-	fmt.Printf("Screenshots saved to: %s\n", outputDir)
 	return nil
 }
 
 func parseArgs() (*Config, error) {
 	config := &Config{
-		Width:    1200,
-		Height:   800,
-		FontSize: 12,
+		Width:  120,    // Terminal columns
+		Height: 40,     // Terminal rows
+		Format: "both", // Default to both text and PNG
 	}
 
 	args := os.Args[1:]
@@ -112,15 +114,16 @@ func parseArgs() (*Config, error) {
 				return nil, fmt.Errorf("invalid height value: %s", args[i])
 			}
 
-		case arg == "--font-size":
+		case arg == "--format":
 			if i+1 >= len(args) {
-				return nil, fmt.Errorf("--font-size requires a value")
+				return nil, fmt.Errorf("--format requires a value (text, png, or both)")
 			}
 			i++
-			_, err := fmt.Sscanf(args[i], "%d", &config.FontSize)
-			if err != nil {
-				return nil, fmt.Errorf("invalid font-size value: %s", args[i])
+			format := args[i]
+			if format != "text" && format != "png" && format != "both" {
+				return nil, fmt.Errorf("invalid format value: %s (must be text, png, or both)", format)
 			}
+			config.Format = format
 
 		case strings.HasPrefix(arg, "-"):
 			return nil, fmt.Errorf("unknown flag: %s", arg)
@@ -187,112 +190,154 @@ func createOutputDir() (string, error) {
 	return dir, os.MkdirAll(dir, 0755)
 }
 
-func generateTapeFile(config *Config, outputDir, tapeFile string) error {
-	var sb strings.Builder
+func runWithTmux(config *Config, outputDir string) error {
+	sessionName := fmt.Sprintf("splice-test-%d", time.Now().Unix())
 
-	// VHS settings - use paths relative to project root (no leading /)
-	sb.WriteString(fmt.Sprintf("Output %s\n", filepath.Join(outputDir, "recording.gif")))
-	sb.WriteString(fmt.Sprintf("Set Width %d\n", config.Width))
-	sb.WriteString(fmt.Sprintf("Set Height %d\n", config.Height))
-	sb.WriteString(fmt.Sprintf("Set FontSize %d\n", config.FontSize))
-	sb.WriteString("Set Shell bash\n")
-	sb.WriteString("\n")
-
-	// Start the application
-	sb.WriteString("Type \"./splice\"\n")
-	sb.WriteString("Enter\n")
-	sb.WriteString("Sleep 1s\n")
-	sb.WriteString("\n")
-
-	// Initial screenshot if first checkpoint has no actions
-	checkpointNum := 1
-	if len(config.Checkpoints) > 0 && len(config.Checkpoints[0].Actions) == 0 {
-		filename := fmt.Sprintf("%03d", checkpointNum)
-		if config.Checkpoints[0].Name != "" {
-			filename += "-" + config.Checkpoints[0].Name
+	// Check if freeze is installed for PNG output
+	if config.Format == "png" || config.Format == "both" {
+		if err := checkFreezeInstalled(); err != nil {
+			return err
 		}
-		filename += ".png"
-		screenshotPath := filepath.Join(outputDir, filename)
-		sb.WriteString(fmt.Sprintf("Screenshot %s\n", screenshotPath))
-		sb.WriteString("\n")
-		checkpointNum++
 	}
 
-	// Process each checkpoint
-	for i, checkpoint := range config.Checkpoints {
-		// Skip first checkpoint if it had no actions (already handled above)
-		if i == 0 && len(checkpoint.Actions) == 0 {
-			continue
-		}
+	// Start detached tmux session with splice
+	fmt.Println("Starting tmux session...")
+	cmd := exec.Command("tmux", "new-session", "-d", "-s", sessionName,
+		"-x", fmt.Sprintf("%d", config.Width),
+		"-y", fmt.Sprintf("%d", config.Height),
+		"./splice")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to start tmux session: %w", err)
+	}
 
+	// Ensure cleanup on exit
+	defer func() {
+		_ = exec.Command("tmux", "kill-session", "-t", sessionName).Run()
+	}()
+
+	// Wait for app to initialize
+	time.Sleep(1 * time.Second)
+
+	// Process checkpoints
+	checkpointNum := 1
+	for _, checkpoint := range config.Checkpoints {
 		// Perform actions first
 		for _, action := range checkpoint.Actions {
-			if err := writeAction(&sb, action); err != nil {
+			if err := sendAction(sessionName, action); err != nil {
 				return err
 			}
-			sb.WriteString("Sleep 200ms\n")
+			time.Sleep(200 * time.Millisecond)
 		}
 
-		// Then take screenshot
-		filename := fmt.Sprintf("%03d", checkpointNum)
+		// Base filename
+		baseFilename := fmt.Sprintf("%03d", checkpointNum)
 		if checkpoint.Name != "" {
-			filename += "-" + checkpoint.Name
+			baseFilename += "-" + checkpoint.Name
 		}
-		filename += ".png"
 
-		screenshotPath := filepath.Join(outputDir, filename)
-		sb.WriteString(fmt.Sprintf("Screenshot %s\n", screenshotPath))
-		sb.WriteString("\n")
+		// Capture text if requested
+		if config.Format == "text" || config.Format == "both" {
+			textPath := filepath.Join(outputDir, baseFilename+".txt")
+			cmd := exec.Command("tmux", "capture-pane", "-t", sessionName, "-p")
+			output, err := cmd.Output()
+			if err != nil {
+				return fmt.Errorf("failed to capture text pane: %w", err)
+			}
+			if err := os.WriteFile(textPath, output, 0644); err != nil {
+				return fmt.Errorf("failed to write text snapshot: %w", err)
+			}
+		}
+
+		// Capture PNG if requested
+		if config.Format == "png" || config.Format == "both" {
+			pngPath := filepath.Join(outputDir, baseFilename+".png")
+			if err := capturePNG(sessionName, pngPath); err != nil {
+				return fmt.Errorf("failed to capture PNG: %w", err)
+			}
+		}
+
 		checkpointNum++
 	}
 
-	return os.WriteFile(tapeFile, []byte(sb.String()), 0644)
+	return nil
 }
 
-func writeAction(sb *strings.Builder, action string) error {
-	// Parse action for special keys like <enter>, <esc>, <ctrl-c>
-	if strings.HasPrefix(action, "<") && strings.HasSuffix(action, ">") {
-		// Special key
-		key := strings.ToLower(action[1 : len(action)-1])
-		switch key {
-		case "enter":
-			sb.WriteString("Enter\n")
-		case "esc", "escape":
-			sb.WriteString("Escape\n")
-		case "tab":
-			sb.WriteString("Tab\n")
-		case "space":
-			sb.WriteString("Space\n")
-		case "backspace":
-			sb.WriteString("Backspace\n")
-		case "up":
-			sb.WriteString("Up\n")
-		case "down":
-			sb.WriteString("Down\n")
-		case "left":
-			sb.WriteString("Left\n")
-		case "right":
-			sb.WriteString("Right\n")
-		case "ctrl-c":
-			sb.WriteString("Ctrl+C\n")
-		default:
-			return fmt.Errorf("unknown special key: %s", action)
-		}
-	} else {
-		// Regular key sequence
-		fmt.Fprintf(sb, "Type \"%s\"\n", escapeQuotes(action))
+func checkFreezeInstalled() error {
+	cmd := exec.Command("freeze", "--version")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("freeze not installed. Install with: brew install charmbracelet/tap/freeze")
 	}
 	return nil
 }
 
-func escapeQuotes(s string) string {
-	return strings.ReplaceAll(s, "\"", "\\\"")
+func capturePNG(sessionName, outputPath string) error {
+	// Capture pane with ANSI codes preserved
+	captureCmd := exec.Command("tmux", "capture-pane", "-e", "-p", "-t", sessionName)
+
+	// Pipe to freeze
+	freezeCmd := exec.Command("freeze", "-o", outputPath)
+
+	// Connect pipes
+	pipe, err := captureCmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("failed to create pipe: %w", err)
+	}
+	freezeCmd.Stdin = pipe
+
+	// Start both commands
+	if err := freezeCmd.Start(); err != nil {
+		return fmt.Errorf("failed to start freeze: %w", err)
+	}
+	if err := captureCmd.Run(); err != nil {
+		return fmt.Errorf("failed to capture pane: %w", err)
+	}
+	if err := freezeCmd.Wait(); err != nil {
+		return fmt.Errorf("freeze failed: %w", err)
+	}
+
+	return nil
 }
 
-func runVHS(tapeFile string) error {
-	fmt.Println("Running VHS...")
-	cmd := exec.Command("vhs", tapeFile)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+func sendAction(sessionName, action string) error {
+	// Parse action for special keys like <enter>, <esc>, <ctrl-c>
+	if strings.HasPrefix(action, "<") && strings.HasSuffix(action, ">") {
+		// Special key
+		key := strings.ToLower(action[1 : len(action)-1])
+		var tmuxKey string
+		switch key {
+		case "enter":
+			tmuxKey = "Enter"
+		case "esc", "escape":
+			tmuxKey = "Escape"
+		case "tab":
+			tmuxKey = "Tab"
+		case "space":
+			tmuxKey = "Space"
+		case "backspace":
+			tmuxKey = "BSpace"
+		case "up":
+			tmuxKey = "Up"
+		case "down":
+			tmuxKey = "Down"
+		case "left":
+			tmuxKey = "Left"
+		case "right":
+			tmuxKey = "Right"
+		case "ctrl-c":
+			tmuxKey = "C-c"
+		default:
+			return fmt.Errorf("unknown special key: %s", action)
+		}
+		cmd := exec.Command("tmux", "send-keys", "-t", sessionName, tmuxKey)
+		return cmd.Run()
+	}
+
+	// Regular key sequence - send character by character to avoid issues
+	for _, char := range action {
+		cmd := exec.Command("tmux", "send-keys", "-t", sessionName, "-l", string(char))
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to send key '%c': %w", char, err)
+		}
+	}
+	return nil
 }
