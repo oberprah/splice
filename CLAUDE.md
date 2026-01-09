@@ -22,6 +22,57 @@ Setup git hooks (runs lint, tests, build on commit):
 git config core.hooksPath .githooks
 ```
 
+## Testing the Compiled Binary (For AI Agents)
+
+**DO NOT run `./splice` directly** - it requires a real terminal and will fail. Instead, use the test-app wrapper:
+
+```bash
+./test-app -c initial 'jjj' -c after-nav '<enter>' -c 'q' -c final
+```
+
+This creates screenshots at each checkpoint in `test-output/TIMESTAMP/`:
+- `001-initial.png` - Initial state after app loads
+- `002-after-nav.png` - After navigation ('jjj')
+- `003.png` - After pressing enter
+- `004-final.png` - After quit
+
+**Options**:
+- `-c` or `--checkpoint [name]` - Take screenshot (optional name)
+- `--width 1200` - Screenshot width in pixels (default: 1200)
+- `--height 800` - Screenshot height in pixels (default: 800)
+- `--font-size 12` - Terminal font size (default: 12)
+
+**Special keys**:
+- `<enter>`, `<esc>`, `<tab>`, `<space>`, `<backspace>`
+- `<up>`, `<down>`, `<left>`, `<right>`
+- `<ctrl-c>`
+
+**Examples**:
+```bash
+# Simple test with 2 checkpoints
+./test-app -c 'j' -c 'q' -c
+
+# Named checkpoints for clarity
+./test-app -c initial 'jjj' -c after-nav '<enter>' -c selected 'q' -c
+
+# Custom dimensions for more content
+./test-app --width 1600 --height 1000 --font-size 14 -c 'jj' -c
+
+# Build first if needed
+go build -o test-app ./cmd/test-app
+```
+
+**Understanding the syntax**:
+Actions come BEFORE the checkpoint:
+```bash
+./test-app 'jjj' -c after-nav 'q' -c
+#          ^^^^^ screenshot  ^^^ screenshot
+#          actions first     actions then screenshot
+```
+
+**Verification**:
+Review screenshots to verify the app behaved correctly. Screenshots are ~500KB PNG files at 1200×800.
+
 ## Package Architecture
 
 The project follows a layered architecture with strict import rules:

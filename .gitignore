@@ -6,6 +6,10 @@
 
 # Build artifacts
 /splice
+/test-app
+
+# Test output
+/test-output/
 
 # Test coverage
 coverage.out
