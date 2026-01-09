@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	splitPanelWidth    = 80  // Fixed width for details panel
+	splitPanelWidth    = 80  // Fixed width for files preview panel
 	splitThreshold     = 160 // Minimum terminal width to show split view
 	separatorWidth     = 3   // Width of " │ " separator
 	commitBodyMaxLines = 5   // Maximum lines for commit body in preview
@@ -49,15 +49,15 @@ func (s State) renderSimpleView(ctx core.Context) core.ViewRenderer {
 	return vb
 }
 
-// renderSplitView renders the log list on the left and details panel on the right
+// renderSplitView renders the log list on the left and files preview panel on the right
 func (s State) renderSplitView(ctx core.Context) core.ViewRenderer {
 	// Calculate widths
 	logWidth := ctx.Width() - splitPanelWidth - separatorWidth
-	detailsWidth := splitPanelWidth
+	previewWidth := splitPanelWidth
 
 	// Build columns independently
 	leftVb := s.buildCommitListColumn(logWidth, ctx).(*components.ViewBuilder)
-	rightVb := s.buildDetailsColumn(detailsWidth, ctx).(*components.ViewBuilder)
+	rightVb := s.buildFilesPreviewColumn(previewWidth, ctx).(*components.ViewBuilder)
 
 	// Compose the split view
 	vb := components.NewViewBuilder()
@@ -95,21 +95,21 @@ func (s State) buildCommitListColumn(width int, ctx core.Context) core.ViewRende
 	return vb
 }
 
-// buildDetailsColumn builds the right column (details panel) independently
-func (s State) buildDetailsColumn(width int, ctx core.Context) core.ViewRenderer {
+// buildFilesPreviewColumn builds the right column (files preview panel) independently
+func (s State) buildFilesPreviewColumn(width int, ctx core.Context) core.ViewRenderer {
 	vb := components.NewViewBuilder()
 
 	// Create style for fixed-width column
 	colStyle := lipgloss.NewStyle().Width(width)
 
-	// Render the details panel content
-	detailsLines := s.renderDetailsPanel(width, ctx.Height(), ctx)
+	// Render the files preview panel content
+	previewLines := s.renderFilesPreviewPanel(width, ctx.Height(), ctx)
 
 	// Build the column with viewport height
 	for i := 0; i < ctx.Height(); i++ {
 		var line string
-		if i < len(detailsLines) {
-			line = detailsLines[i]
+		if i < len(previewLines) {
+			line = previewLines[i]
 		}
 		// Apply fixed-width styling to each line
 		vb.AddLine(colStyle.Render(line))
@@ -165,9 +165,9 @@ func (s State) buildGraphForCommit(commitIndex int) string {
 	return ""
 }
 
-// renderDetailsPanel renders the details panel content for the currently selected commit or range
+// renderFilesPreviewPanel renders the files preview panel content for the currently selected commit or range
 // Returns a slice of lines to display in the panel
-func (s State) renderDetailsPanel(width, height int, ctx core.Context) []string {
+func (s State) renderFilesPreviewPanel(width, height int, ctx core.Context) []string {
 	var lines []string
 
 	// If no commits or cursor out of bounds, return empty panel

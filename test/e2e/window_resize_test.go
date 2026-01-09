@@ -129,15 +129,15 @@ func TestWindowResize(t *testing.T) {
 
 	runner := NewE2ETestRunner(t, m)
 
-	// 1. Start small (detail panel NOT shown, width < 160)
+	// 1. Start small (files preview panel NOT shown, width < 160)
 	runner.Send(tea.WindowSizeMsg{Width: 140, Height: 24})
 	runner.AssertGolden("window_resize/1_log_simple.golden")
 
-	// 2. Make it larger (detail panel shown, width >= 160)
+	// 2. Make it larger (files preview panel shown, width >= 160)
 	runner.Send(tea.WindowSizeMsg{Width: 180, Height: 40})
 	runner.AssertGolden("window_resize/2_log_split.golden")
 
-	// 3. Move down (detail panel updated)
+	// 3. Move down (files preview panel updated)
 	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
 	runner.AssertGolden("window_resize/3_log_detail_updated.golden")
 
