@@ -89,6 +89,21 @@ func TestLogState_View_SelectionIndicator(t *testing.T) {
 	}
 }
 
+func TestLogState_View_CursorLineBoldStyling(t *testing.T) {
+	testutils.SetupColorProfile()
+	commits := createTestCommits(3)
+
+	s := createLogStateWithGraph(commits)
+	s.Cursor = core.CursorNormal{Pos: 1}
+	s.ViewportStart = 0
+	s.Preview = PreviewNone{}
+	ctx := testutils.MockContext{W: 80, H: 24}
+
+	output := s.View(ctx)
+
+	assertLogViewGolden(t, output.(*components.ViewBuilder), "cursor_line_bold.golden")
+}
+
 func TestLogState_View_ViewportLimits(t *testing.T) {
 	testutils.SetupColorProfile()
 	commits := createTestCommits(20)
