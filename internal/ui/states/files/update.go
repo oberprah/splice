@@ -23,11 +23,7 @@ func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 		// Return command that produces PushDiffScreenMsg to navigate to DiffState
 		return s, func() tea.Msg {
 			return core.PushDiffScreenMsg{
-				Source: core.CommitRangeDiffSource{
-					Start: msg.CommitRange.Start,
-					End:   msg.CommitRange.End,
-					Count: msg.CommitRange.Count,
-				},
+				Source:        msg.Source,
 				File:          msg.File,
 				Diff:          msg.Diff,
 				ChangeIndices: msg.ChangeIndices,
@@ -123,15 +119,17 @@ func (s *State) loadDiff(file core.FileChange, fetchFullFileDiff core.FetchFullF
 		// For now, return an error
 		return func() tea.Msg {
 			return core.DiffLoadedMsg{
-				File: file,
-				Err:  fmt.Errorf("uncommitted changes not yet supported"),
+				Source: s.Source,
+				File:   file,
+				Err:    fmt.Errorf("uncommitted changes not yet supported"),
 			}
 		}
 	default:
 		return func() tea.Msg {
 			return core.DiffLoadedMsg{
-				File: file,
-				Err:  fmt.Errorf("unknown diff source type"),
+				Source: s.Source,
+				File:   file,
+				Err:    fmt.Errorf("unknown diff source type"),
 			}
 		}
 	}
@@ -141,9 +139,9 @@ func (s *State) loadDiff(file core.FileChange, fetchFullFileDiff core.FetchFullF
 		fullDiffResult, err := fetchFullFileDiff(commitRange, file)
 		if err != nil {
 			return core.DiffLoadedMsg{
-				CommitRange: commitRange,
-				File:        file,
-				Err:         err,
+				Source: s.Source,
+				File:   file,
+				Err:    err,
 			}
 		}
 
@@ -156,14 +154,14 @@ func (s *State) loadDiff(file core.FileChange, fetchFullFileDiff core.FetchFullF
 		)
 		if err != nil {
 			return core.DiffLoadedMsg{
-				CommitRange: commitRange,
-				File:        file,
-				Err:         err,
+				Source: s.Source,
+				File:   file,
+				Err:    err,
 			}
 		}
 
 		return core.DiffLoadedMsg{
-			CommitRange:   commitRange,
+			Source:        s.Source,
 			File:          file,
 			Diff:          alignedDiff,
 			ChangeIndices: changeIndices,

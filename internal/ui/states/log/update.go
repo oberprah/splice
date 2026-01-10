@@ -19,11 +19,7 @@ func (s State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 		// Transition to files state using navigation pattern
 		return s, func() tea.Msg {
 			return core.PushFilesScreenMsg{
-				Source: core.CommitRangeDiffSource{
-					Start: msg.CommitRange.Start,
-					End:   msg.CommitRange.End,
-					Count: msg.CommitRange.Count,
-				},
+				Source:    msg.Source,
 				Files:     msg.Files,
 				ExitOnPop: false, // In log view flow, pressing 'q' should return to log
 			}
@@ -118,9 +114,9 @@ func (s State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 				return s, func() tea.Msg {
 					fileChanges, err := fetchFileChanges(commitRange)
 					return core.FilesLoadedMsg{
-						CommitRange: commitRange,
-						Files:       fileChanges,
-						Err:         err,
+						Source: commitRange.ToDiffSource(),
+						Files:  fileChanges,
+						Err:    err,
 					}
 				}
 			}

@@ -402,8 +402,8 @@ func TestFilesState_Update_DiffLoadedMsgSuccess(t *testing.T) {
 
 	// Simulate DiffLoadedMsg with success
 	msg := core.DiffLoadedMsg{
-		CommitRange: core.NewSingleCommitRange(commit),
-		File:        files[2],
+		Source: core.NewSingleCommitRange(commit).ToDiffSource(),
+		File:   files[2],
 		Diff: &diff.AlignedFileDiff{
 			Left: diff.FileContent{
 				Path: "file.go",
@@ -471,9 +471,9 @@ func TestFilesState_Update_DiffLoadedMsgError(t *testing.T) {
 
 	// Simulate DiffLoadedMsg with error
 	msg := core.DiffLoadedMsg{
-		CommitRange: core.NewSingleCommitRange(commit),
-		File:        files[2],
-		Err:         fmt.Errorf("failed to load diff"),
+		Source: core.NewSingleCommitRange(commit).ToDiffSource(),
+		File:   files[2],
+		Err:    fmt.Errorf("failed to load diff"),
 	}
 	newState, _ := s.Update(msg, ctx)
 
