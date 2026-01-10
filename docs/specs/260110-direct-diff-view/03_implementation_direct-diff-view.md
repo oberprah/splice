@@ -362,7 +362,40 @@
 **Read:**
 - `internal/app/model.go`
 
-**Status:** Pending
+**Status:** Complete
+
+**Commits:** 1e6e041 (tests only - model.go already correct from Step 2)
+
+**Verification:**
+- All tests pass (`go test ./internal/app/...` and `go test ./...`)
+- Added 4 new test functions in `internal/app/model_navigation_test.go`:
+  - `TestNavigationWithCommitRangeDiffSource` - Verifies navigation stack with CommitRangeDiffSource:
+    - Push LogScreen → FilesScreen → DiffScreen with CommitRangeDiffSource
+    - Pop back through the stack correctly
+  - `TestNavigationWithUncommittedChangesDiffSource` - Verifies navigation stack with UncommittedChangesDiffSource for all three types:
+    - Unstaged changes (UncommittedTypeUnstaged)
+    - Staged changes (UncommittedTypeStaged)
+    - All uncommitted changes (UncommittedTypeAll)
+    - Tests push/pop behavior with ExitOnPop=true
+  - `TestNavigationStackExitOnPop` - Verifies ExitOnPop field is correctly passed through in PushFilesScreenMsg
+  - `TestNavigationWithMixedDiffSources` - Verifies navigation with both source types in the same session
+- All 5 tests pass (including original TestNavigationStack)
+- Pre-commit hooks pass (lint, tests, build)
+
+**Notes:**
+- No changes needed to `model.go` - Step 2 updates already handle DiffSource correctly:
+  - Lines 82-88: Navigation message handlers already use `.Source` field which is DiffSource
+  - The navigation stack is type-agnostic (stores `core.State` interface), so it works with both DiffSource types
+  - Function types (`FetchFileChangesFunc`, `FetchFullFileDiffFunc`) intentionally still use `CommitRange` for backward compatibility
+  - States handle conversion when needed (e.g., `fetchFileDiffForSource` in FilesState converts back to CommitRange for commit ranges)
+- Only added comprehensive test coverage to verify the existing implementation works correctly
+- Tests confirm that:
+  - Navigation messages properly handle both DiffSource types
+  - Push/pop behavior works correctly with each type
+  - ExitOnPop field is preserved and passed through
+  - Mixed navigation with both source types works seamlessly
+- The design pattern of keeping function types using CommitRange and converting at usage points is clean and maintains backward compatibility
+- Ready for Step 9 (implement CLI parsing in main.go)
 
 ---
 
