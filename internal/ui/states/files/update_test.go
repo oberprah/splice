@@ -482,3 +482,71 @@ func TestFilesState_Update_DiffLoadedMsgError(t *testing.T) {
 		t.Fatalf("Expected to stay in FilesState on error, got %T", newState)
 	}
 }
+
+// TestFetchFileDiffForSource_CommitRange tests that commit range sources use the injected function
+func TestFetchFileDiffForSource_CommitRange(t *testing.T) {
+	commit := createTestCommit()
+	commitRange := core.NewSingleCommitRange(commit)
+	source := commitRange.ToDiffSource()
+	file := core.FileChange{Path: "test.go", Status: "M"}
+
+	// Mock function that tracks if it was called
+	called := false
+	mockFetch := func(cr core.CommitRange, f core.FileChange) (*core.FullFileDiffResult, error) {
+		called = true
+		if cr.Start.Hash != commit.Hash || cr.End.Hash != commit.Hash {
+			t.Errorf("Expected commit range with hash %s, got %s..%s", commit.Hash, cr.Start.Hash, cr.End.Hash)
+		}
+		if f.Path != file.Path {
+			t.Errorf("Expected file path %s, got %s", file.Path, f.Path)
+		}
+		return &core.FullFileDiffResult{
+			OldContent: "old",
+			NewContent: "new",
+			DiffOutput: "diff",
+		}, nil
+	}
+
+	result, err := fetchFileDiffForSource(source, file, mockFetch)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if !called {
+		t.Error("Expected mock function to be called")
+	}
+	if result.OldContent != "old" {
+		t.Errorf("Expected old content 'old', got %s", result.OldContent)
+	}
+}
+
+// TestFetchFileDiffForSource_UnknownType tests error handling for unknown diff source types
+func TestFetchFileDiffForSource_UnknownType(t *testing.T) {
+	// Create an invalid source by type assertion (this is for testing error handling)
+	file := core.FileChange{Path: "test.go"}
+	mockFetch := func(cr core.CommitRange, f core.FileChange) (*core.FullFileDiffResult, error) {
+		return nil, fmt.Errorf("should not be called")
+	}
+
+	// Test with nil source (will cause type switch default case)
+	_, err := fetchFileDiffForSource(nil, file, mockFetch)
+	if err == nil {
+		t.Error("Expected error for unknown diff source type")
+	}
+	if err != nil && !contains(err.Error(), "unknown diff source type") {
+		t.Errorf("Expected 'unknown diff source type' error, got: %v", err)
+	}
+}
+
+// Helper function to check if string contains substring
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && findSubstring(s, substr))
+}
+
+func findSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
