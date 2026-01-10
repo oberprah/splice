@@ -423,7 +423,74 @@
 - `research/cli-parsing.md` (parsing approach)
 - `01_requirements_direct-diff-view.md` (FR1-FR3 for CLI specs)
 
-**Status:** Pending
+**Status:** Complete
+
+**Commits:** fc5c71a
+
+**Verification:**
+- All tests pass (`go test ./...`)
+- Build succeeds (`go build -o splice .`)
+- Manual testing verified:
+  - Empty diffs return clear error: `Error: no changes found in "HEAD..HEAD"`
+  - Invalid refs return clear error: `Error: invalid diff specification "nonexistent..HEAD": exit status 128`
+  - Valid specs pass validation and enter TUI
+  - Backward compatibility: `splice` still works (enters log view)
+- Pre-commit hooks pass (lint, tests, build)
+
+**Implementation Details:**
+
+1. **CLI Parsing Functions:**
+   - `parseArgs()`: Routes between "log" and "diff" commands based on first argument
+   - `parseDiffSpec()`: Parses diff specs into either:
+     - Uncommitted changes (no args → unstaged, --staged/--cached → staged, HEAD → all)
+     - Raw commit range spec (string) for later parsing
+   - `isValidDiffSpec()`: Basic syntax validation (rejects spaces, shell metacharacters)
+   - `validateDiffSpec()`: Uses `git diff --quiet` to check for changes
+     - Exit 0 = no changes → error
+     - Exit 1 = has changes → success
+     - Exit 128+ = invalid spec → error
+
+2. **Commit Range Parsing:**
+   - `parseCommitRange()`: Resolves commit range specs to `CommitRangeDiffSource`
+     - Handles two-dot ranges: `main..feature`
+     - Handles three-dot ranges: `main...feature` (finds merge base)
+     - Handles single refs (defaults to `ref..HEAD`)
+     - Counts commits in range
+   - `resolveCommit()`: Resolves git refs to `GitCommit` structs
+     - Uses `git log -1 --format=%H%n%s%n%an%n%aI%n%P`
+     - Parses date as RFC3339
+     - Extracts parent hashes
+
+3. **main() Function Updates:**
+   - Parses args with `parseArgs(os.Args)`
+   - For "diff" command:
+     - Parses diff spec with `parseDiffSpec()`
+     - Validates spec has changes with `validateDiffSpec()`
+     - Creates `DiffSource` (either `UncommittedChangesDiffSource` or `CommitRangeDiffSource`)
+     - Creates `DirectDiffLoadingState` with the diff source
+   - For "log" command (default):
+     - Creates `LoadingState` (existing behavior)
+   - Errors print to stderr and exit with code 1 before entering TUI
+
+4. **app.Model Updates:**
+   - `Init()`: Checks initial state type and dispatches appropriate command
+     - `DirectDiffLoadingState` → calls `FetchFileChangesForSource()`
+     - `LoadingState` → fetches commits (existing behavior)
+   - `pushState()`: Treats `DirectDiffLoadingState` as transient like `LoadingState`
+
+5. **Test Coverage:**
+   - `TestParseArgs`: 9 test cases for argument routing
+   - `TestParseDiffSpec`: 14 test cases for diff spec parsing
+   - `TestIsValidDiffSpec`: 14 test cases for syntax validation
+   - `TestValidateDiffSpec`: Skipped (requires git state setup, covered by manual testing)
+
+**Notes:**
+- Manual parsing (~270 lines) matches design goal of "lean" implementation
+- Zero new dependencies (no CLI framework)
+- Clear error messages for user errors
+- All design decisions from design doc followed exactly
+- Commit range parsing uses multiple git commands but is clear and maintainable
+- Ready for Step 10 (E2E tests) - though basic functionality is fully working
 
 ---
 
