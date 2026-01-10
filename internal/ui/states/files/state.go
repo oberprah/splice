@@ -6,18 +6,20 @@ import (
 
 // FilesState represents the state when displaying files changed in a commit
 type State struct {
-	CommitRange   core.CommitRange
+	Source        core.DiffSource
 	Files         []core.FileChange
 	Cursor        int
 	ViewportStart int
+	ExitOnPop     bool // If true, quit app when user presses 'q' instead of popping back
 }
 
 // New creates a new FilesState with cursor at the first file.
-func New(commitRange core.CommitRange, files []core.FileChange) *State {
+func New(source core.DiffSource, files []core.FileChange, exitOnPop bool) *State {
 	return &State{
-		CommitRange:   commitRange,
+		Source:        source,
 		Files:         files,
 		Cursor:        0,
 		ViewportStart: 0,
+		ExitOnPop:     exitOnPop,
 	}
 }

@@ -26,11 +26,13 @@ func assertDiffViewGolden(t *testing.T, output *components.ViewBuilder, filename
 func TestDiffState_View_AllLineTypes(t *testing.T) {
 	dmp := diffmatchpatch.New()
 
+	commit := core.GitCommit{
+		Hash:    "abc123def456789012345678901234567890abcd",
+		Message: "Refactor authentication module",
+	}
+	commitRange := core.NewSingleCommitRange(commit)
 	state := &State{
-		CommitRange: core.NewSingleCommitRange(core.GitCommit{
-			Hash:    "abc123def456789012345678901234567890abcd",
-			Message: "Refactor authentication module",
-		}),
+		Source: commitRange.ToDiffSource(),
 		File: core.FileChange{
 			Path:      "internal/auth/handler.go",
 			Additions: 2,
@@ -93,9 +95,10 @@ func TestDiffState_View_AllLineTypes(t *testing.T) {
 }
 
 func TestDiffState_View_TokenRendering(t *testing.T) {
+	commit := core.GitCommit{Hash: "abc123"}
 	state := &State{
-		CommitRange: core.NewSingleCommitRange(core.GitCommit{Hash: "abc123"}),
-		File:        core.FileChange{Path: "test.go"},
+		Source: createTestDiffSource(commit),
+		File:   core.FileChange{Path: "test.go"},
 		Diff: &diff.AlignedFileDiff{
 			Left: diff.FileContent{
 				Path: "test.go",
@@ -177,9 +180,10 @@ func TestDiffState_View_TokenRendering(t *testing.T) {
 func TestDiffState_View_InlineDiffRendering(t *testing.T) {
 	dmp := diffmatchpatch.New()
 
+	commit := core.GitCommit{Hash: "abc123"}
 	state := &State{
-		CommitRange: core.NewSingleCommitRange(core.GitCommit{Hash: "abc123"}),
-		File:        core.FileChange{Path: "test.go"},
+		Source: createTestDiffSource(commit),
+		File:   core.FileChange{Path: "test.go"},
 		Diff: &diff.AlignedFileDiff{
 			Left: diff.FileContent{
 				Path: "test.go",
@@ -278,9 +282,10 @@ func TestDiffState_View_InlineDiffRendering(t *testing.T) {
 }
 
 func TestDiffState_View_EmptyDiff(t *testing.T) {
+	commit := core.GitCommit{Hash: "abc123"}
 	state := &State{
-		CommitRange: core.NewSingleCommitRange(core.GitCommit{Hash: "abc123"}),
-		File:        core.FileChange{Path: "file.go"},
+		Source: createTestDiffSource(commit),
+		File:   core.FileChange{Path: "file.go"},
 		Diff: &diff.AlignedFileDiff{
 			Left: diff.FileContent{
 				Path:  "file.go",
@@ -318,9 +323,10 @@ func TestDiffState_View_Viewport(t *testing.T) {
 		}
 	}
 
+	commit := core.GitCommit{Hash: "abc123"}
 	state := &State{
-		CommitRange: core.NewSingleCommitRange(core.GitCommit{Hash: "abc123"}),
-		File:        core.FileChange{Path: "file.go"},
+		Source: createTestDiffSource(commit),
+		File:   core.FileChange{Path: "file.go"},
 		Diff: &diff.AlignedFileDiff{
 			Left: diff.FileContent{
 				Path:  "file.go",
@@ -343,18 +349,17 @@ func TestDiffState_View_Viewport(t *testing.T) {
 
 func TestDiffState_View_RangeHeader(t *testing.T) {
 	// Test that the header displays range format for multi-commit ranges
+	startCommit := core.GitCommit{
+		Hash:    "abc123def456789012345678901234567890abcd",
+		Message: "Start commit",
+	}
+	endCommit := core.GitCommit{
+		Hash:    "def456abc123456789012345678901234567890abc",
+		Message: "End commit",
+	}
+	commitRange := core.NewCommitRange(startCommit, endCommit, 4)
 	state := &State{
-		CommitRange: core.NewCommitRange(
-			core.GitCommit{
-				Hash:    "abc123def456789012345678901234567890abcd",
-				Message: "Start commit",
-			},
-			core.GitCommit{
-				Hash:    "def456abc123456789012345678901234567890abc",
-				Message: "End commit",
-			},
-			4, // 4 commits in range
-		),
+		Source: commitRange.ToDiffSource(),
 		File: core.FileChange{
 			Path:      "internal/auth/handler.go",
 			Additions: 25,

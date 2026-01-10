@@ -24,3 +24,8 @@ func NewSingleCommitRange(commit GitCommit) CommitRange {
 func NewCommitRange(start, end GitCommit, count int) CommitRange {
 	return CommitRange{Start: start, End: end, Count: count}
 }
+
+// ToDiffSource converts a CommitRange to a CommitRangeDiffSource.
+func (r CommitRange) ToDiffSource() CommitRangeDiffSource {
+	return CommitRangeDiffSource(r)
+}

@@ -12,14 +12,21 @@ import (
 	"github.com/oberprah/splice/internal/ui/testutils"
 )
 
+// createTestDiffSource creates a CommitRangeDiffSource for testing
+func createTestDiffSource(commit core.GitCommit) core.DiffSource {
+	return core.NewSingleCommitRange(commit).ToDiffSource()
+}
+
 func TestFilesState_Update_NavigationDown(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(10)
+	commitRange := core.NewSingleCommitRange(commit)
 	s := State{
-		CommitRange:   core.NewSingleCommitRange(commit),
+		Source:        commitRange.ToDiffSource(),
 		Files:         files,
 		Cursor:        0,
 		ViewportStart: 0,
+		ExitOnPop:     false,
 	}
 	ctx := testutils.MockContext{W: 80, H: 24}
 
@@ -40,11 +47,13 @@ func TestFilesState_Update_NavigationDown(t *testing.T) {
 func TestFilesState_Update_NavigationUp(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(10)
+	commitRange := core.NewSingleCommitRange(commit)
 	s := State{
-		CommitRange:   core.NewSingleCommitRange(commit),
+		Source:        commitRange.ToDiffSource(),
 		Files:         files,
 		Cursor:        5,
 		ViewportStart: 0,
+		ExitOnPop:     false,
 	}
 	ctx := testutils.MockContext{W: 80, H: 24}
 
@@ -65,11 +74,13 @@ func TestFilesState_Update_NavigationUp(t *testing.T) {
 func TestFilesState_Update_NavigationJumpToTop(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(10)
+	commitRange := core.NewSingleCommitRange(commit)
 	s := State{
-		CommitRange:   core.NewSingleCommitRange(commit),
+		Source:        commitRange.ToDiffSource(),
 		Files:         files,
 		Cursor:        5,
 		ViewportStart: 3,
+		ExitOnPop:     false,
 	}
 	ctx := testutils.MockContext{W: 80, H: 24}
 
@@ -94,11 +105,13 @@ func TestFilesState_Update_NavigationJumpToTop(t *testing.T) {
 func TestFilesState_Update_NavigationJumpToBottom(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(10)
+	commitRange := core.NewSingleCommitRange(commit)
 	s := State{
-		CommitRange:   core.NewSingleCommitRange(commit),
+		Source:        commitRange.ToDiffSource(),
 		Files:         files,
 		Cursor:        0,
 		ViewportStart: 0,
+		ExitOnPop:     false,
 	}
 	ctx := testutils.MockContext{W: 80, H: 24}
 
@@ -119,6 +132,8 @@ func TestFilesState_Update_NavigationJumpToBottom(t *testing.T) {
 func TestFilesState_Update_NavigationBoundaries(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(5)
+	commitRange := core.NewSingleCommitRange(commit)
+	diffSource := commitRange.ToDiffSource()
 
 	tests := []struct {
 		name           string
@@ -133,10 +148,11 @@ func TestFilesState_Update_NavigationBoundaries(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := State{
-				CommitRange:   core.NewSingleCommitRange(commit),
+				Source:        diffSource,
 				Files:         files,
 				Cursor:        tt.initialCursor,
 				ViewportStart: 0,
+				ExitOnPop:     false,
 			}
 			ctx := testutils.MockContext{W: 80, H: 24}
 
@@ -172,7 +188,7 @@ func TestFilesState_Update_ArrowKeyNavigation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := State{
-				CommitRange:   core.NewSingleCommitRange(commit),
+				Source: createTestDiffSource(commit), ExitOnPop: false,
 				Files:         files,
 				Cursor:        tt.initialCursor,
 				ViewportStart: 0,
@@ -197,11 +213,13 @@ func TestFilesState_Update_ArrowKeyNavigation(t *testing.T) {
 func TestFilesState_Update_ViewportScrolling(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(20)
+	commitRange := core.NewSingleCommitRange(commit)
 	s := State{
-		CommitRange:   core.NewSingleCommitRange(commit),
+		Source:        commitRange.ToDiffSource(),
 		Files:         files,
 		Cursor:        5,
 		ViewportStart: 0,
+		ExitOnPop:     false,
 	}
 	ctx := testutils.MockContext{W: 80, H: 10}
 
@@ -228,7 +246,7 @@ func TestFilesState_Update_BackNavigation(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(5)
 	s := State{
-		CommitRange:   core.NewSingleCommitRange(commit),
+		Source: createTestDiffSource(commit), ExitOnPop: false,
 		Files:         files,
 		Cursor:        2,
 		ViewportStart: 0,
@@ -269,11 +287,13 @@ func TestFilesState_Update_BackNavigation(t *testing.T) {
 func TestFilesState_Update_SingleFileList(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(1)
+	commitRange := core.NewSingleCommitRange(commit)
 	s := State{
-		CommitRange:   core.NewSingleCommitRange(commit),
+		Source:        commitRange.ToDiffSource(),
 		Files:         files,
 		Cursor:        0,
 		ViewportStart: 0,
+		ExitOnPop:     false,
 	}
 	ctx := testutils.MockContext{W: 80, H: 24}
 
@@ -294,11 +314,13 @@ func TestFilesState_Update_SingleFileList(t *testing.T) {
 func TestFilesState_Update_EmptyFileList(t *testing.T) {
 	commit := createTestCommit()
 	files := []core.FileChange{}
+	commitRange := core.NewSingleCommitRange(commit)
 	s := State{
-		CommitRange:   core.NewSingleCommitRange(commit),
+		Source:        commitRange.ToDiffSource(),
 		Files:         files,
 		Cursor:        0,
 		ViewportStart: 0,
+		ExitOnPop:     false,
 	}
 	ctx := testutils.MockContext{W: 80, H: 24}
 
@@ -320,7 +342,7 @@ func TestFilesState_Update_EnterKeyReturnsCommand(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(5)
 	s := State{
-		CommitRange:   core.NewSingleCommitRange(commit),
+		Source: createTestDiffSource(commit), ExitOnPop: false,
 		Files:         files,
 		Cursor:        2,
 		ViewportStart: 0,
@@ -346,9 +368,9 @@ func TestFilesState_Update_EnterOnEmptyFiles(t *testing.T) {
 	commit := createTestCommit()
 	files := []core.FileChange{}
 	s := State{
-		CommitRange: core.NewSingleCommitRange(commit),
-		Files:       files,
-		Cursor:      0,
+		Source: createTestDiffSource(commit), ExitOnPop: false, // OLD:CommitRange: core.NewSingleCommitRange(commit),
+		Files:  files,
+		Cursor: 0,
 	}
 	ctx := testutils.MockContext{W: 80, H: 24}
 
@@ -371,7 +393,7 @@ func TestFilesState_Update_DiffLoadedMsgSuccess(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(5)
 	s := State{
-		CommitRange:   core.NewSingleCommitRange(commit),
+		Source: createTestDiffSource(commit), ExitOnPop: false,
 		Files:         files,
 		Cursor:        2,
 		ViewportStart: 1,
@@ -441,9 +463,9 @@ func TestFilesState_Update_DiffLoadedMsgError(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(5)
 	s := State{
-		CommitRange: core.NewSingleCommitRange(commit),
-		Files:       files,
-		Cursor:      2,
+		Source: createTestDiffSource(commit), ExitOnPop: false, // OLD:CommitRange: core.NewSingleCommitRange(commit),
+		Files:  files,
+		Cursor: 2,
 	}
 	ctx := testutils.MockContext{W: 80, H: 24}
 

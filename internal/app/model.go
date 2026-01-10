@@ -80,11 +80,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, msg.InitCmd
 
 	case core.PushFilesScreenMsg:
-		m.pushState(files.New(msg.CommitRange, msg.Files))
+		m.pushState(files.New(msg.Source, msg.Files, msg.ExitOnPop))
 		return m, nil
 
 	case core.PushDiffScreenMsg:
-		m.pushState(diff.New(msg.CommitRange, msg.File, msg.Diff, msg.ChangeIndices))
+		m.pushState(diff.New(msg.Source, msg.File, msg.Diff, msg.ChangeIndices))
 		return m, nil
 
 	case core.PushErrorScreenMsg:

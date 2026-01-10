@@ -19,8 +19,13 @@ func (s State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 		// Transition to files state using navigation pattern
 		return s, func() tea.Msg {
 			return core.PushFilesScreenMsg{
-				CommitRange: msg.CommitRange,
-				Files:       msg.Files,
+				Source: core.CommitRangeDiffSource{
+					Start: msg.CommitRange.Start,
+					End:   msg.CommitRange.End,
+					Count: msg.CommitRange.Count,
+				},
+				Files:     msg.Files,
+				ExitOnPop: false, // In log view flow, pressing 'q' should return to log
 			}
 		}
 

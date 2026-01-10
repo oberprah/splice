@@ -1,6 +1,8 @@
 package files
 
 import (
+	"fmt"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/oberprah/splice/internal/core"
@@ -21,7 +23,11 @@ func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 		// Return command that produces PushDiffScreenMsg to navigate to DiffState
 		return s, func() tea.Msg {
 			return core.PushDiffScreenMsg{
-				CommitRange:   msg.CommitRange,
+				Source: core.CommitRangeDiffSource{
+					Start: msg.CommitRange.Start,
+					End:   msg.CommitRange.End,
+					Count: msg.CommitRange.Count,
+				},
 				File:          msg.File,
 				Diff:          msg.Diff,
 				ChangeIndices: msg.ChangeIndices,
@@ -31,6 +37,10 @@ func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q":
+			// Exit or go back depending on ExitOnPop flag
+			if s.ExitOnPop {
+				return s, tea.Quit
+			}
 			// Go back to the previous state using navigation pattern
 			return s, func() tea.Msg {
 				return core.PopScreenMsg{}
@@ -102,7 +112,29 @@ func (s *State) updateViewport(height int) {
 
 // loadDiff creates a command to fetch and parse the diff for a file
 func (s *State) loadDiff(file core.FileChange, fetchFullFileDiff core.FetchFullFileDiffFunc) tea.Cmd {
-	commitRange := s.CommitRange
+	// Extract CommitRange from Source (for now, we only support CommitRangeDiffSource)
+	// This will be updated in later steps when we add support for uncommitted changes
+	var commitRange core.CommitRange
+	switch src := s.Source.(type) {
+	case core.CommitRangeDiffSource:
+		commitRange = src.ToCommitRange()
+	case core.UncommittedChangesDiffSource:
+		// TODO: Handle uncommitted changes in a future step
+		// For now, return an error
+		return func() tea.Msg {
+			return core.DiffLoadedMsg{
+				File: file,
+				Err:  fmt.Errorf("uncommitted changes not yet supported"),
+			}
+		}
+	default:
+		return func() tea.Msg {
+			return core.DiffLoadedMsg{
+				File: file,
+				Err:  fmt.Errorf("unknown diff source type"),
+			}
+		}
+	}
 
 	return func() tea.Msg {
 		// Fetch full file content and diff

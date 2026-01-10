@@ -11,6 +11,11 @@ import (
 	"github.com/oberprah/splice/internal/ui/testutils"
 )
 
+// createTestDiffSource creates a CommitRangeDiffSource for testing
+func createTestDiffSource(commit core.GitCommit) core.DiffSource {
+	return core.NewSingleCommitRange(commit).ToDiffSource()
+}
+
 func createTestDiffState(numLines int) *State {
 	// Create left and right file content with identical lines
 	leftLines := make([]diff.AlignedLine, numLines)
@@ -33,9 +38,10 @@ func createTestDiffState(numLines int) *State {
 		}
 	}
 
+	commit := core.GitCommit{Hash: "abc123"}
 	return &State{
-		CommitRange: core.NewSingleCommitRange(core.GitCommit{Hash: "abc123"}),
-		File:        core.FileChange{Path: "file.go", Additions: 5, Deletions: 3},
+		Source: createTestDiffSource(commit),
+		File:   core.FileChange{Path: "file.go", Additions: 5, Deletions: 3},
 		Diff: &diff.AlignedFileDiff{
 			Left: diff.FileContent{
 				Path:  "file.go",
@@ -388,9 +394,10 @@ func createTestDiffStateWithChanges(numLines int, changeIndices []int) *State {
 		}
 	}
 
+	commit := core.GitCommit{Hash: "abc123"}
 	return &State{
-		CommitRange: core.NewSingleCommitRange(core.GitCommit{Hash: "abc123"}),
-		File:        core.FileChange{Path: "file.go", Additions: 5, Deletions: 3},
+		Source: createTestDiffSource(commit),
+		File:   core.FileChange{Path: "file.go", Additions: 5, Deletions: 3},
 		Diff: &diff.AlignedFileDiff{
 			Left: diff.FileContent{
 				Path:  "file.go",

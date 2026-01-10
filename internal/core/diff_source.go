@@ -33,6 +33,25 @@ const (
 	UncommittedTypeAll                             // Working tree vs HEAD (git diff HEAD)
 )
 
+// String returns a string representation of the UncommittedType.
+func (u UncommittedType) String() string {
+	switch u {
+	case UncommittedTypeUnstaged:
+		return "UncommittedTypeUnstaged"
+	case UncommittedTypeStaged:
+		return "UncommittedTypeStaged"
+	case UncommittedTypeAll:
+		return "UncommittedTypeAll"
+	default:
+		return "UnknownUncommittedType"
+	}
+}
+
+// ToCommitRange converts a CommitRangeDiffSource to a CommitRange.
+func (c CommitRangeDiffSource) ToCommitRange() CommitRange {
+	return CommitRange(c)
+}
+
 // Marker method implementations - seal the DiffSource interface
 func (CommitRangeDiffSource) diffSource()        {}
 func (UncommittedChangesDiffSource) diffSource() {}
