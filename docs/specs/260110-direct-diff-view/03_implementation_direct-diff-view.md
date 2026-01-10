@@ -315,7 +315,33 @@
 **Read:**
 - `internal/ui/states/log/update.go`
 
-**Status:** Pending
+**Status:** Complete
+
+**Commits:** No code changes needed (implementation already correct from Step 2)
+
+**Verification:**
+- All tests pass (`go test ./internal/ui/states/log/...` and `go test ./...`)
+- Added 3 new unit tests in `internal/ui/states/log/update_test.go`:
+  - `TestLogState_Update_EnterCreatesCommitRangeDiffSource` - Verifies Enter key creates FilesLoadedMsg with CommitRangeDiffSource for:
+    - Single commit in normal mode (Start == End, Count = 1)
+    - Range in visual mode (anchor < pos)
+    - Range in visual mode (pos < anchor)
+  - `TestLogState_Update_FilesLoadedMsgCreatesPushFilesScreenMsg` - Verifies FilesLoadedMsg creates PushFilesScreenMsg with:
+    - ExitOnPop = false (log view navigation allows returning)
+    - Source preserved as CommitRangeDiffSource
+    - Files preserved correctly
+  - `TestLogState_Update_FilesLoadedMsgWithError` - Verifies error handling (no navigation on error)
+- All 27 tests pass, including all existing golden file tests
+- Pre-commit hooks pass (lint, tests, build)
+
+**Notes:**
+- Implementation was already correct from Step 2:
+  - Line 117 in `update.go`: `commitRange.ToDiffSource()` properly wraps CommitRange in CommitRangeDiffSource
+  - Line 24 in `update.go`: `ExitOnPop: false` correctly set for log view navigation
+- Only added tests to verify the existing implementation
+- The `ToDiffSource()` conversion method (in `internal/core/commit_range.go`) provides a clean conversion from CommitRange to CommitRangeDiffSource
+- Tests verify correct behavior for both single commits and commit ranges in visual mode
+- Ready for Step 8 (update app.Model to handle DiffSource)
 
 ---
 
