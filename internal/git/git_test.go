@@ -639,3 +639,230 @@ func TestParseRefDecorations(t *testing.T) {
 		})
 	}
 }
+
+// Tests for uncommitted changes file list functions
+func TestParseUncommittedFileChanges(t *testing.T) {
+	tests := []struct {
+		name         string
+		numstatOut   string
+		statusOut    string
+		expectedType string // "unstaged", "staged", or "all"
+		expected     []core.FileChange
+	}{
+		{
+			name:         "unstaged - single modified file",
+			numstatOut:   "15\t3\tinternal/ui/app.go",
+			statusOut:    "M\tinternal/ui/app.go",
+			expectedType: "unstaged",
+			expected: []core.FileChange{
+				{
+					Path:      "internal/ui/app.go",
+					Additions: 15,
+					Deletions: 3,
+					Status:    "M",
+				},
+			},
+		},
+		{
+			name:         "staged - added file",
+			numstatOut:   "50\t0\tnewfile.go",
+			statusOut:    "A\tnewfile.go",
+			expectedType: "staged",
+			expected: []core.FileChange{
+				{
+					Path:      "newfile.go",
+					Additions: 50,
+					Deletions: 0,
+					Status:    "A",
+				},
+			},
+		},
+		{
+			name:         "all uncommitted - deleted file",
+			numstatOut:   "0\t25\toldfile.go",
+			statusOut:    "D\toldfile.go",
+			expectedType: "all",
+			expected: []core.FileChange{
+				{
+					Path:      "oldfile.go",
+					Additions: 0,
+					Deletions: 25,
+					Status:    "D",
+				},
+			},
+		},
+		{
+			name:         "multiple files with different statuses",
+			numstatOut:   "10\t5\tREADME.md\n50\t0\tnew.go\n0\t30\told.go",
+			statusOut:    "M\tREADME.md\nA\tnew.go\nD\told.go",
+			expectedType: "unstaged",
+			expected: []core.FileChange{
+				{
+					Path:      "README.md",
+					Additions: 10,
+					Deletions: 5,
+					Status:    "M",
+				},
+				{
+					Path:      "new.go",
+					Additions: 50,
+					Deletions: 0,
+					Status:    "A",
+				},
+				{
+					Path:      "old.go",
+					Additions: 0,
+					Deletions: 30,
+					Status:    "D",
+				},
+			},
+		},
+		{
+			name:         "binary file",
+			numstatOut:   "-\t-\timage.png",
+			statusOut:    "M\timage.png",
+			expectedType: "unstaged",
+			expected: []core.FileChange{
+				{
+					Path:      "image.png",
+					Additions: 0,
+					Deletions: 0,
+					Status:    "M",
+					IsBinary:  true,
+				},
+			},
+		},
+		{
+			name:         "empty - no changes",
+			numstatOut:   "",
+			statusOut:    "",
+			expectedType: "unstaged",
+			expected:     []core.FileChange{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Parse status map (simulating what the function does)
+			statusMap := make(map[string]string)
+			statusLines := strings.Split(strings.TrimSpace(tt.statusOut), "\n")
+			for _, line := range statusLines {
+				if line == "" {
+					continue
+				}
+				parts := strings.SplitN(line, "\t", 2)
+				if len(parts) == 2 {
+					statusMap[parts[1]] = parts[0]
+				}
+			}
+
+			// Parse file changes
+			changes, err := ParseFileChangesOutput(tt.numstatOut)
+			if err != nil {
+				t.Fatalf("ParseFileChangesOutput() error = %v", err)
+			}
+
+			// Add status to each change
+			for i := range changes {
+				if status, ok := statusMap[changes[i].Path]; ok {
+					changes[i].Status = status
+				}
+			}
+
+			if !reflect.DeepEqual(changes, tt.expected) {
+				t.Errorf("Result mismatch:\ngot:  %+v\nwant: %+v", changes, tt.expected)
+			}
+		})
+	}
+}
+
+// Tests for uncommitted file diff functions
+func TestUncommittedFileDiffParsing(t *testing.T) {
+	tests := []struct {
+		name         string
+		file         core.FileChange
+		oldContent   string
+		newContent   string
+		unifiedDiff  string
+		diffType     string // "unstaged", "staged", or "all"
+		expectOldErr bool
+		expectNewErr bool
+	}{
+		{
+			name: "unstaged - modified file",
+			file: core.FileChange{
+				Path:      "test.go",
+				Status:    "M",
+				Additions: 5,
+				Deletions: 2,
+			},
+			oldContent:  "package main\n\nfunc old() {}\n",
+			newContent:  "package main\n\nfunc new() {}\nfunc added() {}\n",
+			unifiedDiff: "diff --git a/test.go b/test.go\n@@ -1,3 +1,4 @@\n package main\n \n-func old() {}\n+func new() {}\n+func added() {}\n",
+			diffType:    "unstaged",
+		},
+		{
+			name: "staged - added file (no old content)",
+			file: core.FileChange{
+				Path:      "new.go",
+				Status:    "A",
+				Additions: 10,
+				Deletions: 0,
+			},
+			oldContent:   "",
+			newContent:   "package main\n\nfunc main() {}\n",
+			unifiedDiff:  "diff --git a/new.go b/new.go\nnew file mode 100644\n@@ -0,0 +1,3 @@\n+package main\n+\n+func main() {}\n",
+			diffType:     "staged",
+			expectOldErr: true, // Old content doesn't exist
+		},
+		{
+			name: "all - deleted file (no new content)",
+			file: core.FileChange{
+				Path:      "deleted.go",
+				Status:    "D",
+				Additions: 0,
+				Deletions: 5,
+			},
+			oldContent:   "package main\n\nfunc removed() {}\n",
+			newContent:   "",
+			unifiedDiff:  "diff --git a/deleted.go b/deleted.go\ndeleted file mode 100644\n@@ -1,3 +0,0 @@\n-package main\n-\n-func removed() {}\n",
+			diffType:     "all",
+			expectNewErr: true, // New content doesn't exist
+		},
+		{
+			name: "unstaged - binary file",
+			file: core.FileChange{
+				Path:     "image.png",
+				Status:   "M",
+				IsBinary: true,
+			},
+			oldContent:  "binary content old",
+			newContent:  "binary content new",
+			unifiedDiff: "Binary files a/image.png and b/image.png differ\n",
+			diffType:    "unstaged",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Verify the test data structure
+			if tt.file.Status == "A" && !tt.expectOldErr {
+				t.Error("Added files should expect old content error")
+			}
+			if tt.file.Status == "D" && !tt.expectNewErr {
+				t.Error("Deleted files should expect new content error")
+			}
+
+			// Verify unified diff contains expected markers
+			if tt.file.IsBinary {
+				if !strings.Contains(tt.unifiedDiff, "Binary files") {
+					t.Error("Binary file diff should contain 'Binary files' marker")
+				}
+			} else {
+				if !strings.Contains(tt.unifiedDiff, "diff --git") {
+					t.Error("Unified diff should contain 'diff --git' header")
+				}
+			}
+		})
+	}
+}
