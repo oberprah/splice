@@ -317,7 +317,7 @@
 
 **Status:** Complete
 
-**Commits:** No code changes needed (implementation already correct from Step 2)
+**Commits:** c363f7c (tests only - implementation already correct from Step 2)
 
 **Verification:**
 - All tests pass (`go test ./internal/ui/states/log/...` and `go test ./...`)
