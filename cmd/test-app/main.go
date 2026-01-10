@@ -274,8 +274,16 @@ func capturePNG(sessionName, outputPath string) error {
 	// Capture pane with ANSI codes preserved
 	captureCmd := exec.Command("tmux", "capture-pane", "-e", "-p", "-t", sessionName)
 
-	// Pipe to freeze
-	freezeCmd := exec.Command("freeze", "-o", outputPath)
+	// Pipe to freeze with terminal-optimized settings
+	freezeCmd := exec.Command("freeze", "-o", outputPath,
+		"--language", "txt", // Required for freeze to process terminal output
+		"--font.family", "JetBrainsMono Nerd Font Mono", // Excellent monospace with box-drawing support
+		"--font.size", "14",
+		"--font.ligatures=false", // Terminals don't use ligatures
+		"--window=false",         // Remove window chrome
+		"--margin", "0",          // Remove extra margins
+		"--padding", "10", // Minimal padding
+	)
 
 	// Connect pipes
 	pipe, err := captureCmd.StdoutPipe()
