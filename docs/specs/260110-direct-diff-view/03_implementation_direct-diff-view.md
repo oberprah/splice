@@ -520,7 +520,35 @@
 - `docs/guidelines/testing-guidelines.md`
 - `01_requirements_direct-diff-view.md` (FR1-FR6 acceptance criteria)
 
-**Status:** Pending
+**Status:** Complete
+
+**Commits:** 3013f0c
+
+**Verification:**
+- All E2E tests pass when run directly (`go test ./test/e2e/diff_command_test.go ./test/e2e/helpers_test.go`)
+- Full test suite passes (`go test ./...`)
+- Tests created with 7 test functions covering:
+  - TestDiffCommand_UnstagedChanges - Complete workflow for unstaged changes
+  - TestDiffCommand_StagedChanges - Staged changes workflow
+  - TestDiffCommand_AllUncommitted - All uncommitted changes workflow
+  - TestDiffCommand_TwoDotRange - Two-dot commit range workflow
+  - TestDiffCommand_RelativeRange - Relative commit range workflow (HEAD~N..HEAD)
+  - TestDiffCommand_ExitOnPopBehavior - Verifies ExitOnPop functionality
+  - TestDiffCommand_EmptyDiff - Error handling for empty diffs
+- 11 golden files created for visual regression testing
+- All tests use real git repositories for true E2E validation
+
+**Notes:**
+- Tests use `setupGitTestEnv()` helper to properly isolate test git repositories from parent repo
+- Golden file assertions used for uncommitted change workflows (deterministic)
+- Functional verification only for commit range workflows (non-deterministic commit hashes)
+- Tests verify:
+  - Direct navigation to FilesState
+  - Correct file lists displayed
+  - Navigation to DiffState works
+  - ExitOnPop behavior (quit exits vs returns to log)
+  - Error handling for empty diffs
+  - Backward compatibility maintained
 
 ---
 
