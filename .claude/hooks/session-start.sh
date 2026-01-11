@@ -6,6 +6,9 @@ if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
   exit 0
 fi
 
+# Prevent Go from auto-downloading toolchains before we check versions
+export GOTOOLCHAIN=local
+
 # ============================================================================
 # Configuration
 # ============================================================================
