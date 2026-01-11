@@ -229,6 +229,11 @@ func run() error {
 		return fmt.Errorf("failed to parse tape file: %w", err)
 	}
 
+	// Check dependencies upfront (before building)
+	if err := checkTmuxInstalled(); err != nil {
+		return err
+	}
+
 	// Build splice first
 	if err := buildSplice(); err != nil {
 		return fmt.Errorf("failed to build splice: %w", err)
@@ -458,6 +463,14 @@ func runTape(commands []TapeCommand, config *Config, outputDir string) error {
 		}
 	}
 
+	return nil
+}
+
+func checkTmuxInstalled() error {
+	cmd := exec.Command("tmux", "-V")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("tmux not installed. Install with: brew install tmux")
+	}
 	return nil
 }
 
