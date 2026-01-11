@@ -18,16 +18,20 @@ import (
 // FetchCommitsFunc is a function type for fetching git commits
 type FetchCommitsFunc func(limit int) ([]core.GitCommit, error)
 
+// FetchFileChangesForSourceFunc is a function type for fetching file changes for a DiffSource
+type FetchFileChangesForSourceFunc func(source core.DiffSource) ([]core.FileChange, error)
+
 // Model represents the application model using the state pattern.
 // It implements tea.Model for Bubbletea and core.Context for states.
 type Model struct {
-	stack             []core.State // Navigation stack - current state is always stack[len-1]
-	width             int
-	height            int
-	fetchCommits      FetchCommitsFunc
-	fetchFileChanges  core.FetchFileChangesFunc
-	fetchFullFileDiff core.FetchFullFileDiffFunc
-	nowFunc           func() time.Time
+	stack                     []core.State // Navigation stack - current state is always stack[len-1]
+	width                     int
+	height                    int
+	fetchCommits              FetchCommitsFunc
+	fetchFileChanges          core.FetchFileChangesFunc
+	fetchFileChangesForSource FetchFileChangesForSourceFunc
+	fetchFullFileDiff         core.FetchFullFileDiffFunc
+	nowFunc                   func() time.Time
 }
 
 // current returns the current state (top of stack).
@@ -66,6 +70,17 @@ func NewModel(opts ...ModelOption) Model {
 func (m Model) Init() tea.Cmd {
 	// Check if the initial state is DirectDiffLoadingState
 	if state, ok := m.current().(directdiff.State); ok {
+		// Use injected function if available (for testing), otherwise use default
+		if m.fetchFileChangesForSource != nil {
+			return func() tea.Msg {
+				files, err := m.fetchFileChangesForSource(state.Source)
+				return core.FilesLoadedMsg{
+					Source: state.Source,
+					Files:  files,
+					Err:    err,
+				}
+			}
+		}
 		return directdiff.FetchFileChangesForSource(state.Source)
 	}
 
