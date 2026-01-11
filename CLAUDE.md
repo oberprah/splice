@@ -103,9 +103,3 @@ Navigation uses typed messages (`core.Push*ScreenMsg`, `core.PopScreenMsg`) hand
 All external dependencies (git commands, time) are mocked via functional options on `app.Model`. Test helpers are in `internal/ui/testutils/`.
 
 **Golden file updates**: After running `go test ./... -update`, always review the git diff of `.golden` files to verify changes are intentional before committing.
-
-## Pull Requests
-
-**Read `docs/guidelines/pull-request-guidelines.md` before creating pull requests.**
-
-Focus on helping reviewers understand what changed, why it changed, and what implications it has. Keep descriptions concise and information-dense. Include optional sections (How, Breaking Changes) only when they add value for understanding the change.

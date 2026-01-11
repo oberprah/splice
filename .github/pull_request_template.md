@@ -12,7 +12,3 @@ Implementation approach and key technical decisions
 **Breaking Changes**
 What breaks, migration strategy, and rollback plan
 -->
-
-<!--
-See docs/guidelines/pull-request-guidelines.md for detailed guidance on writing effective PRs.
--->
