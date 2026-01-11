@@ -27,13 +27,11 @@ type TapeContext struct {
 
 // Config holds the tape configuration
 type Config struct {
-	Output string // Output directory
-	Width  int    // Terminal width in columns
-	Height int    // Terminal height in rows
+	Width  int // Terminal width in columns
+	Height int // Terminal height in rows
 }
 
 // Command types
-type OutputCmd struct{ path string }
 type WidthCmd struct{ width int }
 type HeightCmd struct{ height int }
 type SendCmd struct{ keys string }
@@ -41,11 +39,6 @@ type SleepCmd struct{ duration time.Duration }
 type TextshotCmd struct{ name string }
 type AnishotCmd struct{ name string }
 type SnapshotCmd struct{ name string }
-
-func (c *OutputCmd) Execute(ctx *TapeContext) error {
-	ctx.config.Output = c.path
-	return nil
-}
 
 func (c *WidthCmd) Execute(ctx *TapeContext) error {
 	ctx.config.Width = c.width
@@ -139,11 +132,12 @@ DESCRIPTION:
     Runs splice in a tmux session and captures snapshots based on commands
     in a tape file. Tape files use a simple line-based format similar to VHS.
 
+    Output is always saved to: .test-output/<timestamp>/
+
     Note: This tool always builds and tests splice from the current source code.
 
 TAPE FILE FORMAT:
     # Comments start with #
-    Output .test-output     # Output directory (required)
     Width 120               # Terminal columns (default: 120)
     Height 40               # Terminal rows (default: 40)
 
@@ -156,7 +150,6 @@ TAPE FILE FORMAT:
 COMMANDS:
 
   Configuration (applied at parse time):
-    Output <path>           Output directory (required)
     Width <cols>            Terminal width (default: 120)
     Height <rows>           Terminal height (default: 40)
 
@@ -173,7 +166,6 @@ SPECIAL KEYS (use with Send):
 
 EXAMPLE TAPE FILE:
     # Test navigation
-    Output .test-output
     Width 120
     Height 40
 
@@ -192,7 +184,7 @@ EXAMPLE TAPE FILE:
     Send q
 
 OUTPUT:
-    Creates numbered snapshots in Output/<timestamp>/:
+    Creates numbered snapshots in .test-output/<timestamp>/:
     - 001-initial.txt       Plain text (~1-4KB)
     - 002-initial.png       PNG image (~500KB-1.7MB)
     - 003-after-nav.txt     Plain text
@@ -209,7 +201,8 @@ EXAMPLES:
 
     # Create your own tape file
     cat > my-test.tape <<EOF
-    Output .test-output
+    Width 120
+    Height 40
     Sleep 1s
     Textshot start
     Send j
@@ -236,17 +229,13 @@ func run() error {
 		return fmt.Errorf("failed to parse tape file: %w", err)
 	}
 
-	if config.Output == "" {
-		return fmt.Errorf("tape file must specify Output directive")
-	}
-
 	// Build splice first
 	if err := buildSplice(); err != nil {
 		return fmt.Errorf("failed to build splice: %w", err)
 	}
 
 	// Create output directory with timestamp
-	outputDir, err := createOutputDir(config.Output)
+	outputDir, err := createOutputDir()
 	if err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
@@ -297,7 +286,7 @@ func parseTapeFile(path string) ([]TapeCommand, *Config, error) {
 
 		// Apply config commands immediately, queue execution commands
 		switch c := cmd.(type) {
-		case *OutputCmd, *WidthCmd, *HeightCmd:
+		case *WidthCmd, *HeightCmd:
 			if err := c.Execute(&TapeContext{config: config}); err != nil {
 				return nil, nil, fmt.Errorf("line %d: %w", lineNum, err)
 			}
@@ -328,12 +317,6 @@ func parseLine(line string) (TapeCommand, error) {
 	}
 
 	switch command {
-	case "Output":
-		if args == "" {
-			return nil, fmt.Errorf("output requires a path")
-		}
-		return &OutputCmd{path: args}, nil
-
 	case "Width":
 		if args == "" {
 			return nil, fmt.Errorf("width requires a value")
@@ -420,9 +403,9 @@ func buildSplice() error {
 	return cmd.Run()
 }
 
-func createOutputDir(basePath string) (string, error) {
+func createOutputDir() (string, error) {
 	timestamp := time.Now().Format("2006-01-02-150405")
-	dir := filepath.Join(basePath, timestamp)
+	dir := filepath.Join(".test-output", timestamp)
 	return dir, os.MkdirAll(dir, 0755)
 }
 

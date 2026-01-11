@@ -31,11 +31,10 @@ git config core.hooksPath .githooks
 ./run-tape my-test.tape     # Build and test current code
 ```
 
-The tape-runner uses tape files (similar to VHS format) to define test scenarios. It builds splice from the current source and tests it in a tmux session.
+The tape-runner uses tape files (similar to VHS format) to define test scenarios. It builds splice from the current source and tests it in a tmux session. Output is always saved to `.test-output/<timestamp>/`.
 
 Quick example:
 ```tape
-Output .test-output
 Sleep 1s
 Textshot initial    # Plain text
 Snapshot initial    # PNG image
