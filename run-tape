@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Helper script to run tape-runner without explicit build step
+# Usage: ./run-tape <tape-file>
+#        ./run-tape --help
+
+set -e
+
+exec go run ./test/agent/tape-runner "$@"
