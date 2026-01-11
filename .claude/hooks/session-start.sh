@@ -75,10 +75,11 @@ verify_installation() {
 }
 
 configure_environment() {
-  # Add Go to PATH for the session
+  # Add Go to PATH and configure toolchain for the session
   if [[ -n "${CLAUDE_ENV_FILE:-}" ]]; then
     echo "export PATH=\"${GO_INSTALL_DIR}/bin:\$PATH\"" >> "$CLAUDE_ENV_FILE"
-    echo "🔧 Go added to session PATH"
+    echo "export GOTOOLCHAIN=local" >> "$CLAUDE_ENV_FILE"
+    echo "🔧 Go added to session PATH with local toolchain"
   fi
 }
 
