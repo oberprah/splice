@@ -115,9 +115,35 @@ func (c *SnapshotCmd) Execute(ctx *TapeContext) error {
 }
 
 func main() {
+	// Ensure GOBIN is in PATH for freeze and other go-installed tools
+	ensureGoBinInPath()
+
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
+	}
+}
+
+// ensureGoBinInPath adds $HOME/go/bin to PATH if not already present
+func ensureGoBinInPath() {
+	home := os.Getenv("HOME")
+	if home == "" {
+		return
+	}
+
+	gobin := filepath.Join(home, "go", "bin")
+	currentPath := os.Getenv("PATH")
+
+	// Check if already in PATH
+	for _, dir := range strings.Split(currentPath, ":") {
+		if dir == gobin {
+			return
+		}
+	}
+
+	// Add GOBIN to PATH for this process and all child processes
+	if err := os.Setenv("PATH", gobin+":"+currentPath); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to add GOBIN to PATH: %v\n", err)
 	}
 }
 
@@ -475,25 +501,9 @@ func capturePNG(sessionName, outputPath string) error {
 	// Capture pane with ANSI codes preserved
 	captureCmd := exec.Command("tmux", "capture-pane", "-e", "-p", "-t", sessionName)
 
-	// Find freeze binary (check PATH first, then GOBIN)
-	freezePath, err := exec.LookPath("freeze")
-	if err != nil {
-		// Try GOBIN directory
-		home := os.Getenv("HOME")
-		if home != "" {
-			gobin := filepath.Join(home, "go", "bin", "freeze")
-			if _, err := os.Stat(gobin); err == nil {
-				freezePath = gobin
-			} else {
-				return fmt.Errorf("freeze not found in PATH or GOBIN: %w", err)
-			}
-		} else {
-			return fmt.Errorf("freeze not found in PATH: %w", err)
-		}
-	}
-
 	// Pipe to freeze with terminal-optimized settings
-	freezeCmd := exec.Command(freezePath, "-o", outputPath,
+	// (freeze is found via PATH, which includes GOBIN from ensureGoBinInPath)
+	freezeCmd := exec.Command("freeze", "-o", outputPath,
 		"--language", "txt", // Required for freeze to process terminal output
 		"--font.family", "JetBrainsMono Nerd Font Mono", // Excellent monospace with box-drawing support
 		"--font.size", "14",

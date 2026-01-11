@@ -18,8 +18,8 @@ install_freeze() {
     # Install librsvg2-bin (required for PNG rendering)
     if ! command -v rsvg-convert &> /dev/null; then
       echo "   Installing librsvg2-bin..."
-      apt-get update -qq
-      apt-get install -y librsvg2-bin
+      apt-get update -qq 2>&1 | grep -v "^[WE]:" || true
+      DEBIAN_FRONTEND=noninteractive apt-get install -y -qq librsvg2-bin > /dev/null 2>&1
     fi
 
     # Install freeze using Go
@@ -52,8 +52,8 @@ install_freeze() {
     # Install librsvg2-bin if on Debian/Ubuntu
     if command -v apt-get &> /dev/null && ! command -v rsvg-convert &> /dev/null; then
       echo "   Installing librsvg2-bin..."
-      sudo apt-get update -qq
-      sudo apt-get install -y librsvg2-bin
+      sudo apt-get update -qq 2>&1 | grep -v "^[WE]:" || true
+      sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq librsvg2-bin > /dev/null 2>&1
     fi
 
     go install github.com/charmbracelet/freeze@latest
