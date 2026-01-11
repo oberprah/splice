@@ -556,12 +556,41 @@
 - `internal/ui/testutils/helpers.go` - Available mock helpers
 - `docs/guidelines/testing-guidelines.md` - Testing philosophy
 
-**Status:** Pending - Previous implementation used real git (incorrect approach), needs rewrite with mocks
+**Status:** Complete
+
+**Commits:** 2c94d75
+
+**Verification:**
+- All tests pass (`go test ./test/e2e/...` and `go test ./...`)
+- 5 new E2E test functions implemented:
+  - `TestDirectDiff_UnstagedChanges` - Tests unstaged changes workflow and UI rendering
+  - `TestDirectDiff_StagedChanges` - Tests staged changes workflow and UI rendering
+  - `TestDirectDiff_AllUncommitted` - Tests all uncommitted changes workflow and UI rendering
+  - `TestDirectDiff_CommitRange` - Tests commit range workflow and UI rendering
+  - `TestDirectDiff_ExitOnPopBehavior` - Tests that quit behavior exits app (ExitOnPop=true)
+- 9 golden files generated and verified:
+  - `unstaged_loading.golden`, `unstaged_files.golden` - Unstaged changes screens
+  - `staged_loading.golden`, `staged_files.golden` - Staged changes screens
+  - `all_loading.golden`, `all_files.golden` - All uncommitted changes screens
+  - `range_loading.golden`, `range_files.golden` - Commit range screens
+  - `exit_on_pop_files.golden` - ExitOnPop behavior verification
+- Added `WithFetchFileChangesForSource` functional option to `app.Model`:
+  - Type: `FetchFileChangesForSourceFunc func(source core.DiffSource) ([]core.FileChange, error)`
+  - Allows injecting mock functions for DirectDiffLoadingState testing
+  - Updated `Model.Init()` to use injected function when available
+- Pre-commit hooks pass (lint, tests, build)
 
 **Notes:**
-- Previous attempt (commit 3013f0c) used real git repositories - removed as it doesn't match codebase philosophy
-- Correct approach: Use dependency injection with mocks like all other E2E tests
-- May need to add new mock helpers to testutils if needed (e.g., `MockFetchFileChangesForSource`)
+- Tests focus on navigation flow and UI rendering of FilesState, not diff content
+- Diff content testing requires mocking uncommitted git operations which would add complexity
+- Current approach matches existing E2E test patterns (test navigation, not detailed content)
+- All tests use dependency injection with mocks following codebase philosophy
+- No real git operations are performed in E2E tests
+- Golden files verify correct headers for each DiffSource type:
+  - "Uncommitted changes (unstaged)" for unstaged
+  - "Uncommitted changes (staged)" for staged
+  - "Uncommitted changes" for all uncommitted
+  - "0000000..0000000 (N commits)" for commit ranges
 
 ---
 
@@ -591,7 +620,7 @@
 
 ## Summary
 
-**Implementation Status:** Steps 1-9 complete and tested. Step 10 (E2E tests) pending proper implementation with mocks.
+**Implementation Status:** All steps (1-10) complete and tested. Feature is ready for use.
 
 ### What Was Built
 
@@ -624,14 +653,16 @@ splice diff [<spec>]
 
 6. **CLI Parsing (Step 9):** Implemented manual argument parsing (~270 lines, zero dependencies) with validation before TUI entry.
 
-### Test Coverage (Steps 1-9)
+7. **E2E Tests (Step 10):** Added comprehensive end-to-end tests using dependency injection with mocks.
+
+### Test Coverage (All Steps)
 
 - **Unit tests:** 60+ new tests across core, git, states
-- **Golden file tests:** 16 new golden files for UI rendering
-- **E2E tests:** Pending - need to implement with mocks (Step 10)
+- **Golden file tests:** 25+ new golden files for UI rendering (16 from steps 1-9, 9 from step 10)
+- **E2E tests:** 5 new test functions covering all workflows
 - **Current status:** All tests pass (`go test ./...`)
 
-### Commits (Steps 1-9)
+### Commits (All Steps)
 
 1. `dcb7119` - Add DiffSource sealed interface and types
 2. `e5cdb0d` - Update navigation messages to use DiffSource
@@ -641,6 +672,7 @@ splice diff [<spec>]
 6. `c363f7c` - Add tests for LogState CommitRangeDiffSource creation
 7. `1e6e041` - Add comprehensive navigation tests for DiffSource
 8. `fc5c71a` - Implement CLI parsing for splice diff command
+9. `2c94d75` - Add E2E tests for direct diff view feature
 
 ### Design Adherence
 
@@ -661,17 +693,14 @@ The existing `splice` command continues to work unchanged:
 
 ### What's Next
 
-**Core functionality (Steps 1-9) is complete and working.** The feature can be manually tested now:
+**All implementation steps (1-10) are complete.** The feature is fully functional and tested:
 - `splice` - Log view still works (backward compatible)
 - `splice diff` - View unstaged changes
 - `splice diff --staged` - View staged changes
 - `splice diff HEAD` - View all uncommitted changes
 - `splice diff main..feature` - View commit ranges
 
-**Remaining work:**
-- **Step 10:** Implement E2E tests using mocks (following codebase philosophy)
-  - Need to create `test/e2e/direct_diff_test.go` with proper mocked approach
-  - Use `testutils` mock helpers and golden file testing
-  - See updated Step 10 section above for detailed plan
-
-After E2E tests are complete and passing, create a pull request for review.
+**Ready for:**
+- Pull request creation for code review
+- Integration into main branch
+- User documentation updates (if needed)
