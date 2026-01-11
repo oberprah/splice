@@ -93,31 +93,42 @@ func setupTestGitRepo(t *testing.T) (repoPath string, cleanup func()) {
 	return tmpDir, cleanup
 }
 
-// filterGitEnv removes GIT_DIR and GIT_WORK_TREE from environment variables.
+// filterGitEnv removes all GIT_* environment variables except GIT_EDITOR to ensure
+// complete isolation of test repositories from the parent repository.
+// This prevents issues like "invalid object" errors when the parent repo's
+// index, object directory, or other git state leaks into test repos.
 func filterGitEnv(env []string) []string {
 	filtered := []string{}
 	for _, e := range env {
-		if !strings.HasPrefix(e, "GIT_DIR=") && !strings.HasPrefix(e, "GIT_WORK_TREE=") {
-			filtered = append(filtered, e)
+		// Remove all GIT_* variables except GIT_EDITOR which is harmless
+		if strings.HasPrefix(e, "GIT_") && !strings.HasPrefix(e, "GIT_EDITOR=") {
+			continue
 		}
+		filtered = append(filtered, e)
 	}
 	return filtered
 }
 
 // setupGitTestEnv prepares a clean git environment for testing.
 // It:
-// 1. Saves and clears existing GIT_* variables
+// 1. Saves and clears all existing GIT_* variables
 // 2. Creates a test git repo
 // 3. Points GIT_* variables to the test repo
 // 4. Returns cleanup functions
 func setupGitTestEnv(t *testing.T) (repoPath string, cleanup func()) {
 	t.Helper()
 
-	// Save and clear GIT_* environment variables
-	oldGitDir := os.Getenv("GIT_DIR")
-	oldGitWorkTree := os.Getenv("GIT_WORK_TREE")
-	_ = os.Unsetenv("GIT_DIR")
-	_ = os.Unsetenv("GIT_WORK_TREE")
+	// Save all GIT_* environment variables (except GIT_EDITOR which is harmless)
+	savedGitEnv := make(map[string]string)
+	for _, e := range os.Environ() {
+		if strings.HasPrefix(e, "GIT_") && !strings.HasPrefix(e, "GIT_EDITOR=") {
+			parts := strings.SplitN(e, "=", 2)
+			if len(parts) == 2 {
+				savedGitEnv[parts[0]] = parts[1]
+				_ = os.Unsetenv(parts[0])
+			}
+		}
+	}
 
 	// Create test repo
 	repoPath, repoCleanup := setupTestGitRepo(t)
@@ -129,14 +140,15 @@ func setupGitTestEnv(t *testing.T) (repoPath string, cleanup func()) {
 	// Return combined cleanup
 	cleanup = func() {
 		repoCleanup()
-		if oldGitDir != "" {
-			_ = os.Setenv("GIT_DIR", oldGitDir)
-		} else {
+		// Restore all saved GIT_* variables
+		for k, v := range savedGitEnv {
+			_ = os.Setenv(k, v)
+		}
+		// Unset the test repo variables if they weren't set before
+		if _, wasSet := savedGitEnv["GIT_DIR"]; !wasSet {
 			_ = os.Unsetenv("GIT_DIR")
 		}
-		if oldGitWorkTree != "" {
-			_ = os.Setenv("GIT_WORK_TREE", oldGitWorkTree)
-		} else {
+		if _, wasSet := savedGitEnv["GIT_WORK_TREE"]; !wasSet {
 			_ = os.Unsetenv("GIT_WORK_TREE")
 		}
 	}
