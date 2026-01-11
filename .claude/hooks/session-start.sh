@@ -32,17 +32,11 @@ echo ""
 # Prevent Go from auto-downloading toolchains before we check versions
 export GOTOOLCHAIN=local
 
-# Source setup modules
 source "${HOOKS_DIR}/setup-go.sh"
-source "${HOOKS_DIR}/setup-devtools.sh"
-
-# ============================================================================
-# Run Setup
-# ============================================================================
-
 setup_go
 echo ""
 
+source "${HOOKS_DIR}/setup-devtools.sh"
 setup_devtools
 echo ""
 

@@ -36,6 +36,29 @@ setup_tmux() {
 }
 
 # ============================================================================
+# librsvg2-bin Setup (required for freeze PNG rendering)
+# ============================================================================
+
+is_rsvg_convert_installed() {
+  command -v rsvg-convert &> /dev/null
+}
+
+install_rsvg_convert() {
+  echo "📦 Installing librsvg2-bin (for freeze PNG rendering)..."
+  apt-get update -qq
+  apt-get install -y librsvg2-bin
+  echo "✅ librsvg2-bin installed successfully"
+}
+
+setup_rsvg_convert() {
+  if is_rsvg_convert_installed; then
+    echo "✅ librsvg2-bin is already installed"
+  else
+    install_rsvg_convert
+  fi
+}
+
+# ============================================================================
 # freeze Setup
 # ============================================================================
 
@@ -71,5 +94,6 @@ setup_freeze() {
 setup_devtools() {
   echo "📦 Setting up development tools..."
   setup_tmux
+  setup_rsvg_convert
   setup_freeze
 }
