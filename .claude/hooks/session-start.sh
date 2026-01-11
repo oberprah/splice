@@ -15,6 +15,7 @@ export GOTOOLCHAIN=local
 
 readonly GO_INSTALL_DIR="/usr/local/go"
 readonly GO_CACHE_DIR="/tmp"
+readonly GO_BIN_DIR="${HOME}/go/bin"
 
 # ============================================================================
 # Helper Functions
@@ -86,12 +87,70 @@ configure_environment() {
   fi
 }
 
+setup_git_hooks() {
+  echo "🔧 Configuring git hooks..."
+  cd "${CLAUDE_PROJECT_DIR}"
+  git config core.hooksPath .githooks
+  echo "✅ Git hooks configured"
+}
+
+is_tmux_installed() {
+  command -v tmux &> /dev/null
+}
+
+install_tmux() {
+  echo "📦 Installing tmux..."
+  apt-get update -qq
+  apt-get install -y tmux
+  echo "✅ tmux installed successfully"
+}
+
+setup_tmux() {
+  if is_tmux_installed; then
+    echo "✅ tmux is already installed"
+  else
+    install_tmux
+  fi
+}
+
+is_freeze_installed() {
+  command -v freeze &> /dev/null
+}
+
+install_freeze() {
+  echo "📦 Installing freeze..."
+  # Use the Go we just set up to install freeze
+  "${GO_INSTALL_DIR}/bin/go" install github.com/charmbracelet/freeze@latest
+
+  # Add Go bin directory to PATH if not already there
+  if [[ -n "${CLAUDE_ENV_FILE:-}" ]] && [[ -d "$GO_BIN_DIR" ]]; then
+    echo "export PATH=\"${GO_BIN_DIR}:\$PATH\"" >> "$CLAUDE_ENV_FILE"
+  fi
+
+  echo "✅ freeze installed successfully"
+}
+
+setup_freeze() {
+  if is_freeze_installed; then
+    echo "✅ freeze is already installed"
+  else
+    install_freeze
+  fi
+}
+
 # ============================================================================
 # Main
 # ============================================================================
 
 main() {
-  echo "🔧 Setting up Go environment..."
+  echo "🔧 Setting up development environment..."
+  echo ""
+
+  # ============================================================================
+  # Go Installation
+  # ============================================================================
+
+  echo "📦 Setting up Go..."
 
   local required_version
   required_version=$(get_required_go_version)
@@ -100,24 +159,41 @@ main() {
   if is_correct_version_installed "$required_version"; then
     echo "✅ Go ${required_version} is already installed"
     configure_environment
-    exit 0
-  fi
-
-  # Show upgrade/install message
-  local current_version
-  current_version=$(get_current_go_version)
-  if [[ -n "$current_version" ]]; then
-    echo "📦 Found Go ${current_version}, upgrading to ${required_version}..."
   else
-    echo "📦 Installing Go ${required_version}..."
+    # Show upgrade/install message
+    local current_version
+    current_version=$(get_current_go_version)
+    if [[ -n "$current_version" ]]; then
+      echo "📦 Found Go ${current_version}, upgrading to ${required_version}..."
+    else
+      echo "📦 Installing Go ${required_version}..."
+    fi
+
+    # Download, install, and verify
+    download_go "$required_version"
+    install_go "$required_version"
+    verify_installation "$required_version"
+    configure_environment
   fi
 
-  # Download, install, and verify
-  download_go "$required_version"
-  install_go "$required_version"
-  verify_installation "$required_version"
-  configure_environment
+  echo ""
 
+  # ============================================================================
+  # Git Hooks
+  # ============================================================================
+
+  setup_git_hooks
+  echo ""
+
+  # ============================================================================
+  # Development Tools
+  # ============================================================================
+
+  echo "📦 Setting up development tools..."
+  setup_tmux
+  setup_freeze
+
+  echo ""
   echo "✅ Environment setup complete"
 }
 
