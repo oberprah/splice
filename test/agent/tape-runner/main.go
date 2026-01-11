@@ -129,19 +129,21 @@ func main() {
 }
 
 func printHelp() {
-	fmt.Print(`test-app - Test splice binary with tape files
+	fmt.Print(`tape-runner - Test splice binary with tape files
 
 USAGE:
-    test-app <tape-file>
-    test-app --help
+    tape-runner <tape-file>
+    tape-runner --help
 
 DESCRIPTION:
     Runs splice in a tmux session and captures snapshots based on commands
     in a tape file. Tape files use a simple line-based format similar to VHS.
 
+    Note: This tool always builds and tests splice from the current source code.
+
 TAPE FILE FORMAT:
     # Comments start with #
-    Output test-output      # Output directory (required)
+    Output .test-output     # Output directory (required)
     Width 120               # Terminal columns (default: 120)
     Height 40               # Terminal rows (default: 40)
 
@@ -171,7 +173,7 @@ SPECIAL KEYS (use with Send):
 
 EXAMPLE TAPE FILE:
     # Test navigation
-    Output test-output
+    Output .test-output
     Width 120
     Height 40
 
@@ -203,17 +205,17 @@ DEPENDENCIES:
 
 EXAMPLES:
     # Run a test tape
-    test-app test.tape
+    tape-runner test.tape
 
     # Create your own tape file
     cat > my-test.tape <<EOF
-    Output my-output
+    Output .test-output
     Sleep 1s
     Textshot start
     Send j
     Textshot after-move
     EOF
-    test-app my-test.tape
+    tape-runner my-test.tape
 `)
 }
 

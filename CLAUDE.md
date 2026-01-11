@@ -24,22 +24,18 @@ git config core.hooksPath .githooks
 
 ## Testing the Compiled Binary (For AI Agents)
 
-**DO NOT run `./splice` directly** - it requires a real terminal and will fail. Instead, use the test-app wrapper with tape files:
+**DO NOT run `./splice` directly** - it requires a real terminal and will fail. Instead, use the tape-runner tool with tape files:
 
 ```bash
-go build -o test-app ./cmd/test-app
-./test-app test.tape
+./run-tape --help           # View full documentation
+./run-tape my-test.tape     # Build and test current code
 ```
 
-The test-app uses tape files (similar to VHS format) to define test scenarios. For complete documentation of the tape file format, commands, and examples, run:
-
-```bash
-./test-app --help
-```
+The tape-runner uses tape files (similar to VHS format) to define test scenarios. It builds splice from the current source and tests it in a tmux session.
 
 Quick example:
 ```tape
-Output test-output
+Output .test-output
 Sleep 1s
 Textshot initial    # Plain text
 Snapshot initial    # PNG image

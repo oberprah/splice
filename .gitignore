@@ -6,10 +6,10 @@
 
 # Build artifacts
 /splice
-/test-app
+/tape-runner
 
 # Test output
-/test-output/
+/.test-output/
 
 # Test coverage
 coverage.out
