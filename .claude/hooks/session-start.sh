@@ -74,6 +74,14 @@ verify_installation() {
   echo "✅ Go ${version} installed successfully"
 }
 
+configure_environment() {
+  # Add Go to PATH for the session
+  if [[ -n "${CLAUDE_ENV_FILE:-}" ]]; then
+    echo "export PATH=\"${GO_INSTALL_DIR}/bin:\$PATH\"" >> "$CLAUDE_ENV_FILE"
+    echo "🔧 Go added to session PATH"
+  fi
+}
+
 # ============================================================================
 # Main
 # ============================================================================
@@ -87,6 +95,7 @@ main() {
   # Check if already installed
   if is_correct_version_installed "$required_version"; then
     echo "✅ Go ${required_version} is already installed"
+    configure_environment
     exit 0
   fi
 
@@ -103,6 +112,7 @@ main() {
   download_go "$required_version"
   install_go "$required_version"
   verify_installation "$required_version"
+  configure_environment
 
   echo "✅ Environment setup complete"
 }
