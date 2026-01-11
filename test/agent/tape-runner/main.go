@@ -122,99 +122,56 @@ func main() {
 }
 
 func printHelp() {
-	fmt.Print(`tape-runner - Test splice binary with tape files
+	fmt.Print(`tape-runner - Test splice binary with tape commands
 
 USAGE:
-    tape-runner <tape-file>
-    tape-runner --help
+    ./run-tape - <<'EOF'
+    ... tape commands ...
+    EOF
+
+    ./run-tape <tape-file>    # Alternative: read from file
+    ./run-tape --help
 
 DESCRIPTION:
-    Runs splice in a tmux session and captures snapshots based on commands
-    in a tape file. Tape files use a simple line-based format similar to VHS.
-
-    Output is always saved to: .test-output/<timestamp>/
-
-    Note: This tool always builds and tests splice from the current source code.
-
-TAPE FILE FORMAT:
-    # Comments start with #
-    Width 120               # Terminal columns (default: 120)
-    Height 40               # Terminal rows (default: 40)
-
-    Sleep 1s                # Wait before next command
-    Send jjj                # Send keys to app
-    Textshot initial        # Capture plain text (.txt)
-    Ansishot initial        # Capture text with ANSI codes (.ansi)
-    Snapshot initial        # Capture PNG image (.png)
+    Runs splice in a tmux session and captures snapshots. Commands use a
+    simple line-based format. Output saved to .test-output/<timestamp>/
 
 COMMANDS:
-
-  Configuration (applied at parse time):
     Width <cols>            Terminal width (default: 120)
     Height <rows>           Terminal height (default: 40)
-
-  Execution commands:
-    Send <keys>             Send keys to the application
     Sleep <duration>        Wait (e.g., 200ms, 1s, 1.5s)
-    Textshot [name]         Capture plain text without ANSI codes (.txt)
-    Ansishot [name]         Capture text with ANSI color codes (.ansi)
+    Send <keys>             Send keys to the application
+    Textshot [name]         Capture plain text (.txt)
+    Ansishot [name]         Capture with ANSI codes (.ansi)
     Snapshot [name]         Capture PNG image (.png)
 
-SPECIAL KEYS (use with Send):
-    <enter>    <esc>       <tab>       <space>     <backspace>
-    <up>       <down>      <left>      <right>     <ctrl-c>
+SPECIAL KEYS:
+    <enter> <esc> <tab> <space> <backspace>
+    <up> <down> <left> <right> <ctrl-c>
 
-EXAMPLE TAPE FILE:
+EXAMPLE:
+    ./run-tape - <<'EOF'
     # Test navigation
     Width 120
     Height 40
 
     Sleep 1s
     Textshot initial
-    Snapshot initial
 
     Send jjj
     Sleep 200ms
     Textshot after-nav
 
     Send <enter>
-    Sleep 200ms
+    Sleep 500ms
     Textshot files-view
-
-    Send q
-
-OUTPUT:
-    Creates numbered snapshots in .test-output/<timestamp>/:
-    - 001-initial.txt       Plain text (~1-4KB)
-    - 002-initial.png       PNG image (~500KB-1.7MB)
-    - 003-after-nav.txt     Plain text
-    - 004-files-view.txt    Plain text
-
-DEPENDENCIES:
-    - tmux (required)
-    - freeze (required for Snapshot commands)
-      Install: brew install charmbracelet/tap/freeze
-
-EXAMPLES:
-    # Run a test tape
-    tape-runner test.tape
-
-    # Create your own tape file
-    cat > my-test.tape <<EOF
-    Width 120
-    Height 40
-    Sleep 1s
-    Textshot start
-    Send j
-    Textshot after-move
     EOF
-    tape-runner my-test.tape
 `)
 }
 
 func run() error {
 	if len(os.Args) < 2 {
-		return fmt.Errorf("usage: %s <tape-file>\n\nFor help, run: %s --help", os.Args[0], os.Args[0])
+		return fmt.Errorf("usage: %s - <<'EOF' ... EOF  OR  %s <tape-file>\n\nFor help, run: %s --help", os.Args[0], os.Args[0], os.Args[0])
 	}
 
 	// Handle --help flag
@@ -223,10 +180,22 @@ func run() error {
 		return nil
 	}
 
-	tapeFile := os.Args[1]
-	commands, config, err := parseTapeFile(tapeFile)
+	tapeInput := os.Args[1]
+
+	var commands []TapeCommand
+	var config *Config
+	var err error
+
+	if tapeInput == "-" {
+		// Read from stdin
+		commands, config, err = parseTapeReader(os.Stdin, "<stdin>")
+	} else {
+		// Read from file
+		commands, config, err = parseTapeFile(tapeInput)
+	}
+
 	if err != nil {
-		return fmt.Errorf("failed to parse tape file: %w", err)
+		return fmt.Errorf("failed to parse tape: %w", err)
 	}
 
 	// Check dependencies upfront (before building)
@@ -266,13 +235,18 @@ func parseTapeFile(path string) ([]TapeCommand, *Config, error) {
 		_ = file.Close()
 	}()
 
+	return parseTapeReader(file, path)
+}
+
+// parseTapeReader parses tape commands from an io.Reader
+func parseTapeReader(reader *os.File, sourceName string) ([]TapeCommand, *Config, error) {
 	config := &Config{
 		Width:  120, // Default terminal columns
 		Height: 40,  // Default terminal rows
 	}
 
 	var commands []TapeCommand
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(reader)
 	lineNum := 0
 
 	for scanner.Scan() {
@@ -286,14 +260,14 @@ func parseTapeFile(path string) ([]TapeCommand, *Config, error) {
 
 		cmd, err := parseLine(line)
 		if err != nil {
-			return nil, nil, fmt.Errorf("line %d: %w", lineNum, err)
+			return nil, nil, fmt.Errorf("%s:%d: %w", sourceName, lineNum, err)
 		}
 
 		// Apply config commands immediately, queue execution commands
 		switch c := cmd.(type) {
 		case *WidthCmd, *HeightCmd:
 			if err := c.Execute(&TapeContext{config: config}); err != nil {
-				return nil, nil, fmt.Errorf("line %d: %w", lineNum, err)
+				return nil, nil, fmt.Errorf("%s:%d: %w", sourceName, lineNum, err)
 			}
 		default:
 			commands = append(commands, cmd)
@@ -469,7 +443,14 @@ func runTape(commands []TapeCommand, config *Config, outputDir string) error {
 func checkTmuxInstalled() error {
 	cmd := exec.Command("tmux", "-V")
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("tmux not installed. Install with: brew install tmux")
+		// Try to install using unified installer
+		installCmd := exec.Command("bash", "scripts/env-setup/install-tool.sh", "tmux")
+		installCmd.Stdout = os.Stdout
+		installCmd.Stderr = os.Stderr
+		if err := installCmd.Run(); err != nil {
+			return fmt.Errorf("tmux installation failed: %w", err)
+		}
+		fmt.Println()
 	}
 	return nil
 }
@@ -477,7 +458,15 @@ func checkTmuxInstalled() error {
 func checkFreezeInstalled() error {
 	cmd := exec.Command("freeze", "--version")
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("freeze not installed. Install with: brew install charmbracelet/tap/freeze")
+		// Try to install using unified installer
+		fmt.Println("🔧 Installing freeze for image snapshots (first time only)...")
+		installCmd := exec.Command("bash", "scripts/env-setup/install-tool.sh", "freeze")
+		installCmd.Stdout = os.Stdout
+		installCmd.Stderr = os.Stderr
+		if err := installCmd.Run(); err != nil {
+			return fmt.Errorf("freeze installation failed: %w", err)
+		}
+		fmt.Println()
 	}
 	return nil
 }

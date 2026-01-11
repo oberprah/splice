@@ -36,8 +36,7 @@ source "${HOOKS_DIR}/setup-go.sh"
 setup_go
 echo ""
 
-source "${HOOKS_DIR}/setup-devtools.sh"
-setup_devtools
-echo ""
-
 echo "✅ Environment setup complete"
+echo "ℹ️  Additional tools will be installed on demand:"
+echo "   • tmux: when running any tape test"
+echo "   • freeze: when using Snapshot commands"
