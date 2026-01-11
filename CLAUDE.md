@@ -22,8 +22,6 @@ Setup git hooks (runs lint, tests, build on commit):
 git config core.hooksPath .githooks
 ```
 
-**Note**: Git hooks are automatically configured in Claude Code web sessions via the SessionStart hook (`.claude/hooks/session-start.sh`). The hook also ensures Go 1.25.2, tmux, and freeze are installed and ready for development and testing.
-
 ## Testing the Compiled Binary (For AI Agents)
 
 **DO NOT run `./splice` directly** - it requires a real terminal and will fail. Instead, use the tape-runner tool:
