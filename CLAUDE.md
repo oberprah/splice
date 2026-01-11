@@ -24,54 +24,86 @@ git config core.hooksPath .githooks
 
 ## Testing the Compiled Binary (For AI Agents)
 
-**DO NOT run `./splice` directly** - it requires a real terminal and will fail. Instead, use the test-app wrapper:
+**DO NOT run `./splice` directly** - it requires a real terminal and will fail. Instead, use the test-app wrapper with tape files:
 
 ```bash
-./test-app -c initial 'jjj' -c after-nav '<enter>' -c 'q' -c final
+./test-app test.tape
 ```
 
-This creates screenshots at each checkpoint in `test-output/TIMESTAMP/`:
-- `001-initial.png` - Initial state after app loads
-- `002-after-nav.png` - After navigation ('jjj')
-- `003.png` - After pressing enter
-- `004-final.png` - After quit
+This creates snapshots in `test-output/TIMESTAMP/` based on the commands in the tape file. Use `Textshot`, `Ansishot`, and `Snapshot` commands to capture different formats.
 
-**Options**:
-- `-c` or `--checkpoint [name]` - Take screenshot (optional name)
-- `--width 1200` - Screenshot width in pixels (default: 1200)
-- `--height 800` - Screenshot height in pixels (default: 800)
-- `--font-size 12` - Terminal font size (default: 12)
+### Tape File Format
 
-**Special keys**:
+Tape files use a simple line-based format similar to VHS:
+
+```tape
+# Configuration
+Output test-output          # Output directory (required)
+Width 120                   # Terminal columns (default: 120)
+Height 40                   # Terminal rows (default: 40)
+
+# Commands
+Sleep 1s                    # Wait (supports ms, s)
+Textshot initial            # Capture plain text (.txt)
+Ansishot initial            # Capture text with ANSI codes (.ansi)
+Snapshot initial            # Capture PNG image (.png)
+Send jjj                    # Send keys
+Send <enter>                # Special keys
+```
+
+**Supported commands**:
+
+*Configuration (applied at parse time):*
+- `Output <path>` - Output directory (required)
+- `Width <cols>` - Terminal width (default: 120)
+- `Height <rows>` - Terminal height (default: 40)
+
+*Execution commands:*
+- `Send <keys>` - Send keys to app
+- `Sleep <duration>` - Wait (e.g., 200ms, 1s, 1.5s)
+- `Textshot [name]` - Capture plain text without ANSI codes (.txt)
+- `Ansishot [name]` - Capture text with ANSI color codes (.ansi)
+- `Snapshot [name]` - Capture PNG image (.png)
+
+**Special keys** (use with Send):
 - `<enter>`, `<esc>`, `<tab>`, `<space>`, `<backspace>`
 - `<up>`, `<down>`, `<left>`, `<right>`
 - `<ctrl-c>`
 
-**Examples**:
-```bash
-# Simple test with 2 checkpoints
-./test-app -c 'j' -c 'q' -c
+**Example tape file**:
+```tape
+# Test navigation with different capture formats
+Output test-output
+Width 120
+Height 40
 
-# Named checkpoints for clarity
-./test-app -c initial 'jjj' -c after-nav '<enter>' -c selected 'q' -c
+Sleep 1s
+Textshot initial
+Ansishot initial-ansi
+Snapshot initial-visual
 
-# Custom dimensions for more content
-./test-app --width 1600 --height 1000 --font-size 14 -c 'jj' -c
+Send jjj
+Sleep 200ms
+Textshot after-nav
+Snapshot after-nav
 
-# Build first if needed
-go build -o test-app ./cmd/test-app
+Send <enter>
+Sleep 200ms
+Textshot files-view
+
+Send q
 ```
 
-**Understanding the syntax**:
-Actions come BEFORE the checkpoint:
+**Build and run**:
 ```bash
-./test-app 'jjj' -c after-nav 'q' -c
-#          ^^^^^ screenshot  ^^^ screenshot
-#          actions first     actions then screenshot
+go build -o test-app ./cmd/test-app
+./test-app test.tape
 ```
 
 **Verification**:
-Review screenshots to verify the app behaved correctly. Screenshots are ~500KB PNG files at 1200×800.
+- `.txt` files - Plain text for programmatic verification (~1-4KB)
+- `.ansi` files - Text with ANSI color codes for testing rendering (~1-4KB)
+- `.png` files - Visual images for manual review (~500KB-1.7MB)
 
 ## Package Architecture
 

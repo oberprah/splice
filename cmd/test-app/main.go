@@ -1,25 +1,124 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
 
-// Checkpoint represents a point where a text snapshot should be taken
-type Checkpoint struct {
-	Name    string   // Optional name for the checkpoint
-	Actions []string // Actions to perform before this checkpoint
+// TapeCommand represents a command in the tape file
+type TapeCommand interface {
+	Execute(ctx *TapeContext) error
 }
 
+// TapeContext holds the execution state
+type TapeContext struct {
+	sessionName   string
+	outputDir     string
+	config        *Config
+	checkpointNum int
+}
+
+// Config holds the tape configuration
 type Config struct {
-	Width       int    // Terminal width in columns
-	Height      int    // Terminal height in rows
-	Format      string // Output format: "text", "png", or "both"
-	Checkpoints []Checkpoint
+	Output string // Output directory
+	Width  int    // Terminal width in columns
+	Height int    // Terminal height in rows
+}
+
+// Command types
+type OutputCmd struct{ path string }
+type WidthCmd struct{ width int }
+type HeightCmd struct{ height int }
+type SendCmd struct{ keys string }
+type SleepCmd struct{ duration time.Duration }
+type TextshotCmd struct{ name string }
+type AnishotCmd struct{ name string }
+type SnapshotCmd struct{ name string }
+
+func (c *OutputCmd) Execute(ctx *TapeContext) error {
+	ctx.config.Output = c.path
+	return nil
+}
+
+func (c *WidthCmd) Execute(ctx *TapeContext) error {
+	ctx.config.Width = c.width
+	return nil
+}
+
+func (c *HeightCmd) Execute(ctx *TapeContext) error {
+	ctx.config.Height = c.height
+	return nil
+}
+
+func (c *SendCmd) Execute(ctx *TapeContext) error {
+	return sendAction(ctx.sessionName, c.keys)
+}
+
+func (c *SleepCmd) Execute(ctx *TapeContext) error {
+	time.Sleep(c.duration)
+	return nil
+}
+
+func (c *TextshotCmd) Execute(ctx *TapeContext) error {
+	ctx.checkpointNum++
+	baseFilename := fmt.Sprintf("%03d", ctx.checkpointNum)
+	if c.name != "" {
+		baseFilename += "-" + c.name
+	}
+
+	textPath := filepath.Join(ctx.outputDir, baseFilename+".txt")
+	cmd := exec.Command("tmux", "capture-pane", "-t", ctx.sessionName, "-p")
+	output, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("failed to capture text pane: %w", err)
+	}
+	if err := os.WriteFile(textPath, output, 0644); err != nil {
+		return fmt.Errorf("failed to write text snapshot: %w", err)
+	}
+
+	return nil
+}
+
+func (c *AnishotCmd) Execute(ctx *TapeContext) error {
+	ctx.checkpointNum++
+	baseFilename := fmt.Sprintf("%03d", ctx.checkpointNum)
+	if c.name != "" {
+		baseFilename += "-" + c.name
+	}
+
+	ansiPath := filepath.Join(ctx.outputDir, baseFilename+".ansi")
+	cmd := exec.Command("tmux", "capture-pane", "-e", "-p", "-t", ctx.sessionName)
+	output, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("failed to capture ansi pane: %w", err)
+	}
+	if err := os.WriteFile(ansiPath, output, 0644); err != nil {
+		return fmt.Errorf("failed to write ansi snapshot: %w", err)
+	}
+
+	return nil
+}
+
+func (c *SnapshotCmd) Execute(ctx *TapeContext) error {
+	ctx.checkpointNum++
+	baseFilename := fmt.Sprintf("%03d", ctx.checkpointNum)
+	if c.name != "" {
+		baseFilename += "-" + c.name
+	}
+
+	pngPath := filepath.Join(ctx.outputDir, baseFilename+".png")
+	if err := capturePNG(ctx.sessionName, pngPath); err != nil {
+		return fmt.Errorf("failed to capture PNG: %w", err)
+	}
+
+	return nil
 }
 
 func main() {
@@ -30,9 +129,18 @@ func main() {
 }
 
 func run() error {
-	config, err := parseArgs()
+	if len(os.Args) < 2 {
+		return fmt.Errorf("usage: %s <tape-file>", os.Args[0])
+	}
+
+	tapeFile := os.Args[1]
+	commands, config, err := parseTapeFile(tapeFile)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to parse tape file: %w", err)
+	}
+
+	if config.Output == "" {
+		return fmt.Errorf("tape file must specify Output directive")
 	}
 
 	// Build splice first
@@ -40,8 +148,8 @@ func run() error {
 		return fmt.Errorf("failed to build splice: %w", err)
 	}
 
-	// Create output directory
-	outputDir, err := createOutputDir()
+	// Create output directory with timestamp
+	outputDir, err := createOutputDir(config.Output)
 	if err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
@@ -49,131 +157,162 @@ func run() error {
 	fmt.Printf("Output directory: %s\n", outputDir)
 
 	// Run test with tmux
-	if err := runWithTmux(config, outputDir); err != nil {
+	if err := runTape(commands, config, outputDir); err != nil {
 		return fmt.Errorf("failed to run test: %w", err)
 	}
 
-	// Print appropriate message based on format
-	switch config.Format {
-	case "text":
-		fmt.Printf("Text snapshots saved to: %s\n", outputDir)
-	case "png":
-		fmt.Printf("PNG images saved to: %s\n", outputDir)
-	case "both":
-		fmt.Printf("Text snapshots and PNG images saved to: %s\n", outputDir)
-	}
+	fmt.Printf("Snapshots saved to: %s\n", outputDir)
 	return nil
 }
 
-func parseArgs() (*Config, error) {
+// parseTapeFile parses a tape file and returns the commands and config
+func parseTapeFile(path string) ([]TapeCommand, *Config, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() {
+		_ = file.Close()
+	}()
+
 	config := &Config{
-		Width:  120,    // Terminal columns
-		Height: 40,     // Terminal rows
-		Format: "both", // Default to both text and PNG
+		Width:  120, // Default terminal columns
+		Height: 40,  // Default terminal rows
 	}
 
-	args := os.Args[1:]
-	var currentActions []string
+	var commands []TapeCommand
+	scanner := bufio.NewScanner(file)
+	lineNum := 0
 
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
+	for scanner.Scan() {
+		lineNum++
+		line := strings.TrimSpace(scanner.Text())
 
-		switch {
-		case arg == "-c" || arg == "--checkpoint":
-			// Create checkpoint with actions collected so far
-			checkpoint := Checkpoint{
-				Actions: currentActions,
+		// Skip empty lines and comments
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		cmd, err := parseLine(line)
+		if err != nil {
+			return nil, nil, fmt.Errorf("line %d: %w", lineNum, err)
+		}
+
+		// Apply config commands immediately, queue execution commands
+		switch c := cmd.(type) {
+		case *OutputCmd, *WidthCmd, *HeightCmd:
+			if err := c.Execute(&TapeContext{config: config}); err != nil {
+				return nil, nil, fmt.Errorf("line %d: %w", lineNum, err)
 			}
-
-			// Check if next arg is a checkpoint name
-			if i+1 < len(args) && isCheckpointName(args[i+1]) {
-				checkpoint.Name = args[i+1]
-				i++ // Skip the name in next iteration
-			}
-
-			config.Checkpoints = append(config.Checkpoints, checkpoint)
-			currentActions = nil
-
-		case arg == "--width":
-			if i+1 >= len(args) {
-				return nil, fmt.Errorf("--width requires a value")
-			}
-			i++
-			_, err := fmt.Sscanf(args[i], "%d", &config.Width)
-			if err != nil {
-				return nil, fmt.Errorf("invalid width value: %s", args[i])
-			}
-
-		case arg == "--height":
-			if i+1 >= len(args) {
-				return nil, fmt.Errorf("--height requires a value")
-			}
-			i++
-			_, err := fmt.Sscanf(args[i], "%d", &config.Height)
-			if err != nil {
-				return nil, fmt.Errorf("invalid height value: %s", args[i])
-			}
-
-		case arg == "--format":
-			if i+1 >= len(args) {
-				return nil, fmt.Errorf("--format requires a value (text, png, or both)")
-			}
-			i++
-			format := args[i]
-			if format != "text" && format != "png" && format != "both" {
-				return nil, fmt.Errorf("invalid format value: %s (must be text, png, or both)", format)
-			}
-			config.Format = format
-
-		case strings.HasPrefix(arg, "-"):
-			return nil, fmt.Errorf("unknown flag: %s", arg)
-
 		default:
-			// Regular action (key sequence)
-			currentActions = append(currentActions, arg)
+			commands = append(commands, cmd)
 		}
 	}
 
-	if len(config.Checkpoints) == 0 {
-		return nil, fmt.Errorf("no checkpoints specified, use -c to add checkpoints")
+	if err := scanner.Err(); err != nil {
+		return nil, nil, err
 	}
 
-	return config, nil
+	return commands, config, nil
 }
 
-// isCheckpointName returns true if the string looks like a checkpoint name
-// rather than an action/key sequence
-func isCheckpointName(s string) bool {
-	// Starts with < means it's a special key like <enter>
-	if strings.HasPrefix(s, "<") {
-		return false
+// parseLine parses a single line into a command
+func parseLine(line string) (TapeCommand, error) {
+	// Match: Command <args>
+	parts := strings.SplitN(line, " ", 2)
+	if len(parts) == 0 {
+		return nil, fmt.Errorf("empty command")
 	}
 
-	// Contains - or _ likely means it's a name like "after-nav" or "initial_state"
-	if strings.Contains(s, "-") || strings.Contains(s, "_") {
-		return true
+	command := parts[0]
+	args := ""
+	if len(parts) > 1 {
+		args = strings.TrimSpace(parts[1])
 	}
 
-	// Single lowercase word without repetition is likely a name
-	// e.g., "initial", "final", "loaded"
-	if len(s) > 0 && len(s) < 20 {
-		// Check if it's all same character repeated (like 'jjj') - that's an action
-		allSame := true
-		first := rune(s[0])
-		for _, r := range s {
-			if r != first {
-				allSame = false
-				break
-			}
+	switch command {
+	case "Output":
+		if args == "" {
+			return nil, fmt.Errorf("output requires a path")
 		}
-		if allSame && len(s) > 1 {
-			return false // It's an action like 'jjj'
+		return &OutputCmd{path: args}, nil
+
+	case "Width":
+		if args == "" {
+			return nil, fmt.Errorf("width requires a value")
 		}
-		// Otherwise it's likely a name
-		return true
+		width, err := strconv.Atoi(args)
+		if err != nil {
+			return nil, fmt.Errorf("invalid width value: %s", args)
+		}
+		return &WidthCmd{width: width}, nil
+
+	case "Height":
+		if args == "" {
+			return nil, fmt.Errorf("height requires a value")
+		}
+		height, err := strconv.Atoi(args)
+		if err != nil {
+			return nil, fmt.Errorf("invalid height value: %s", args)
+		}
+		return &HeightCmd{height: height}, nil
+
+	case "Send":
+		if args == "" {
+			return nil, fmt.Errorf("send requires keys")
+		}
+		return &SendCmd{keys: args}, nil
+
+	case "Sleep":
+		if args == "" {
+			return nil, fmt.Errorf("sleep requires duration")
+		}
+		duration, err := parseDuration(args)
+		if err != nil {
+			return nil, fmt.Errorf("invalid sleep duration: %w", err)
+		}
+		return &SleepCmd{duration: duration}, nil
+
+	case "Textshot":
+		// Args are optional (name)
+		return &TextshotCmd{name: args}, nil
+
+	case "Ansishot":
+		// Args are optional (name)
+		return &AnishotCmd{name: args}, nil
+
+	case "Snapshot":
+		// Args are optional (name)
+		return &SnapshotCmd{name: args}, nil
+
+	default:
+		return nil, fmt.Errorf("unknown command: %s", command)
+	}
+}
+
+// parseDuration parses durations like "500ms", "1s", "1.5s"
+func parseDuration(s string) (time.Duration, error) {
+	// Simple regex for common patterns
+	re := regexp.MustCompile(`^(\d+(?:\.\d+)?)(ms|s)$`)
+	matches := re.FindStringSubmatch(s)
+	if matches == nil {
+		return 0, fmt.Errorf("invalid duration format (use 500ms or 1s)")
 	}
 
-	return false
+	value, err := strconv.ParseFloat(matches[1], 64)
+	if err != nil {
+		return 0, err
+	}
+
+	unit := matches[2]
+	switch unit {
+	case "ms":
+		return time.Duration(value * float64(time.Millisecond)), nil
+	case "s":
+		return time.Duration(value * float64(time.Second)), nil
+	default:
+		return 0, fmt.Errorf("unsupported duration unit: %s", unit)
+	}
 }
 
 func buildSplice() error {
@@ -184,17 +323,24 @@ func buildSplice() error {
 	return cmd.Run()
 }
 
-func createOutputDir() (string, error) {
+func createOutputDir(basePath string) (string, error) {
 	timestamp := time.Now().Format("2006-01-02-150405")
-	dir := filepath.Join("test-output", timestamp)
+	dir := filepath.Join(basePath, timestamp)
 	return dir, os.MkdirAll(dir, 0755)
 }
 
-func runWithTmux(config *Config, outputDir string) error {
+func runTape(commands []TapeCommand, config *Config, outputDir string) error {
 	sessionName := fmt.Sprintf("splice-test-%d", time.Now().Unix())
 
-	// Check if freeze is installed for PNG output
-	if config.Format == "png" || config.Format == "both" {
+	// Check if freeze is installed if any Snapshot commands exist
+	hasSnapshot := false
+	for _, cmd := range commands {
+		if _, ok := cmd.(*SnapshotCmd); ok {
+			hasSnapshot = true
+			break
+		}
+	}
+	if hasSnapshot {
 		if err := checkFreezeInstalled(); err != nil {
 			return err
 		}
@@ -218,45 +364,18 @@ func runWithTmux(config *Config, outputDir string) error {
 	// Wait for app to initialize
 	time.Sleep(1 * time.Second)
 
-	// Process checkpoints
-	checkpointNum := 1
-	for _, checkpoint := range config.Checkpoints {
-		// Perform actions first
-		for _, action := range checkpoint.Actions {
-			if err := sendAction(sessionName, action); err != nil {
-				return err
-			}
-			time.Sleep(200 * time.Millisecond)
-		}
+	// Execute commands
+	ctx := &TapeContext{
+		sessionName:   sessionName,
+		outputDir:     outputDir,
+		config:        config,
+		checkpointNum: 0,
+	}
 
-		// Base filename
-		baseFilename := fmt.Sprintf("%03d", checkpointNum)
-		if checkpoint.Name != "" {
-			baseFilename += "-" + checkpoint.Name
+	for _, cmd := range commands {
+		if err := cmd.Execute(ctx); err != nil {
+			return err
 		}
-
-		// Capture text if requested
-		if config.Format == "text" || config.Format == "both" {
-			textPath := filepath.Join(outputDir, baseFilename+".txt")
-			cmd := exec.Command("tmux", "capture-pane", "-t", sessionName, "-p")
-			output, err := cmd.Output()
-			if err != nil {
-				return fmt.Errorf("failed to capture text pane: %w", err)
-			}
-			if err := os.WriteFile(textPath, output, 0644); err != nil {
-				return fmt.Errorf("failed to write text snapshot: %w", err)
-			}
-		}
-
-		// Capture PNG if requested
-		if config.Format == "png" || config.Format == "both" {
-			pngPath := filepath.Join(outputDir, baseFilename+".png")
-			if err := capturePNG(sessionName, pngPath); err != nil {
-				return fmt.Errorf("failed to capture PNG: %w", err)
-			}
-		}
-
-		checkpointNum++
 	}
 
 	return nil
