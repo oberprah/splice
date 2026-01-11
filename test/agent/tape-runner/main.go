@@ -475,8 +475,25 @@ func capturePNG(sessionName, outputPath string) error {
 	// Capture pane with ANSI codes preserved
 	captureCmd := exec.Command("tmux", "capture-pane", "-e", "-p", "-t", sessionName)
 
+	// Find freeze binary (check PATH first, then GOBIN)
+	freezePath, err := exec.LookPath("freeze")
+	if err != nil {
+		// Try GOBIN directory
+		home := os.Getenv("HOME")
+		if home != "" {
+			gobin := filepath.Join(home, "go", "bin", "freeze")
+			if _, err := os.Stat(gobin); err == nil {
+				freezePath = gobin
+			} else {
+				return fmt.Errorf("freeze not found in PATH or GOBIN: %w", err)
+			}
+		} else {
+			return fmt.Errorf("freeze not found in PATH: %w", err)
+		}
+	}
+
 	// Pipe to freeze with terminal-optimized settings
-	freezeCmd := exec.Command("freeze", "-o", outputPath,
+	freezeCmd := exec.Command(freezePath, "-o", outputPath,
 		"--language", "txt", // Required for freeze to process terminal output
 		"--font.family", "JetBrainsMono Nerd Font Mono", // Excellent monospace with box-drawing support
 		"--font.size", "14",
