@@ -18,7 +18,6 @@ func TestNoDirectTimeNowUsage(t *testing.T) {
 	allowedFiles := map[string]bool{
 		"test/e2e/helpers_test.go": true, // Test timeout/deadline logic
 		"internal/ui/app.go":       true, // Default initialization: nowFunc: time.Now
-		"cmd/test-app/main.go":     true, // Standalone utility: timestamp output directories
 	}
 
 	var violations []string
