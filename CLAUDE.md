@@ -27,83 +27,25 @@ git config core.hooksPath .githooks
 **DO NOT run `./splice` directly** - it requires a real terminal and will fail. Instead, use the test-app wrapper with tape files:
 
 ```bash
-./test-app test.tape
-```
-
-This creates snapshots in `test-output/TIMESTAMP/` based on the commands in the tape file. Use `Textshot`, `Ansishot`, and `Snapshot` commands to capture different formats.
-
-### Tape File Format
-
-Tape files use a simple line-based format similar to VHS:
-
-```tape
-# Configuration
-Output test-output          # Output directory (required)
-Width 120                   # Terminal columns (default: 120)
-Height 40                   # Terminal rows (default: 40)
-
-# Commands
-Sleep 1s                    # Wait (supports ms, s)
-Textshot initial            # Capture plain text (.txt)
-Ansishot initial            # Capture text with ANSI codes (.ansi)
-Snapshot initial            # Capture PNG image (.png)
-Send jjj                    # Send keys
-Send <enter>                # Special keys
-```
-
-**Supported commands**:
-
-*Configuration (applied at parse time):*
-- `Output <path>` - Output directory (required)
-- `Width <cols>` - Terminal width (default: 120)
-- `Height <rows>` - Terminal height (default: 40)
-
-*Execution commands:*
-- `Send <keys>` - Send keys to app
-- `Sleep <duration>` - Wait (e.g., 200ms, 1s, 1.5s)
-- `Textshot [name]` - Capture plain text without ANSI codes (.txt)
-- `Ansishot [name]` - Capture text with ANSI color codes (.ansi)
-- `Snapshot [name]` - Capture PNG image (.png)
-
-**Special keys** (use with Send):
-- `<enter>`, `<esc>`, `<tab>`, `<space>`, `<backspace>`
-- `<up>`, `<down>`, `<left>`, `<right>`
-- `<ctrl-c>`
-
-**Example tape file**:
-```tape
-# Test navigation with different capture formats
-Output test-output
-Width 120
-Height 40
-
-Sleep 1s
-Textshot initial
-Ansishot initial-ansi
-Snapshot initial-visual
-
-Send jjj
-Sleep 200ms
-Textshot after-nav
-Snapshot after-nav
-
-Send <enter>
-Sleep 200ms
-Textshot files-view
-
-Send q
-```
-
-**Build and run**:
-```bash
 go build -o test-app ./cmd/test-app
 ./test-app test.tape
 ```
 
-**Verification**:
-- `.txt` files - Plain text for programmatic verification (~1-4KB)
-- `.ansi` files - Text with ANSI color codes for testing rendering (~1-4KB)
-- `.png` files - Visual images for manual review (~500KB-1.7MB)
+The test-app uses tape files (similar to VHS format) to define test scenarios. For complete documentation of the tape file format, commands, and examples, run:
+
+```bash
+./test-app --help
+```
+
+Quick example:
+```tape
+Output test-output
+Sleep 1s
+Textshot initial    # Plain text
+Snapshot initial    # PNG image
+Send jjj
+Textshot after-nav
+```
 
 ## Package Architecture
 

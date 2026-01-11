@@ -128,9 +128,104 @@ func main() {
 	}
 }
 
+func printHelp() {
+	fmt.Print(`test-app - Test splice binary with tape files
+
+USAGE:
+    test-app <tape-file>
+    test-app --help
+
+DESCRIPTION:
+    Runs splice in a tmux session and captures snapshots based on commands
+    in a tape file. Tape files use a simple line-based format similar to VHS.
+
+TAPE FILE FORMAT:
+    # Comments start with #
+    Output test-output      # Output directory (required)
+    Width 120               # Terminal columns (default: 120)
+    Height 40               # Terminal rows (default: 40)
+
+    Sleep 1s                # Wait before next command
+    Send jjj                # Send keys to app
+    Textshot initial        # Capture plain text (.txt)
+    Ansishot initial        # Capture text with ANSI codes (.ansi)
+    Snapshot initial        # Capture PNG image (.png)
+
+COMMANDS:
+
+  Configuration (applied at parse time):
+    Output <path>           Output directory (required)
+    Width <cols>            Terminal width (default: 120)
+    Height <rows>           Terminal height (default: 40)
+
+  Execution commands:
+    Send <keys>             Send keys to the application
+    Sleep <duration>        Wait (e.g., 200ms, 1s, 1.5s)
+    Textshot [name]         Capture plain text without ANSI codes (.txt)
+    Ansishot [name]         Capture text with ANSI color codes (.ansi)
+    Snapshot [name]         Capture PNG image (.png)
+
+SPECIAL KEYS (use with Send):
+    <enter>    <esc>       <tab>       <space>     <backspace>
+    <up>       <down>      <left>      <right>     <ctrl-c>
+
+EXAMPLE TAPE FILE:
+    # Test navigation
+    Output test-output
+    Width 120
+    Height 40
+
+    Sleep 1s
+    Textshot initial
+    Snapshot initial
+
+    Send jjj
+    Sleep 200ms
+    Textshot after-nav
+
+    Send <enter>
+    Sleep 200ms
+    Textshot files-view
+
+    Send q
+
+OUTPUT:
+    Creates numbered snapshots in Output/<timestamp>/:
+    - 001-initial.txt       Plain text (~1-4KB)
+    - 002-initial.png       PNG image (~500KB-1.7MB)
+    - 003-after-nav.txt     Plain text
+    - 004-files-view.txt    Plain text
+
+DEPENDENCIES:
+    - tmux (required)
+    - freeze (required for Snapshot commands)
+      Install: brew install charmbracelet/tap/freeze
+
+EXAMPLES:
+    # Run a test tape
+    test-app test.tape
+
+    # Create your own tape file
+    cat > my-test.tape <<EOF
+    Output my-output
+    Sleep 1s
+    Textshot start
+    Send j
+    Textshot after-move
+    EOF
+    test-app my-test.tape
+`)
+}
+
 func run() error {
 	if len(os.Args) < 2 {
-		return fmt.Errorf("usage: %s <tape-file>", os.Args[0])
+		return fmt.Errorf("usage: %s <tape-file>\n\nFor help, run: %s --help", os.Args[0], os.Args[0])
+	}
+
+	// Handle --help flag
+	if os.Args[1] == "--help" || os.Args[1] == "-h" {
+		printHelp()
+		return nil
 	}
 
 	tapeFile := os.Args[1]
