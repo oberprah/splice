@@ -1,9 +1,12 @@
 package diff
 
 import (
+	"fmt"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/oberprah/splice/internal/core"
+	"github.com/oberprah/splice/internal/domain/diff"
 )
 
 // Update handles messages for the diff state
@@ -142,4 +145,50 @@ func (s *State) calculateMaxViewportStart(height int) int {
 		maxStart = 0
 	}
 	return maxStart
+}
+
+// getCurrentFileLineNumber maps the current viewport position to a file line number.
+// It handles all alignment types and returns a 1-indexed line number suitable for
+// opening in an editor. For RemovedAlignment (deleted lines), it searches forward
+// to find the next alignment with a RightIdx, falling back to line 1 if none found.
+func (s *State) getCurrentFileLineNumber() (int, error) {
+	if s.Diff == nil {
+		return 0, fmt.Errorf("no diff available")
+	}
+
+	if len(s.Diff.Alignments) == 0 {
+		return 0, fmt.Errorf("diff has no alignments")
+	}
+
+	if s.ViewportStart >= len(s.Diff.Alignments) {
+		return 0, fmt.Errorf("viewport position out of range")
+	}
+
+	alignment := s.Diff.Alignments[s.ViewportStart]
+
+	switch a := alignment.(type) {
+	case diff.UnchangedAlignment:
+		return a.RightIdx + 1, nil
+	case diff.ModifiedAlignment:
+		return a.RightIdx + 1, nil
+	case diff.AddedAlignment:
+		return a.RightIdx + 1, nil
+	case diff.RemovedAlignment:
+		// RemovedAlignment has no RightIdx (deleted line doesn't exist in new file)
+		// Search forward for the next alignment with a RightIdx
+		for i := s.ViewportStart + 1; i < len(s.Diff.Alignments); i++ {
+			switch next := s.Diff.Alignments[i].(type) {
+			case diff.UnchangedAlignment:
+				return next.RightIdx + 1, nil
+			case diff.ModifiedAlignment:
+				return next.RightIdx + 1, nil
+			case diff.AddedAlignment:
+				return next.RightIdx + 1, nil
+			}
+		}
+		// No alignment with RightIdx found after the removed line - fall back to line 1
+		return 1, nil
+	default:
+		return 0, fmt.Errorf("unknown alignment type")
+	}
 }

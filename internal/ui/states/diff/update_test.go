@@ -414,3 +414,259 @@ func createTestDiffStateWithChanges(numLines int, changeIndices []int) *State {
 		ChangeIndices:    changeIndices,
 	}
 }
+
+func TestGetCurrentFileLineNumber_UnchangedAlignment(t *testing.T) {
+	s := createTestDiffState(10)
+	s.ViewportStart = 5
+
+	lineNo, err := s.getCurrentFileLineNumber()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	// UnchangedAlignment at index 5 has RightIdx=5, so lineNo should be 6 (1-indexed)
+	expected := 6
+	if lineNo != expected {
+		t.Errorf("Expected line number %d, got %d", expected, lineNo)
+	}
+}
+
+func TestGetCurrentFileLineNumber_ModifiedAlignment(t *testing.T) {
+	// Create a diff with a modified line at index 3
+	leftLines := make([]diff.AlignedLine, 5)
+	rightLines := make([]diff.AlignedLine, 5)
+	for i := 0; i < 5; i++ {
+		leftLines[i] = diff.AlignedLine{
+			Tokens: []highlight.Token{{Type: chroma.Text, Value: "test line"}},
+		}
+		rightLines[i] = diff.AlignedLine{
+			Tokens: []highlight.Token{{Type: chroma.Text, Value: "test line"}},
+		}
+	}
+
+	alignments := []diff.Alignment{
+		diff.UnchangedAlignment{LeftIdx: 0, RightIdx: 0},
+		diff.UnchangedAlignment{LeftIdx: 1, RightIdx: 1},
+		diff.UnchangedAlignment{LeftIdx: 2, RightIdx: 2},
+		diff.ModifiedAlignment{LeftIdx: 3, RightIdx: 3},
+		diff.UnchangedAlignment{LeftIdx: 4, RightIdx: 4},
+	}
+
+	s := &State{
+		CommitRange: core.NewSingleCommitRange(core.GitCommit{Hash: "abc123"}),
+		File:        core.FileChange{Path: "file.go"},
+		Diff: &diff.AlignedFileDiff{
+			Left:       diff.FileContent{Path: "file.go", Lines: leftLines},
+			Right:      diff.FileContent{Path: "file.go", Lines: rightLines},
+			Alignments: alignments,
+		},
+		ViewportStart: 3,
+	}
+
+	lineNo, err := s.getCurrentFileLineNumber()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	// ModifiedAlignment at index 3 has RightIdx=3, so lineNo should be 4 (1-indexed)
+	expected := 4
+	if lineNo != expected {
+		t.Errorf("Expected line number %d, got %d", expected, lineNo)
+	}
+}
+
+func TestGetCurrentFileLineNumber_AddedAlignment(t *testing.T) {
+	// Create a diff with an added line at index 2
+	leftLines := make([]diff.AlignedLine, 4)
+	rightLines := make([]diff.AlignedLine, 5)
+	for i := 0; i < 4; i++ {
+		leftLines[i] = diff.AlignedLine{
+			Tokens: []highlight.Token{{Type: chroma.Text, Value: "test line"}},
+		}
+	}
+	for i := 0; i < 5; i++ {
+		rightLines[i] = diff.AlignedLine{
+			Tokens: []highlight.Token{{Type: chroma.Text, Value: "test line"}},
+		}
+	}
+
+	alignments := []diff.Alignment{
+		diff.UnchangedAlignment{LeftIdx: 0, RightIdx: 0},
+		diff.UnchangedAlignment{LeftIdx: 1, RightIdx: 1},
+		diff.AddedAlignment{RightIdx: 2},
+		diff.UnchangedAlignment{LeftIdx: 2, RightIdx: 3},
+		diff.UnchangedAlignment{LeftIdx: 3, RightIdx: 4},
+	}
+
+	s := &State{
+		CommitRange: core.NewSingleCommitRange(core.GitCommit{Hash: "abc123"}),
+		File:        core.FileChange{Path: "file.go"},
+		Diff: &diff.AlignedFileDiff{
+			Left:       diff.FileContent{Path: "file.go", Lines: leftLines},
+			Right:      diff.FileContent{Path: "file.go", Lines: rightLines},
+			Alignments: alignments,
+		},
+		ViewportStart: 2,
+	}
+
+	lineNo, err := s.getCurrentFileLineNumber()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	// AddedAlignment at index 2 has RightIdx=2, so lineNo should be 3 (1-indexed)
+	expected := 3
+	if lineNo != expected {
+		t.Errorf("Expected line number %d, got %d", expected, lineNo)
+	}
+}
+
+func TestGetCurrentFileLineNumber_RemovedAlignment(t *testing.T) {
+	// Create a diff with a removed line at index 2, followed by unchanged lines
+	leftLines := make([]diff.AlignedLine, 5)
+	rightLines := make([]diff.AlignedLine, 4)
+	for i := 0; i < 5; i++ {
+		leftLines[i] = diff.AlignedLine{
+			Tokens: []highlight.Token{{Type: chroma.Text, Value: "test line"}},
+		}
+	}
+	for i := 0; i < 4; i++ {
+		rightLines[i] = diff.AlignedLine{
+			Tokens: []highlight.Token{{Type: chroma.Text, Value: "test line"}},
+		}
+	}
+
+	alignments := []diff.Alignment{
+		diff.UnchangedAlignment{LeftIdx: 0, RightIdx: 0},
+		diff.UnchangedAlignment{LeftIdx: 1, RightIdx: 1},
+		diff.RemovedAlignment{LeftIdx: 2}, // Removed line - no RightIdx
+		diff.UnchangedAlignment{LeftIdx: 3, RightIdx: 2},
+		diff.UnchangedAlignment{LeftIdx: 4, RightIdx: 3},
+	}
+
+	s := &State{
+		CommitRange: core.NewSingleCommitRange(core.GitCommit{Hash: "abc123"}),
+		File:        core.FileChange{Path: "file.go"},
+		Diff: &diff.AlignedFileDiff{
+			Left:       diff.FileContent{Path: "file.go", Lines: leftLines},
+			Right:      diff.FileContent{Path: "file.go", Lines: rightLines},
+			Alignments: alignments,
+		},
+		ViewportStart: 2,
+	}
+
+	lineNo, err := s.getCurrentFileLineNumber()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	// RemovedAlignment at index 2 - should search forward and find next alignment with RightIdx
+	// Next alignment is at index 3 with RightIdx=2, so lineNo should be 3 (1-indexed)
+	expected := 3
+	if lineNo != expected {
+		t.Errorf("Expected line number %d, got %d", expected, lineNo)
+	}
+}
+
+func TestGetCurrentFileLineNumber_RemovedAlignment_NoFollowingRightIdx(t *testing.T) {
+	// Create a diff where all remaining alignments after viewport are removed
+	leftLines := make([]diff.AlignedLine, 5)
+	rightLines := make([]diff.AlignedLine, 2)
+	for i := 0; i < 5; i++ {
+		leftLines[i] = diff.AlignedLine{
+			Tokens: []highlight.Token{{Type: chroma.Text, Value: "test line"}},
+		}
+	}
+	for i := 0; i < 2; i++ {
+		rightLines[i] = diff.AlignedLine{
+			Tokens: []highlight.Token{{Type: chroma.Text, Value: "test line"}},
+		}
+	}
+
+	alignments := []diff.Alignment{
+		diff.UnchangedAlignment{LeftIdx: 0, RightIdx: 0},
+		diff.UnchangedAlignment{LeftIdx: 1, RightIdx: 1},
+		diff.RemovedAlignment{LeftIdx: 2},
+		diff.RemovedAlignment{LeftIdx: 3},
+		diff.RemovedAlignment{LeftIdx: 4},
+	}
+
+	s := &State{
+		CommitRange: core.NewSingleCommitRange(core.GitCommit{Hash: "abc123"}),
+		File:        core.FileChange{Path: "file.go"},
+		Diff: &diff.AlignedFileDiff{
+			Left:       diff.FileContent{Path: "file.go", Lines: leftLines},
+			Right:      diff.FileContent{Path: "file.go", Lines: rightLines},
+			Alignments: alignments,
+		},
+		ViewportStart: 2,
+	}
+
+	lineNo, err := s.getCurrentFileLineNumber()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	// No following alignments with RightIdx, should fall back to line 1
+	expected := 1
+	if lineNo != expected {
+		t.Errorf("Expected line number %d (fallback), got %d", expected, lineNo)
+	}
+}
+
+func TestGetCurrentFileLineNumber_NilDiff(t *testing.T) {
+	s := &State{
+		CommitRange:   core.NewSingleCommitRange(core.GitCommit{Hash: "abc123"}),
+		File:          core.FileChange{Path: "file.go"},
+		Diff:          nil,
+		ViewportStart: 0,
+	}
+
+	_, err := s.getCurrentFileLineNumber()
+	if err == nil {
+		t.Fatal("Expected error for nil diff, got nil")
+	}
+
+	expectedMsg := "no diff available"
+	if err.Error() != expectedMsg {
+		t.Errorf("Expected error message %q, got %q", expectedMsg, err.Error())
+	}
+}
+
+func TestGetCurrentFileLineNumber_EmptyAlignments(t *testing.T) {
+	s := &State{
+		CommitRange: core.NewSingleCommitRange(core.GitCommit{Hash: "abc123"}),
+		File:        core.FileChange{Path: "file.go"},
+		Diff: &diff.AlignedFileDiff{
+			Left:       diff.FileContent{Path: "file.go", Lines: []diff.AlignedLine{}},
+			Right:      diff.FileContent{Path: "file.go", Lines: []diff.AlignedLine{}},
+			Alignments: []diff.Alignment{},
+		},
+		ViewportStart: 0,
+	}
+
+	_, err := s.getCurrentFileLineNumber()
+	if err == nil {
+		t.Fatal("Expected error for empty alignments, got nil")
+	}
+
+	expectedMsg := "diff has no alignments"
+	if err.Error() != expectedMsg {
+		t.Errorf("Expected error message %q, got %q", expectedMsg, err.Error())
+	}
+}
+
+func TestGetCurrentFileLineNumber_ViewportOutOfRange(t *testing.T) {
+	s := createTestDiffState(5)
+	s.ViewportStart = 10 // Out of range
+
+	_, err := s.getCurrentFileLineNumber()
+	if err == nil {
+		t.Fatal("Expected error for viewport out of range, got nil")
+	}
+
+	expectedMsg := "viewport position out of range"
+	if err.Error() != expectedMsg {
+		t.Errorf("Expected error message %q, got %q", expectedMsg, err.Error())
+	}
+}
