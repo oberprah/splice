@@ -1,0 +1,36 @@
+services:
+  litellm:
+    image: docker.litellm.ai/berriai/litellm:main-latest
+    command: --config /root/.litellm-config.yaml --port 4000
+    volumes:
+      - ~/.litellm-config.yaml:/root/.litellm-config.yaml:ro
+    networks:
+      - sandbox-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  sandbox:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/workspace  # Mount the repo
+    environment:
+      - ANTHROPIC_BASE_URL=http://litellm:4000
+      - ANTHROPIC_AUTH_TOKEN=not-needed  # LiteLLM handles auth
+      - ANTHROPIC_MODEL=claude-sonnet-4-5-20250929
+    networks:
+      - sandbox-net
+    depends_on:
+      litellm:
+        condition: service_healthy
+    stdin_open: true
+    tty: true
+
+networks:
+  sandbox-net:
+    driver: bridge
