@@ -1093,3 +1093,25 @@ func countCommitsInRange(startRef, endRef string) (int, error) {
 	}
 	return count, nil
 }
+
+// GetRepositoryRoot executes git rev-parse --show-toplevel to get the absolute path of the repository root.
+func GetRepositoryRoot() (string, error) {
+	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		stderrStr := stderr.String()
+		if strings.Contains(stderrStr, "not a git repository") {
+			return "", fmt.Errorf("not a git repository")
+		}
+		return "", fmt.Errorf("git rev-parse failed: %v - %s", err, stderrStr)
+	}
+
+	return strings.TrimSpace(out.String()), nil
+}
+

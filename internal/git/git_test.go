@@ -975,3 +975,42 @@ func TestUncommittedFileDiffParsing(t *testing.T) {
 		})
 	}
 }
+
+func TestGetRepositoryRoot(t *testing.T) {
+	tests := []struct {
+		name              string
+		expectError       bool
+		expectedErrSubstr string
+	}{
+		{
+			name:        "success - returns valid path",
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root, err := GetRepositoryRoot()
+
+			if tt.expectError {
+				if err == nil {
+					t.Fatal("GetRepositoryRoot() expected error, got nil")
+				}
+				if tt.expectedErrSubstr != "" && !strings.Contains(err.Error(), tt.expectedErrSubstr) {
+					t.Errorf("Error message %q should contain %q", err.Error(), tt.expectedErrSubstr)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("GetRepositoryRoot() unexpected error: %v", err)
+				}
+				if root == "" {
+					t.Error("GetRepositoryRoot() returned empty path")
+				}
+				// Verify the returned path looks reasonable (should be an absolute path)
+				if !strings.HasPrefix(root, "/") {
+					t.Errorf("GetRepositoryRoot() returned non-absolute path: %q", root)
+				}
+			}
+		})
+	}
+}
