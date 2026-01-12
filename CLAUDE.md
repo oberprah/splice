@@ -24,9 +24,9 @@ git config core.hooksPath .githooks
 
 ## Testing the Compiled Binary (For AI Agents)
 
-**DO NOT run `./splice` directly** - it requires a real terminal and will fail. Instead, use the tape-runner tool.
+DO NOT run `./splice` directly - it requires a real terminal and will fail.
 
-**Run `./run-tape --help` first to view the complete documentation.**
+Instead, use the tape-runner tool. **Run `./run-tape --help` first to view the complete documentation.**
 
 ## Package Architecture
 
