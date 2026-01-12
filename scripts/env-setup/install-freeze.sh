@@ -37,33 +37,12 @@ install_freeze() {
     return 0
   fi
 
-  # macOS (don't auto-install, just inform)
-  if [ "$(uname)" = "Darwin" ]; then
-    echo "ℹ️  freeze is not installed"
-    echo "   Install with: brew install charmbracelet/tap/freeze"
-    exit 1
-  fi
-
-  # Other Linux distributions
-  if command -v go &> /dev/null; then
-    echo "📦 Installing freeze..."
-
-    # Install librsvg2-bin if on Debian/Ubuntu
-    if command -v apt-get &> /dev/null && ! command -v rsvg-convert &> /dev/null; then
-      echo "   Installing librsvg2-bin..."
-      sudo apt-get update -qq 2>&1 | grep -v "^[WE]:" || true
-      sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq librsvg2-bin > /dev/null 2>&1
-    fi
-
-    go install github.com/charmbracelet/freeze@latest
-    echo "✅ freeze installed successfully"
-    echo "   Make sure ${HOME}/go/bin is in your PATH"
-    return 0
-  fi
-
-  # Unsupported environment
-  echo "❌ Unsupported environment for auto-install"
-  echo "   Please install freeze manually: https://github.com/charmbracelet/freeze"
+  # All other environments - manual installation required
+  echo "ℹ️  freeze is not installed"
+  echo "   Please install freeze manually:"
+  echo "   - macOS: brew install charmbracelet/tap/freeze"
+  echo "   - Other: go install github.com/charmbracelet/freeze@latest"
+  echo "   - See: https://github.com/charmbracelet/freeze"
   exit 1
 }
 
