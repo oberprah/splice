@@ -403,9 +403,27 @@ func parseDuration(s string) (time.Duration, error) {
 func buildSplice() error {
 	fmt.Println("Building splice...")
 	cmd := exec.Command("go", "build", "-o", "splice", ".")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+
+	// Filter out "go: downloading" lines but keep real errors
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	// Read and filter stderr
+	scanner := bufio.NewScanner(stderr)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.HasPrefix(line, "go: downloading") {
+			fmt.Fprintln(os.Stderr, line)
+		}
+	}
+
+	return cmd.Wait()
 }
 
 func createOutputDir() (string, error) {
@@ -485,7 +503,6 @@ func checkFreezeInstalled() error {
 	cmd := exec.Command("freeze", "--version")
 	if err := cmd.Run(); err != nil {
 		// Try to install
-		fmt.Println("🔧 Installing freeze for image snapshots (first time only)...")
 		installCmd := exec.Command("bash", "scripts/env-setup/install-freeze.sh")
 		installCmd.Stdout = os.Stdout
 		installCmd.Stderr = os.Stderr

@@ -6,16 +6,14 @@ set -euo pipefail
 install_tmux() {
   # Check if already installed
   if command -v tmux &> /dev/null; then
-    echo "✅ tmux is already installed"
     return 0
   fi
 
   # Claude Code web (Ubuntu container)
   if [ "${CLAUDE_CODE_REMOTE:-}" = "true" ]; then
-    echo "📦 Installing tmux (Claude Code web environment)..."
-    apt-get update -qq
-    apt-get install -y tmux
-    echo "✅ tmux installed successfully"
+    echo "Installing tmux..."
+    apt-get update -qq 2>&1 | grep -v "^[WE]:" || true
+    apt-get install -y -qq tmux > /dev/null 2>&1
     return 0
   fi
 
