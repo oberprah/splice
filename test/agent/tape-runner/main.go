@@ -65,8 +65,9 @@ func (c *TextshotCmd) Execute(ctx *TapeContext) error {
 	if c.name != "" {
 		baseFilename += "-" + c.name
 	}
+	filename := baseFilename + ".txt"
 
-	textPath := filepath.Join(ctx.outputDir, baseFilename+".txt")
+	textPath := filepath.Join(ctx.outputDir, filename)
 	cmd := exec.Command("tmux", "capture-pane", "-t", ctx.sessionName, "-p")
 	output, err := cmd.Output()
 	if err != nil {
@@ -76,6 +77,7 @@ func (c *TextshotCmd) Execute(ctx *TapeContext) error {
 		return fmt.Errorf("failed to write text snapshot: %w", err)
 	}
 
+	fmt.Printf("Textshot: %s\n", filename)
 	return nil
 }
 
@@ -85,8 +87,9 @@ func (c *AnishotCmd) Execute(ctx *TapeContext) error {
 	if c.name != "" {
 		baseFilename += "-" + c.name
 	}
+	filename := baseFilename + ".ansi"
 
-	ansiPath := filepath.Join(ctx.outputDir, baseFilename+".ansi")
+	ansiPath := filepath.Join(ctx.outputDir, filename)
 	cmd := exec.Command("tmux", "capture-pane", "-e", "-p", "-t", ctx.sessionName)
 	output, err := cmd.Output()
 	if err != nil {
@@ -96,6 +99,7 @@ func (c *AnishotCmd) Execute(ctx *TapeContext) error {
 		return fmt.Errorf("failed to write ansi snapshot: %w", err)
 	}
 
+	fmt.Printf("Ansishot: %s\n", filename)
 	return nil
 }
 
@@ -105,12 +109,14 @@ func (c *SnapshotCmd) Execute(ctx *TapeContext) error {
 	if c.name != "" {
 		baseFilename += "-" + c.name
 	}
+	filename := baseFilename + ".png"
 
-	pngPath := filepath.Join(ctx.outputDir, baseFilename+".png")
+	pngPath := filepath.Join(ctx.outputDir, filename)
 	if err := capturePNG(ctx.sessionName, pngPath); err != nil {
 		return fmt.Errorf("failed to capture PNG: %w", err)
 	}
 
+	fmt.Printf("Snapshot: %s\n", filename)
 	return nil
 }
 
@@ -247,7 +253,6 @@ func run() error {
 		return fmt.Errorf("failed to run test: %w", err)
 	}
 
-	fmt.Printf("Snapshots saved to: %s\n", outputDir)
 	return nil
 }
 
