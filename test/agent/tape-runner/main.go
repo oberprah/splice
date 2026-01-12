@@ -469,8 +469,8 @@ func runTape(commands []TapeCommand, config *Config, outputDir string) error {
 func checkTmuxInstalled() error {
 	cmd := exec.Command("tmux", "-V")
 	if err := cmd.Run(); err != nil {
-		// Try to install using unified installer
-		installCmd := exec.Command("bash", "scripts/env-setup/install-tool.sh", "tmux")
+		// Try to install
+		installCmd := exec.Command("bash", "scripts/env-setup/install-tmux.sh")
 		installCmd.Stdout = os.Stdout
 		installCmd.Stderr = os.Stderr
 		if err := installCmd.Run(); err != nil {
@@ -484,9 +484,9 @@ func checkTmuxInstalled() error {
 func checkFreezeInstalled() error {
 	cmd := exec.Command("freeze", "--version")
 	if err := cmd.Run(); err != nil {
-		// Try to install using unified installer
+		// Try to install
 		fmt.Println("🔧 Installing freeze for image snapshots (first time only)...")
-		installCmd := exec.Command("bash", "scripts/env-setup/install-tool.sh", "freeze")
+		installCmd := exec.Command("bash", "scripts/env-setup/install-freeze.sh")
 		installCmd.Stdout = os.Stdout
 		installCmd.Stderr = os.Stderr
 		if err := installCmd.Run(); err != nil {

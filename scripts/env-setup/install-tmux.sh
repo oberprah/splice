@@ -1,6 +1,5 @@
 #!/bin/bash
 # Install tmux based on the current environment
-# Called by install-tool.sh
 
 set -euo pipefail
 
@@ -41,3 +40,6 @@ install_tmux() {
   echo "   Please install tmux manually"
   exit 1
 }
+
+# Execute installation when run directly
+install_tmux

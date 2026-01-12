@@ -1,6 +1,5 @@
 #!/bin/bash
 # Install freeze and dependencies based on the current environment
-# Called by install-tool.sh
 
 set -euo pipefail
 
@@ -67,3 +66,6 @@ install_freeze() {
   echo "   Please install freeze manually: https://github.com/charmbracelet/freeze"
   exit 1
 }
+
+# Execute installation when run directly
+install_freeze

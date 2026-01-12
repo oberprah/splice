@@ -11,7 +11,7 @@ readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Ensure tmux is installed (needed for all tape tests)
 # freeze is installed on-demand only when Snapshot commands are used
 if ! command -v tmux &> /dev/null; then
-  "${SCRIPT_DIR}/scripts/env-setup/install-tool.sh" tmux
+  "${SCRIPT_DIR}/scripts/env-setup/install-tmux.sh"
   echo ""
 fi
 
