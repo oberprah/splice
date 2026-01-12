@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     gnupg \
     sudo \
+    tmux \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js 22.x (LTS) for Claude Code CLI
