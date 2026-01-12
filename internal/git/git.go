@@ -267,8 +267,8 @@ func FetchFileChanges(commitRange core.CommitRange) ([]core.FileChange, error) {
 		fromHash = commitRange.End.Hash + "^"
 		toHash = commitRange.End.Hash
 	} else {
-		// Range: compare Start commit's parent with End commit
-		fromHash = commitRange.Start.Hash + "^"
+		// Range: compare Start commit with End commit
+		fromHash = commitRange.Start.Hash
 		toHash = commitRange.End.Hash
 	}
 
@@ -390,8 +390,8 @@ func FetchFullFileDiff(commitRange core.CommitRange, change core.FileChange) (*c
 		fromHash = commitRange.End.Hash + "^"
 		toHash = commitRange.End.Hash
 	} else {
-		// Range: compare Start commit's parent with End commit
-		fromHash = commitRange.Start.Hash + "^"
+		// Range: compare Start commit with End commit
+		fromHash = commitRange.Start.Hash
 		toHash = commitRange.End.Hash
 	}
 

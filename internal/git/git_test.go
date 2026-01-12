@@ -1,7 +1,9 @@
 package git
 
 import (
+	"os/exec"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -773,6 +775,113 @@ func TestParseUncommittedFileChanges(t *testing.T) {
 				t.Errorf("Result mismatch:\ngot:  %+v\nwant: %+v", changes, tt.expected)
 			}
 		})
+	}
+}
+
+// Integration test for FetchFileChanges with commit ranges
+// This test uses the actual git repository to verify correct behavior
+func TestFetchFileChanges_CommitRange(t *testing.T) {
+	// Skip if not in a git repository
+	cmd := exec.Command("git", "rev-parse", "--git-dir")
+	if err := cmd.Run(); err != nil {
+		t.Skip("Not in a git repository")
+	}
+
+	// Get origin/main commit
+	cmd = exec.Command("git", "rev-parse", "origin/main")
+	originMainOutput, err := cmd.Output()
+	if err != nil {
+		t.Skip("origin/main not available")
+	}
+	originMainHash := strings.TrimSpace(string(originMainOutput))
+
+	// Get HEAD commit
+	cmd = exec.Command("git", "rev-parse", "HEAD")
+	headOutput, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("Failed to get HEAD: %v", err)
+	}
+	headHash := strings.TrimSpace(string(headOutput))
+
+	// Skip if origin/main and HEAD are the same
+	if originMainHash == headHash {
+		t.Skip("origin/main and HEAD are the same commit")
+	}
+
+	// Count commits in the range using git rev-list
+	cmd = exec.Command("git", "rev-list", "--count", "origin/main..HEAD")
+	countOutput, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("Failed to count commits: %v", err)
+	}
+	expectedCount := strings.TrimSpace(string(countOutput))
+	if expectedCount == "0" {
+		t.Skip("No commits between origin/main and HEAD")
+	}
+
+	// Get the actual file list for the correct range (origin/main..HEAD)
+	cmd = exec.Command("git", "diff", "--name-only", "origin/main..HEAD")
+	correctRangeOutput, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("Failed to get correct range files: %v", err)
+	}
+	correctFiles := strings.Split(strings.TrimSpace(string(correctRangeOutput)), "\n")
+	if len(correctFiles) == 1 && correctFiles[0] == "" {
+		correctFiles = []string{}
+	}
+
+	// Get the file list for the incorrect range (origin/main^..HEAD) to show the bug
+	cmd = exec.Command("git", "diff", "--name-only", "origin/main^..HEAD")
+	incorrectRangeOutput, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("Failed to get incorrect range files: %v", err)
+	}
+	incorrectFiles := strings.Split(strings.TrimSpace(string(incorrectRangeOutput)), "\n")
+	if len(incorrectFiles) == 1 && incorrectFiles[0] == "" {
+		incorrectFiles = []string{}
+	}
+
+	// Verify the ranges are different (otherwise the test is meaningless)
+	if len(correctFiles) == len(incorrectFiles) {
+		t.Skip("Both ranges have the same number of files; bug may not be visible in current state")
+	}
+
+	// Create GitCommit objects for the range
+	originMainCommit := core.GitCommit{Hash: originMainHash}
+	headCommit := core.GitCommit{Hash: headHash}
+
+	// Create CommitRange (not a single commit)
+	commitRange := core.CommitRange{
+		Start: originMainCommit,
+		End:   headCommit,
+		Count: 2, // Doesn't matter as long as > 1
+	}
+
+	// Call FetchFileChanges
+	files, err := FetchFileChanges(commitRange)
+	if err != nil {
+		t.Fatalf("FetchFileChanges failed: %v", err)
+	}
+
+	// Extract file paths from the result
+	actualPaths := make([]string, len(files))
+	for i, f := range files {
+		actualPaths[i] = f.Path
+	}
+
+	// Sort both slices for comparison
+	sort.Strings(correctFiles)
+	sort.Strings(actualPaths)
+
+	// Verify that FetchFileChanges returns the correct range (origin/main..HEAD),
+	// not the incorrect range (origin/main^..HEAD)
+	if !reflect.DeepEqual(actualPaths, correctFiles) {
+		t.Errorf("FetchFileChanges returned wrong files for commit range.\n"+
+			"Expected files from range origin/main..HEAD (%d files):\n%v\n\n"+
+			"Got files matching origin/main^..HEAD range (%d files):\n%v\n\n"+
+			"This indicates FetchFileChanges is using Start^ instead of Start",
+			len(correctFiles), correctFiles,
+			len(actualPaths), actualPaths)
 	}
 }
 
