@@ -326,7 +326,7 @@ sandbox:
 - Limits malware persistence
 - Forces all writes to monitored locations
 
-**Status**: ❌ Not implemented
+**Status**: ✅ **IMPLEMENTED** - Root filesystem read-only with tmpfs for /tmp, ~/.cache, and ~/go/pkg.
 
 ---
 
@@ -358,7 +358,7 @@ sandbox:
 - Prevents kernel exploits
 - Reduces attack surface
 
-**Status**: ❌ Not implemented
+**Status**: ⏭️ **SKIPPED** - Low priority; requires kernel vulnerability to exploit.
 
 ---
 
@@ -397,7 +397,7 @@ docker compose logs -f sandbox | grep -E "(sudo|curl.*http|wget|nc|/bin/sh|eval|
 - Forensics after incident
 - Compliance requirements
 
-**Status**: ❌ Not implemented
+**Status**: ⏭️ **SKIPPED** - Low priority for current use case.
 
 ---
 
@@ -438,7 +438,7 @@ docker compose down
 - Prevents long-running malicious processes
 - Forces periodic security resets
 
-**Status**: ❌ Not implemented
+**Status**: ⏭️ **SKIPPED** - Low priority for current use case.
 
 ---
 
@@ -459,7 +459,7 @@ RUN ARCH=$(dpkg --print-architecture) && \
     curl -fsSL https://go.dev/dl/go1.25.2.linux-${ARCH}.tar.gz | tar -C /usr/local -xzf -
 ```
 
-**Status**: ❌ Not implemented
+**Status**: ⏭️ **SKIPPED** - Not a security issue, just portability.
 
 ---
 
@@ -481,7 +481,7 @@ RUN echo 'readonly PATH' >> /home/claude/.bashrc && \
 RUN ln -sf /dev/null /home/claude/.bash_history
 ```
 
-**Status**: ❌ Not implemented
+**Status**: ⏭️ **SKIPPED** - Low priority; prompt injection accepted as inevitable.
 
 ---
 
@@ -504,7 +504,7 @@ alias mv='mv -i'
 alias cp='cp -i'
 ```
 
-**Status**: ❌ Not implemented
+**Status**: ⏭️ **SKIPPED** - Low priority for current use case.
 
 ---
 
@@ -529,7 +529,7 @@ claude --dangerously-skip-permissions 2>&1 | tee -a "$LOGFILE"
 echo "[$(date -Iseconds)] Session ended" >> "$LOGFILE"
 ```
 
-**Status**: ❌ Not implemented
+**Status**: ⏭️ **SKIPPED** - Low priority for current use case.
 
 ---
 

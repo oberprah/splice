@@ -26,6 +26,13 @@ services:
           cpus: '4'
           memory: 8G
     pids_limit: 200
+    # Read-only root filesystem prevents backdoor installation and malware persistence.
+    # tmpfs mounts provide writable scratch space that's cleared on container restart.
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M,mode=1777
+      - /home/agent/.cache:size=500M,uid=1000,gid=1000
+      - /home/agent/go/pkg:size=2G,uid=1000,gid=1000
     volumes:
       - ..:/workspace:rw                        # Repo read/write
       - ../.git:/workspace/.git:ro              # Protect git history and hooks
