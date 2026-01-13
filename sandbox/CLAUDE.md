@@ -1,10 +1,6 @@
 # Sandbox Environment
 
-Docker-based isolated environment for running Claude Code against this repository.
-
-## Purpose
-
-Safe testing environment for an AI agent with command execution and internet access. Allows dangerously-skip-permissions mode without host system risk.
+Isolated environment for running Claude Code with command execution and internet access. Allows dangerously-skip-permissions mode while protecting the host system from compromise.
 
 ## Security Model
 
