@@ -2,16 +2,31 @@ package diff
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/domain/diff"
+	"github.com/oberprah/splice/internal/git"
 )
 
 // Update handles messages for the diff state
 func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 	switch msg := msg.(type) {
+	case EditorFinishedMsg:
+		// Handle editor completion
+		if msg.err != nil {
+			// Push error screen to show the error
+			return s, func() tea.Msg {
+				return core.PushErrorScreenMsg{Err: msg.err}
+			}
+		}
+		// Success case - editor exited cleanly, just resume
+		return s, nil
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q":
@@ -190,5 +205,79 @@ func (s *State) getCurrentFileLineNumber() (int, error) {
 		return 1, nil
 	default:
 		return 0, fmt.Errorf("unknown alignment type")
+	}
+}
+
+// EditorFinishedMsg is returned when the editor finishes execution
+type EditorFinishedMsg struct {
+	err error
+}
+
+// getEditor returns the configured editor from environment variables.
+// It checks $EDITOR first, then $VISUAL. Returns an error if neither is set.
+func getEditor() (string, error) {
+	editor := os.Getenv("EDITOR")
+	if editor != "" {
+		return editor, nil
+	}
+
+	visual := os.Getenv("VISUAL")
+	if visual != "" {
+		return visual, nil
+	}
+
+	return "", fmt.Errorf("no editor configured (set $EDITOR or $VISUAL)")
+}
+
+// openFileInEditor validates preconditions and launches the editor with tea.ExecProcess.
+// Returns a tea.Cmd that will eventually produce an EditorFinishedMsg.
+func (s *State) openFileInEditor() tea.Cmd {
+	return func() tea.Msg {
+		// Get editor
+		editor, err := getEditor()
+		if err != nil {
+			return EditorFinishedMsg{err: err}
+		}
+
+		// Validate: not binary
+		if s.File.IsBinary {
+			return EditorFinishedMsg{err: fmt.Errorf("cannot open binary file in editor")}
+		}
+
+		// Validate: not deleted
+		if s.File.Status == "D" {
+			return EditorFinishedMsg{err: fmt.Errorf("cannot open: file has been deleted")}
+		}
+
+		// Get line number
+		lineNo, err := s.getCurrentFileLineNumber()
+		if err != nil {
+			return EditorFinishedMsg{err: fmt.Errorf("failed to determine line number: %w", err)}
+		}
+
+		// Get repository root
+		repoRoot, err := git.GetRepositoryRoot()
+		if err != nil {
+			return EditorFinishedMsg{err: fmt.Errorf("failed to determine repository root: %w", err)}
+		}
+
+		// Resolve absolute path
+		absolutePath := filepath.Join(repoRoot, s.File.Path)
+
+		// Check file exists
+		if _, err := os.Stat(absolutePath); err != nil {
+			if os.IsNotExist(err) {
+				return EditorFinishedMsg{err: fmt.Errorf("cannot open: file not found")}
+			}
+			return EditorFinishedMsg{err: fmt.Errorf("failed to access file: %w", err)}
+		}
+
+		// Build command
+		cmd := exec.Command(editor, fmt.Sprintf("+%d", lineNo), absolutePath)
+
+		// Use tea.ExecProcess to suspend TUI and run editor
+		return tea.ExecProcess(cmd, func(err error) tea.Msg {
+			return EditorFinishedMsg{err: err}
+		})()
 	}
 }

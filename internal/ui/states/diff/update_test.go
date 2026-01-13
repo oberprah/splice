@@ -1,6 +1,8 @@
 package diff
 
 import (
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/alecthomas/chroma/v2"
@@ -668,5 +670,269 @@ func TestGetCurrentFileLineNumber_ViewportOutOfRange(t *testing.T) {
 	expectedMsg := "viewport position out of range"
 	if err.Error() != expectedMsg {
 		t.Errorf("Expected error message %q, got %q", expectedMsg, err.Error())
+	}
+}
+
+// Tests for getEditor()
+
+func TestGetEditor_BothUnset(t *testing.T) {
+	// Save and clear environment variables
+	oldEditor := os.Getenv("EDITOR")
+	oldVisual := os.Getenv("VISUAL")
+	defer func() {
+		_ = os.Setenv("EDITOR", oldEditor)
+		_ = os.Setenv("VISUAL", oldVisual)
+	}()
+
+	_ = os.Setenv("EDITOR", "")
+	_ = os.Setenv("VISUAL", "")
+
+	_, err := getEditor()
+	if err == nil {
+		t.Fatal("Expected error when both EDITOR and VISUAL are unset, got nil")
+	}
+
+	expectedMsg := "no editor configured (set $EDITOR or $VISUAL)"
+	if err.Error() != expectedMsg {
+		t.Errorf("Expected error message %q, got %q", expectedMsg, err.Error())
+	}
+}
+
+func TestGetEditor_OnlyEditorSet(t *testing.T) {
+	// Save and restore environment variables
+	oldEditor := os.Getenv("EDITOR")
+	oldVisual := os.Getenv("VISUAL")
+	defer func() {
+		_ = os.Setenv("EDITOR", oldEditor)
+		_ = os.Setenv("VISUAL", oldVisual)
+	}()
+
+	_ = os.Setenv("EDITOR", "vim")
+	_ = os.Setenv("VISUAL", "")
+
+	editor, err := getEditor()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	if editor != "vim" {
+		t.Errorf("Expected editor to be 'vim', got %q", editor)
+	}
+}
+
+func TestGetEditor_OnlyVisualSet(t *testing.T) {
+	// Save and restore environment variables
+	oldEditor := os.Getenv("EDITOR")
+	oldVisual := os.Getenv("VISUAL")
+	defer func() {
+		_ = os.Setenv("EDITOR", oldEditor)
+		_ = os.Setenv("VISUAL", oldVisual)
+	}()
+
+	_ = os.Setenv("EDITOR", "")
+	_ = os.Setenv("VISUAL", "nano")
+
+	editor, err := getEditor()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	if editor != "nano" {
+		t.Errorf("Expected editor to be 'nano', got %q", editor)
+	}
+}
+
+func TestGetEditor_BothSet_EditorTakesPrecedence(t *testing.T) {
+	// Save and restore environment variables
+	oldEditor := os.Getenv("EDITOR")
+	oldVisual := os.Getenv("VISUAL")
+	defer func() {
+		_ = os.Setenv("EDITOR", oldEditor)
+		_ = os.Setenv("VISUAL", oldVisual)
+	}()
+
+	_ = os.Setenv("EDITOR", "vim")
+	_ = os.Setenv("VISUAL", "nano")
+
+	editor, err := getEditor()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	if editor != "vim" {
+		t.Errorf("Expected EDITOR to take precedence, got %q instead of 'vim'", editor)
+	}
+}
+
+// Tests for validation logic in openFileInEditor
+
+func TestOpenFileInEditor_BinaryFile(t *testing.T) {
+	s := createTestDiffState(10)
+	s.File.IsBinary = true
+
+	// Save and restore EDITOR
+	oldEditor := os.Getenv("EDITOR")
+	defer func() { _ = os.Setenv("EDITOR", oldEditor) }()
+	_ = os.Setenv("EDITOR", "vim")
+
+	cmd := s.openFileInEditor()
+	if cmd == nil {
+		t.Fatal("Expected command, got nil")
+	}
+
+	// Execute the command to get the message
+	msg := cmd()
+	editorMsg, ok := msg.(EditorFinishedMsg)
+	if !ok {
+		t.Fatalf("Expected EditorFinishedMsg, got %T", msg)
+	}
+
+	if editorMsg.err == nil {
+		t.Fatal("Expected error for binary file, got nil")
+	}
+
+	expectedMsg := "cannot open binary file in editor"
+	if editorMsg.err.Error() != expectedMsg {
+		t.Errorf("Expected error message %q, got %q", expectedMsg, editorMsg.err.Error())
+	}
+}
+
+func TestOpenFileInEditor_DeletedFile(t *testing.T) {
+	s := createTestDiffState(10)
+	s.File.Status = "D"
+
+	// Save and restore EDITOR
+	oldEditor := os.Getenv("EDITOR")
+	defer func() { _ = os.Setenv("EDITOR", oldEditor) }()
+	_ = os.Setenv("EDITOR", "vim")
+
+	cmd := s.openFileInEditor()
+	if cmd == nil {
+		t.Fatal("Expected command, got nil")
+	}
+
+	// Execute the command to get the message
+	msg := cmd()
+	editorMsg, ok := msg.(EditorFinishedMsg)
+	if !ok {
+		t.Fatalf("Expected EditorFinishedMsg, got %T", msg)
+	}
+
+	if editorMsg.err == nil {
+		t.Fatal("Expected error for deleted file, got nil")
+	}
+
+	expectedMsg := "cannot open: file has been deleted"
+	if editorMsg.err.Error() != expectedMsg {
+		t.Errorf("Expected error message %q, got %q", expectedMsg, editorMsg.err.Error())
+	}
+}
+
+func TestOpenFileInEditor_NoEditor(t *testing.T) {
+	s := createTestDiffState(10)
+
+	// Save and clear environment variables
+	oldEditor := os.Getenv("EDITOR")
+	oldVisual := os.Getenv("VISUAL")
+	defer func() {
+		_ = os.Setenv("EDITOR", oldEditor)
+		_ = os.Setenv("VISUAL", oldVisual)
+	}()
+
+	_ = os.Setenv("EDITOR", "")
+	_ = os.Setenv("VISUAL", "")
+
+	cmd := s.openFileInEditor()
+	if cmd == nil {
+		t.Fatal("Expected command, got nil")
+	}
+
+	// Execute the command to get the message
+	msg := cmd()
+	editorMsg, ok := msg.(EditorFinishedMsg)
+	if !ok {
+		t.Fatalf("Expected EditorFinishedMsg, got %T", msg)
+	}
+
+	if editorMsg.err == nil {
+		t.Fatal("Expected error when no editor configured, got nil")
+	}
+
+	expectedMsg := "no editor configured (set $EDITOR or $VISUAL)"
+	if editorMsg.err.Error() != expectedMsg {
+		t.Errorf("Expected error message %q, got %q", expectedMsg, editorMsg.err.Error())
+	}
+}
+
+// Tests for EditorFinishedMsg handling in Update
+
+func TestDiffState_Update_EditorFinishedMsg_WithError(t *testing.T) {
+	s := createTestDiffState(10)
+	ctx := testutils.MockContext{W: 80, H: 20}
+
+	// Create an EditorFinishedMsg with an error
+	msg := EditorFinishedMsg{
+		err: fmt.Errorf("editor failed"),
+	}
+
+	newState, cmd := s.Update(msg, ctx)
+
+	// State should remain unchanged
+	diffState, ok := newState.(*State)
+	if !ok {
+		t.Fatalf("Expected state to remain DiffState, got %T", newState)
+	}
+	if diffState != s {
+		t.Error("Expected state to remain unchanged")
+	}
+
+	// Should return a command that produces PushErrorScreenMsg
+	if cmd == nil {
+		t.Fatal("Expected command for error case")
+	}
+
+	result := cmd()
+	if result == nil {
+		t.Fatal("Expected command to return a message")
+	}
+
+	errorMsg, ok := result.(core.PushErrorScreenMsg)
+	if !ok {
+		t.Fatalf("Expected PushErrorScreenMsg, got %T", result)
+	}
+
+	if errorMsg.Err == nil {
+		t.Fatal("Expected error in PushErrorScreenMsg, got nil")
+	}
+
+	expectedErrorMsg := "editor failed"
+	if errorMsg.Err.Error() != expectedErrorMsg {
+		t.Errorf("Expected error message %q, got %q", expectedErrorMsg, errorMsg.Err.Error())
+	}
+}
+
+func TestDiffState_Update_EditorFinishedMsg_NoError(t *testing.T) {
+	s := createTestDiffState(10)
+	ctx := testutils.MockContext{W: 80, H: 20}
+
+	// Create an EditorFinishedMsg with no error (success case)
+	msg := EditorFinishedMsg{
+		err: nil,
+	}
+
+	newState, cmd := s.Update(msg, ctx)
+
+	// State should remain unchanged
+	diffState, ok := newState.(*State)
+	if !ok {
+		t.Fatalf("Expected state to remain DiffState, got %T", newState)
+	}
+	if diffState != s {
+		t.Error("Expected state to remain unchanged")
+	}
+
+	// Should not return a command (success case, just resume)
+	if cmd != nil {
+		t.Error("Expected nil command for success case")
 	}
 }
