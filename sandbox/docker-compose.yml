@@ -33,7 +33,6 @@ services:
     environment:
       - ANTHROPIC_BASE_URL=http://litellm:4000
       - ANTHROPIC_AUTH_TOKEN=not-needed  # LiteLLM handles auth
-      - ANTHROPIC_MODEL=claude-sonnet-4-5-20250929
     networks:
       - sandbox-net
     depends_on:
