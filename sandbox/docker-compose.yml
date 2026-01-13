@@ -8,11 +8,11 @@ services:
     networks:
       - sandbox-net
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:4000/health || exit 1"]
-      interval: 1s
-      timeout: 2s
-      retries: 10
-      start_period: 3s
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4000/health')"]
+      interval: 3s
+      timeout: 4s
+      retries: 5
+      start_period: 2s
 
   sandbox:
     build:

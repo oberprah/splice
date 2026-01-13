@@ -24,8 +24,9 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
 # Install Go 1.25.2
 RUN curl -fsSL https://go.dev/dl/go1.25.2.linux-arm64.tar.gz | tar -C /usr/local -xzf -
 
-# Install Claude Code CLI globally
-RUN npm install -g @anthropic-ai/claude-code
+# Install Claude Code CLI using official install script
+# This installs the native binary with built-in auto-update support
+RUN curl -fsSL https://claude.ai/install.sh | bash
 
 # Create non-root user
 RUN useradd -m -s /bin/bash claude && \
