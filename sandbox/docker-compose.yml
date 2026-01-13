@@ -28,7 +28,6 @@ services:
           pids: 200
     volumes:
       - ..:/workspace:rw                        # Repo read/write
-      - ../.git:/workspace/.git:ro              # Protect git history and hooks
       - ../.github:/workspace/.github:ro        # Protect CI/CD workflows
       - ../sandbox:/workspace/sandbox:ro        # Protect container config
     environment:
