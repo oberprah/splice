@@ -1,6 +1,6 @@
 # Sandbox Environment
 
-Isolated environment for running Claude Code with command execution and internet access. Allows dangerously-skip-permissions mode while protecting the host system from compromise.
+Isolated environment for running Claude Code with command execution and internet access. Allows dangerously-skip-permissions mode while protecting against host system compromise and secret leakage.
 
 ## Security Model
 
