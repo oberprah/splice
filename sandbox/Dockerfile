@@ -24,18 +24,18 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
 RUN curl -fsSL https://go.dev/dl/go1.25.2.linux-arm64.tar.gz | tar -C /usr/local -xzf -
 
 # Create non-root user (no sudo access for security)
-RUN useradd -m -s /bin/bash claude
+RUN useradd -m -s /bin/bash agent
 
-# Set up environment for claude user
-ENV PATH="/home/claude/.local/bin:/usr/local/go/bin:/home/claude/go/bin:${PATH}"
-ENV GOPATH="/home/claude/go"
-ENV HOME="/home/claude"
+# Set up environment for agent user
+ENV PATH="/home/agent/.local/bin:/usr/local/go/bin:/home/agent/go/bin:${PATH}"
+ENV GOPATH="/home/agent/go"
+ENV HOME="/home/agent"
 ENV TERM=xterm-256color
 
 # Switch to non-root user for Claude Code installation
-USER claude
+USER agent
 
-# Install Claude Code CLI using official install script as claude user
+# Install Claude Code CLI using official install script as agent user
 # This installs the native binary with built-in auto-update support
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
@@ -48,8 +48,8 @@ RUN curl -fsSL https://claude.ai/install.sh | bash
 #   - bypassPermissionsModeAccepted: skip "bypass permissions mode" notification
 #   - projects[path].hasTrustDialogAccepted: skip workspace trust dialog (path-specific)
 #   - projects[path].hasCompletedProjectOnboarding: skip project onboarding
-RUN mkdir -p /home/claude/.claude && \
-    echo '{"hasCompletedOnboarding":true,"theme":"dark","bypassPermissionsModeAccepted":true,"projects":{"/workspace":{"hasTrustDialogAccepted":true,"hasCompletedProjectOnboarding":true}}}' > /home/claude/.claude.json
+RUN mkdir -p /home/agent/.claude && \
+    echo '{"hasCompletedOnboarding":true,"theme":"dark","bypassPermissionsModeAccepted":true,"projects":{"/workspace":{"hasTrustDialogAccepted":true,"hasCompletedProjectOnboarding":true}}}' > /home/agent/.claude.json
 
 # Set working directory
 WORKDIR /workspace
