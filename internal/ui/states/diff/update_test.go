@@ -936,3 +936,33 @@ func TestDiffState_Update_EditorFinishedMsg_NoError(t *testing.T) {
 		t.Error("Expected nil command for success case")
 	}
 }
+
+func TestDiffState_Update_OpenInEditor(t *testing.T) {
+	s := createTestDiffState(10)
+	ctx := testutils.MockContext{W: 80, H: 20}
+
+	// Save and restore EDITOR
+	oldEditor := os.Getenv("EDITOR")
+	defer func() {
+		_ = os.Setenv("EDITOR", oldEditor)
+	}()
+	_ = os.Setenv("EDITOR", "vim")
+
+	// Press "o" to open in editor
+	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}}
+	newState, cmd := s.Update(msg, ctx)
+
+	// State should remain unchanged
+	diffState, ok := newState.(*State)
+	if !ok {
+		t.Fatalf("Expected state to remain DiffState, got %T", newState)
+	}
+	if diffState != s {
+		t.Error("Expected state to remain unchanged")
+	}
+
+	// Should return a command (the editor launch command)
+	if cmd == nil {
+		t.Fatal("Expected non-nil command to launch editor")
+	}
+}

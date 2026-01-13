@@ -95,6 +95,10 @@ func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 			// Jump to previous change
 			s.jumpToPreviousChange(ctx.Height())
 			return s, nil
+
+		case "o":
+			// Open file in editor
+			return s, s.openFileInEditor()
 		}
 	}
 
