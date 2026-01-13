@@ -95,7 +95,7 @@ networks:
     driver: bridge
 ```
 
-**Status**: ❌ Not implemented
+**Status**: ⏭️ **SKIPPED** - Intentionally allowing internet access for agent efficiency. Strategy relies on having no sensitive data in container rather than network isolation.
 
 ---
 
@@ -137,7 +137,7 @@ volumes:
   build-output:
 ```
 
-**Status**: ❌ Not implemented
+**Status**: ✅ **IMPLEMENTED** - Selective read-only mounts: `.git/`, `.github/`, `sandbox/` are read-only. Agent can modify code but cannot tamper with git history, CI/CD workflows, or container config.
 
 ---
 

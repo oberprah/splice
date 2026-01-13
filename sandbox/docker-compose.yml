@@ -21,7 +21,10 @@ services:
     security_opt:
       - no-new-privileges:true
     volumes:
-      - ..:/workspace  # Mount the repo
+      - ..:/workspace:rw                        # Repo read/write
+      - ../.git:/workspace/.git:ro              # Protect git history and hooks
+      - ../.github:/workspace/.github:ro        # Protect CI/CD workflows
+      - ../sandbox:/workspace/sandbox:ro        # Protect container config
     environment:
       - ANTHROPIC_BASE_URL=http://litellm:4000
       - ANTHROPIC_AUTH_TOKEN=not-needed  # LiteLLM handles auth
