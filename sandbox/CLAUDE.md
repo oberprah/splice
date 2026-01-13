@@ -4,24 +4,22 @@ Docker-based isolated environment for running Claude Code against this repositor
 
 ## Purpose
 
-Provides a controlled testing environment where Claude Code can:
-- Execute commands and tests without affecting the host system
-- Work with a clean, reproducible setup
-- Be safely given dangerously-skip-permissions mode
+Safe testing environment for an AI agent with command execution and internet access. Allows dangerously-skip-permissions mode without host system risk.
 
 ## Security Model
 
-**Threat: Prompt Injection**
-Internet access (web searches, fetches) is required for agent capabilities but creates prompt injection risk from external content.
+Defense-in-depth strategy against prompt injection and container breakout:
 
-**Mitigation: No Secrets in Container**
-- API keys stay on host, proxied through LiteLLM sidecar
-- Git remote operations disabled (no origin push/pull)
+**Layer 1: No Secrets**
+- API keys proxied through LiteLLM sidecar (never in container)
+- No git remote access (push/pull disabled)
 - No GitHub CLI or credentials
-- Remote operations must be done outside the container
+- Remote operations done outside container
 
-**Isolation: Host Protection**
-Container limits prevent host system takeover through resource exhaustion or breakout attempts.
+**Layer 2: Container Isolation**
+- Resource limits (CPU, memory, PIDs) prevent exhaustion attacks
+- No privileged mode or host access
+- Disposable: compromise affects only sandboxed code
 
 ## Usage
 
