@@ -25,7 +25,7 @@ services:
         limits:
           cpus: '4'
           memory: 8G
-    pids_limit: 200
+          pids: 200
     # Read-only root filesystem prevents backdoor installation and malware persistence.
     # tmpfs mounts provide writable scratch space that's cleared on container restart.
     read_only: true
