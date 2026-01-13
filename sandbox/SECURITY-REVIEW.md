@@ -235,7 +235,7 @@ Create `sandbox/git-safe`:
 RUN git config --global fetch.depth 10
 ```
 
-**Status**: ❌ Not implemented
+**Status**: ⏭️ **SKIPPED** - Prompt injection is accepted as inevitable (can occur via web research, user input, etc.). Security strategy focuses on ensuring no sensitive data exists in container rather than input filtering.
 
 ---
 
@@ -272,7 +272,7 @@ litellm:
     - sandbox-net
 ```
 
-**Status**: ❌ Not implemented
+**Status**: ⏭️ **ACCEPTED** - Config file is only mounted in LiteLLM container, not accessible from sandbox. Risk accepted for now; environment variables would be cleaner but not critical.
 
 ---
 
