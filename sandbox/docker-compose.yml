@@ -20,6 +20,12 @@ services:
       dockerfile: Dockerfile
     security_opt:
       - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+    pids_limit: 200
     volumes:
       - ..:/workspace:rw                        # Repo read/write
       - ../.git:/workspace/.git:ro              # Protect git history and hooks

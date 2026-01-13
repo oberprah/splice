@@ -178,7 +178,7 @@ sandbox:
     size: '10G'            # Max 10GB storage
 ```
 
-**Status**: ❌ Not implemented
+**Status**: ✅ **IMPLEMENTED** - Limits set: 4 CPUs, 8GB RAM, 200 PIDs (prevents fork bombs).
 
 ---
 
