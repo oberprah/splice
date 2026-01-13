@@ -9,6 +9,20 @@ Provides a controlled testing environment where Claude Code can:
 - Work with a clean, reproducible setup
 - Be safely given dangerously-skip-permissions mode
 
+## Security Model
+
+**Threat: Prompt Injection**
+Internet access (web searches, fetches) is required for agent capabilities but creates prompt injection risk from external content.
+
+**Mitigation: No Secrets in Container**
+- API keys stay on host, proxied through LiteLLM sidecar
+- Git remote operations disabled (no origin push/pull)
+- No GitHub CLI or credentials
+- Remote operations must be done outside the container
+
+**Isolation: Host Protection**
+Container limits prevent host system takeover through resource exhaustion or breakout attempts.
+
 ## Usage
 
 ```bash
