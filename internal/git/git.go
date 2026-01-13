@@ -267,8 +267,8 @@ func FetchFileChanges(commitRange core.CommitRange) ([]core.FileChange, error) {
 		fromHash = commitRange.End.Hash + "^"
 		toHash = commitRange.End.Hash
 	} else {
-		// Range: compare Start commit's parent with End commit
-		fromHash = commitRange.Start.Hash + "^"
+		// Range: compare Start commit with End commit
+		fromHash = commitRange.Start.Hash
 		toHash = commitRange.End.Hash
 	}
 
@@ -390,8 +390,8 @@ func FetchFullFileDiff(commitRange core.CommitRange, change core.FileChange) (*c
 		fromHash = commitRange.End.Hash + "^"
 		toHash = commitRange.End.Hash
 	} else {
-		// Range: compare Start commit's parent with End commit
-		fromHash = commitRange.Start.Hash + "^"
+		// Range: compare Start commit with End commit
+		fromHash = commitRange.Start.Hash
 		toHash = commitRange.End.Hash
 	}
 
@@ -491,4 +491,605 @@ func FetchFileDiffRange(rangeSpec, filePath string) (string, error) {
 	}
 
 	return out.String(), nil
+}
+
+// FetchUnstagedFileChanges executes git diff and returns a slice of file changes
+// for unstaged changes (working tree vs index).
+func FetchUnstagedFileChanges() ([]core.FileChange, error) {
+	// Get file statuses (A/M/D/R)
+	statusCmd := exec.Command("git", "diff", "--name-status")
+	var statusOut bytes.Buffer
+	var statusErr bytes.Buffer
+	statusCmd.Stdout = &statusOut
+	statusCmd.Stderr = &statusErr
+
+	err := statusCmd.Run()
+	if err != nil {
+		stderrStr := statusErr.String()
+		if strings.Contains(stderrStr, "not a git repository") {
+			return nil, fmt.Errorf("not a git repository")
+		}
+		return nil, fmt.Errorf("git diff failed: %v - %s", err, stderrStr)
+	}
+
+	// Parse status information into a map
+	statusMap := make(map[string]string)
+	statusLines := strings.Split(strings.TrimSpace(statusOut.String()), "\n")
+	for _, line := range statusLines {
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, "\t", 2)
+		if len(parts) == 2 {
+			status := parts[0]
+			path := parts[1]
+			statusMap[path] = status
+		}
+	}
+
+	// Get numstat information
+	cmd := exec.Command("git", "diff", "--numstat")
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+
+	err = cmd.Run()
+	if err != nil {
+		stderrStr := stderr.String()
+		if strings.Contains(stderrStr, "not a git repository") {
+			return nil, fmt.Errorf("not a git repository")
+		}
+		return nil, fmt.Errorf("git diff failed: %v - %s", err, stderrStr)
+	}
+
+	// Parse file changes and add status
+	changes, err := ParseFileChangesOutput(out.String())
+	if err != nil {
+		return nil, err
+	}
+
+	// Add status to each change
+	for i := range changes {
+		if status, ok := statusMap[changes[i].Path]; ok {
+			changes[i].Status = status
+		} else {
+			changes[i].Status = "M" // Default to modified if not found
+		}
+	}
+
+	return changes, nil
+}
+
+// FetchStagedFileChanges executes git diff --staged and returns a slice of file changes
+// for staged changes (index vs HEAD).
+func FetchStagedFileChanges() ([]core.FileChange, error) {
+	// Get file statuses (A/M/D/R)
+	statusCmd := exec.Command("git", "diff", "--staged", "--name-status")
+	var statusOut bytes.Buffer
+	var statusErr bytes.Buffer
+	statusCmd.Stdout = &statusOut
+	statusCmd.Stderr = &statusErr
+
+	err := statusCmd.Run()
+	if err != nil {
+		stderrStr := statusErr.String()
+		if strings.Contains(stderrStr, "not a git repository") {
+			return nil, fmt.Errorf("not a git repository")
+		}
+		return nil, fmt.Errorf("git diff failed: %v - %s", err, stderrStr)
+	}
+
+	// Parse status information into a map
+	statusMap := make(map[string]string)
+	statusLines := strings.Split(strings.TrimSpace(statusOut.String()), "\n")
+	for _, line := range statusLines {
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, "\t", 2)
+		if len(parts) == 2 {
+			status := parts[0]
+			path := parts[1]
+			statusMap[path] = status
+		}
+	}
+
+	// Get numstat information
+	cmd := exec.Command("git", "diff", "--staged", "--numstat")
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+
+	err = cmd.Run()
+	if err != nil {
+		stderrStr := stderr.String()
+		if strings.Contains(stderrStr, "not a git repository") {
+			return nil, fmt.Errorf("not a git repository")
+		}
+		return nil, fmt.Errorf("git diff failed: %v - %s", err, stderrStr)
+	}
+
+	// Parse file changes and add status
+	changes, err := ParseFileChangesOutput(out.String())
+	if err != nil {
+		return nil, err
+	}
+
+	// Add status to each change
+	for i := range changes {
+		if status, ok := statusMap[changes[i].Path]; ok {
+			changes[i].Status = status
+		} else {
+			changes[i].Status = "M" // Default to modified if not found
+		}
+	}
+
+	return changes, nil
+}
+
+// FetchAllUncommittedFileChanges executes git diff HEAD and returns a slice of file changes
+// for all uncommitted changes (working tree vs HEAD).
+func FetchAllUncommittedFileChanges() ([]core.FileChange, error) {
+	// Get file statuses (A/M/D/R)
+	statusCmd := exec.Command("git", "diff", "HEAD", "--name-status")
+	var statusOut bytes.Buffer
+	var statusErr bytes.Buffer
+	statusCmd.Stdout = &statusOut
+	statusCmd.Stderr = &statusErr
+
+	err := statusCmd.Run()
+	if err != nil {
+		stderrStr := statusErr.String()
+		if strings.Contains(stderrStr, "not a git repository") {
+			return nil, fmt.Errorf("not a git repository")
+		}
+		return nil, fmt.Errorf("git diff failed: %v - %s", err, stderrStr)
+	}
+
+	// Parse status information into a map
+	statusMap := make(map[string]string)
+	statusLines := strings.Split(strings.TrimSpace(statusOut.String()), "\n")
+	for _, line := range statusLines {
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, "\t", 2)
+		if len(parts) == 2 {
+			status := parts[0]
+			path := parts[1]
+			statusMap[path] = status
+		}
+	}
+
+	// Get numstat information
+	cmd := exec.Command("git", "diff", "HEAD", "--numstat")
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+
+	err = cmd.Run()
+	if err != nil {
+		stderrStr := stderr.String()
+		if strings.Contains(stderrStr, "not a git repository") {
+			return nil, fmt.Errorf("not a git repository")
+		}
+		return nil, fmt.Errorf("git diff failed: %v - %s", err, stderrStr)
+	}
+
+	// Parse file changes and add status
+	changes, err := ParseFileChangesOutput(out.String())
+	if err != nil {
+		return nil, err
+	}
+
+	// Add status to each change
+	for i := range changes {
+		if status, ok := statusMap[changes[i].Path]; ok {
+			changes[i].Status = status
+		} else {
+			changes[i].Status = "M" // Default to modified if not found
+		}
+	}
+
+	return changes, nil
+}
+
+// FetchIndexFileContent retrieves the content of a file from the index (staging area).
+// Returns empty string without error if the file doesn't exist in the index.
+func FetchIndexFileContent(filePath string) (string, error) {
+	cmd := exec.Command("git", "show", ":"+filePath)
+
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		stderrStr := stderr.String()
+		// Check if this is a "file not found" error - return empty string, no error
+		if strings.Contains(stderrStr, "does not exist") ||
+			strings.Contains(stderrStr, "exists on disk, but not in") ||
+			strings.Contains(stderrStr, "fatal: path") {
+			return "", nil
+		}
+		if strings.Contains(stderrStr, "not a git repository") {
+			return "", fmt.Errorf("not a git repository")
+		}
+		return "", fmt.Errorf("git show failed: %v - %s", err, stderrStr)
+	}
+
+	return out.String(), nil
+}
+
+// FetchWorkingTreeFileContent retrieves the content of a file from the working tree.
+// Returns empty string without error if the file doesn't exist.
+func FetchWorkingTreeFileContent(filePath string) (string, error) {
+	content, err := exec.Command("cat", filePath).Output()
+	if err != nil {
+		// File doesn't exist or can't be read - return empty string, no error
+		return "", nil
+	}
+	return string(content), nil
+}
+
+// FetchUnstagedFileDiff fetches the complete file content before and after an unstaged change,
+// along with the diff output. This enables showing the full file with changes highlighted.
+// Unstaged changes compare the index (old) with the working tree (new).
+func FetchUnstagedFileDiff(file core.FileChange) (*core.FullFileDiffResult, error) {
+	result := &core.FullFileDiffResult{
+		NewPath: file.Path,
+		OldPath: file.Path,
+	}
+
+	// Fetch old content (from index)
+	switch file.Status {
+	case "A": // Added file - no old content in index
+		result.OldContent = ""
+	default:
+		oldContent, err := FetchIndexFileContent(file.Path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch old content: %w", err)
+		}
+		result.OldContent = oldContent
+	}
+
+	// Fetch new content (from working tree)
+	switch file.Status {
+	case "D": // Deleted file - no new content in working tree
+		result.NewContent = ""
+	default:
+		newContent, err := FetchWorkingTreeFileContent(file.Path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch new content: %w", err)
+		}
+		result.NewContent = newContent
+	}
+
+	// Fetch the unified diff
+	diffCmd := exec.Command("git", "diff", "--", file.Path)
+	var diffOut bytes.Buffer
+	var diffErr bytes.Buffer
+	diffCmd.Stdout = &diffOut
+	diffCmd.Stderr = &diffErr
+
+	err := diffCmd.Run()
+	if err != nil {
+		stderrStr := diffErr.String()
+		if strings.Contains(stderrStr, "not a git repository") {
+			return nil, fmt.Errorf("not a git repository")
+		}
+		return nil, fmt.Errorf("git diff failed: %v - %s", err, stderrStr)
+	}
+	result.DiffOutput = diffOut.String()
+
+	return result, nil
+}
+
+// FetchStagedFileDiff fetches the complete file content before and after a staged change,
+// along with the diff output. This enables showing the full file with changes highlighted.
+// Staged changes compare HEAD (old) with the index (new).
+func FetchStagedFileDiff(file core.FileChange) (*core.FullFileDiffResult, error) {
+	result := &core.FullFileDiffResult{
+		NewPath: file.Path,
+		OldPath: file.Path,
+	}
+
+	// Fetch old content (from HEAD)
+	switch file.Status {
+	case "A": // Added file - no old content in HEAD
+		result.OldContent = ""
+	default:
+		oldContent, err := FetchFileContent("HEAD", file.Path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch old content: %w", err)
+		}
+		result.OldContent = oldContent
+	}
+
+	// Fetch new content (from index)
+	switch file.Status {
+	case "D": // Deleted file - no new content in index
+		result.NewContent = ""
+	default:
+		newContent, err := FetchIndexFileContent(file.Path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch new content: %w", err)
+		}
+		result.NewContent = newContent
+	}
+
+	// Fetch the unified diff
+	diffCmd := exec.Command("git", "diff", "--staged", "--", file.Path)
+	var diffOut bytes.Buffer
+	var diffErr bytes.Buffer
+	diffCmd.Stdout = &diffOut
+	diffCmd.Stderr = &diffErr
+
+	err := diffCmd.Run()
+	if err != nil {
+		stderrStr := diffErr.String()
+		if strings.Contains(stderrStr, "not a git repository") {
+			return nil, fmt.Errorf("not a git repository")
+		}
+		return nil, fmt.Errorf("git diff failed: %v - %s", err, stderrStr)
+	}
+	result.DiffOutput = diffOut.String()
+
+	return result, nil
+}
+
+// FetchAllUncommittedFileDiff fetches the complete file content before and after all uncommitted changes,
+// along with the diff output. This enables showing the full file with changes highlighted.
+// All uncommitted changes compare HEAD (old) with the working tree (new).
+func FetchAllUncommittedFileDiff(file core.FileChange) (*core.FullFileDiffResult, error) {
+	result := &core.FullFileDiffResult{
+		NewPath: file.Path,
+		OldPath: file.Path,
+	}
+
+	// Fetch old content (from HEAD)
+	switch file.Status {
+	case "A": // Added file - no old content in HEAD
+		result.OldContent = ""
+	default:
+		oldContent, err := FetchFileContent("HEAD", file.Path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch old content: %w", err)
+		}
+		result.OldContent = oldContent
+	}
+
+	// Fetch new content (from working tree)
+	switch file.Status {
+	case "D": // Deleted file - no new content in working tree
+		result.NewContent = ""
+	default:
+		newContent, err := FetchWorkingTreeFileContent(file.Path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch new content: %w", err)
+		}
+		result.NewContent = newContent
+	}
+
+	// Fetch the unified diff
+	diffCmd := exec.Command("git", "diff", "HEAD", "--", file.Path)
+	var diffOut bytes.Buffer
+	var diffErr bytes.Buffer
+	diffCmd.Stdout = &diffOut
+	diffCmd.Stderr = &diffErr
+
+	err := diffCmd.Run()
+	if err != nil {
+		stderrStr := diffErr.String()
+		if strings.Contains(stderrStr, "not a git repository") {
+			return nil, fmt.Errorf("not a git repository")
+		}
+		return nil, fmt.Errorf("git diff failed: %v - %s", err, stderrStr)
+	}
+	result.DiffOutput = diffOut.String()
+
+	return result, nil
+}
+
+// ValidateDiffHasChanges checks if a diff specification has any changes.
+// For uncommitted changes, checks the appropriate git diff.
+// For commit ranges, checks if the range has any diff.
+// Returns nil if there are changes, error if no changes or invalid spec.
+func ValidateDiffHasChanges(rawSpec string, uncommittedType *core.UncommittedType) error {
+	var args []string
+
+	if uncommittedType != nil {
+		// Uncommitted changes
+		switch *uncommittedType {
+		case core.UncommittedTypeUnstaged:
+			args = []string{"diff", "--quiet"}
+		case core.UncommittedTypeStaged:
+			args = []string{"diff", "--quiet", "--staged"}
+		case core.UncommittedTypeAll:
+			args = []string{"diff", "--quiet", "HEAD"}
+		default:
+			return fmt.Errorf("unknown uncommitted type: %v", *uncommittedType)
+		}
+	} else {
+		// Commit range
+		args = []string{"diff", "--quiet", rawSpec}
+	}
+
+	cmd := exec.Command("git", args...)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+
+	if err == nil {
+		// Exit 0 = no changes
+		if uncommittedType != nil {
+			return fmt.Errorf("no uncommitted changes found")
+		}
+		return fmt.Errorf("no changes found in %q", rawSpec)
+	}
+
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		exitCode := exitErr.ExitCode()
+		if exitCode == 1 {
+			// Exit 1 = has changes (this is what we want)
+			return nil
+		}
+		// Exit 128+ = git error (invalid ref, etc.)
+		stderrStr := stderr.String()
+		if strings.Contains(stderrStr, "not a git repository") {
+			return fmt.Errorf("not a git repository")
+		}
+		if uncommittedType != nil {
+			return fmt.Errorf("error checking uncommitted changes: %v", err)
+		}
+		return fmt.Errorf("invalid diff specification %q: %v", rawSpec, err)
+	}
+
+	// Other errors
+	return fmt.Errorf("error running git diff: %v", err)
+}
+
+// ResolveCommitRange parses a commit range spec (like "main..feature" or "HEAD~5")
+// and resolves refs to GitCommit objects.
+func ResolveCommitRange(spec string) (core.CommitRangeDiffSource, error) {
+	// Parse the range specification to get start and end refs
+	startRef := spec
+	endRef := "HEAD"
+
+	// Check if it's a range (contains ..)
+	if strings.Contains(spec, "...") {
+		parts := strings.SplitN(spec, "...", 2)
+		startRef = parts[0]
+		endRef = parts[1]
+		// Three-dot range: find merge base
+		mergeBase, err := findMergeBase(startRef, endRef)
+		if err != nil {
+			return core.CommitRangeDiffSource{}, err
+		}
+		startRef = mergeBase
+	} else if strings.Contains(spec, "..") {
+		parts := strings.SplitN(spec, "..", 2)
+		startRef = parts[0]
+		endRef = parts[1]
+	}
+
+	// Resolve refs to commits
+	startCommit, err := ResolveRef(startRef)
+	if err != nil {
+		return core.CommitRangeDiffSource{}, fmt.Errorf("error resolving start ref %q: %v", startRef, err)
+	}
+
+	endCommit, err := ResolveRef(endRef)
+	if err != nil {
+		return core.CommitRangeDiffSource{}, fmt.Errorf("error resolving end ref %q: %v", endRef, err)
+	}
+
+	// Count commits in range
+	count, err := countCommitsInRange(startRef, endRef)
+	if err != nil {
+		return core.CommitRangeDiffSource{}, err
+	}
+
+	return core.CommitRangeDiffSource{
+		Start: startCommit,
+		End:   endCommit,
+		Count: count,
+	}, nil
+}
+
+// ResolveRef resolves a git ref (like "HEAD", "main", "abc123") to a GitCommit.
+func ResolveRef(ref string) (core.GitCommit, error) {
+	cmd := exec.Command("git", "log", "-1", "--format=%H%n%s%n%an%n%aI%n%P", ref)
+
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		stderrStr := stderr.String()
+		if strings.Contains(stderrStr, "not a git repository") {
+			return core.GitCommit{}, fmt.Errorf("not a git repository")
+		}
+		if strings.Contains(stderrStr, "unknown revision") || strings.Contains(stderrStr, "bad revision") {
+			return core.GitCommit{}, fmt.Errorf("unknown revision: %s", ref)
+		}
+		return core.GitCommit{}, fmt.Errorf("error resolving ref: %v", err)
+	}
+
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	if len(lines) < 4 {
+		return core.GitCommit{}, fmt.Errorf("unexpected git log output")
+	}
+
+	// Parse date
+	date, err := time.Parse(time.RFC3339, strings.TrimSpace(lines[3]))
+	if err != nil {
+		return core.GitCommit{}, fmt.Errorf("error parsing date: %v", err)
+	}
+
+	// Parse parent hashes
+	var parents []string
+	if len(lines) >= 5 && lines[4] != "" {
+		parents = strings.Fields(lines[4])
+	}
+
+	return core.GitCommit{
+		Hash:         lines[0],
+		Message:      lines[1],
+		Author:       lines[2],
+		Date:         date,
+		ParentHashes: parents,
+		Refs:         []core.RefInfo{},
+	}, nil
+}
+
+// findMergeBase finds the merge base of two refs.
+func findMergeBase(ref1, ref2 string) (string, error) {
+	cmd := exec.Command("git", "merge-base", ref1, ref2)
+
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		stderrStr := stderr.String()
+		if strings.Contains(stderrStr, "not a git repository") {
+			return "", fmt.Errorf("not a git repository")
+		}
+		return "", fmt.Errorf("error finding merge base: %v", err)
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+// countCommitsInRange counts commits between two refs.
+func countCommitsInRange(startRef, endRef string) (int, error) {
+	cmd := exec.Command("git", "rev-list", "--count", startRef+".."+endRef)
+
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		stderrStr := stderr.String()
+		if strings.Contains(stderrStr, "not a git repository") {
+			return 0, fmt.Errorf("not a git repository")
+		}
+		return 0, fmt.Errorf("error counting commits: %v", err)
+	}
+
+	var count int
+	if _, err := fmt.Sscanf(out.String(), "%d", &count); err != nil {
+		return 0, fmt.Errorf("error parsing commit count: %v", err)
+	}
+	return count, nil
 }

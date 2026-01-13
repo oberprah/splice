@@ -81,13 +81,28 @@ func (s *State) renderHeader() string {
 	// Format for range: abc123d..def456e · path/to/file.go · +15 -8
 	var b strings.Builder
 
-	// Display commit hash or range
-	if s.CommitRange.IsSingleCommit() {
-		b.WriteString(styles.HashStyle.Render(format.ToShortHash(s.CommitRange.End.Hash)))
-	} else {
-		startHash := format.ToShortHash(s.CommitRange.Start.Hash)
-		endHash := format.ToShortHash(s.CommitRange.End.Hash)
-		b.WriteString(styles.HashStyle.Render(fmt.Sprintf("%s..%s", startHash, endHash)))
+	// Display commit hash or range based on DiffSource type
+	switch src := s.Source.(type) {
+	case core.CommitRangeDiffSource:
+		if src.Count == 1 {
+			// Single commit
+			b.WriteString(styles.HashStyle.Render(format.ToShortHash(src.End.Hash)))
+		} else {
+			// Commit range
+			startHash := format.ToShortHash(src.Start.Hash)
+			endHash := format.ToShortHash(src.End.Hash)
+			b.WriteString(styles.HashStyle.Render(fmt.Sprintf("%s..%s", startHash, endHash)))
+		}
+	case core.UncommittedChangesDiffSource:
+		// Display uncommitted changes label based on type
+		switch src.Type {
+		case core.UncommittedTypeUnstaged:
+			b.WriteString(styles.HashStyle.Render("unstaged"))
+		case core.UncommittedTypeStaged:
+			b.WriteString(styles.HashStyle.Render("staged"))
+		case core.UncommittedTypeAll:
+			b.WriteString(styles.HashStyle.Render("uncommitted"))
+		}
 	}
 
 	b.WriteString(styles.HeaderStyle.Render(" · "))

@@ -18,13 +18,13 @@ type PushLogScreenMsg struct {
 
 // PushFilesScreenMsg signals navigation to the files screen
 type PushFilesScreenMsg struct {
-	CommitRange CommitRange
-	Files       []FileChange
+	Source DiffSource
+	Files  []FileChange
 }
 
 // PushDiffScreenMsg signals navigation to the diff screen
 type PushDiffScreenMsg struct {
-	CommitRange   CommitRange
+	Source        DiffSource
 	File          FileChange
 	Diff          *diff.AlignedFileDiff
 	ChangeIndices []int

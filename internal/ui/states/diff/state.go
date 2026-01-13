@@ -8,9 +8,9 @@ import (
 // DiffState represents the state when viewing a file diff
 type State struct {
 	// Current diff data
-	CommitRange core.CommitRange
-	File        core.FileChange
-	Diff        *diff.AlignedFileDiff
+	Source core.DiffSource
+	File   core.FileChange
+	Diff   *diff.AlignedFileDiff
 
 	// Viewport control
 	ViewportStart    int
@@ -19,13 +19,13 @@ type State struct {
 }
 
 // New creates a new DiffState with viewport positioned at the first change.
-func New(commitRange core.CommitRange, file core.FileChange, d *diff.AlignedFileDiff, changeIndices []int) *State {
+func New(source core.DiffSource, file core.FileChange, d *diff.AlignedFileDiff, changeIndices []int) *State {
 	viewportStart := 0
 	if d != nil && len(changeIndices) > 0 {
 		viewportStart = changeIndices[0]
 	}
 	return &State{
-		CommitRange:      commitRange,
+		Source:           source,
 		File:             file,
 		Diff:             d,
 		ChangeIndices:    changeIndices,

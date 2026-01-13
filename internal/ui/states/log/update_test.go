@@ -572,3 +572,200 @@ func TestLogState_Update_QQuitsInNormalMode(t *testing.T) {
 		t.Errorf("Expected tea.Quit message, got %T", resultMsg)
 	}
 }
+
+func TestLogState_Update_EnterCreatesCommitRangeDiffSource(t *testing.T) {
+	commits := createTestCommits(5)
+
+	tests := []struct {
+		name          string
+		cursor        core.CursorState
+		expectedStart string
+		expectedEnd   string
+		expectedCount int
+		description   string
+	}{
+		{
+			name:          "single commit in normal mode",
+			cursor:        core.CursorNormal{Pos: 1},
+			expectedStart: commits[1].Hash,
+			expectedEnd:   commits[1].Hash,
+			expectedCount: 1,
+			description:   "Single commit should have Start == End with Count = 1",
+		},
+		{
+			name:          "range in visual mode (anchor < pos)",
+			cursor:        core.CursorVisual{Pos: 2, Anchor: 1},
+			expectedStart: commits[2].Hash,
+			expectedEnd:   commits[1].Hash,
+			expectedCount: 2,
+			description:   "Range with anchor < pos should have Start = newer (pos), End = older (anchor)",
+		},
+		{
+			name:          "range in visual mode (pos < anchor)",
+			cursor:        core.CursorVisual{Pos: 1, Anchor: 3},
+			expectedStart: commits[3].Hash,
+			expectedEnd:   commits[1].Hash,
+			expectedCount: 3,
+			description:   "Range with pos < anchor should have Start = newer (pos), End = older (anchor)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := State{
+				Commits:       commits,
+				Cursor:        tt.cursor,
+				ViewportStart: 0,
+				Preview:       PreviewNone{},
+			}
+
+			mockFileChanges := []core.FileChange{
+				{Path: "file1.go", Status: "M"},
+			}
+			mockFetchFileChanges := func(commitRange core.CommitRange) ([]core.FileChange, error) {
+				return mockFileChanges, nil
+			}
+
+			ctx := testutils.MockContext{
+				W:                    80,
+				H:                    24,
+				MockFetchFileChanges: mockFetchFileChanges,
+			}
+
+			// Press Enter
+			msg := tea.KeyMsg{Type: tea.KeyEnter}
+			_, cmd := s.Update(msg, ctx)
+
+			if cmd == nil {
+				t.Fatal("Expected command, got nil")
+			}
+
+			// Execute the command to get FilesLoadedMsg
+			resultMsg := cmd()
+			filesLoadedMsg, ok := resultMsg.(core.FilesLoadedMsg)
+			if !ok {
+				t.Fatalf("Expected FilesLoadedMsg, got %T", resultMsg)
+			}
+
+			// Verify the DiffSource is a CommitRangeDiffSource
+			commitRangeSource, ok := filesLoadedMsg.Source.(core.CommitRangeDiffSource)
+			if !ok {
+				t.Fatalf("Expected CommitRangeDiffSource, got %T", filesLoadedMsg.Source)
+			}
+
+			// Verify the CommitRangeDiffSource has correct values
+			if commitRangeSource.Start.Hash != tt.expectedStart {
+				t.Errorf("Expected Start.Hash %s, got %s (%s)", tt.expectedStart, commitRangeSource.Start.Hash, tt.description)
+			}
+
+			if commitRangeSource.End.Hash != tt.expectedEnd {
+				t.Errorf("Expected End.Hash %s, got %s (%s)", tt.expectedEnd, commitRangeSource.End.Hash, tt.description)
+			}
+
+			if commitRangeSource.Count != tt.expectedCount {
+				t.Errorf("Expected Count %d, got %d (%s)", tt.expectedCount, commitRangeSource.Count, tt.description)
+			}
+
+			// Verify files are included
+			if len(filesLoadedMsg.Files) != len(mockFileChanges) {
+				t.Errorf("Expected %d files, got %d", len(mockFileChanges), len(filesLoadedMsg.Files))
+			}
+
+			// Verify no error
+			if filesLoadedMsg.Err != nil {
+				t.Errorf("Expected no error, got %v", filesLoadedMsg.Err)
+			}
+		})
+	}
+}
+
+func TestLogState_Update_FilesLoadedMsgCreatesPushFilesScreenMsg(t *testing.T) {
+	commits := createTestCommits(3)
+	fileChanges := []core.FileChange{
+		{Path: "file1.go", Status: "M"},
+		{Path: "file2.go", Status: "A"},
+	}
+
+	// Create a CommitRangeDiffSource
+	commitRange := core.NewSingleCommitRange(commits[1])
+	diffSource := commitRange.ToDiffSource()
+
+	s := State{
+		Commits:       commits,
+		Cursor:        core.CursorNormal{Pos: 1},
+		ViewportStart: 0,
+		Preview:       PreviewNone{},
+	}
+	ctx := testutils.MockContext{W: 80, H: 24}
+
+	msg := core.FilesLoadedMsg{
+		Source: diffSource,
+		Files:  fileChanges,
+		Err:    nil,
+	}
+
+	_, cmd := s.Update(msg, ctx)
+
+	if cmd == nil {
+		t.Fatal("Expected command, got nil")
+	}
+
+	// Execute the command to get PushFilesScreenMsg
+	resultMsg := cmd()
+	pushFilesMsg, ok := resultMsg.(core.PushFilesScreenMsg)
+	if !ok {
+		t.Fatalf("Expected PushFilesScreenMsg, got %T", resultMsg)
+	}
+
+	// Verify Source is preserved
+	commitRangeSource, ok := pushFilesMsg.Source.(core.CommitRangeDiffSource)
+	if !ok {
+		t.Fatalf("Expected CommitRangeDiffSource in PushFilesScreenMsg, got %T", pushFilesMsg.Source)
+	}
+
+	if commitRangeSource.Start.Hash != commits[1].Hash {
+		t.Errorf("Expected Start.Hash %s, got %s", commits[1].Hash, commitRangeSource.Start.Hash)
+	}
+
+	if commitRangeSource.End.Hash != commits[1].Hash {
+		t.Errorf("Expected End.Hash %s, got %s", commits[1].Hash, commitRangeSource.End.Hash)
+	}
+
+	// Verify Files are preserved
+	if len(pushFilesMsg.Files) != len(fileChanges) {
+		t.Errorf("Expected %d files, got %d", len(fileChanges), len(pushFilesMsg.Files))
+	}
+}
+
+func TestLogState_Update_FilesLoadedMsgWithError(t *testing.T) {
+	commits := createTestCommits(3)
+	testErr := errors.New("failed to load files")
+
+	diffSource := core.NewSingleCommitRange(commits[1]).ToDiffSource()
+
+	s := State{
+		Commits:       commits,
+		Cursor:        core.CursorNormal{Pos: 1},
+		ViewportStart: 0,
+		Preview:       PreviewNone{},
+	}
+	ctx := testutils.MockContext{W: 80, H: 24}
+
+	msg := core.FilesLoadedMsg{
+		Source: diffSource,
+		Files:  nil,
+		Err:    testErr,
+	}
+
+	newState, cmd := s.Update(msg, ctx)
+
+	// Should return the same state and no command on error
+	if cmd != nil {
+		t.Error("Expected nil command on error, got command")
+	}
+
+	logState := newState.(State)
+	if logState.CursorPosition() != 1 {
+		t.Errorf("Expected state to remain unchanged, cursor at %d", logState.CursorPosition())
+	}
+}

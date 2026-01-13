@@ -8,6 +8,7 @@ import (
 	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/ui/states/diff"
+	"github.com/oberprah/splice/internal/ui/states/directdiff"
 	stateserror "github.com/oberprah/splice/internal/ui/states/error"
 	"github.com/oberprah/splice/internal/ui/states/files"
 	"github.com/oberprah/splice/internal/ui/states/loading"
@@ -20,13 +21,14 @@ type FetchCommitsFunc func(limit int) ([]core.GitCommit, error)
 // Model represents the application model using the state pattern.
 // It implements tea.Model for Bubbletea and core.Context for states.
 type Model struct {
-	stack             []core.State // Navigation stack - current state is always stack[len-1]
-	width             int
-	height            int
-	fetchCommits      FetchCommitsFunc
-	fetchFileChanges  core.FetchFileChangesFunc
-	fetchFullFileDiff core.FetchFullFileDiffFunc
-	nowFunc           func() time.Time
+	stack                     []core.State // Navigation stack - current state is always stack[len-1]
+	width                     int
+	height                    int
+	fetchCommits              FetchCommitsFunc
+	fetchFileChanges          core.FetchFileChangesFunc
+	fetchFileChangesForSource core.FetchFileChangesForSourceFunc
+	fetchFullFileDiff         core.FetchFullFileDiffFunc
+	nowFunc                   func() time.Time
 }
 
 // current returns the current state (top of stack).
@@ -59,8 +61,27 @@ func NewModel(opts ...ModelOption) Model {
 	return m
 }
 
-// Init initializes the model and starts loading commits
+// Init initializes the model and starts the appropriate loading command.
+// For LoadingState: fetches commits
+// For DirectDiffLoadingState: fetches files for the diff source
 func (m Model) Init() tea.Cmd {
+	// Check if the initial state is DirectDiffLoadingState
+	if state, ok := m.current().(directdiff.State); ok {
+		// Use injected function if available (for testing), otherwise use default
+		if m.fetchFileChangesForSource != nil {
+			return func() tea.Msg {
+				files, err := m.fetchFileChangesForSource(state.Source)
+				return core.FilesLoadedMsg{
+					Source: state.Source,
+					Files:  files,
+					Err:    err,
+				}
+			}
+		}
+		return directdiff.FetchFileChangesForSource(state.Source)
+	}
+
+	// Default: fetch commits (for LoadingState)
 	return func() tea.Msg {
 		commits, err := m.fetchCommits(500)
 		return core.CommitsLoadedMsg{Commits: commits, Err: err}
@@ -80,11 +101,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, msg.InitCmd
 
 	case core.PushFilesScreenMsg:
-		m.pushState(files.New(msg.CommitRange, msg.Files))
+		m.pushState(files.New(msg.Source, msg.Files))
 		return m, nil
 
 	case core.PushDiffScreenMsg:
-		m.pushState(diff.New(msg.CommitRange, msg.File, msg.Diff, msg.ChangeIndices))
+		m.pushState(diff.New(msg.Source, msg.File, msg.Diff, msg.ChangeIndices))
 		return m, nil
 
 	case core.PushErrorScreenMsg:
@@ -106,9 +127,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // pushState adds a new state to the navigation stack.
-// LoadingState is transient - it gets replaced instead of stacked.
+// LoadingState and DirectDiffLoadingState are transient - they get replaced instead of stacked.
 func (m *Model) pushState(newState core.State) {
-	if _, isLoading := m.current().(loading.State); isLoading {
+	current := m.current()
+	_, isLoading := current.(loading.State)
+	_, isDirectDiffLoading := current.(directdiff.State)
+
+	if isLoading || isDirectDiffLoading {
 		m.stack[len(m.stack)-1] = newState
 	} else {
 		m.stack = append(m.stack, newState)

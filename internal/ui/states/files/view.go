@@ -10,8 +10,26 @@ func (s *State) View(ctx core.Context) core.ViewRenderer {
 	vb := components.NewViewBuilder()
 
 	// Render commit info using shared component
-	// CommitInfoFromRange handles both single commits and ranges
-	commitInfoLines := components.CommitInfoFromRange(s.CommitRange, ctx.Width(), 0, ctx) // 0 = unlimited body lines
+	// For now, we only support CommitRangeDiffSource for display
+	// TODO: Add support for uncommitted changes display in a future step
+	var commitInfoLines []string
+	switch src := s.Source.(type) {
+	case core.CommitRangeDiffSource:
+		commitInfoLines = components.CommitInfoFromRange(src.ToCommitRange(), ctx.Width(), 0, ctx) // 0 = unlimited body lines
+	case core.UncommittedChangesDiffSource:
+		// TODO: Display uncommitted changes header
+		// For now, show a simple label
+		var label string
+		switch src.Type {
+		case core.UncommittedTypeUnstaged:
+			label = "Uncommitted changes (unstaged)"
+		case core.UncommittedTypeStaged:
+			label = "Uncommitted changes (staged)"
+		case core.UncommittedTypeAll:
+			label = "Uncommitted changes"
+		}
+		commitInfoLines = []string{label}
+	}
 	for _, line := range commitInfoLines {
 		vb.AddLine(line)
 	}

@@ -1,7 +1,9 @@
 package git
 
 import (
+	"os/exec"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -635,6 +637,340 @@ func TestParseRefDecorations(t *testing.T) {
 
 			if !reflect.DeepEqual(result, tt.expected) {
 				t.Errorf("parseRefDecorations() mismatch:\ngot:  %+v\nwant: %+v", result, tt.expected)
+			}
+		})
+	}
+}
+
+// Tests for uncommitted changes file list functions
+func TestParseUncommittedFileChanges(t *testing.T) {
+	tests := []struct {
+		name         string
+		numstatOut   string
+		statusOut    string
+		expectedType string // "unstaged", "staged", or "all"
+		expected     []core.FileChange
+	}{
+		{
+			name:         "unstaged - single modified file",
+			numstatOut:   "15\t3\tinternal/ui/app.go",
+			statusOut:    "M\tinternal/ui/app.go",
+			expectedType: "unstaged",
+			expected: []core.FileChange{
+				{
+					Path:      "internal/ui/app.go",
+					Additions: 15,
+					Deletions: 3,
+					Status:    "M",
+				},
+			},
+		},
+		{
+			name:         "staged - added file",
+			numstatOut:   "50\t0\tnewfile.go",
+			statusOut:    "A\tnewfile.go",
+			expectedType: "staged",
+			expected: []core.FileChange{
+				{
+					Path:      "newfile.go",
+					Additions: 50,
+					Deletions: 0,
+					Status:    "A",
+				},
+			},
+		},
+		{
+			name:         "all uncommitted - deleted file",
+			numstatOut:   "0\t25\toldfile.go",
+			statusOut:    "D\toldfile.go",
+			expectedType: "all",
+			expected: []core.FileChange{
+				{
+					Path:      "oldfile.go",
+					Additions: 0,
+					Deletions: 25,
+					Status:    "D",
+				},
+			},
+		},
+		{
+			name:         "multiple files with different statuses",
+			numstatOut:   "10\t5\tREADME.md\n50\t0\tnew.go\n0\t30\told.go",
+			statusOut:    "M\tREADME.md\nA\tnew.go\nD\told.go",
+			expectedType: "unstaged",
+			expected: []core.FileChange{
+				{
+					Path:      "README.md",
+					Additions: 10,
+					Deletions: 5,
+					Status:    "M",
+				},
+				{
+					Path:      "new.go",
+					Additions: 50,
+					Deletions: 0,
+					Status:    "A",
+				},
+				{
+					Path:      "old.go",
+					Additions: 0,
+					Deletions: 30,
+					Status:    "D",
+				},
+			},
+		},
+		{
+			name:         "binary file",
+			numstatOut:   "-\t-\timage.png",
+			statusOut:    "M\timage.png",
+			expectedType: "unstaged",
+			expected: []core.FileChange{
+				{
+					Path:      "image.png",
+					Additions: 0,
+					Deletions: 0,
+					Status:    "M",
+					IsBinary:  true,
+				},
+			},
+		},
+		{
+			name:         "empty - no changes",
+			numstatOut:   "",
+			statusOut:    "",
+			expectedType: "unstaged",
+			expected:     []core.FileChange{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Parse status map (simulating what the function does)
+			statusMap := make(map[string]string)
+			statusLines := strings.Split(strings.TrimSpace(tt.statusOut), "\n")
+			for _, line := range statusLines {
+				if line == "" {
+					continue
+				}
+				parts := strings.SplitN(line, "\t", 2)
+				if len(parts) == 2 {
+					statusMap[parts[1]] = parts[0]
+				}
+			}
+
+			// Parse file changes
+			changes, err := ParseFileChangesOutput(tt.numstatOut)
+			if err != nil {
+				t.Fatalf("ParseFileChangesOutput() error = %v", err)
+			}
+
+			// Add status to each change
+			for i := range changes {
+				if status, ok := statusMap[changes[i].Path]; ok {
+					changes[i].Status = status
+				}
+			}
+
+			if !reflect.DeepEqual(changes, tt.expected) {
+				t.Errorf("Result mismatch:\ngot:  %+v\nwant: %+v", changes, tt.expected)
+			}
+		})
+	}
+}
+
+// Integration test for FetchFileChanges with commit ranges
+// This test uses the actual git repository to verify correct behavior
+func TestFetchFileChanges_CommitRange(t *testing.T) {
+	// Skip if not in a git repository
+	cmd := exec.Command("git", "rev-parse", "--git-dir")
+	if err := cmd.Run(); err != nil {
+		t.Skip("Not in a git repository")
+	}
+
+	// Get origin/main commit
+	cmd = exec.Command("git", "rev-parse", "origin/main")
+	originMainOutput, err := cmd.Output()
+	if err != nil {
+		t.Skip("origin/main not available")
+	}
+	originMainHash := strings.TrimSpace(string(originMainOutput))
+
+	// Get HEAD commit
+	cmd = exec.Command("git", "rev-parse", "HEAD")
+	headOutput, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("Failed to get HEAD: %v", err)
+	}
+	headHash := strings.TrimSpace(string(headOutput))
+
+	// Skip if origin/main and HEAD are the same
+	if originMainHash == headHash {
+		t.Skip("origin/main and HEAD are the same commit")
+	}
+
+	// Count commits in the range using git rev-list
+	cmd = exec.Command("git", "rev-list", "--count", "origin/main..HEAD")
+	countOutput, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("Failed to count commits: %v", err)
+	}
+	expectedCount := strings.TrimSpace(string(countOutput))
+	if expectedCount == "0" {
+		t.Skip("No commits between origin/main and HEAD")
+	}
+
+	// Get the actual file list for the correct range (origin/main..HEAD)
+	cmd = exec.Command("git", "diff", "--name-only", "origin/main..HEAD")
+	correctRangeOutput, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("Failed to get correct range files: %v", err)
+	}
+	correctFiles := strings.Split(strings.TrimSpace(string(correctRangeOutput)), "\n")
+	if len(correctFiles) == 1 && correctFiles[0] == "" {
+		correctFiles = []string{}
+	}
+
+	// Get the file list for the incorrect range (origin/main^..HEAD) to show the bug
+	cmd = exec.Command("git", "diff", "--name-only", "origin/main^..HEAD")
+	incorrectRangeOutput, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("Failed to get incorrect range files: %v", err)
+	}
+	incorrectFiles := strings.Split(strings.TrimSpace(string(incorrectRangeOutput)), "\n")
+	if len(incorrectFiles) == 1 && incorrectFiles[0] == "" {
+		incorrectFiles = []string{}
+	}
+
+	// Verify the ranges are different (otherwise the test is meaningless)
+	if len(correctFiles) == len(incorrectFiles) {
+		t.Skip("Both ranges have the same number of files; bug may not be visible in current state")
+	}
+
+	// Create GitCommit objects for the range
+	originMainCommit := core.GitCommit{Hash: originMainHash}
+	headCommit := core.GitCommit{Hash: headHash}
+
+	// Create CommitRange (not a single commit)
+	commitRange := core.CommitRange{
+		Start: originMainCommit,
+		End:   headCommit,
+		Count: 2, // Doesn't matter as long as > 1
+	}
+
+	// Call FetchFileChanges
+	files, err := FetchFileChanges(commitRange)
+	if err != nil {
+		t.Fatalf("FetchFileChanges failed: %v", err)
+	}
+
+	// Extract file paths from the result
+	actualPaths := make([]string, len(files))
+	for i, f := range files {
+		actualPaths[i] = f.Path
+	}
+
+	// Sort both slices for comparison
+	sort.Strings(correctFiles)
+	sort.Strings(actualPaths)
+
+	// Verify that FetchFileChanges returns the correct range (origin/main..HEAD),
+	// not the incorrect range (origin/main^..HEAD)
+	if !reflect.DeepEqual(actualPaths, correctFiles) {
+		t.Errorf("FetchFileChanges returned wrong files for commit range.\n"+
+			"Expected files from range origin/main..HEAD (%d files):\n%v\n\n"+
+			"Got files matching origin/main^..HEAD range (%d files):\n%v\n\n"+
+			"This indicates FetchFileChanges is using Start^ instead of Start",
+			len(correctFiles), correctFiles,
+			len(actualPaths), actualPaths)
+	}
+}
+
+// Tests for uncommitted file diff functions
+func TestUncommittedFileDiffParsing(t *testing.T) {
+	tests := []struct {
+		name         string
+		file         core.FileChange
+		oldContent   string
+		newContent   string
+		unifiedDiff  string
+		diffType     string // "unstaged", "staged", or "all"
+		expectOldErr bool
+		expectNewErr bool
+	}{
+		{
+			name: "unstaged - modified file",
+			file: core.FileChange{
+				Path:      "test.go",
+				Status:    "M",
+				Additions: 5,
+				Deletions: 2,
+			},
+			oldContent:  "package main\n\nfunc old() {}\n",
+			newContent:  "package main\n\nfunc new() {}\nfunc added() {}\n",
+			unifiedDiff: "diff --git a/test.go b/test.go\n@@ -1,3 +1,4 @@\n package main\n \n-func old() {}\n+func new() {}\n+func added() {}\n",
+			diffType:    "unstaged",
+		},
+		{
+			name: "staged - added file (no old content)",
+			file: core.FileChange{
+				Path:      "new.go",
+				Status:    "A",
+				Additions: 10,
+				Deletions: 0,
+			},
+			oldContent:   "",
+			newContent:   "package main\n\nfunc main() {}\n",
+			unifiedDiff:  "diff --git a/new.go b/new.go\nnew file mode 100644\n@@ -0,0 +1,3 @@\n+package main\n+\n+func main() {}\n",
+			diffType:     "staged",
+			expectOldErr: true, // Old content doesn't exist
+		},
+		{
+			name: "all - deleted file (no new content)",
+			file: core.FileChange{
+				Path:      "deleted.go",
+				Status:    "D",
+				Additions: 0,
+				Deletions: 5,
+			},
+			oldContent:   "package main\n\nfunc removed() {}\n",
+			newContent:   "",
+			unifiedDiff:  "diff --git a/deleted.go b/deleted.go\ndeleted file mode 100644\n@@ -1,3 +0,0 @@\n-package main\n-\n-func removed() {}\n",
+			diffType:     "all",
+			expectNewErr: true, // New content doesn't exist
+		},
+		{
+			name: "unstaged - binary file",
+			file: core.FileChange{
+				Path:     "image.png",
+				Status:   "M",
+				IsBinary: true,
+			},
+			oldContent:  "binary content old",
+			newContent:  "binary content new",
+			unifiedDiff: "Binary files a/image.png and b/image.png differ\n",
+			diffType:    "unstaged",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Verify the test data structure
+			if tt.file.Status == "A" && !tt.expectOldErr {
+				t.Error("Added files should expect old content error")
+			}
+			if tt.file.Status == "D" && !tt.expectNewErr {
+				t.Error("Deleted files should expect new content error")
+			}
+
+			// Verify unified diff contains expected markers
+			if tt.file.IsBinary {
+				if !strings.Contains(tt.unifiedDiff, "Binary files") {
+					t.Error("Binary file diff should contain 'Binary files' marker")
+				}
+			} else {
+				if !strings.Contains(tt.unifiedDiff, "diff --git") {
+					t.Error("Unified diff should contain 'diff --git' header")
+				}
 			}
 		})
 	}

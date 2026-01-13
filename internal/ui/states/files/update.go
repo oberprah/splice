@@ -1,10 +1,13 @@
 package files
 
 import (
+	"fmt"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/domain/diff"
+	"github.com/oberprah/splice/internal/git"
 )
 
 // Update handles messages for the files state
@@ -21,7 +24,7 @@ func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 		// Return command that produces PushDiffScreenMsg to navigate to DiffState
 		return s, func() tea.Msg {
 			return core.PushDiffScreenMsg{
-				CommitRange:   msg.CommitRange,
+				Source:        msg.Source,
 				File:          msg.File,
 				Diff:          msg.Diff,
 				ChangeIndices: msg.ChangeIndices,
@@ -32,6 +35,7 @@ func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 		switch msg.String() {
 		case "q":
 			// Go back to the previous state using navigation pattern
+			// (app.Model handles quitting when stack is empty)
 			return s, func() tea.Msg {
 				return core.PopScreenMsg{}
 			}
@@ -102,16 +106,14 @@ func (s *State) updateViewport(height int) {
 
 // loadDiff creates a command to fetch and parse the diff for a file
 func (s *State) loadDiff(file core.FileChange, fetchFullFileDiff core.FetchFullFileDiffFunc) tea.Cmd {
-	commitRange := s.CommitRange
-
 	return func() tea.Msg {
-		// Fetch full file content and diff
-		fullDiffResult, err := fetchFullFileDiff(commitRange, file)
+		// Fetch full file content and diff based on DiffSource type
+		fullDiffResult, err := fetchFileDiffForSource(s.Source, file, fetchFullFileDiff)
 		if err != nil {
 			return core.DiffLoadedMsg{
-				CommitRange: commitRange,
-				File:        file,
-				Err:         err,
+				Source: s.Source,
+				File:   file,
+				Err:    err,
 			}
 		}
 
@@ -124,18 +126,45 @@ func (s *State) loadDiff(file core.FileChange, fetchFullFileDiff core.FetchFullF
 		)
 		if err != nil {
 			return core.DiffLoadedMsg{
-				CommitRange: commitRange,
-				File:        file,
-				Err:         err,
+				Source: s.Source,
+				File:   file,
+				Err:    err,
 			}
 		}
 
 		return core.DiffLoadedMsg{
-			CommitRange:   commitRange,
+			Source:        s.Source,
 			File:          file,
 			Diff:          alignedDiff,
 			ChangeIndices: changeIndices,
 			Err:           nil,
 		}
+	}
+}
+
+// fetchFileDiffForSource fetches the full file diff based on the DiffSource type.
+// Uses type switch to call the appropriate git function for each source type.
+func fetchFileDiffForSource(source core.DiffSource, file core.FileChange, fetchFullFileDiff core.FetchFullFileDiffFunc) (*core.FullFileDiffResult, error) {
+	switch src := source.(type) {
+	case core.CommitRangeDiffSource:
+		// For commit ranges, use the injected fetchFullFileDiff function
+		commitRange := src.ToCommitRange()
+		return fetchFullFileDiff(commitRange, file)
+
+	case core.UncommittedChangesDiffSource:
+		// For uncommitted changes, type switch on Type field to call appropriate git function
+		switch src.Type {
+		case core.UncommittedTypeUnstaged:
+			return git.FetchUnstagedFileDiff(file)
+		case core.UncommittedTypeStaged:
+			return git.FetchStagedFileDiff(file)
+		case core.UncommittedTypeAll:
+			return git.FetchAllUncommittedFileDiff(file)
+		default:
+			return nil, fmt.Errorf("unknown uncommitted type: %v", src.Type)
+		}
+
+	default:
+		return nil, fmt.Errorf("unknown diff source type: %T", source)
 	}
 }

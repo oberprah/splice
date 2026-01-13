@@ -12,11 +12,17 @@ import (
 	"github.com/oberprah/splice/internal/ui/testutils"
 )
 
+// createTestDiffSource creates a CommitRangeDiffSource for testing
+func createTestDiffSource(commit core.GitCommit) core.DiffSource {
+	return core.NewSingleCommitRange(commit).ToDiffSource()
+}
+
 func TestFilesState_Update_NavigationDown(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(10)
+	commitRange := core.NewSingleCommitRange(commit)
 	s := State{
-		CommitRange:   core.NewSingleCommitRange(commit),
+		Source:        commitRange.ToDiffSource(),
 		Files:         files,
 		Cursor:        0,
 		ViewportStart: 0,
@@ -40,8 +46,9 @@ func TestFilesState_Update_NavigationDown(t *testing.T) {
 func TestFilesState_Update_NavigationUp(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(10)
+	commitRange := core.NewSingleCommitRange(commit)
 	s := State{
-		CommitRange:   core.NewSingleCommitRange(commit),
+		Source:        commitRange.ToDiffSource(),
 		Files:         files,
 		Cursor:        5,
 		ViewportStart: 0,
@@ -65,8 +72,9 @@ func TestFilesState_Update_NavigationUp(t *testing.T) {
 func TestFilesState_Update_NavigationJumpToTop(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(10)
+	commitRange := core.NewSingleCommitRange(commit)
 	s := State{
-		CommitRange:   core.NewSingleCommitRange(commit),
+		Source:        commitRange.ToDiffSource(),
 		Files:         files,
 		Cursor:        5,
 		ViewportStart: 3,
@@ -94,8 +102,9 @@ func TestFilesState_Update_NavigationJumpToTop(t *testing.T) {
 func TestFilesState_Update_NavigationJumpToBottom(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(10)
+	commitRange := core.NewSingleCommitRange(commit)
 	s := State{
-		CommitRange:   core.NewSingleCommitRange(commit),
+		Source:        commitRange.ToDiffSource(),
 		Files:         files,
 		Cursor:        0,
 		ViewportStart: 0,
@@ -119,6 +128,8 @@ func TestFilesState_Update_NavigationJumpToBottom(t *testing.T) {
 func TestFilesState_Update_NavigationBoundaries(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(5)
+	commitRange := core.NewSingleCommitRange(commit)
+	diffSource := commitRange.ToDiffSource()
 
 	tests := []struct {
 		name           string
@@ -133,7 +144,7 @@ func TestFilesState_Update_NavigationBoundaries(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := State{
-				CommitRange:   core.NewSingleCommitRange(commit),
+				Source:        diffSource,
 				Files:         files,
 				Cursor:        tt.initialCursor,
 				ViewportStart: 0,
@@ -172,7 +183,7 @@ func TestFilesState_Update_ArrowKeyNavigation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := State{
-				CommitRange:   core.NewSingleCommitRange(commit),
+				Source:        createTestDiffSource(commit),
 				Files:         files,
 				Cursor:        tt.initialCursor,
 				ViewportStart: 0,
@@ -197,8 +208,9 @@ func TestFilesState_Update_ArrowKeyNavigation(t *testing.T) {
 func TestFilesState_Update_ViewportScrolling(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(20)
+	commitRange := core.NewSingleCommitRange(commit)
 	s := State{
-		CommitRange:   core.NewSingleCommitRange(commit),
+		Source:        commitRange.ToDiffSource(),
 		Files:         files,
 		Cursor:        5,
 		ViewportStart: 0,
@@ -228,7 +240,7 @@ func TestFilesState_Update_BackNavigation(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(5)
 	s := State{
-		CommitRange:   core.NewSingleCommitRange(commit),
+		Source:        createTestDiffSource(commit),
 		Files:         files,
 		Cursor:        2,
 		ViewportStart: 0,
@@ -269,8 +281,9 @@ func TestFilesState_Update_BackNavigation(t *testing.T) {
 func TestFilesState_Update_SingleFileList(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(1)
+	commitRange := core.NewSingleCommitRange(commit)
 	s := State{
-		CommitRange:   core.NewSingleCommitRange(commit),
+		Source:        commitRange.ToDiffSource(),
 		Files:         files,
 		Cursor:        0,
 		ViewportStart: 0,
@@ -294,8 +307,9 @@ func TestFilesState_Update_SingleFileList(t *testing.T) {
 func TestFilesState_Update_EmptyFileList(t *testing.T) {
 	commit := createTestCommit()
 	files := []core.FileChange{}
+	commitRange := core.NewSingleCommitRange(commit)
 	s := State{
-		CommitRange:   core.NewSingleCommitRange(commit),
+		Source:        commitRange.ToDiffSource(),
 		Files:         files,
 		Cursor:        0,
 		ViewportStart: 0,
@@ -320,7 +334,7 @@ func TestFilesState_Update_EnterKeyReturnsCommand(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(5)
 	s := State{
-		CommitRange:   core.NewSingleCommitRange(commit),
+		Source:        createTestDiffSource(commit),
 		Files:         files,
 		Cursor:        2,
 		ViewportStart: 0,
@@ -346,9 +360,9 @@ func TestFilesState_Update_EnterOnEmptyFiles(t *testing.T) {
 	commit := createTestCommit()
 	files := []core.FileChange{}
 	s := State{
-		CommitRange: core.NewSingleCommitRange(commit),
-		Files:       files,
-		Cursor:      0,
+		Source: createTestDiffSource(commit), // OLD:CommitRange: core.NewSingleCommitRange(commit),
+		Files:  files,
+		Cursor: 0,
 	}
 	ctx := testutils.MockContext{W: 80, H: 24}
 
@@ -371,7 +385,7 @@ func TestFilesState_Update_DiffLoadedMsgSuccess(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(5)
 	s := State{
-		CommitRange:   core.NewSingleCommitRange(commit),
+		Source:        createTestDiffSource(commit),
 		Files:         files,
 		Cursor:        2,
 		ViewportStart: 1,
@@ -380,8 +394,8 @@ func TestFilesState_Update_DiffLoadedMsgSuccess(t *testing.T) {
 
 	// Simulate DiffLoadedMsg with success
 	msg := core.DiffLoadedMsg{
-		CommitRange: core.NewSingleCommitRange(commit),
-		File:        files[2],
+		Source: core.NewSingleCommitRange(commit).ToDiffSource(),
+		File:   files[2],
 		Diff: &diff.AlignedFileDiff{
 			Left: diff.FileContent{
 				Path: "file.go",
@@ -441,17 +455,17 @@ func TestFilesState_Update_DiffLoadedMsgError(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(5)
 	s := State{
-		CommitRange: core.NewSingleCommitRange(commit),
-		Files:       files,
-		Cursor:      2,
+		Source: createTestDiffSource(commit), // OLD:CommitRange: core.NewSingleCommitRange(commit),
+		Files:  files,
+		Cursor: 2,
 	}
 	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Simulate DiffLoadedMsg with error
 	msg := core.DiffLoadedMsg{
-		CommitRange: core.NewSingleCommitRange(commit),
-		File:        files[2],
-		Err:         fmt.Errorf("failed to load diff"),
+		Source: core.NewSingleCommitRange(commit).ToDiffSource(),
+		File:   files[2],
+		Err:    fmt.Errorf("failed to load diff"),
 	}
 	newState, _ := s.Update(msg, ctx)
 
@@ -459,4 +473,72 @@ func TestFilesState_Update_DiffLoadedMsgError(t *testing.T) {
 	if _, ok := newState.(*State); !ok {
 		t.Fatalf("Expected to stay in FilesState on error, got %T", newState)
 	}
+}
+
+// TestFetchFileDiffForSource_CommitRange tests that commit range sources use the injected function
+func TestFetchFileDiffForSource_CommitRange(t *testing.T) {
+	commit := createTestCommit()
+	commitRange := core.NewSingleCommitRange(commit)
+	source := commitRange.ToDiffSource()
+	file := core.FileChange{Path: "test.go", Status: "M"}
+
+	// Mock function that tracks if it was called
+	called := false
+	mockFetch := func(cr core.CommitRange, f core.FileChange) (*core.FullFileDiffResult, error) {
+		called = true
+		if cr.Start.Hash != commit.Hash || cr.End.Hash != commit.Hash {
+			t.Errorf("Expected commit range with hash %s, got %s..%s", commit.Hash, cr.Start.Hash, cr.End.Hash)
+		}
+		if f.Path != file.Path {
+			t.Errorf("Expected file path %s, got %s", file.Path, f.Path)
+		}
+		return &core.FullFileDiffResult{
+			OldContent: "old",
+			NewContent: "new",
+			DiffOutput: "diff",
+		}, nil
+	}
+
+	result, err := fetchFileDiffForSource(source, file, mockFetch)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if !called {
+		t.Error("Expected mock function to be called")
+	}
+	if result.OldContent != "old" {
+		t.Errorf("Expected old content 'old', got %s", result.OldContent)
+	}
+}
+
+// TestFetchFileDiffForSource_UnknownType tests error handling for unknown diff source types
+func TestFetchFileDiffForSource_UnknownType(t *testing.T) {
+	// Create an invalid source by type assertion (this is for testing error handling)
+	file := core.FileChange{Path: "test.go"}
+	mockFetch := func(cr core.CommitRange, f core.FileChange) (*core.FullFileDiffResult, error) {
+		return nil, fmt.Errorf("should not be called")
+	}
+
+	// Test with nil source (will cause type switch default case)
+	_, err := fetchFileDiffForSource(nil, file, mockFetch)
+	if err == nil {
+		t.Error("Expected error for unknown diff source type")
+	}
+	if err != nil && !contains(err.Error(), "unknown diff source type") {
+		t.Errorf("Expected 'unknown diff source type' error, got: %v", err)
+	}
+}
+
+// Helper function to check if string contains substring
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && findSubstring(s, substr))
+}
+
+func findSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }

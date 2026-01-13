@@ -10,11 +10,11 @@ type CommitsLoadedMsg struct {
 	Err     error
 }
 
-// FilesLoadedMsg is sent when files for a commit have been loaded
+// FilesLoadedMsg is sent when files for a diff source have been loaded
 type FilesLoadedMsg struct {
-	CommitRange CommitRange
-	Files       []FileChange
-	Err         error
+	Source DiffSource
+	Files  []FileChange
+	Err    error
 }
 
 // FilesPreviewLoadedMsg is sent when files for a preview panel have been loaded
@@ -26,7 +26,7 @@ type FilesPreviewLoadedMsg struct {
 
 // DiffLoadedMsg is sent when diff content for a file has been loaded
 type DiffLoadedMsg struct {
-	CommitRange   CommitRange
+	Source        DiffSource
 	File          FileChange
 	Diff          *diff.AlignedFileDiff
 	ChangeIndices []int // Indices of alignments that have changes (for navigation)
