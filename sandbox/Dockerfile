@@ -37,9 +37,17 @@ ENV GOPATH="/home/claude/go"
 ENV HOME="/home/claude"
 ENV TERM=xterm-256color
 
-# Pre-configure Claude Code to skip onboarding
+# Pre-configure Claude Code to skip onboarding and permission dialogs
+# ~/.claude.json = state file (onboarding, notifications, per-project settings)
+# ~/.claude/settings.json = user settings (permissions mode, model)
+#
+# Key flags in .claude.json:
+#   - hasCompletedOnboarding: skip initial setup wizard
+#   - bypassPermissionsModeAccepted: skip "bypass permissions mode" notification
+#   - projects[path].hasTrustDialogAccepted: skip workspace trust dialog (path-specific)
+#   - projects[path].hasCompletedProjectOnboarding: skip project onboarding
 RUN mkdir -p /home/claude/.claude && \
-    echo '{"hasCompletedOnboarding":true,"hasSeenPermissionsNotice":true,"theme":"dark"}' > /home/claude/.claude/settings.json && \
+    echo '{"hasCompletedOnboarding":true,"theme":"dark","bypassPermissionsModeAccepted":true,"projects":{"/workspace":{"hasTrustDialogAccepted":true,"hasCompletedProjectOnboarding":true}}}' > /home/claude/.claude.json && \
     chown -R claude:claude /home/claude
 
 # Switch to non-root user
