@@ -39,17 +39,8 @@ USER agent
 # This installs the native binary with built-in auto-update support
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
-# Pre-configure Claude Code to skip onboarding and permission dialogs
-# ~/.claude.json = state file (onboarding, notifications, per-project settings)
-# ~/.claude/settings.json = user settings (permissions mode, model)
-#
-# Key flags in .claude.json:
-#   - hasCompletedOnboarding: skip initial setup wizard
-#   - bypassPermissionsModeAccepted: skip "bypass permissions mode" notification
-#   - projects[path].hasTrustDialogAccepted: skip workspace trust dialog (path-specific)
-#   - projects[path].hasCompletedProjectOnboarding: skip project onboarding
-RUN mkdir -p /home/agent/.claude && \
-    echo '{"hasCompletedOnboarding":true,"theme":"dark","bypassPermissionsModeAccepted":true,"projects":{"/workspace":{"hasTrustDialogAccepted":true,"hasCompletedProjectOnboarding":true}}}' > /home/agent/.claude.json
+# NOTE: Claude config now mounted from host via volume
+# Config initialization handled by run.sh script
 
 # Set working directory
 WORKDIR /workspace

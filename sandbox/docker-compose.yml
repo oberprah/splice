@@ -30,6 +30,8 @@ services:
       - ..:/workspace:rw                        # Repo read/write
       - ../.github:/workspace/.github:ro        # Protect CI/CD workflows
       - ../sandbox:/workspace/sandbox:ro        # Protect container config
+      - ../.sandbox-agent-data/claude.json:/home/agent/.claude.json:rw     # State file
+      - ../.sandbox-agent-data/claude-dir:/home/agent/.claude:rw           # Settings directory
     environment:
       - ANTHROPIC_BASE_URL=http://litellm:4000
       - ANTHROPIC_AUTH_TOKEN=not-needed  # LiteLLM handles auth
