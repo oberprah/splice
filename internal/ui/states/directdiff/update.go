@@ -30,12 +30,10 @@ func (s State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 		}
 
 		// Successfully loaded files - transition to files view
-		// Use ExitOnPop=true so that pressing 'q' in FilesState exits the app
 		return s, func() tea.Msg {
 			return core.PushFilesScreenMsg{
-				Source:    msg.Source,
-				Files:     msg.Files,
-				ExitOnPop: true,
+				Source: msg.Source,
+				Files:  msg.Files,
 			}
 		}
 	}

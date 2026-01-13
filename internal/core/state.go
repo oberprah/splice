@@ -9,6 +9,9 @@ import (
 // FetchFileChangesFunc is a function type for fetching file changes for a commit range
 type FetchFileChangesFunc func(commitRange CommitRange) ([]FileChange, error)
 
+// FetchFileChangesForSourceFunc is a function type for fetching file changes for a DiffSource
+type FetchFileChangesForSourceFunc func(source DiffSource) ([]FileChange, error)
+
 // FetchFullFileDiffFunc is a function type for fetching full file diff content
 type FetchFullFileDiffFunc func(commitRange CommitRange, change FileChange) (*FullFileDiffResult, error)
 

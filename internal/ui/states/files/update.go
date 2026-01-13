@@ -34,11 +34,8 @@ func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q":
-			// Exit or go back depending on ExitOnPop flag
-			if s.ExitOnPop {
-				return s, tea.Quit
-			}
 			// Go back to the previous state using navigation pattern
+			// (app.Model handles quitting when stack is empty)
 			return s, func() tea.Msg {
 				return core.PopScreenMsg{}
 			}

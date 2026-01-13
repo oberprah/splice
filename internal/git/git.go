@@ -894,3 +894,202 @@ func FetchAllUncommittedFileDiff(file core.FileChange) (*core.FullFileDiffResult
 
 	return result, nil
 }
+
+// ValidateDiffHasChanges checks if a diff specification has any changes.
+// For uncommitted changes, checks the appropriate git diff.
+// For commit ranges, checks if the range has any diff.
+// Returns nil if there are changes, error if no changes or invalid spec.
+func ValidateDiffHasChanges(rawSpec string, uncommittedType *core.UncommittedType) error {
+	var args []string
+
+	if uncommittedType != nil {
+		// Uncommitted changes
+		switch *uncommittedType {
+		case core.UncommittedTypeUnstaged:
+			args = []string{"diff", "--quiet"}
+		case core.UncommittedTypeStaged:
+			args = []string{"diff", "--quiet", "--staged"}
+		case core.UncommittedTypeAll:
+			args = []string{"diff", "--quiet", "HEAD"}
+		default:
+			return fmt.Errorf("unknown uncommitted type: %v", *uncommittedType)
+		}
+	} else {
+		// Commit range
+		args = []string{"diff", "--quiet", rawSpec}
+	}
+
+	cmd := exec.Command("git", args...)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+
+	if err == nil {
+		// Exit 0 = no changes
+		if uncommittedType != nil {
+			return fmt.Errorf("no uncommitted changes found")
+		}
+		return fmt.Errorf("no changes found in %q", rawSpec)
+	}
+
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		exitCode := exitErr.ExitCode()
+		if exitCode == 1 {
+			// Exit 1 = has changes (this is what we want)
+			return nil
+		}
+		// Exit 128+ = git error (invalid ref, etc.)
+		stderrStr := stderr.String()
+		if strings.Contains(stderrStr, "not a git repository") {
+			return fmt.Errorf("not a git repository")
+		}
+		if uncommittedType != nil {
+			return fmt.Errorf("error checking uncommitted changes: %v", err)
+		}
+		return fmt.Errorf("invalid diff specification %q: %v", rawSpec, err)
+	}
+
+	// Other errors
+	return fmt.Errorf("error running git diff: %v", err)
+}
+
+// ResolveCommitRange parses a commit range spec (like "main..feature" or "HEAD~5")
+// and resolves refs to GitCommit objects.
+func ResolveCommitRange(spec string) (core.CommitRangeDiffSource, error) {
+	// Parse the range specification to get start and end refs
+	startRef := spec
+	endRef := "HEAD"
+
+	// Check if it's a range (contains ..)
+	if strings.Contains(spec, "...") {
+		parts := strings.SplitN(spec, "...", 2)
+		startRef = parts[0]
+		endRef = parts[1]
+		// Three-dot range: find merge base
+		mergeBase, err := findMergeBase(startRef, endRef)
+		if err != nil {
+			return core.CommitRangeDiffSource{}, err
+		}
+		startRef = mergeBase
+	} else if strings.Contains(spec, "..") {
+		parts := strings.SplitN(spec, "..", 2)
+		startRef = parts[0]
+		endRef = parts[1]
+	}
+
+	// Resolve refs to commits
+	startCommit, err := ResolveRef(startRef)
+	if err != nil {
+		return core.CommitRangeDiffSource{}, fmt.Errorf("error resolving start ref %q: %v", startRef, err)
+	}
+
+	endCommit, err := ResolveRef(endRef)
+	if err != nil {
+		return core.CommitRangeDiffSource{}, fmt.Errorf("error resolving end ref %q: %v", endRef, err)
+	}
+
+	// Count commits in range
+	count, err := countCommitsInRange(startRef, endRef)
+	if err != nil {
+		return core.CommitRangeDiffSource{}, err
+	}
+
+	return core.CommitRangeDiffSource{
+		Start: startCommit,
+		End:   endCommit,
+		Count: count,
+	}, nil
+}
+
+// ResolveRef resolves a git ref (like "HEAD", "main", "abc123") to a GitCommit.
+func ResolveRef(ref string) (core.GitCommit, error) {
+	cmd := exec.Command("git", "log", "-1", "--format=%H%n%s%n%an%n%aI%n%P", ref)
+
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		stderrStr := stderr.String()
+		if strings.Contains(stderrStr, "not a git repository") {
+			return core.GitCommit{}, fmt.Errorf("not a git repository")
+		}
+		if strings.Contains(stderrStr, "unknown revision") || strings.Contains(stderrStr, "bad revision") {
+			return core.GitCommit{}, fmt.Errorf("unknown revision: %s", ref)
+		}
+		return core.GitCommit{}, fmt.Errorf("error resolving ref: %v", err)
+	}
+
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	if len(lines) < 4 {
+		return core.GitCommit{}, fmt.Errorf("unexpected git log output")
+	}
+
+	// Parse date
+	date, err := time.Parse(time.RFC3339, strings.TrimSpace(lines[3]))
+	if err != nil {
+		return core.GitCommit{}, fmt.Errorf("error parsing date: %v", err)
+	}
+
+	// Parse parent hashes
+	var parents []string
+	if len(lines) >= 5 && lines[4] != "" {
+		parents = strings.Fields(lines[4])
+	}
+
+	return core.GitCommit{
+		Hash:         lines[0],
+		Message:      lines[1],
+		Author:       lines[2],
+		Date:         date,
+		ParentHashes: parents,
+		Refs:         []core.RefInfo{},
+	}, nil
+}
+
+// findMergeBase finds the merge base of two refs.
+func findMergeBase(ref1, ref2 string) (string, error) {
+	cmd := exec.Command("git", "merge-base", ref1, ref2)
+
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		stderrStr := stderr.String()
+		if strings.Contains(stderrStr, "not a git repository") {
+			return "", fmt.Errorf("not a git repository")
+		}
+		return "", fmt.Errorf("error finding merge base: %v", err)
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+// countCommitsInRange counts commits between two refs.
+func countCommitsInRange(startRef, endRef string) (int, error) {
+	cmd := exec.Command("git", "rev-list", "--count", startRef+".."+endRef)
+
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		stderrStr := stderr.String()
+		if strings.Contains(stderrStr, "not a git repository") {
+			return 0, fmt.Errorf("not a git repository")
+		}
+		return 0, fmt.Errorf("error counting commits: %v", err)
+	}
+
+	var count int
+	if _, err := fmt.Sscanf(out.String(), "%d", &count); err != nil {
+		return 0, fmt.Errorf("error parsing commit count: %v", err)
+	}
+	return count, nil
+}

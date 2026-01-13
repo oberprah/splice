@@ -59,9 +59,8 @@ func TestNavigationStack(t *testing.T) {
 	testCommit := core.GitCommit{Hash: "abc123"}
 	commitRange := core.NewSingleCommitRange(testCommit)
 	m2, _ = m.Update(core.PushFilesScreenMsg{
-		Source:    commitRange.ToDiffSource(),
-		Files:     []core.FileChange{{Path: "test.go"}},
-		ExitOnPop: false,
+		Source: commitRange.ToDiffSource(),
+		Files:  []core.FileChange{{Path: "test.go"}},
 	})
 	m = m2.(Model)
 
@@ -126,9 +125,8 @@ func TestNavigationWithCommitRangeDiffSource(t *testing.T) {
 	diffSource := commitRange.ToDiffSource()
 
 	m2, _ = m.Update(core.PushFilesScreenMsg{
-		Source:    diffSource,
-		Files:     []core.FileChange{{Path: "test.go", Status: "M"}},
-		ExitOnPop: false,
+		Source: diffSource,
+		Files:  []core.FileChange{{Path: "test.go", Status: "M"}},
 	})
 	m = m2.(Model)
 
@@ -199,9 +197,8 @@ func TestNavigationWithUncommittedChangesDiffSource(t *testing.T) {
 			diffSource := core.UncommittedChangesDiffSource{Type: tt.uncommittedType}
 
 			m2, _ = m.Update(core.PushFilesScreenMsg{
-				Source:    diffSource,
-				Files:     []core.FileChange{{Path: "test.go", Status: "M"}},
-				ExitOnPop: true, // Direct diff view sets ExitOnPop to true
+				Source: diffSource,
+				Files:  []core.FileChange{{Path: "test.go", Status: "M"}},
 			})
 			m = m2.(Model)
 
@@ -236,48 +233,6 @@ func TestNavigationWithUncommittedChangesDiffSource(t *testing.T) {
 	}
 }
 
-// TestNavigationStackExitOnPop tests that ExitOnPop field is correctly passed through
-func TestNavigationStackExitOnPop(t *testing.T) {
-	fixedTime := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
-	m := NewModel(
-		WithInitialState(loading.State{}),
-		WithFetchCommits(func(int) ([]core.GitCommit, error) {
-			return []core.GitCommit{{Hash: "abc123", Message: "Test", Author: "Test", Date: fixedTime}}, nil
-		}),
-		WithFetchFileChanges(func(commitRange core.CommitRange) ([]core.FileChange, error) {
-			return []core.FileChange{{Path: "test.go", Status: "M"}}, nil
-		}),
-		WithFetchFullFileDiff(func(commitRange core.CommitRange, change core.FileChange) (*core.FullFileDiffResult, error) {
-			return &core.FullFileDiffResult{DiffOutput: "test"}, nil
-		}),
-	)
-
-	// Push LogScreen
-	m2, _ := m.Update(core.PushLogScreenMsg{
-		Commits:     []core.GitCommit{{Hash: "abc123"}},
-		GraphLayout: nil,
-	})
-	m = m2.(Model)
-
-	// Push FilesScreen with ExitOnPop=true (for direct diff workflow)
-	diffSource := core.UncommittedChangesDiffSource{Type: core.UncommittedTypeUnstaged}
-
-	m2, _ = m.Update(core.PushFilesScreenMsg{
-		Source:    diffSource,
-		Files:     []core.FileChange{{Path: "test.go", Status: "M"}},
-		ExitOnPop: true,
-	})
-	m = m2.(Model)
-
-	// Verify the FilesState was pushed
-	if len(m.stack) != 2 {
-		t.Errorf("After pushing FilesScreen, stack should have 2 items, got %d", len(m.stack))
-	}
-
-	// The ExitOnPop field is internal to FilesState, but we can verify the state was created
-	// The actual behavior (exit vs pop) is tested in FilesState's own tests
-}
-
 // TestNavigationWithMixedDiffSources tests navigation with both diff source types
 func TestNavigationWithMixedDiffSources(t *testing.T) {
 	fixedTime := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
@@ -307,9 +262,8 @@ func TestNavigationWithMixedDiffSources(t *testing.T) {
 	commitDiffSource := commitRange.ToDiffSource()
 
 	m2, _ = m.Update(core.PushFilesScreenMsg{
-		Source:    commitDiffSource,
-		Files:     []core.FileChange{{Path: "test1.go", Status: "M"}},
-		ExitOnPop: false,
+		Source: commitDiffSource,
+		Files:  []core.FileChange{{Path: "test1.go", Status: "M"}},
 	})
 	m = m2.(Model)
 
@@ -321,9 +275,8 @@ func TestNavigationWithMixedDiffSources(t *testing.T) {
 	uncommittedDiffSource := core.UncommittedChangesDiffSource{Type: core.UncommittedTypeUnstaged}
 
 	m2, _ = m.Update(core.PushFilesScreenMsg{
-		Source:    uncommittedDiffSource,
-		Files:     []core.FileChange{{Path: "test2.go", Status: "M"}},
-		ExitOnPop: true,
+		Source: uncommittedDiffSource,
+		Files:  []core.FileChange{{Path: "test2.go", Status: "M"}},
 	})
 	m = m2.(Model)
 

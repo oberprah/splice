@@ -19,16 +19,12 @@ func TestPushFilesScreenMsg_WithCommitRangeDiffSource(t *testing.T) {
 			End:   end,
 			Count: 5,
 		},
-		Files:     files,
-		ExitOnPop: false,
+		Files: files,
 	}
 
 	// Verify fields are set correctly
 	if msg.Files[0].Path != "file1.go" {
 		t.Errorf("Expected file path file1.go, got %s", msg.Files[0].Path)
-	}
-	if msg.ExitOnPop {
-		t.Error("Expected ExitOnPop to be false")
 	}
 
 	// Verify DiffSource is the correct type
@@ -57,16 +53,12 @@ func TestPushFilesScreenMsg_WithUncommittedChangesDiffSource(t *testing.T) {
 		Source: UncommittedChangesDiffSource{
 			Type: UncommittedTypeUnstaged,
 		},
-		Files:     files,
-		ExitOnPop: true,
+		Files: files,
 	}
 
 	// Verify fields are set correctly
 	if len(msg.Files) != 2 {
 		t.Errorf("Expected 2 files, got %d", len(msg.Files))
-	}
-	if !msg.ExitOnPop {
-		t.Error("Expected ExitOnPop to be true")
 	}
 
 	// Verify DiffSource is the correct type
@@ -76,36 +68,6 @@ func TestPushFilesScreenMsg_WithUncommittedChangesDiffSource(t *testing.T) {
 	}
 	if uncommitted.Type != UncommittedTypeUnstaged {
 		t.Errorf("Expected type UncommittedTypeUnstaged, got %v", uncommitted.Type)
-	}
-}
-
-func TestPushFilesScreenMsg_ExitOnPopVariants(t *testing.T) {
-	source := CommitRangeDiffSource{
-		Start: GitCommit{Hash: "abc"},
-		End:   GitCommit{Hash: "def"},
-		Count: 1,
-	}
-
-	tests := []struct {
-		name      string
-		exitOnPop bool
-	}{
-		{"ExitOnPop true", true},
-		{"ExitOnPop false", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			msg := PushFilesScreenMsg{
-				Source:    source,
-				Files:     []FileChange{},
-				ExitOnPop: tt.exitOnPop,
-			}
-
-			if msg.ExitOnPop != tt.exitOnPop {
-				t.Errorf("Expected ExitOnPop %v, got %v", tt.exitOnPop, msg.ExitOnPop)
-			}
-		})
 	}
 }
 

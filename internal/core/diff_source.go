@@ -1,5 +1,7 @@
 package core
 
+import "fmt"
+
 // DiffSource is a sum type representing any source of a git diff.
 // It can be either a range of commits or uncommitted changes.
 //
@@ -43,7 +45,7 @@ func (u UncommittedType) String() string {
 	case UncommittedTypeAll:
 		return "UncommittedTypeAll"
 	default:
-		return "UnknownUncommittedType"
+		panic(fmt.Sprintf("invalid UncommittedType: %d", u))
 	}
 }
 

@@ -18,9 +18,6 @@ import (
 // FetchCommitsFunc is a function type for fetching git commits
 type FetchCommitsFunc func(limit int) ([]core.GitCommit, error)
 
-// FetchFileChangesForSourceFunc is a function type for fetching file changes for a DiffSource
-type FetchFileChangesForSourceFunc func(source core.DiffSource) ([]core.FileChange, error)
-
 // Model represents the application model using the state pattern.
 // It implements tea.Model for Bubbletea and core.Context for states.
 type Model struct {
@@ -29,7 +26,7 @@ type Model struct {
 	height                    int
 	fetchCommits              FetchCommitsFunc
 	fetchFileChanges          core.FetchFileChangesFunc
-	fetchFileChangesForSource FetchFileChangesForSourceFunc
+	fetchFileChangesForSource core.FetchFileChangesForSourceFunc
 	fetchFullFileDiff         core.FetchFullFileDiffFunc
 	nowFunc                   func() time.Time
 }
@@ -104,7 +101,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, msg.InitCmd
 
 	case core.PushFilesScreenMsg:
-		m.pushState(files.New(msg.Source, msg.Files, msg.ExitOnPop))
+		m.pushState(files.New(msg.Source, msg.Files))
 		return m, nil
 
 	case core.PushDiffScreenMsg:

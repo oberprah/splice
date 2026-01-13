@@ -10,16 +10,14 @@ type State struct {
 	Files         []core.FileChange
 	Cursor        int
 	ViewportStart int
-	ExitOnPop     bool // If true, quit app when user presses 'q' instead of popping back
 }
 
 // New creates a new FilesState with cursor at the first file.
-func New(source core.DiffSource, files []core.FileChange, exitOnPop bool) *State {
+func New(source core.DiffSource, files []core.FileChange) *State {
 	return &State{
 		Source:        source,
 		Files:         files,
 		Cursor:        0,
 		ViewportStart: 0,
-		ExitOnPop:     exitOnPop,
 	}
 }

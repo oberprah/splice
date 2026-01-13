@@ -64,11 +64,6 @@ func TestDirectDiffLoadingState_Update_FilesLoadedWithCommitRange(t *testing.T) 
 		t.Errorf("Expected 2 files, got %d", len(pushMsg.Files))
 	}
 
-	// Verify ExitOnPop is true for direct diff flow
-	if !pushMsg.ExitOnPop {
-		t.Error("Expected ExitOnPop to be true for direct diff flow")
-	}
-
 	// Verify Source type matches
 	if _, ok := pushMsg.Source.(core.CommitRangeDiffSource); !ok {
 		t.Errorf("Expected Source to be CommitRangeDiffSource, got %T", pushMsg.Source)
@@ -119,11 +114,6 @@ func TestDirectDiffLoadingState_Update_FilesLoadedWithUncommittedChanges(t *test
 			pushMsg, ok := result.(core.PushFilesScreenMsg)
 			if !ok {
 				t.Fatalf("Expected PushFilesScreenMsg, got %T", result)
-			}
-
-			// Verify ExitOnPop is true
-			if !pushMsg.ExitOnPop {
-				t.Error("Expected ExitOnPop to be true for direct diff flow")
 			}
 
 			// Verify Source type matches

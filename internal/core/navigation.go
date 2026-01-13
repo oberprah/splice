@@ -18,9 +18,8 @@ type PushLogScreenMsg struct {
 
 // PushFilesScreenMsg signals navigation to the files screen
 type PushFilesScreenMsg struct {
-	Source    DiffSource
-	Files     []FileChange
-	ExitOnPop bool // If true, quit app when user presses 'q' instead of popping back
+	Source DiffSource
+	Files  []FileChange
 }
 
 // PushDiffScreenMsg signals navigation to the diff screen

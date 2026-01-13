@@ -717,11 +717,6 @@ func TestLogState_Update_FilesLoadedMsgCreatesPushFilesScreenMsg(t *testing.T) {
 		t.Fatalf("Expected PushFilesScreenMsg, got %T", resultMsg)
 	}
 
-	// Verify ExitOnPop is false (log view navigation should allow returning)
-	if pushFilesMsg.ExitOnPop {
-		t.Error("Expected ExitOnPop to be false for log view navigation")
-	}
-
 	// Verify Source is preserved
 	commitRangeSource, ok := pushFilesMsg.Source.(core.CommitRangeDiffSource)
 	if !ok {

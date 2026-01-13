@@ -48,7 +48,7 @@ func TestDirectDiff_UnstagedChanges(t *testing.T) {
 	// Should transition to FilesState
 	runner.AssertGolden("direct_diff/unstaged_files.golden")
 
-	// Quit (should exit app due to ExitOnPop=true)
+	// Quit
 	runner.Quit()
 }
 
@@ -185,10 +185,9 @@ func TestDirectDiff_CommitRange(t *testing.T) {
 	runner.Quit()
 }
 
-// TestDirectDiff_ExitOnPopBehavior tests that pressing 'q' in FilesState
-// quits the app when ExitOnPop=true (direct diff view), rather than
-// returning to a previous screen like in the log view workflow
-func TestDirectDiff_ExitOnPopBehavior(t *testing.T) {
+// TestDirectDiff_QuitBehavior tests that pressing 'q' in FilesState
+// in direct diff view quits the app
+func TestDirectDiff_QuitBehavior(t *testing.T) {
 	// Create test data
 	files := []core.FileChange{
 		{Path: "test.go", Status: "M", Additions: 5, Deletions: 2, IsBinary: false},
@@ -220,9 +219,8 @@ func TestDirectDiff_ExitOnPopBehavior(t *testing.T) {
 	runner.Send(tea.WindowSizeMsg{Width: 80, Height: 24})
 
 	// Should transition to FilesState
-	runner.AssertGolden("direct_diff/exit_on_pop_files.golden")
+	runner.AssertGolden("direct_diff/quit_behavior_files.golden")
 
-	// Press 'q' - should quit the app (ExitOnPop=true), not return to a previous screen
-	// The Quit() call will verify that the program actually exits
+	// Press 'q' - should quit the app
 	runner.Quit()
 }

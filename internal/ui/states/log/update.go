@@ -19,9 +19,8 @@ func (s State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 		// Transition to files state using navigation pattern
 		return s, func() tea.Msg {
 			return core.PushFilesScreenMsg{
-				Source:    msg.Source,
-				Files:     msg.Files,
-				ExitOnPop: false, // In log view flow, pressing 'q' should return to log
+				Source: msg.Source,
+				Files:  msg.Files,
 			}
 		}
 

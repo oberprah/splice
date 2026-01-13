@@ -216,3 +216,38 @@ func classifyDiffSource(source DiffSource) string {
 	}
 	return "unknown"
 }
+
+// ═══════════════════════════════════════════════════════════
+// UncommittedType.String() Tests
+// ═══════════════════════════════════════════════════════════
+
+func TestUncommittedType_String_ValidValues(t *testing.T) {
+	testCases := []struct {
+		value    UncommittedType
+		expected string
+	}{
+		{UncommittedTypeUnstaged, "UncommittedTypeUnstaged"},
+		{UncommittedTypeStaged, "UncommittedTypeStaged"},
+		{UncommittedTypeAll, "UncommittedTypeAll"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.expected, func(t *testing.T) {
+			result := tc.value.String()
+			if result != tc.expected {
+				t.Errorf("String() = %s, want %s", result, tc.expected)
+			}
+		})
+	}
+}
+
+func TestUncommittedType_String_InvalidValue_Panics(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("Expected panic for invalid UncommittedType, but did not panic")
+		}
+	}()
+
+	invalidType := UncommittedType(999)
+	_ = invalidType.String() // Should panic
+}

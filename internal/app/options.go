@@ -24,7 +24,7 @@ func WithFetchFileChanges(fn core.FetchFileChangesFunc) ModelOption {
 }
 
 // WithFetchFileChangesForSource allows injecting a custom file changes fetcher for DiffSource for testing
-func WithFetchFileChangesForSource(fn FetchFileChangesForSourceFunc) ModelOption {
+func WithFetchFileChangesForSource(fn core.FetchFileChangesForSourceFunc) ModelOption {
 	return func(m *Model) {
 		m.fetchFileChangesForSource = fn
 	}
