@@ -18,6 +18,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    security_opt:
+      - no-new-privileges:true
     volumes:
       - ..:/workspace  # Mount the repo
     environment:
