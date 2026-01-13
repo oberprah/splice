@@ -12,7 +12,6 @@ RUN apt-get update && apt-get install -y \
     git \
     ca-certificates \
     gnupg \
-    sudo \
     tmux \
     && rm -rf /var/lib/apt/lists/*
 
@@ -24,9 +23,8 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
 # Install Go 1.25.2
 RUN curl -fsSL https://go.dev/dl/go1.25.2.linux-arm64.tar.gz | tar -C /usr/local -xzf -
 
-# Create non-root user
-RUN useradd -m -s /bin/bash claude && \
-    echo "claude ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+# Create non-root user (no sudo access for security)
+RUN useradd -m -s /bin/bash claude
 
 # Set up environment for claude user
 ENV PATH="/home/claude/.local/bin:/usr/local/go/bin:/home/claude/go/bin:${PATH}"
