@@ -1,17 +1,18 @@
 services:
   litellm:
     image: docker.litellm.ai/berriai/litellm:main-latest
+    pull_policy: missing
     command: --config /root/.litellm-config.yaml --port 4000
     volumes:
       - ~/.litellm-config.yaml:/root/.litellm-config.yaml:ro
     networks:
       - sandbox-net
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4000/health')"]
-      interval: 2s
-      timeout: 3s
-      retries: 15
-      start_period: 5s
+      test: ["CMD-SHELL", "curl -f http://localhost:4000/health || exit 1"]
+      interval: 1s
+      timeout: 2s
+      retries: 10
+      start_period: 3s
 
   sandbox:
     build:
