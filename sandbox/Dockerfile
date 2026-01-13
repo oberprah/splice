@@ -39,9 +39,6 @@ USER agent
 # This installs the native binary with built-in auto-update support
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
-# NOTE: Claude config now mounted from host via volume
-# Config initialization handled by run.sh script
-
 # Set working directory
 WORKDIR /workspace
 
