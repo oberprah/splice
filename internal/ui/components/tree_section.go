@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/domain/tree"
 	"github.com/oberprah/splice/internal/ui/format"
 	"github.com/oberprah/splice/internal/ui/styles"
@@ -14,25 +15,26 @@ import (
 //
 // Parameters:
 //   - items: Visible tree items (already flattened and windowed by caller)
+//   - files: Original flat list of all files for calculating header stats
 //   - cursor: Index of the selected item in the items slice
 //   - width: Panel width (currently unused but kept for consistency with FileSection)
 //
 // The component renders:
 //  1. A blank line (separator from commit info above)
-//  2. File stats line: `{N} files · +{add} -{del}`
+//  2. File stats line: `{N} files · +{add} -{del}` (calculated from all files)
 //  3. All tree item lines with proper tree formatting
 //
 // Note: This component does NOT handle viewport windowing - the caller is responsible
 // for passing only the visible items. This follows the same pattern as FileSection
 // where viewport logic is handled in the state's View() method.
-func TreeSection(items []tree.VisibleTreeItem, cursor int, width int) []string {
+func TreeSection(items []tree.VisibleTreeItem, files []core.FileChange, cursor int, width int) []string {
 	lines := make([]string, 0, len(items)+2)
 
 	// 1. Blank line separator
 	lines = append(lines, "")
 
-	// 2. File stats line
-	totalAdditions, totalDeletions, fileCount := CalculateTreeStats(items)
+	// 2. File stats line (calculated from all files, not just visible items)
+	totalAdditions, totalDeletions, fileCount := CalculateTreeStats(files)
 	fileWord := "file"
 	if fileCount != 1 {
 		fileWord = "files"
@@ -56,17 +58,14 @@ func TreeSection(items []tree.VisibleTreeItem, cursor int, width int) []string {
 	return lines
 }
 
-// CalculateTreeStats calculates total additions, deletions, and file count from tree items.
-// Only counts FileNode items (not folders) to avoid double-counting.
-func CalculateTreeStats(items []tree.VisibleTreeItem) (additions int, deletions int, fileCount int) {
-	for _, item := range items {
-		// Only count file nodes, not folders
-		if fileNode, ok := item.Node.(*tree.FileNode); ok {
-			file := fileNode.File()
-			additions += file.Additions
-			deletions += file.Deletions
-			fileCount++
-		}
+// CalculateTreeStats calculates total additions, deletions, and file count from files.
+// Takes the original flat list of files to ensure stats are calculated from all files,
+// regardless of tree collapse state.
+func CalculateTreeStats(files []core.FileChange) (additions int, deletions int, fileCount int) {
+	for _, file := range files {
+		additions += file.Additions
+		deletions += file.Deletions
+		fileCount++
 	}
 	return additions, deletions, fileCount
 }
