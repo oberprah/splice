@@ -81,7 +81,38 @@ All 6 tests pass:
 - `internal/domain/tree/tree.go` (node types from Step 1)
 - `internal/domain/tree/build.go` (tree structure from Step 1)
 
-**Status:** Pending
+**Status:** ✅ Complete
+
+**Implementation:**
+- Created `internal/domain/tree/collapse.go` with `CollapsePaths()` function
+- Created `internal/domain/tree/collapse_test.go` with comprehensive test coverage (7 test cases)
+- `CollapsePaths()` recursively walks the tree and collapses single-child folder chains
+- Helper functions:
+  - `collapseFolder()`: Recursively processes folders bottom-up
+  - `collapseChain()`: Collapses a chain starting from a folder, returns combined name and final children
+  - `adjustDepths()`: Recursively adjusts depths after collapsing
+- Algorithm preserves `isExpanded` state from the first folder in the chain
+- Only collapses when folder has exactly one child that is also a folder (not a file)
+- Folders with multiple children are never collapsed
+
+**Tests:**
+All 7 tests pass:
+- `TestCollapsePaths_SingleChildFolderChain`: Verifies basic chain collapsing (src/components/nested)
+- `TestCollapsePaths_FolderWithMultipleChildren`: Ensures folders with multiple children don't collapse
+- `TestCollapsePaths_FolderWithOnlyFile`: Ensures folders whose only child is a file don't collapse
+- `TestCollapsePaths_MixedScenario`: Complex tree with both collapsible and non-collapsible paths
+- `TestCollapsePaths_EmptyTree`: Safety check for empty input
+- `TestCollapsePaths_PreservesExpandedState`: Verifies isExpanded state preservation
+- `TestCollapsePaths_DepthAdjustment`: Verifies correct depth adjustment after collapsing
+
+**Commit:** bc4a88969e95dc3ae88f7e46ab2e6dd9c3e85e7b
+
+**Implementation decisions:**
+- Used bottom-up recursive approach to ensure all children are collapsed before parent
+- Loop condition lifted into `for` statement for cleaner code (per staticcheck)
+- Depths adjusted after collapsing to maintain correct tree structure
+- Mutates tree in-place for efficiency (matches design doc)
+- Stats field left empty (will be populated in Step 3)
 
 ---
 
