@@ -455,8 +455,12 @@ func TestGetCurrentFileLineNumber_ModifiedAlignment(t *testing.T) {
 	}
 
 	s := &State{
-		CommitRange: core.NewSingleCommitRange(core.GitCommit{Hash: "abc123"}),
-		File:        core.FileChange{Path: "file.go"},
+		Source: core.CommitRangeDiffSource{
+			Start: core.GitCommit{Hash: "abc123"},
+			End:   core.GitCommit{Hash: "abc123"},
+			Count: 1,
+		},
+		File: core.FileChange{Path: "file.go"},
 		Diff: &diff.AlignedFileDiff{
 			Left:       diff.FileContent{Path: "file.go", Lines: leftLines},
 			Right:      diff.FileContent{Path: "file.go", Lines: rightLines},
@@ -501,8 +505,12 @@ func TestGetCurrentFileLineNumber_AddedAlignment(t *testing.T) {
 	}
 
 	s := &State{
-		CommitRange: core.NewSingleCommitRange(core.GitCommit{Hash: "abc123"}),
-		File:        core.FileChange{Path: "file.go"},
+		Source: core.CommitRangeDiffSource{
+			Start: core.GitCommit{Hash: "abc123"},
+			End:   core.GitCommit{Hash: "abc123"},
+			Count: 1,
+		},
+		File: core.FileChange{Path: "file.go"},
 		Diff: &diff.AlignedFileDiff{
 			Left:       diff.FileContent{Path: "file.go", Lines: leftLines},
 			Right:      diff.FileContent{Path: "file.go", Lines: rightLines},
@@ -547,8 +555,12 @@ func TestGetCurrentFileLineNumber_RemovedAlignment(t *testing.T) {
 	}
 
 	s := &State{
-		CommitRange: core.NewSingleCommitRange(core.GitCommit{Hash: "abc123"}),
-		File:        core.FileChange{Path: "file.go"},
+		Source: core.CommitRangeDiffSource{
+			Start: core.GitCommit{Hash: "abc123"},
+			End:   core.GitCommit{Hash: "abc123"},
+			Count: 1,
+		},
+		File: core.FileChange{Path: "file.go"},
 		Diff: &diff.AlignedFileDiff{
 			Left:       diff.FileContent{Path: "file.go", Lines: leftLines},
 			Right:      diff.FileContent{Path: "file.go", Lines: rightLines},
@@ -594,8 +606,12 @@ func TestGetCurrentFileLineNumber_RemovedAlignment_NoFollowingRightIdx(t *testin
 	}
 
 	s := &State{
-		CommitRange: core.NewSingleCommitRange(core.GitCommit{Hash: "abc123"}),
-		File:        core.FileChange{Path: "file.go"},
+		Source: core.CommitRangeDiffSource{
+			Start: core.GitCommit{Hash: "abc123"},
+			End:   core.GitCommit{Hash: "abc123"},
+			Count: 1,
+		},
+		File: core.FileChange{Path: "file.go"},
 		Diff: &diff.AlignedFileDiff{
 			Left:       diff.FileContent{Path: "file.go", Lines: leftLines},
 			Right:      diff.FileContent{Path: "file.go", Lines: rightLines},
@@ -618,7 +634,11 @@ func TestGetCurrentFileLineNumber_RemovedAlignment_NoFollowingRightIdx(t *testin
 
 func TestGetCurrentFileLineNumber_NilDiff(t *testing.T) {
 	s := &State{
-		CommitRange:   core.NewSingleCommitRange(core.GitCommit{Hash: "abc123"}),
+		Source: core.CommitRangeDiffSource{
+			Start: core.GitCommit{Hash: "abc123"},
+			End:   core.GitCommit{Hash: "abc123"},
+			Count: 1,
+		},
 		File:          core.FileChange{Path: "file.go"},
 		Diff:          nil,
 		ViewportStart: 0,
@@ -637,8 +657,12 @@ func TestGetCurrentFileLineNumber_NilDiff(t *testing.T) {
 
 func TestGetCurrentFileLineNumber_EmptyAlignments(t *testing.T) {
 	s := &State{
-		CommitRange: core.NewSingleCommitRange(core.GitCommit{Hash: "abc123"}),
-		File:        core.FileChange{Path: "file.go"},
+		Source: core.CommitRangeDiffSource{
+			Start: core.GitCommit{Hash: "abc123"},
+			End:   core.GitCommit{Hash: "abc123"},
+			Count: 1,
+		},
+		File: core.FileChange{Path: "file.go"},
 		Diff: &diff.AlignedFileDiff{
 			Left:       diff.FileContent{Path: "file.go", Lines: []diff.AlignedLine{}},
 			Right:      diff.FileContent{Path: "file.go", Lines: []diff.AlignedLine{}},

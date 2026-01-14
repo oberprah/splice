@@ -1114,4 +1114,3 @@ func GetRepositoryRoot() (string, error) {
 
 	return strings.TrimSpace(out.String()), nil
 }
-
