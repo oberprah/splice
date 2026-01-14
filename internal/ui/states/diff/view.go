@@ -34,7 +34,7 @@ func (s *State) View(ctx core.Context) core.ViewRenderer {
 	availableHeight := max(ctx.Height()-headerLines, 1)
 
 	// Handle nil or empty diff
-	if s.Diff == nil || len(s.Diff.Alignments) == 0 {
+	if s.Diff == nil || len(s.Diff.Blocks) == 0 {
 		vb.AddLine(styles.TimeStyle.Render("No changes"))
 		return vb
 	}
@@ -48,9 +48,6 @@ func (s *State) View(ctx core.Context) core.ViewRenderer {
 	// Calculate line number width based on max line numbers
 	lineNoWidth := s.calculateLineNoWidth()
 
-	// Calculate the end of the viewport
-	viewportEnd := min(s.ViewportStart+availableHeight, len(s.Diff.Alignments))
-
 	// Create styles for fixed-width columns
 	leftColStyle := lipgloss.NewStyle().Width(columnWidth)
 	rightColStyle := lipgloss.NewStyle().Width(columnWidth)
@@ -59,14 +56,42 @@ func (s *State) View(ctx core.Context) core.ViewRenderer {
 	leftVb := components.NewViewBuilder()
 	rightVb := components.NewViewBuilder()
 
-	// Render visible alignments into separate ViewBuilders
-	for i := s.ViewportStart; i < viewportEnd; i++ {
-		alignment := s.Diff.Alignments[i]
-		left, right := s.renderAlignment(alignment, columnWidth, lineNoWidth)
+	// Render visible lines from blocks
+	linesRendered := 0
+	currentLine := 0 // Global line counter
 
-		// Apply fixed width styling to each line before adding to ViewBuilders
-		leftVb.AddLine(leftColStyle.Render(left))
-		rightVb.AddLine(rightColStyle.Render(right))
+	for _, block := range s.Diff.Blocks {
+		switch b := block.(type) {
+		case diff.UnchangedBlock:
+			for _, linePair := range b.Lines {
+				if currentLine >= s.ViewportStart && linesRendered < availableHeight {
+					left, right := s.renderLinePair(linePair, columnWidth, lineNoWidth)
+					leftVb.AddLine(leftColStyle.Render(left))
+					rightVb.AddLine(rightColStyle.Render(right))
+					linesRendered++
+				}
+				currentLine++
+				if linesRendered >= availableHeight {
+					break
+				}
+			}
+		case diff.ChangeBlock:
+			for _, changeLine := range b.Lines {
+				if currentLine >= s.ViewportStart && linesRendered < availableHeight {
+					left, right := s.renderChangeLine(changeLine, columnWidth, lineNoWidth)
+					leftVb.AddLine(leftColStyle.Render(left))
+					rightVb.AddLine(rightColStyle.Render(right))
+					linesRendered++
+				}
+				currentLine++
+				if linesRendered >= availableHeight {
+					break
+				}
+			}
+		}
+		if linesRendered >= availableHeight {
+			break
+		}
 	}
 
 	// Compose the split view
@@ -123,38 +148,40 @@ func (s *State) calculateLineNoWidth() int {
 	}
 
 	maxLineNo := 0
-	for _, alignment := range s.Diff.Alignments {
-		switch a := alignment.(type) {
-		case diff.UnchangedAlignment:
-			leftNo := s.Diff.Left.LineNo(a.LeftIdx)
-			rightNo := s.Diff.Right.LineNo(a.RightIdx)
-			if leftNo > maxLineNo {
-				maxLineNo = leftNo
+	for _, block := range s.Diff.Blocks {
+		switch b := block.(type) {
+		case diff.UnchangedBlock:
+			for _, lp := range b.Lines {
+				if lp.LeftLineNo > maxLineNo {
+					maxLineNo = lp.LeftLineNo
+				}
+				if lp.RightLineNo > maxLineNo {
+					maxLineNo = lp.RightLineNo
+				}
 			}
-			if rightNo > maxLineNo {
-				maxLineNo = rightNo
-			}
-		case diff.ModifiedAlignment:
-			leftNo := s.Diff.Left.LineNo(a.LeftIdx)
-			rightNo := s.Diff.Right.LineNo(a.RightIdx)
-			if leftNo > maxLineNo {
-				maxLineNo = leftNo
-			}
-			if rightNo > maxLineNo {
-				maxLineNo = rightNo
-			}
-		case diff.RemovedAlignment:
-			leftNo := s.Diff.Left.LineNo(a.LeftIdx)
-			if leftNo > maxLineNo {
-				maxLineNo = leftNo
-			}
-		case diff.AddedAlignment:
-			rightNo := s.Diff.Right.LineNo(a.RightIdx)
-			if rightNo > maxLineNo {
-				maxLineNo = rightNo
+		case diff.ChangeBlock:
+			for _, cl := range b.Lines {
+				switch line := cl.(type) {
+				case diff.ModifiedLine:
+					if line.LeftLineNo > maxLineNo {
+						maxLineNo = line.LeftLineNo
+					}
+					if line.RightLineNo > maxLineNo {
+						maxLineNo = line.RightLineNo
+					}
+				case diff.RemovedLine:
+					if line.LeftLineNo > maxLineNo {
+						maxLineNo = line.LeftLineNo
+					}
+				case diff.AddedLine:
+					if line.RightLineNo > maxLineNo {
+						maxLineNo = line.RightLineNo
+					}
+				}
 			}
 		}
 	}
+
 	width := len(fmt.Sprintf("%d", maxLineNo))
 	if width < 3 {
 		width = 3
@@ -162,50 +189,36 @@ func (s *State) calculateLineNoWidth() int {
 	return width
 }
 
-// renderAlignment returns the left and right column content for an alignment using type switch
-func (s *State) renderAlignment(alignment diff.Alignment, columnWidth, lineNoWidth int) (string, string) {
-	// Calculate content width (column width - lineNo - space - indicator - space)
+// renderLinePair renders an unchanged line pair
+func (s *State) renderLinePair(lp diff.LinePair, columnWidth, lineNoWidth int) (string, string) {
+	contentWidth := columnWidth - lineNoWidth - 4 // "123 - " = lineNo + space + indicator + space
+	if contentWidth < 5 {
+		contentWidth = 5
+	}
+	left := s.formatColumnContent(lp.LeftLineNo, " ", lp.Tokens, lineNoWidth, contentWidth, columnWidth, styles.TimeStyle, nil)
+	right := s.formatColumnContent(lp.RightLineNo, " ", lp.Tokens, lineNoWidth, contentWidth, columnWidth, styles.TimeStyle, nil)
+	return left, right
+}
+
+// renderChangeLine renders a change line (modified, removed, or added)
+func (s *State) renderChangeLine(cl diff.ChangeLine, columnWidth, lineNoWidth int) (string, string) {
 	contentWidth := columnWidth - lineNoWidth - 4 // "123 - " = lineNo + space + indicator + space
 	if contentWidth < 5 {
 		contentWidth = 5
 	}
 
-	switch a := alignment.(type) {
-	case diff.UnchangedAlignment:
-		// Unchanged: show on both sides with normal styling
-		leftLine := s.Diff.Left.Lines[a.LeftIdx]
-		rightLine := s.Diff.Right.Lines[a.RightIdx]
-		leftNo := s.Diff.Left.LineNo(a.LeftIdx)
-		rightNo := s.Diff.Right.LineNo(a.RightIdx)
-		left := s.formatColumnContent(leftNo, " ", leftLine.Tokens, lineNoWidth, contentWidth, columnWidth, styles.TimeStyle, nil)
-		right := s.formatColumnContent(rightNo, " ", rightLine.Tokens, lineNoWidth, contentWidth, columnWidth, styles.TimeStyle, nil)
+	switch line := cl.(type) {
+	case diff.ModifiedLine:
+		left := s.formatColumnContent(line.LeftLineNo, "-", line.LeftTokens, lineNoWidth, contentWidth, columnWidth, styles.DiffDeletionsStyle, line.InlineDiff)
+		right := s.formatColumnContent(line.RightLineNo, "+", line.RightTokens, lineNoWidth, contentWidth, columnWidth, styles.DiffAdditionsStyle, line.InlineDiff)
 		return left, right
-
-	case diff.ModifiedAlignment:
-		// Modified: show on both sides with inline diff highlighting
-		leftLine := s.Diff.Left.Lines[a.LeftIdx]
-		rightLine := s.Diff.Right.Lines[a.RightIdx]
-		leftNo := s.Diff.Left.LineNo(a.LeftIdx)
-		rightNo := s.Diff.Right.LineNo(a.RightIdx)
-		left := s.formatColumnContent(leftNo, "-", leftLine.Tokens, lineNoWidth, contentWidth, columnWidth, styles.DiffDeletionsStyle, a.InlineDiff)
-		right := s.formatColumnContent(rightNo, "+", rightLine.Tokens, lineNoWidth, contentWidth, columnWidth, styles.DiffAdditionsStyle, a.InlineDiff)
-		return left, right
-
-	case diff.RemovedAlignment:
-		// Removed: show on left only with deletion style
-		leftLine := s.Diff.Left.Lines[a.LeftIdx]
-		leftNo := s.Diff.Left.LineNo(a.LeftIdx)
-		left := s.formatColumnContent(leftNo, "-", leftLine.Tokens, lineNoWidth, contentWidth, columnWidth, styles.DiffDeletionsStyle, nil)
+	case diff.RemovedLine:
+		left := s.formatColumnContent(line.LeftLineNo, "-", line.Tokens, lineNoWidth, contentWidth, columnWidth, styles.DiffDeletionsStyle, nil)
 		return left, ""
-
-	case diff.AddedAlignment:
-		// Added: show on right only with addition style
-		rightLine := s.Diff.Right.Lines[a.RightIdx]
-		rightNo := s.Diff.Right.LineNo(a.RightIdx)
-		right := s.formatColumnContent(rightNo, "+", rightLine.Tokens, lineNoWidth, contentWidth, columnWidth, styles.DiffAdditionsStyle, nil)
+	case diff.AddedLine:
+		right := s.formatColumnContent(line.RightLineNo, "+", line.Tokens, lineNoWidth, contentWidth, columnWidth, styles.DiffAdditionsStyle, nil)
 		return "", right
 	}
-
 	return "", ""
 }
 

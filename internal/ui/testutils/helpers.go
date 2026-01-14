@@ -16,9 +16,10 @@ import (
 // MockContext is a test helper that implements the core.Context interface.
 // Use with named fields: testutils.MockContext{W: 80, H: 24}
 type MockContext struct {
-	W                    int
-	H                    int
-	MockFetchFileChanges core.FetchFileChangesFunc
+	W                     int
+	H                     int
+	MockFetchFileChanges  core.FetchFileChangesFunc
+	MockFetchFullFileDiff core.FetchFullFileDiffFunc
 }
 
 func (m MockContext) Width() int {
@@ -39,6 +40,9 @@ func (m MockContext) FetchFileChanges() core.FetchFileChangesFunc {
 }
 
 func (m MockContext) FetchFullFileDiff() core.FetchFullFileDiffFunc {
+	if m.MockFetchFullFileDiff != nil {
+		return m.MockFetchFullFileDiff
+	}
 	return func(commitRange core.CommitRange, change core.FileChange) (*core.FullFileDiffResult, error) {
 		return &core.FullFileDiffResult{}, nil
 	}

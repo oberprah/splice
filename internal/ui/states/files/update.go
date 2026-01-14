@@ -25,10 +25,11 @@ func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 		// Return command that produces PushDiffScreenMsg to navigate to DiffState
 		return s, func() tea.Msg {
 			return core.PushDiffScreenMsg{
-				Source:        msg.Source,
-				File:          msg.File,
-				Diff:          msg.Diff,
-				ChangeIndices: msg.ChangeIndices,
+				Source:    msg.Source,
+				Files:     msg.Files,
+				FileIndex: msg.FileIndex,
+				File:      msg.File,
+				Diff:      msg.Diff,
 			}
 		}
 
@@ -155,8 +156,8 @@ func (s *State) loadDiff(file core.FileChange, fetchFullFileDiff core.FetchFullF
 			}
 		}
 
-		// Build the complete aligned diff with change indices
-		alignedDiff, changeIndices, err := diff.BuildAlignedFileDiff(
+		// Build the block-based diff
+		fileDiff, err := diff.BuildFileDiff(
 			file.Path,
 			fullDiffResult.OldContent,
 			fullDiffResult.NewContent,
@@ -170,12 +171,22 @@ func (s *State) loadDiff(file core.FileChange, fetchFullFileDiff core.FetchFullF
 			}
 		}
 
+		// Find the file index in the file list
+		fileIndex := 0
+		for i, f := range s.Files {
+			if f.Path == file.Path {
+				fileIndex = i
+				break
+			}
+		}
+
 		return core.DiffLoadedMsg{
-			Source:        s.Source,
-			File:          file,
-			Diff:          alignedDiff,
-			ChangeIndices: changeIndices,
-			Err:           nil,
+			Source:    s.Source,
+			Files:     s.Files,
+			FileIndex: fileIndex,
+			File:      file,
+			Diff:      fileDiff,
+			Err:       nil,
 		}
 	}
 }

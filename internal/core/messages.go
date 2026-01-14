@@ -26,9 +26,10 @@ type FilesPreviewLoadedMsg struct {
 
 // DiffLoadedMsg is sent when diff content for a file has been loaded
 type DiffLoadedMsg struct {
-	Source        DiffSource
-	File          FileChange
-	Diff          *diff.AlignedFileDiff
-	ChangeIndices []int // Indices of alignments that have changes (for navigation)
-	Err           error
+	Source    DiffSource
+	Files     []FileChange   // All files in the diff source (for navigation)
+	FileIndex int            // Index of current file in Files slice
+	File      FileChange     // The current file
+	Diff      *diff.FileDiff // Block-based diff
+	Err       error
 }

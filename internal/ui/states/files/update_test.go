@@ -361,29 +361,21 @@ func TestFilesState_Update_DiffLoadedMsgSuccess(t *testing.T) {
 	s.ViewportStart = 1
 	ctx := testutils.MockContext{W: 80, H: 24}
 
-	// Simulate DiffLoadedMsg with success
+	// Simulate DiffLoadedMsg with success using new block-based structure
 	msg := core.DiffLoadedMsg{
-		Source: core.NewSingleCommitRange(commit).ToDiffSource(),
-		File:   files[2],
-		Diff: &diff.AlignedFileDiff{
-			Left: diff.FileContent{
-				Path: "file.go",
-				Lines: []diff.AlignedLine{
-					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "test"}}},
-				},
-			},
-			Right: diff.FileContent{
-				Path: "file.go",
-				Lines: []diff.AlignedLine{
-					{Tokens: []highlight.Token{{Type: chroma.Text, Value: "test"}}},
-				},
-			},
-			Alignments: []diff.Alignment{
-				diff.UnchangedAlignment{LeftIdx: 0, RightIdx: 0},
+		Source:    core.NewSingleCommitRange(commit).ToDiffSource(),
+		Files:     files,
+		FileIndex: 2,
+		File:      files[2],
+		Diff: &diff.FileDiff{
+			Path: "file.go",
+			Blocks: []diff.Block{
+				diff.UnchangedBlock{Lines: []diff.LinePair{
+					{LeftLineNo: 1, RightLineNo: 1, Tokens: []highlight.Token{{Type: chroma.Text, Value: "test"}}},
+				}},
 			},
 		},
-		ChangeIndices: []int{},
-		Err:           nil,
+		Err: nil,
 	}
 	newState, cmd := s.Update(msg, ctx)
 
@@ -410,8 +402,8 @@ func TestFilesState_Update_DiffLoadedMsgSuccess(t *testing.T) {
 		t.Fatalf("Expected PushDiffScreenMsg, got %T", result)
 	}
 
-	if len(pushMsg.Diff.Alignments) != 1 {
-		t.Errorf("Expected 1 diff alignment, got %d", len(pushMsg.Diff.Alignments))
+	if len(pushMsg.Diff.Blocks) != 1 {
+		t.Errorf("Expected 1 diff block, got %d", len(pushMsg.Diff.Blocks))
 	}
 
 	// Verify state hasn't changed (stays FilesState until Model handles PushScreenMsg)

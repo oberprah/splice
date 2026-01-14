@@ -105,7 +105,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case core.PushDiffScreenMsg:
-		m.pushState(diff.New(msg.Source, msg.File, msg.Diff, msg.ChangeIndices))
+		m.pushState(diff.New(msg.Source, msg.Files, msg.FileIndex, msg.File, msg.Diff))
 		return m, nil
 
 	case core.PushErrorScreenMsg:
