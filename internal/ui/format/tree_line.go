@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/oberprah/splice/internal/domain/tree"
+	"github.com/oberprah/splice/internal/domain/filetree"
 	"github.com/oberprah/splice/internal/ui/styles"
 )
 
@@ -24,7 +24,7 @@ import (
 //   - Branch characters (├── for non-last children, └── for last children)
 //   - Node-specific content (folder names vs file stats)
 //   - Style application (colors for status, selection highlighting)
-func FormatTreeLine(item tree.VisibleTreeItem, isSelected bool) string {
+func FormatTreeLine(item filetree.VisibleTreeItem, isSelected bool) string {
 	var line strings.Builder
 
 	// 1. Render selector (→ for selected, spaces for unselected)
@@ -53,9 +53,9 @@ func FormatTreeLine(item tree.VisibleTreeItem, isSelected bool) string {
 
 	// 4. Render node content based on type (folder vs file)
 	switch node := item.Node.(type) {
-	case *tree.FolderNode:
+	case *filetree.FolderNode:
 		line.WriteString(formatFolderNode(node, isSelected))
-	case *tree.FileNode:
+	case *filetree.FileNode:
 		line.WriteString(formatFileNode(node, isSelected))
 	}
 
@@ -65,7 +65,7 @@ func FormatTreeLine(item tree.VisibleTreeItem, isSelected bool) string {
 // formatFolderNode formats a folder node.
 // - Expanded: shows folder name only (e.g., "src/")
 // - Collapsed: shows folder name + stats (e.g., "src/ +234 -67 (5 files)")
-func formatFolderNode(node *tree.FolderNode, isSelected bool) string {
+func formatFolderNode(node *filetree.FolderNode, isSelected bool) string {
 	var content strings.Builder
 
 	// Folder name styling
@@ -122,7 +122,7 @@ func formatFolderNode(node *tree.FolderNode, isSelected bool) string {
 // formatFileNode formats a file node with status, stats, and filename.
 // Format: "M +17 -13  App.tsx"
 // Matches the existing file formatting from file_section.go
-func formatFileNode(node *tree.FileNode, isSelected bool) string {
+func formatFileNode(node *filetree.FileNode, isSelected bool) string {
 	var content strings.Builder
 	file := node.File()
 

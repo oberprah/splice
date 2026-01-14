@@ -1,4 +1,4 @@
-package tree
+package filetree
 
 // DeepCopy creates a deep copy of a tree node and all its descendants.
 // This is needed for immutability when toggling folders.

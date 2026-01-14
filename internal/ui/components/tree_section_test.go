@@ -7,7 +7,7 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 	"github.com/oberprah/splice/internal/core"
-	"github.com/oberprah/splice/internal/domain/tree"
+	"github.com/oberprah/splice/internal/domain/filetree"
 	"github.com/oberprah/splice/internal/ui/testutils"
 )
 
@@ -21,7 +21,7 @@ func assertTreeSectionGolden(t *testing.T, output string, filename string) {
 func TestTreeSection_EmptyTree(t *testing.T) {
 	testutils.SetupColorProfile()
 
-	items := []tree.VisibleTreeItem{}
+	items := []filetree.VisibleTreeItem{}
 	files := []core.FileChange{}
 	cursor := 0
 
@@ -49,9 +49,9 @@ func TestTreeSection_SingleFile(t *testing.T) {
 		Deletions: 5,
 		IsBinary:  false,
 	}
-	fileNode := tree.NewFileNode("README.md", 0, file)
+	fileNode := filetree.NewFileNode("README.md", 0, file)
 
-	items := []tree.VisibleTreeItem{
+	items := []filetree.VisibleTreeItem{
 		{
 			Node:        fileNode,
 			IsLastChild: true,
@@ -73,11 +73,11 @@ func TestTreeSection_FolderAndFiles(t *testing.T) {
 	file1 := &core.FileChange{Path: "src/App.tsx", Status: "M", Additions: 17, Deletions: 13, IsBinary: false}
 	file2 := &core.FileChange{Path: "src/index.ts", Status: "A", Additions: 42, Deletions: 0, IsBinary: false}
 
-	srcFolder := tree.NewFolderNode("src/", 0, true, tree.FolderStats{FileCount: 2, Additions: 59, Deletions: 13})
-	fileNode1 := tree.NewFileNode("App.tsx", 1, file1)
-	fileNode2 := tree.NewFileNode("index.ts", 1, file2)
+	srcFolder := filetree.NewFolderNode("src/", 0, true, filetree.FolderStats{FileCount: 2, Additions: 59, Deletions: 13})
+	fileNode1 := filetree.NewFileNode("App.tsx", 1, file1)
+	fileNode2 := filetree.NewFileNode("index.ts", 1, file2)
 
-	items := []tree.VisibleTreeItem{
+	items := []filetree.VisibleTreeItem{
 		{
 			Node:        srcFolder,
 			IsLastChild: true,
@@ -112,9 +112,9 @@ func TestTreeSection_CollapsedFolder(t *testing.T) {
 		{Path: "old/file2.go", Status: "M", Additions: 15, Deletions: 8, IsBinary: false},
 		{Path: "old/file3.go", Status: "M", Additions: 15, Deletions: 7, IsBinary: false},
 	}
-	oldFolder := tree.NewFolderNode("old/", 0, false, tree.FolderStats{FileCount: 3, Additions: 50, Deletions: 25})
+	oldFolder := filetree.NewFolderNode("old/", 0, false, filetree.FolderStats{FileCount: 3, Additions: 50, Deletions: 25})
 
-	items := []tree.VisibleTreeItem{
+	items := []filetree.VisibleTreeItem{
 		{
 			Node:        oldFolder,
 			IsLastChild: true,
@@ -140,13 +140,13 @@ func TestTreeSection_NestedFolders(t *testing.T) {
 	file1 := &core.FileChange{Path: "src/components/App.tsx", Status: "M", Additions: 17, Deletions: 13, IsBinary: false}
 	file2 := &core.FileChange{Path: "src/utils/helper.ts", Status: "A", Additions: 42, Deletions: 0, IsBinary: false}
 
-	srcFolder := tree.NewFolderNode("src/", 0, true, tree.FolderStats{FileCount: 2, Additions: 59, Deletions: 13})
-	componentsFolder := tree.NewFolderNode("components/", 1, true, tree.FolderStats{FileCount: 1, Additions: 17, Deletions: 13})
-	utilsFolder := tree.NewFolderNode("utils/", 1, true, tree.FolderStats{FileCount: 1, Additions: 42, Deletions: 0})
-	fileNode1 := tree.NewFileNode("App.tsx", 2, file1)
-	fileNode2 := tree.NewFileNode("helper.ts", 2, file2)
+	srcFolder := filetree.NewFolderNode("src/", 0, true, filetree.FolderStats{FileCount: 2, Additions: 59, Deletions: 13})
+	componentsFolder := filetree.NewFolderNode("components/", 1, true, filetree.FolderStats{FileCount: 1, Additions: 17, Deletions: 13})
+	utilsFolder := filetree.NewFolderNode("utils/", 1, true, filetree.FolderStats{FileCount: 1, Additions: 42, Deletions: 0})
+	fileNode1 := filetree.NewFileNode("App.tsx", 2, file1)
+	fileNode2 := filetree.NewFileNode("helper.ts", 2, file2)
 
-	items := []tree.VisibleTreeItem{
+	items := []filetree.VisibleTreeItem{
 		{
 			Node:        srcFolder,
 			IsLastChild: true,
@@ -184,11 +184,11 @@ func TestTreeSection_NestedFolders(t *testing.T) {
 func TestTreeSection_CursorOnFolder(t *testing.T) {
 	testutils.SetupColorProfile()
 
-	srcFolder := tree.NewFolderNode("src/", 0, true, tree.FolderStats{FileCount: 1, Additions: 10, Deletions: 5})
+	srcFolder := filetree.NewFolderNode("src/", 0, true, filetree.FolderStats{FileCount: 1, Additions: 10, Deletions: 5})
 	file1 := &core.FileChange{Path: "src/App.tsx", Status: "M", Additions: 10, Deletions: 5, IsBinary: false}
-	fileNode1 := tree.NewFileNode("App.tsx", 1, file1)
+	fileNode1 := filetree.NewFileNode("App.tsx", 1, file1)
 
-	items := []tree.VisibleTreeItem{
+	items := []filetree.VisibleTreeItem{
 		{
 			Node:        srcFolder,
 			IsLastChild: true,
@@ -211,11 +211,11 @@ func TestTreeSection_CursorOnFolder(t *testing.T) {
 func TestTreeSection_CursorOnFile(t *testing.T) {
 	testutils.SetupColorProfile()
 
-	srcFolder := tree.NewFolderNode("src/", 0, true, tree.FolderStats{FileCount: 1, Additions: 10, Deletions: 5})
+	srcFolder := filetree.NewFolderNode("src/", 0, true, filetree.FolderStats{FileCount: 1, Additions: 10, Deletions: 5})
 	file1 := &core.FileChange{Path: "src/App.tsx", Status: "M", Additions: 10, Deletions: 5, IsBinary: false}
-	fileNode1 := tree.NewFileNode("App.tsx", 1, file1)
+	fileNode1 := filetree.NewFileNode("App.tsx", 1, file1)
 
-	items := []tree.VisibleTreeItem{
+	items := []filetree.VisibleTreeItem{
 		{
 			Node:        srcFolder,
 			IsLastChild: true,
@@ -243,11 +243,11 @@ func TestTreeSection_MixedStatuses(t *testing.T) {
 	file3 := &core.FileChange{Path: "deleted.go", Status: "D", Additions: 0, Deletions: 50, IsBinary: false}
 	file4 := &core.FileChange{Path: "renamed.go", Status: "R", Additions: 0, Deletions: 0, IsBinary: false}
 
-	items := []tree.VisibleTreeItem{
-		{Node: tree.NewFileNode("added.go", 0, file1), IsLastChild: false, ParentLines: []bool{}},
-		{Node: tree.NewFileNode("modified.go", 0, file2), IsLastChild: false, ParentLines: []bool{}},
-		{Node: tree.NewFileNode("deleted.go", 0, file3), IsLastChild: false, ParentLines: []bool{}},
-		{Node: tree.NewFileNode("renamed.go", 0, file4), IsLastChild: true, ParentLines: []bool{}},
+	items := []filetree.VisibleTreeItem{
+		{Node: filetree.NewFileNode("added.go", 0, file1), IsLastChild: false, ParentLines: []bool{}},
+		{Node: filetree.NewFileNode("modified.go", 0, file2), IsLastChild: false, ParentLines: []bool{}},
+		{Node: filetree.NewFileNode("deleted.go", 0, file3), IsLastChild: false, ParentLines: []bool{}},
+		{Node: filetree.NewFileNode("renamed.go", 0, file4), IsLastChild: true, ParentLines: []bool{}},
 	}
 	files := []core.FileChange{*file1, *file2, *file3, *file4}
 	cursor := 1 // Select modified file
@@ -261,8 +261,8 @@ func TestTreeSection_BinaryFile(t *testing.T) {
 	testutils.SetupColorProfile()
 
 	binaryFile := &core.FileChange{Path: "image.png", Status: "A", Additions: 0, Deletions: 0, IsBinary: true}
-	items := []tree.VisibleTreeItem{
-		{Node: tree.NewFileNode("image.png", 0, binaryFile), IsLastChild: true, ParentLines: []bool{}},
+	items := []filetree.VisibleTreeItem{
+		{Node: filetree.NewFileNode("image.png", 0, binaryFile), IsLastChild: true, ParentLines: []bool{}},
 	}
 	files := []core.FileChange{*binaryFile}
 	cursor := 0
@@ -283,10 +283,10 @@ func TestTreeSection_StatsCalculation(t *testing.T) {
 	file2 := &core.FileChange{Path: "file2.go", Status: "M", Additions: 20, Deletions: 30, IsBinary: false}
 	file3 := &core.FileChange{Path: "file3.go", Status: "D", Additions: 0, Deletions: 50, IsBinary: false}
 
-	items := []tree.VisibleTreeItem{
-		{Node: tree.NewFileNode("file1.go", 0, file1), IsLastChild: false, ParentLines: []bool{}},
-		{Node: tree.NewFileNode("file2.go", 0, file2), IsLastChild: false, ParentLines: []bool{}},
-		{Node: tree.NewFileNode("file3.go", 0, file3), IsLastChild: true, ParentLines: []bool{}},
+	items := []filetree.VisibleTreeItem{
+		{Node: filetree.NewFileNode("file1.go", 0, file1), IsLastChild: false, ParentLines: []bool{}},
+		{Node: filetree.NewFileNode("file2.go", 0, file2), IsLastChild: false, ParentLines: []bool{}},
+		{Node: filetree.NewFileNode("file3.go", 0, file3), IsLastChild: true, ParentLines: []bool{}},
 	}
 	files := []core.FileChange{*file1, *file2, *file3}
 	cursor := 0

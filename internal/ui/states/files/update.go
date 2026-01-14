@@ -7,7 +7,7 @@ import (
 
 	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/domain/diff"
-	"github.com/oberprah/splice/internal/domain/tree"
+	"github.com/oberprah/splice/internal/domain/filetree"
 	"github.com/oberprah/splice/internal/git"
 )
 
@@ -49,10 +49,10 @@ func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 			if s.Cursor < len(s.VisibleItems) {
 				cursorNode := s.VisibleItems[s.Cursor].Node
 				switch node := cursorNode.(type) {
-				case *tree.FolderNode:
+				case *filetree.FolderNode:
 					// Toggle folder (collapse/expand)
 					return toggleFolder(s, false, false, ctx)
-				case *tree.FileNode:
+				case *filetree.FileNode:
 					// Load diff for file
 					return s, s.loadDiff(*node.File(), ctx.FetchFullFileDiff())
 				}
@@ -63,7 +63,7 @@ func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 			// Space key: toggle folder (same as Enter on folders)
 			if s.Cursor < len(s.VisibleItems) {
 				cursorNode := s.VisibleItems[s.Cursor].Node
-				if _, ok := cursorNode.(*tree.FolderNode); ok {
+				if _, ok := cursorNode.(*filetree.FolderNode); ok {
 					return toggleFolder(s, false, false, ctx)
 				}
 			}
@@ -73,7 +73,7 @@ func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 			// Right arrow: expand folder only
 			if s.Cursor < len(s.VisibleItems) {
 				cursorNode := s.VisibleItems[s.Cursor].Node
-				if _, ok := cursorNode.(*tree.FolderNode); ok {
+				if _, ok := cursorNode.(*filetree.FolderNode); ok {
 					return toggleFolder(s, true, false, ctx)
 				}
 			}
@@ -83,7 +83,7 @@ func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 			// Left arrow: collapse folder only
 			if s.Cursor < len(s.VisibleItems) {
 				cursorNode := s.VisibleItems[s.Cursor].Node
-				if _, ok := cursorNode.(*tree.FolderNode); ok {
+				if _, ok := cursorNode.(*filetree.FolderNode); ok {
 					return toggleFolder(s, false, true, ctx)
 				}
 			}
@@ -209,7 +209,7 @@ func fetchFileDiffForSource(source core.DiffSource, file core.FileChange, fetchF
 
 // toggleFolder toggles the expanded state of a folder at the cursor position.
 // It creates a new state with a deep copy of the tree, modifies the folder,
-// re-computes stats if needed, and re-flattens the tree.
+// re-computes stats if needed, and re-flattens the filetree.
 //
 // Parameters:
 // - expandOnly: if true, only expand (don't collapse already expanded folders)
@@ -224,7 +224,7 @@ func toggleFolder(s *State, expandOnly bool, collapseOnly bool, ctx core.Context
 
 	// Get the folder at cursor position
 	cursorNode := s.VisibleItems[s.Cursor].Node
-	folder, ok := cursorNode.(*tree.FolderNode)
+	folder, ok := cursorNode.(*filetree.FolderNode)
 	if !ok {
 		// Not a folder, nothing to toggle
 		return s, nil
@@ -241,20 +241,20 @@ func toggleFolder(s *State, expandOnly bool, collapseOnly bool, ctx core.Context
 	}
 
 	// Deep copy the tree for immutability
-	newRoot := tree.DeepCopy(s.Root)
+	newRoot := filetree.DeepCopy(s.Root)
 
 	// Find the folder in the new tree using the cursor index.
 	// Since flattening is deterministic, the same cursor index in the new tree
 	// after deep copy should point to the same logical item.
 	// This approach correctly handles duplicate folder names at the same depth.
-	newVisibleItems := tree.FlattenVisible(newRoot)
+	newVisibleItems := filetree.FlattenVisible(newRoot)
 	if s.Cursor >= len(newVisibleItems) {
 		// Shouldn't happen, but handle gracefully
 		return s, nil
 	}
 
 	targetNode := newVisibleItems[s.Cursor].Node
-	targetFolder, ok := targetNode.(*tree.FolderNode)
+	targetFolder, ok := targetNode.(*filetree.FolderNode)
 	if !ok {
 		// Shouldn't happen (we already checked it's a folder), but handle gracefully
 		return s, nil
@@ -265,11 +265,11 @@ func toggleFolder(s *State, expandOnly bool, collapseOnly bool, ctx core.Context
 
 	// If we collapsed a folder, re-compute stats
 	if !targetFolder.IsExpanded() {
-		tree.ApplyStats(newRoot)
+		filetree.ApplyStats(newRoot)
 	}
 
 	// Re-flatten to get new visible items (after toggle)
-	newVisibleItems = tree.FlattenVisible(newRoot)
+	newVisibleItems = filetree.FlattenVisible(newRoot)
 
 	// Preserve cursor position or adjust if needed
 	newCursor := s.Cursor
@@ -294,6 +294,6 @@ func toggleFolder(s *State, expandOnly bool, collapseOnly bool, ctx core.Context
 }
 
 // toggleFolderNode toggles the isExpanded field of a FolderNode.
-func toggleFolderNode(folder *tree.FolderNode) {
+func toggleFolderNode(folder *filetree.FolderNode) {
 	folder.SetExpanded(!folder.IsExpanded())
 }

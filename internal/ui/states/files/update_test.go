@@ -8,8 +8,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/domain/diff"
+	"github.com/oberprah/splice/internal/domain/filetree"
 	"github.com/oberprah/splice/internal/domain/highlight"
-	"github.com/oberprah/splice/internal/domain/tree"
 	"github.com/oberprah/splice/internal/ui/testutils"
 )
 
@@ -304,7 +304,7 @@ func TestFilesState_Update_EnterKeyReturnsCommand(t *testing.T) {
 	// Find a file node in VisibleItems
 	fileIdx := -1
 	for i, item := range s.VisibleItems {
-		if _, ok := item.Node.(*tree.FileNode); ok {
+		if _, ok := item.Node.(*filetree.FileNode); ok {
 			fileIdx = i
 			break
 		}
@@ -524,7 +524,7 @@ func TestFilesState_Update_EnterOnFolder_TogglesExpanded(t *testing.T) {
 	// Find the index of the src/ folder in VisibleItems
 	srcFolderIdx := -1
 	for i, item := range s.VisibleItems {
-		if folder, ok := item.Node.(*tree.FolderNode); ok {
+		if folder, ok := item.Node.(*filetree.FolderNode); ok {
 			if folder.GetName() == "src" {
 				srcFolderIdx = i
 				break
@@ -582,7 +582,7 @@ func TestFilesState_Update_SpaceOnFolder_TogglesExpanded(t *testing.T) {
 	// Find the src/ folder
 	srcFolderIdx := -1
 	for i, item := range s.VisibleItems {
-		if folder, ok := item.Node.(*tree.FolderNode); ok {
+		if folder, ok := item.Node.(*filetree.FolderNode); ok {
 			if folder.GetName() == "src" {
 				srcFolderIdx = i
 				break
@@ -624,7 +624,7 @@ func TestFilesState_Update_RightArrowOnFolder_ExpandsOnly(t *testing.T) {
 	// Find and collapse the src/ folder first
 	srcFolderIdx := -1
 	for i, item := range s.VisibleItems {
-		if folder, ok := item.Node.(*tree.FolderNode); ok {
+		if folder, ok := item.Node.(*filetree.FolderNode); ok {
 			if folder.GetName() == "src" {
 				srcFolderIdx = i
 				break
@@ -682,7 +682,7 @@ func TestFilesState_Update_LeftArrowOnFolder_CollapsesOnly(t *testing.T) {
 	// Find the src/ folder (should be expanded by default)
 	srcFolderIdx := -1
 	for i, item := range s.VisibleItems {
-		if folder, ok := item.Node.(*tree.FolderNode); ok {
+		if folder, ok := item.Node.(*filetree.FolderNode); ok {
 			if folder.GetName() == "src" {
 				srcFolderIdx = i
 				break
@@ -734,7 +734,7 @@ func TestFilesState_Update_EnterOnFile_OpensFileDiff(t *testing.T) {
 	// Find a file node in VisibleItems
 	fileIdx := -1
 	for i, item := range s.VisibleItems {
-		if _, ok := item.Node.(*tree.FileNode); ok {
+		if _, ok := item.Node.(*filetree.FileNode); ok {
 			fileIdx = i
 			break
 		}
@@ -775,7 +775,7 @@ func TestFilesState_Update_TogglePreservesCursorPosition(t *testing.T) {
 	// Find the src/ folder
 	srcFolderIdx := -1
 	for i, item := range s.VisibleItems {
-		if folder, ok := item.Node.(*tree.FolderNode); ok {
+		if folder, ok := item.Node.(*filetree.FolderNode); ok {
 			if folder.GetName() == "src" {
 				srcFolderIdx = i
 				break
@@ -813,7 +813,7 @@ func TestFilesState_Update_ArrowKeysOnFile_NoToggle(t *testing.T) {
 	// Find the file node
 	fileIdx := -1
 	for i, item := range s.VisibleItems {
-		if _, ok := item.Node.(*tree.FileNode); ok {
+		if _, ok := item.Node.(*filetree.FileNode); ok {
 			fileIdx = i
 			break
 		}
@@ -865,7 +865,7 @@ func TestFilesState_Update_CollapseFolder_MaintainsViewportPosition(t *testing.T
 		{Path: "internal/ui/states/files/state.go", Status: "M", Additions: 50, Deletions: 10},
 		{Path: "internal/ui/states/files/update.go", Status: "M", Additions: 100, Deletions: 20},
 		{Path: "internal/ui/states/files/view.go", Status: "M", Additions: 30, Deletions: 5},
-		{Path: "internal/domain/tree/tree.go", Status: "A", Additions: 200, Deletions: 0},
+		{Path: "internal/domain/tree/filetree.go", Status: "A", Additions: 200, Deletions: 0},
 
 		// sandbox/ folder
 		{Path: "sandbox/docker-compose.yml", Status: "M", Additions: 3, Deletions: 3},
@@ -884,7 +884,7 @@ func TestFilesState_Update_CollapseFolder_MaintainsViewportPosition(t *testing.T
 	// Find the test/e2e folder in visible items
 	testE2EFolderIdx := -1
 	for i, item := range s.VisibleItems {
-		if folder, ok := item.Node.(*tree.FolderNode); ok {
+		if folder, ok := item.Node.(*filetree.FolderNode); ok {
 			// Looking for collapsed path "test/e2e"
 			if folder.GetName() == "test/e2e" {
 				testE2EFolderIdx = i
@@ -1006,7 +1006,7 @@ func TestFilesState_Update_ToggleFolderWithDuplicateName_TogglesCorrectFolder(t 
 	frontendSrcIdx := -1
 	backendSrcIdx := -1
 	for i, item := range s.VisibleItems {
-		if folder, ok := item.Node.(*tree.FolderNode); ok {
+		if folder, ok := item.Node.(*filetree.FolderNode); ok {
 			name := folder.GetName()
 			depth := folder.GetDepth()
 
@@ -1029,8 +1029,8 @@ func TestFilesState_Update_ToggleFolderWithDuplicateName_TogglesCorrectFolder(t 
 	}
 
 	// Verify both folders start expanded
-	backendSrcFolder := s.VisibleItems[backendSrcIdx].Node.(*tree.FolderNode)
-	frontendSrcFolder := s.VisibleItems[frontendSrcIdx].Node.(*tree.FolderNode)
+	backendSrcFolder := s.VisibleItems[backendSrcIdx].Node.(*filetree.FolderNode)
+	frontendSrcFolder := s.VisibleItems[frontendSrcIdx].Node.(*filetree.FolderNode)
 
 	if !backendSrcFolder.IsExpanded() {
 		t.Fatal("Expected backend/src/components folder to start expanded")
@@ -1064,7 +1064,7 @@ func TestFilesState_Update_ToggleFolderWithDuplicateName_TogglesCorrectFolder(t 
 	newBackendSrcIdx := -1
 	newFrontendSrcIdx := -1
 	for i, item := range filesState.VisibleItems {
-		if folder, ok := item.Node.(*tree.FolderNode); ok {
+		if folder, ok := item.Node.(*filetree.FolderNode); ok {
 			name := folder.GetName()
 			depth := folder.GetDepth()
 
@@ -1085,8 +1085,8 @@ func TestFilesState_Update_ToggleFolderWithDuplicateName_TogglesCorrectFolder(t 
 		t.Fatal("Expected to find frontend/src/components folder in visible items after toggle")
 	}
 
-	newBackendSrcFolder := filesState.VisibleItems[newBackendSrcIdx].Node.(*tree.FolderNode)
-	newFrontendSrcFolder := filesState.VisibleItems[newFrontendSrcIdx].Node.(*tree.FolderNode)
+	newBackendSrcFolder := filesState.VisibleItems[newBackendSrcIdx].Node.(*filetree.FolderNode)
+	newFrontendSrcFolder := filesState.VisibleItems[newFrontendSrcIdx].Node.(*filetree.FolderNode)
 
 	// BUG VERIFICATION: backend/src/components should still be expanded (we didn't toggle it)
 	// but with the bug, it gets collapsed instead of frontend/src/components
@@ -1105,7 +1105,7 @@ func TestFilesState_Update_ToggleFolderWithDuplicateName_TogglesCorrectFolder(t 
 	// Additional verification: files under backend/src/components should still be visible
 	foundBackendFile := false
 	for _, item := range filesState.VisibleItems {
-		if file, ok := item.Node.(*tree.FileNode); ok {
+		if file, ok := item.Node.(*filetree.FileNode); ok {
 			if file.File().Path == "backend/src/components/Handler.go" || file.File().Path == "backend/src/components/Parser.go" {
 				foundBackendFile = true
 				break
@@ -1120,7 +1120,7 @@ func TestFilesState_Update_ToggleFolderWithDuplicateName_TogglesCorrectFolder(t 
 	// Files under frontend/src/components should NOT be visible (it's collapsed)
 	foundFrontendFile := false
 	for _, item := range filesState.VisibleItems {
-		if file, ok := item.Node.(*tree.FileNode); ok {
+		if file, ok := item.Node.(*filetree.FileNode); ok {
 			if file.File().Path == "frontend/src/components/Button.js" || file.File().Path == "frontend/src/components/Input.js" {
 				foundFrontendFile = true
 				break

@@ -1,4 +1,4 @@
-package tree
+package filetree
 
 // FlattenVisible walks the tree depth-first and returns a flat list of visible items
 // with rendering metadata (isLastChild, parentLines) for box-drawing characters.

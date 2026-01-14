@@ -1,4 +1,4 @@
-package tree
+package filetree
 
 // ComputeStats recursively computes aggregate statistics for a tree node.
 // For FileNode: returns stats from the associated FileChange (1 file, additions, deletions).

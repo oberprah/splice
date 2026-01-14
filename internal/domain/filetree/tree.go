@@ -1,4 +1,4 @@
-package tree
+package filetree
 
 import "github.com/oberprah/splice/internal/core"
 

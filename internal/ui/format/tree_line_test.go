@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/oberprah/splice/internal/core"
-	"github.com/oberprah/splice/internal/domain/tree"
+	"github.com/oberprah/splice/internal/domain/filetree"
 	"github.com/oberprah/splice/internal/ui/testutils"
 )
 
@@ -18,14 +18,14 @@ func TestFormatTreeLine_FileNode(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		item       tree.VisibleTreeItem
+		item       filetree.VisibleTreeItem
 		isSelected bool
 		contains   []string
 	}{
 		{
 			name: "file at root, selected",
-			item: tree.VisibleTreeItem{
-				Node: tree.NewFileNode("README.md", 0, &core.FileChange{
+			item: filetree.VisibleTreeItem{
+				Node: filetree.NewFileNode("README.md", 0, &core.FileChange{
 					Path:      "README.md",
 					Status:    "M",
 					Additions: 10,
@@ -40,8 +40,8 @@ func TestFormatTreeLine_FileNode(t *testing.T) {
 		},
 		{
 			name: "file at root, not selected",
-			item: tree.VisibleTreeItem{
-				Node: tree.NewFileNode("README.md", 0, &core.FileChange{
+			item: filetree.VisibleTreeItem{
+				Node: filetree.NewFileNode("README.md", 0, &core.FileChange{
 					Path:      "README.md",
 					Status:    "A",
 					Additions: 20,
@@ -56,8 +56,8 @@ func TestFormatTreeLine_FileNode(t *testing.T) {
 		},
 		{
 			name: "file nested, not last child",
-			item: tree.VisibleTreeItem{
-				Node: tree.NewFileNode("App.tsx", 2, &core.FileChange{
+			item: filetree.VisibleTreeItem{
+				Node: filetree.NewFileNode("App.tsx", 2, &core.FileChange{
 					Path:      "src/components/App.tsx",
 					Status:    "M",
 					Additions: 17,
@@ -72,8 +72,8 @@ func TestFormatTreeLine_FileNode(t *testing.T) {
 		},
 		{
 			name: "file nested, last child",
-			item: tree.VisibleTreeItem{
-				Node: tree.NewFileNode("helper.ts", 2, &core.FileChange{
+			item: filetree.VisibleTreeItem{
+				Node: filetree.NewFileNode("helper.ts", 2, &core.FileChange{
 					Path:      "src/utils/helper.ts",
 					Status:    "A",
 					Additions: 42,
@@ -88,8 +88,8 @@ func TestFormatTreeLine_FileNode(t *testing.T) {
 		},
 		{
 			name: "binary file",
-			item: tree.VisibleTreeItem{
-				Node: tree.NewFileNode("image.png", 1, &core.FileChange{
+			item: filetree.VisibleTreeItem{
+				Node: filetree.NewFileNode("image.png", 1, &core.FileChange{
 					Path:      "assets/image.png",
 					Status:    "A",
 					Additions: 0,
@@ -104,8 +104,8 @@ func TestFormatTreeLine_FileNode(t *testing.T) {
 		},
 		{
 			name: "deleted file",
-			item: tree.VisibleTreeItem{
-				Node: tree.NewFileNode("old.js", 1, &core.FileChange{
+			item: filetree.VisibleTreeItem{
+				Node: filetree.NewFileNode("old.js", 1, &core.FileChange{
 					Path:      "src/old.js",
 					Status:    "D",
 					Additions: 0,
@@ -120,8 +120,8 @@ func TestFormatTreeLine_FileNode(t *testing.T) {
 		},
 		{
 			name: "renamed file",
-			item: tree.VisibleTreeItem{
-				Node: tree.NewFileNode("new_name.js", 0, &core.FileChange{
+			item: filetree.VisibleTreeItem{
+				Node: filetree.NewFileNode("new_name.js", 0, &core.FileChange{
 					Path:      "new_name.js",
 					Status:    "R",
 					Additions: 5,
@@ -155,15 +155,15 @@ func TestFormatTreeLine_FolderNode(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		item       tree.VisibleTreeItem
+		item       filetree.VisibleTreeItem
 		isSelected bool
 		contains   []string
 		notContain []string
 	}{
 		{
 			name: "expanded folder at root",
-			item: tree.VisibleTreeItem{
-				Node: tree.NewFolderNode("src/", 0, true, tree.FolderStats{
+			item: filetree.VisibleTreeItem{
+				Node: filetree.NewFolderNode("src/", 0, true, filetree.FolderStats{
 					FileCount: 5,
 					Additions: 234,
 					Deletions: 67,
@@ -177,8 +177,8 @@ func TestFormatTreeLine_FolderNode(t *testing.T) {
 		},
 		{
 			name: "expanded folder selected",
-			item: tree.VisibleTreeItem{
-				Node: tree.NewFolderNode("components/", 1, true, tree.FolderStats{
+			item: filetree.VisibleTreeItem{
+				Node: filetree.NewFolderNode("components/", 1, true, filetree.FolderStats{
 					FileCount: 3,
 					Additions: 100,
 					Deletions: 50,
@@ -192,8 +192,8 @@ func TestFormatTreeLine_FolderNode(t *testing.T) {
 		},
 		{
 			name: "collapsed folder shows stats",
-			item: tree.VisibleTreeItem{
-				Node: tree.NewFolderNode("old/", 0, false, tree.FolderStats{
+			item: filetree.VisibleTreeItem{
+				Node: filetree.NewFolderNode("old/", 0, false, filetree.FolderStats{
 					FileCount: 3,
 					Additions: 50,
 					Deletions: 25,
@@ -206,8 +206,8 @@ func TestFormatTreeLine_FolderNode(t *testing.T) {
 		},
 		{
 			name: "collapsed folder selected shows stats",
-			item: tree.VisibleTreeItem{
-				Node: tree.NewFolderNode("legacy/", 1, false, tree.FolderStats{
+			item: filetree.VisibleTreeItem{
+				Node: filetree.NewFolderNode("legacy/", 1, false, filetree.FolderStats{
 					FileCount: 10,
 					Additions: 500,
 					Deletions: 300,
@@ -220,8 +220,8 @@ func TestFormatTreeLine_FolderNode(t *testing.T) {
 		},
 		{
 			name: "collapsed path (merged folders)",
-			item: tree.VisibleTreeItem{
-				Node: tree.NewFolderNode("src/components/nested/", 0, false, tree.FolderStats{
+			item: filetree.VisibleTreeItem{
+				Node: filetree.NewFolderNode("src/components/nested/", 0, false, filetree.FolderStats{
 					FileCount: 2,
 					Additions: 30,
 					Deletions: 10,
@@ -234,8 +234,8 @@ func TestFormatTreeLine_FolderNode(t *testing.T) {
 		},
 		{
 			name: "folder with deep nesting",
-			item: tree.VisibleTreeItem{
-				Node: tree.NewFolderNode("deeply/", 3, true, tree.FolderStats{
+			item: filetree.VisibleTreeItem{
+				Node: filetree.NewFolderNode("deeply/", 3, true, filetree.FolderStats{
 					FileCount: 1,
 					Additions: 5,
 					Deletions: 2,
@@ -332,8 +332,8 @@ func TestFormatTreeLine_TreeCharacters(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a simple file node for testing
-			item := tree.VisibleTreeItem{
-				Node: tree.NewFileNode("test.txt", tt.depth, &core.FileChange{
+			item := filetree.VisibleTreeItem{
+				Node: filetree.NewFileNode("test.txt", tt.depth, &core.FileChange{
 					Path:      "test.txt",
 					Status:    "M",
 					Additions: 1,
@@ -364,8 +364,8 @@ func TestFormatTreeLine_TreeCharacters(t *testing.T) {
 func TestFormatTreeLine_SelectionHighlighting(t *testing.T) {
 	testutils.SetupColorProfile()
 
-	item := tree.VisibleTreeItem{
-		Node: tree.NewFileNode("test.js", 0, &core.FileChange{
+	item := filetree.VisibleTreeItem{
+		Node: filetree.NewFileNode("test.js", 0, &core.FileChange{
 			Path:      "test.js",
 			Status:    "M",
 			Additions: 10,
@@ -409,9 +409,9 @@ func TestFormatTreeLine_Golden(t *testing.T) {
 	//       └── A +42  -0  helper.ts
 	//   old/ +50 -25 (3 files)
 
-	items := []tree.VisibleTreeItem{
+	items := []filetree.VisibleTreeItem{
 		{
-			Node: tree.NewFolderNode("src/", 0, true, tree.FolderStats{
+			Node: filetree.NewFolderNode("src/", 0, true, filetree.FolderStats{
 				FileCount: 2,
 				Additions: 59,
 				Deletions: 13,
@@ -420,7 +420,7 @@ func TestFormatTreeLine_Golden(t *testing.T) {
 			ParentLines: []bool{},
 		},
 		{
-			Node: tree.NewFolderNode("components/", 1, true, tree.FolderStats{
+			Node: filetree.NewFolderNode("components/", 1, true, filetree.FolderStats{
 				FileCount: 1,
 				Additions: 17,
 				Deletions: 13,
@@ -429,7 +429,7 @@ func TestFormatTreeLine_Golden(t *testing.T) {
 			ParentLines: []bool{false},
 		},
 		{
-			Node: tree.NewFileNode("App.tsx", 2, &core.FileChange{
+			Node: filetree.NewFileNode("App.tsx", 2, &core.FileChange{
 				Path:      "src/components/App.tsx",
 				Status:    "M",
 				Additions: 17,
@@ -439,7 +439,7 @@ func TestFormatTreeLine_Golden(t *testing.T) {
 			ParentLines: []bool{false, false},
 		},
 		{
-			Node: tree.NewFolderNode("utils/", 1, true, tree.FolderStats{
+			Node: filetree.NewFolderNode("utils/", 1, true, filetree.FolderStats{
 				FileCount: 1,
 				Additions: 42,
 				Deletions: 0,
@@ -448,7 +448,7 @@ func TestFormatTreeLine_Golden(t *testing.T) {
 			ParentLines: []bool{false},
 		},
 		{
-			Node: tree.NewFileNode("helper.ts", 2, &core.FileChange{
+			Node: filetree.NewFileNode("helper.ts", 2, &core.FileChange{
 				Path:      "src/utils/helper.ts",
 				Status:    "A",
 				Additions: 42,
@@ -458,7 +458,7 @@ func TestFormatTreeLine_Golden(t *testing.T) {
 			ParentLines: []bool{false, true},
 		},
 		{
-			Node: tree.NewFolderNode("old/", 0, false, tree.FolderStats{
+			Node: filetree.NewFolderNode("old/", 0, false, filetree.FolderStats{
 				FileCount: 3,
 				Additions: 50,
 				Deletions: 25,
@@ -507,8 +507,8 @@ func TestFormatTreeLine_FolderNameFormatting(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			item := tree.VisibleTreeItem{
-				Node:        tree.NewFolderNode(tt.folderName, 0, true, tree.FolderStats{}),
+			item := filetree.VisibleTreeItem{
+				Node:        filetree.NewFolderNode(tt.folderName, 0, true, filetree.FolderStats{}),
 				IsLastChild: true,
 				ParentLines: []bool{},
 			}
@@ -528,12 +528,12 @@ func TestFormatTreeLine_StatsFormatting(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		stats    tree.FolderStats
+		stats    filetree.FolderStats
 		contains []string
 	}{
 		{
 			name: "single file",
-			stats: tree.FolderStats{
+			stats: filetree.FolderStats{
 				FileCount: 1,
 				Additions: 10,
 				Deletions: 5,
@@ -542,7 +542,7 @@ func TestFormatTreeLine_StatsFormatting(t *testing.T) {
 		},
 		{
 			name: "multiple files",
-			stats: tree.FolderStats{
+			stats: filetree.FolderStats{
 				FileCount: 5,
 				Additions: 234,
 				Deletions: 67,
@@ -551,7 +551,7 @@ func TestFormatTreeLine_StatsFormatting(t *testing.T) {
 		},
 		{
 			name: "zero stats",
-			stats: tree.FolderStats{
+			stats: filetree.FolderStats{
 				FileCount: 2,
 				Additions: 0,
 				Deletions: 0,
@@ -560,7 +560,7 @@ func TestFormatTreeLine_StatsFormatting(t *testing.T) {
 		},
 		{
 			name: "only additions",
-			stats: tree.FolderStats{
+			stats: filetree.FolderStats{
 				FileCount: 1,
 				Additions: 100,
 				Deletions: 0,
@@ -569,7 +569,7 @@ func TestFormatTreeLine_StatsFormatting(t *testing.T) {
 		},
 		{
 			name: "only deletions",
-			stats: tree.FolderStats{
+			stats: filetree.FolderStats{
 				FileCount: 3,
 				Additions: 0,
 				Deletions: 200,
@@ -580,8 +580,8 @@ func TestFormatTreeLine_StatsFormatting(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			item := tree.VisibleTreeItem{
-				Node:        tree.NewFolderNode("folder/", 0, false, tt.stats),
+			item := filetree.VisibleTreeItem{
+				Node:        filetree.NewFolderNode("folder/", 0, false, tt.stats),
 				IsLastChild: true,
 				ParentLines: []bool{},
 			}

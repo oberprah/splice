@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/oberprah/splice/internal/core"
-	"github.com/oberprah/splice/internal/domain/tree"
+	"github.com/oberprah/splice/internal/domain/filetree"
 	"github.com/oberprah/splice/internal/ui/format"
 	"github.com/oberprah/splice/internal/ui/styles"
 )
@@ -27,7 +27,7 @@ import (
 // Note: This component does NOT handle viewport windowing - the caller is responsible
 // for passing only the visible items. This follows the same pattern as FileSection
 // where viewport logic is handled in the state's View() method.
-func TreeSection(items []tree.VisibleTreeItem, files []core.FileChange, cursor int, width int) []string {
+func TreeSection(items []filetree.VisibleTreeItem, files []core.FileChange, cursor int, width int) []string {
 	lines := make([]string, 0, len(items)+2)
 
 	// 1. Blank line separator

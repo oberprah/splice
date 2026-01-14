@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/oberprah/splice/internal/core"
-	"github.com/oberprah/splice/internal/domain/tree"
+	"github.com/oberprah/splice/internal/domain/filetree"
 )
 
 func TestNew_BuildsTreeStructure(t *testing.T) {
@@ -24,9 +24,9 @@ func TestNew_BuildsTreeStructure(t *testing.T) {
 	}
 
 	// Verify root is a FolderNode
-	rootFolder, ok := s.Root.(*tree.FolderNode)
+	rootFolder, ok := s.Root.(*filetree.FolderNode)
 	if !ok {
-		t.Fatalf("Expected Root to be *tree.FolderNode, got %T", s.Root)
+		t.Fatalf("Expected Root to be *filetree.FolderNode, got %T", s.Root)
 	}
 
 	// Verify root is at depth -1 and expanded
@@ -85,7 +85,7 @@ func TestNew_AllFoldersStartExpanded(t *testing.T) {
 
 	// Walk through all visible items and check that all folders are expanded
 	for _, item := range s.VisibleItems {
-		if folder, ok := item.Node.(*tree.FolderNode); ok {
+		if folder, ok := item.Node.(*filetree.FolderNode); ok {
 			if !folder.IsExpanded() {
 				t.Errorf("Expected folder %s to be expanded", folder.GetName())
 			}
