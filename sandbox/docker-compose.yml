@@ -9,10 +9,10 @@ services:
       - sandbox-net
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4000/health')"]
-      interval: 3s
-      timeout: 4s
+      interval: 5s
+      timeout: 30s
       retries: 5
-      start_period: 2s
+      start_period: 10s
 
   sandbox:
     build:
