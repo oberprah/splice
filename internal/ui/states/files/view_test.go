@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/ui/components"
 	"github.com/oberprah/splice/internal/ui/testutils"
@@ -291,4 +292,41 @@ func TestFilesState_View_WithRefs(t *testing.T) {
 	output := s.View(ctx)
 
 	assertFilesViewGolden(t, output.(*components.ViewBuilder), "with_refs.golden")
+}
+
+// TestFilesState_View_CollapsedFolderStats tests that the header stats remain
+// correct when folders are collapsed. The header should always show the total
+// count and stats for ALL files in the commit, regardless of tree collapse state.
+// This is a regression test for a bug where collapsed folders caused the header
+// to show "0 files · +0 -0".
+func TestFilesState_View_CollapsedFolderStats(t *testing.T) {
+	commit := createTestCommit()
+	files := []core.FileChange{
+		{Path: "src/components/Header.tsx", Status: "A", Additions: 50, Deletions: 0},
+		{Path: "src/components/Footer.tsx", Status: "A", Additions: 30, Deletions: 0},
+		{Path: "src/utils/format.ts", Status: "A", Additions: 20, Deletions: 0},
+		{Path: "src/index.ts", Status: "M", Additions: 5, Deletions: 2},
+	}
+
+	s := New(createTestDiffSource(commit), files)
+	ctx := testutils.MockContext{W: 80, H: 24}
+
+	// Collapse the src/ folder (which is at index 0)
+	// Simulate pressing Enter on the first item
+	msg := tea.KeyMsg{Type: tea.KeyEnter}
+	newState, _ := s.Update(msg, ctx)
+	s = newState.(*State)
+
+	// Verify the folder is collapsed (VisibleItems should only have the collapsed folder)
+	if len(s.VisibleItems) != 1 {
+		t.Errorf("Expected 1 visible item (collapsed folder), got %d", len(s.VisibleItems))
+	}
+
+	// Now render the view
+	output := s.View(ctx)
+
+	// The golden file should show:
+	// - Header stats: "4 files · +105 -2" (total count, not just visible)
+	// - Tree view: only the collapsed "src/ +105 -2 (4 files)" line
+	assertFilesViewGolden(t, output.(*components.ViewBuilder), "collapsed_folder_stats.golden")
 }
