@@ -1,19 +1,16 @@
-0000000 · Benjamin O'Sullivan-Smith committed 1 year ago
-
-Add comprehensive error handling for network failures in API
-client with retry logic
-
-Additional context about this change that provides more
-detailed information.
-
-5 files · +741 -312
-→├── cmd/server/handlers/api/v1/users +142 -56 (1 file)
- ├── internal/authentication/oauth2/providers
- │   ├── github
- │   │   └── M +245 -123  client.go
- │   └── google
- │       └── M +198 -87  client.go
- ├── pkg/database/migrations/v2
- │   └── M +67 -12  user_preferences_schema.sql
- └── web/components/settings/themes
-     └── M +89 -34  dark_mode_toggle.tsx
+0000000 · cmd/server/handlers/api/v1/users/profile_handler.g
+────────────────────────────────────────────────────────────
+  1 - func authenticateUser… │   1 + func authenticateUser…
+  2       if username == ""… │   2       if username == ""…
+  3 -         return nil, e… │   3 +         return nil, f…
+  4       }                  │   4       }                 
+  5 -     return nil, error… │                             
+                             │   5 +                       
+                             │   6 +     // Validate passw…
+                             │   7 +     if len(password) …
+                             │   8 +         return nil, f…
+                             │   9 +     }                 
+                             │  10 +                       
+                             │  11 +     return authentica…
+  6   }                      │  12   }                     
+  7                          │  13                         

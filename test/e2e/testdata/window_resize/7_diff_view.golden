@@ -1,17 +1,16 @@
-
-
-
-
-
-
-
-→├── cmd/server/handlers/api/v1/users +142 -56 (1 file)
- ├── internal/authentication/oauth2/providers
- │   ├── github
- │   │   └── M +245 -123  client.go
- │   └── google
- │       └── M +198 -87  client.go
- ├── pkg/database/migrations/v2
- │   └── M +67 -12  user_preferences_schema.sql
- └── web/components/settings/themes
-     └── M +89 -34  dark_mode_toggle.tsx
+0000000 · cmd/server/handlers/api/v1/users/profile_handler.go · +142 -56
+────────────────────────────────────────────────────────────────────────────────
+  1 - func authenticateUser(username, password string) (*User, error) {                  │   1 + func authenticateUser(username, password string, options *AuthenticationOptions) …
+  2       if username == "" || password == "" {                                          │   2       if username == "" || password == "" {                                         
+  3 -         return nil, errors.New("username and password required")                   │   3 +         return nil, fmt.Errorf("authentication failed: username and password are …
+  4       }                                                                              │   4       }                                                                             
+  5 -     return nil, errors.New("not implemented")                                      │                                                                                         
+                                                                                         │   5 +                                                                                   
+                                                                                         │   6 +     // Validate password complexity requirements before attempting authentication 
+                                                                                         │   7 +     if len(password) < options.MinPasswordLength {                                
+                                                                                         │   8 +         return nil, fmt.Errorf("password does not meet minimum length requirement…
+                                                                                         │   9 +     }                                                                             
+                                                                                         │  10 +                                                                                   
+                                                                                         │  11 +     return authenticateWithProvider(username, password, options.Provider)         
+  6   }                                                                                  │  12   }                                                                                 
+  7                                                                                      │  13                                                                                     

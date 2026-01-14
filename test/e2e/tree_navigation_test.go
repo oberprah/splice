@@ -41,6 +41,7 @@ func TestTreeNavigation_BasicStructure(t *testing.T) {
 
 	// Set window size and wait for loading
 	runner.Send(tea.WindowSizeMsg{Width: 80, Height: 24})
+	runner.WaitForContent("Add feature")
 	runner.AssertGolden("tree_navigation/basic_structure_log.golden")
 
 	// Press Enter to navigate to FilesState
@@ -81,6 +82,7 @@ func TestTreeNavigation_UpDown(t *testing.T) {
 	runner := NewE2ETestRunner(t, m)
 
 	runner.Send(tea.WindowSizeMsg{Width: 80, Height: 24})
+	runner.WaitForContent("Update multiple files")
 	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
 	// Initial state: cursor on first item (src/ folder)
 	runner.AssertGolden("tree_navigation/updown_initial.golden")
@@ -135,7 +137,7 @@ func TestTreeNavigation_CollapseExpand(t *testing.T) {
 
 	// Set window size and wait for log view to render
 	runner.Send(tea.WindowSizeMsg{Width: 80, Height: 24})
-	time.Sleep(50 * time.Millisecond) // Give time for initial render
+	runner.WaitForContent("Add nested components")
 
 	// Navigate to files view
 	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
@@ -185,6 +187,7 @@ func TestTreeNavigation_ArrowKeys(t *testing.T) {
 	runner := NewE2ETestRunner(t, m)
 
 	runner.Send(tea.WindowSizeMsg{Width: 80, Height: 24})
+	runner.WaitForContent("Reorganize code")
 	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
 	// Initial: cursor on lib/ folder (expanded)
 	runner.AssertGolden("tree_navigation/arrows_initial.golden")
@@ -237,6 +240,7 @@ func TestTreeNavigation_CollapsedPaths(t *testing.T) {
 	runner := NewE2ETestRunner(t, m)
 
 	runner.Send(tea.WindowSizeMsg{Width: 80, Height: 24})
+	runner.WaitForContent("Add deeply nested file")
 	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
 	// Should show "src/components/nested/deep/" as a single collapsed path
 	runner.AssertGolden("tree_navigation/collapsed_path_initial.golden")
@@ -288,6 +292,7 @@ func TestTreeNavigation_EnterFile(t *testing.T) {
 	runner := NewE2ETestRunner(t, m)
 
 	runner.Send(tea.WindowSizeMsg{Width: 80, Height: 24})
+	runner.WaitForContent("Update components")
 	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
 	// Initial files view
 	runner.AssertGolden("tree_navigation/enter_file_initial.golden")
@@ -335,6 +340,7 @@ func TestTreeNavigation_MixedStatuses(t *testing.T) {
 	runner := NewE2ETestRunner(t, m)
 
 	runner.Send(tea.WindowSizeMsg{Width: 80, Height: 24})
+	runner.WaitForContent("Refactor and cleanup")
 	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
 	// Should show all status types in tree with correct colors/indicators
 	runner.AssertGolden("tree_navigation/mixed_statuses.golden")
@@ -365,6 +371,7 @@ func TestTreeNavigation_BinaryFiles(t *testing.T) {
 	runner := NewE2ETestRunner(t, m)
 
 	runner.Send(tea.WindowSizeMsg{Width: 80, Height: 24})
+	runner.WaitForContent("Add images")
 	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
 	// Should show binary file with "(binary)" marker
 	runner.AssertGolden("tree_navigation/binary_files.golden")
@@ -395,6 +402,7 @@ func TestTreeNavigation_SingleFileFolder(t *testing.T) {
 	runner := NewE2ETestRunner(t, m)
 
 	runner.Send(tea.WindowSizeMsg{Width: 80, Height: 24})
+	runner.WaitForContent("Add utility")
 	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
 	// Should show "utils/" folder separately (not collapsed)
 	// with the file as a child
@@ -423,6 +431,7 @@ func TestTreeNavigation_EmptyTree(t *testing.T) {
 	runner := NewE2ETestRunner(t, m)
 
 	runner.Send(tea.WindowSizeMsg{Width: 80, Height: 24})
+	runner.WaitForContent("Empty commit")
 	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
 	// Should show "0 files · +0 -0" with empty tree
 	runner.AssertGolden("tree_navigation/empty_tree.golden")
