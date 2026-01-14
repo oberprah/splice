@@ -136,7 +136,38 @@ All 7 tests pass:
 - `internal/domain/tree/tree.go` (FolderStats type)
 - `internal/core/types.go` (FileChange stats fields)
 
-**Status:** Pending
+**Status:** ✅ Complete
+
+**Implementation:**
+- Created `internal/domain/tree/stats.go` with two functions:
+  - `ComputeStats(node TreeNode) FolderStats`: Pure function that recursively computes aggregate stats
+  - `ApplyStats(node TreeNode)`: Helper that applies stats to all folders in the tree in-place
+- Created `internal/domain/tree/stats_test.go` with comprehensive test coverage (10 test cases)
+- `ComputeStats()` uses sum type pattern for type-safe handling:
+  - For `FileNode`: returns stats directly from `FileChange` (1 file, additions, deletions)
+  - For `FolderNode`: recursively sums all descendant file stats
+- `ApplyStats()` mutates tree in-place using bottom-up recursion to populate `stats` field
+
+**Tests:**
+All 10 tests pass:
+- `TestComputeStats_FileNode`: Verifies file node returns stats from FileChange
+- `TestComputeStats_FileNode_BinaryFile`: Binary file handling (0 additions/deletions)
+- `TestComputeStats_FolderNode_SingleFile`: Folder with one file
+- `TestComputeStats_FolderNode_MultipleFiles`: Folder aggregates multiple file stats
+- `TestComputeStats_FolderNode_NestedFolders`: Nested structure aggregation (src/components/, src/utils/)
+- `TestComputeStats_FolderNode_DeepNesting`: Deep nesting (a/b/c/d/deep.txt)
+- `TestComputeStats_FolderNode_EmptyFolder`: Empty folder returns zero stats
+- `TestComputeStats_MixedFoldersAndFiles`: Mixed folder/file structure aggregation
+- `TestApplyStats_UpdatesFolderStatsInPlace`: Verifies in-place mutation of folder stats
+- `TestApplyStats_NestedFolders`: Verifies bottom-up stats application in nested structure
+
+**Commit:** a574f7a
+
+**Implementation decisions:**
+- Pure function design: `ComputeStats()` returns stats without mutation for composability
+- Convenience helper: `ApplyStats()` mutates tree for typical usage (call after BuildTree/CollapsePaths)
+- Sum type pattern ensures exhaustive handling of FileNode/FolderNode
+- Bottom-up recursion ensures children are processed before parents
 
 ---
 
@@ -159,7 +190,39 @@ All 7 tests pass:
 **Read:**
 - `internal/domain/tree/tree.go` (VisibleTreeItem type)
 
-**Status:** Pending
+**Status:** ✅ Complete
+
+**Implementation:**
+- Created `internal/domain/tree/flatten.go` with `FlattenVisible()` function
+- Created `internal/domain/tree/flatten_test.go` with comprehensive test coverage (8 test cases)
+- `FlattenVisible()` walks tree depth-first, converting hierarchical structure to flat list
+- Skips root node (depth -1) but processes all children
+- Respects folder expand/collapse state:
+  - Expanded folders: includes folder and recurses into children
+  - Collapsed folders: includes folder but skips children
+  - File nodes: always included
+- Computes rendering metadata for box-drawing characters:
+  - `IsLastChild`: true if node is last child of its parent
+  - `ParentLines`: array of bools indicating which ancestor levels need `│` continuation
+
+**Tests:**
+All 8 tests pass:
+- `TestFlattenVisible_EmptyTree`: Verifies empty tree handling
+- `TestFlattenVisible_SingleFile`: Single file at root
+- `TestFlattenVisible_AllExpanded`: Complex nested structure with all folders expanded
+- `TestFlattenVisible_CollapsedFolder`: Verifies children are hidden when folder collapsed
+- `TestFlattenVisible_MixedExpandedCollapsed`: Mixed expanded/collapsed state
+- `TestFlattenVisible_SkipsRootNode`: Confirms root (depth -1) not in results
+- `TestFlattenVisible_ParentLinesDeepNesting`: Deep nesting (4 levels) with correct parentLines
+- `TestFlattenVisible_MultipleChildrenIsLastChild`: Correct isLastChild computation
+
+**Commit:** d895634
+
+**Implementation decisions:**
+- Depth-first traversal ensures natural file ordering (matches tree structure)
+- Recursive helper `walk()` builds metadata while traversing
+- ParentLines computed incrementally: each level adds to inherited parent context
+- Pure function design: doesn't mutate input tree, returns new list
 
 ---
 
@@ -170,8 +233,8 @@ All 7 tests pass:
 **Structure:**
 - New file: `internal/ui/format/tree_line.go`
 - Functions:
-  - `FormatTreeLine(item VisibleTreeItem, isSelected bool, styles *styles.Styles) string`
-  - Helper for box-drawing characters based on metadata
+  - `FormatTreeLine(item VisibleTreeItem, isSelected bool) string`
+  - Helpers: `formatFolderNode()`, `formatFileNode()`, `chooseFileStyles()`
 
 **Verify:**
 - Unit tests for FormatTreeLine:
@@ -184,10 +247,46 @@ All 7 tests pass:
 
 **Read:**
 - `internal/domain/tree/tree.go` (VisibleTreeItem)
-- `internal/ui/format/file_format.go` (existing file formatting patterns)
+- `internal/ui/components/file_section.go` (existing file formatting patterns)
 - `internal/ui/styles/styles.go` (style types)
 
-**Status:** Pending
+**Status:** ✅ Complete
+
+**Implementation:**
+- Created `internal/ui/format/tree_line.go` with `FormatTreeLine()` function
+- Created `internal/ui/format/tree_line_test.go` with comprehensive test coverage (9 test cases)
+- `FormatTreeLine()` is a pure function that renders tree structure with:
+  - Selector rendering: `→` for selected items, space for unselected
+  - Indentation using parentLines: `│   ` where true (parent has more siblings), `    ` where false
+  - Branch characters: `├── ` for non-last children, `└── ` for last children
+  - Node-specific formatting via helper functions:
+    - `formatFolderNode()`: Renders folder name (expanded) or name + stats (collapsed)
+    - `formatFileNode()`: Renders status + additions/deletions + filename
+  - Style application using `chooseFileStyles()` based on file status and selection state
+- Added getter methods to tree.FolderNode and tree.FileNode:
+  - `IsExpanded()`, `Stats()`, `Children()` for FolderNode
+  - `File()` for FileNode
+- Added constructor functions for testing: `NewFolderNode()`, `NewFileNode()`
+
+**Tests:**
+All 9 test groups pass (50+ individual test cases):
+- `TestFormatTreeLine_FileNode`: File node formatting (7 cases: root/nested/binary/deleted/renamed)
+- `TestFormatTreeLine_FolderNode`: Folder node formatting (6 cases: expanded/collapsed/selected/deep nesting)
+- `TestFormatTreeLine_TreeCharacters`: Box-drawing character logic (6 cases: various depths and parent lines)
+- `TestFormatTreeLine_SelectionHighlighting`: Selection changes styling
+- `TestFormatTreeLine_Golden`: Golden file test with sample tree structure
+- `TestFormatTreeLine_FolderNameFormatting`: Folder name rendering (3 cases)
+- `TestFormatTreeLine_StatsFormatting`: Stats display for collapsed folders (5 cases)
+
+**Commit:** e0f2d37
+
+**Implementation decisions:**
+- Pure function design: all inputs via parameters, no side effects
+- Matches existing file formatting from `file_section.go` for consistency
+- Left-aligned stats (not right-aligned) since tree indentation varies by depth
+- Folder styling uses cyan (AuthorStyle) to distinguish from files
+- Stats format for collapsed folders: `+N -M (X files)` with singular/plural handling
+- Golden file captures full tree structure with ANSI styling for visual verification
 
 ---
 
@@ -214,7 +313,46 @@ All 7 tests pass:
 - `internal/ui/components/file_section.go` (viewport patterns)
 - `internal/ui/components/types.go` (ViewportInfo)
 
-**Status:** Pending
+**Status:** ✅ Complete
+
+**Implementation:**
+- Created `internal/ui/components/tree_section.go` with `TreeSection()` function
+- Created `internal/ui/components/tree_section_test.go` with comprehensive test coverage (10 test cases)
+- `TreeSection()` renders complete tree view with:
+  - Blank line separator (consistency with FileSection)
+  - Statistics header: `{N} files · +{add} -{del}` using HeaderStyle/AdditionsStyle/DeletionsStyle
+  - Tree items formatted via `FormatTreeLine()` for each visible item
+  - Cursor highlighting by passing `isSelected` based on cursor position
+- `CalculateTreeStats()` helper computes aggregate stats from visible items:
+  - Only counts FileNode items (not folders) to avoid double-counting
+  - Returns total additions, deletions, and file count
+- Function signature: `TreeSection(items []VisibleTreeItem, cursor int, width int) []string`
+  - Returns slice of lines (not joined string) for consistency with FileSection
+  - Width parameter kept for future use but currently unused
+  - Viewport windowing NOT handled here (caller's responsibility, following FileSection pattern)
+
+**Tests:**
+All 10 tests pass with 7 golden files:
+- `TestTreeSection_EmptyTree`: Empty tree with zero stats
+- `TestTreeSection_SingleFile`: Single file at root level
+- `TestTreeSection_FolderAndFiles`: Expanded folder (src/) with two files
+- `TestTreeSection_CollapsedFolder`: Collapsed folder showing inline stats
+- `TestTreeSection_NestedFolders`: Deep tree (src/components/, src/utils/) with proper indentation
+- `TestTreeSection_CursorOnFolder`: Cursor highlighting on folder node
+- `TestTreeSection_CursorOnFile`: Cursor highlighting on file node
+- `TestTreeSection_MixedStatuses`: Files with different statuses (A/M/D/R)
+- `TestTreeSection_BinaryFile`: Binary file rendering with "(binary)" marker
+- `TestTreeSection_StatsCalculation`: Verifies aggregate stats calculation accuracy
+
+**Commit:** bb5fc78
+
+**Implementation decisions:**
+- Returns `[]string` instead of joined string for consistency with FileSection
+- Viewport logic delegated to caller (files state's View method) following existing pattern
+- Stats calculation excludes folder nodes to count only actual files
+- Golden files validate visual output including ANSI styling and tree characters
+- TDD approach: wrote tests first, then implementation
+- Width parameter included but unused (reserved for future column alignment if needed)
 
 ---
 
