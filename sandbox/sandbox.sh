@@ -39,11 +39,9 @@ sync_theme() {
 
         if [ -n "$THEME" ]; then
             echo "→ Syncing theme: $THEME"
-            # Update theme in agent config (write to temp then copy content to preserve inode for Docker bind mounts)
-            local TEMP_FILE=$(mktemp)
-            sed "s/\"theme\"[[:space:]]*:[[:space:]]*\"[^\"]*\"/\"theme\": \"$THEME\"/" "$AGENT_CONFIG" > "$TEMP_FILE"
-            cat "$TEMP_FILE" > "$AGENT_CONFIG"
-            rm -f "$TEMP_FILE"
+            # Update theme in agent config
+            sed -i.bak "s/\"theme\"[[:space:]]*:[[:space:]]*\"[^\"]*\"/\"theme\": \"$THEME\"/" "$AGENT_CONFIG"
+            rm -f "$AGENT_CONFIG.bak"
         fi
     fi
 }
