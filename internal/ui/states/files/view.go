@@ -34,34 +34,34 @@ func (s *State) View(ctx core.Context) core.ViewRenderer {
 		vb.AddLine(line)
 	}
 
-	// Render file section using shared component
-	// Note: FileSection includes blank line separator and stats line
-	fileSectionLines := components.FileSection(s.Files, ctx.Width(), &s.Cursor)
+	// Render tree section using TreeSection component
+	// Note: TreeSection includes blank line separator and stats line
+	treeSectionLines := components.TreeSection(s.VisibleItems, s.Cursor, ctx.Width())
 
-	// Calculate available height for file list (subtract commit info lines + file section header)
-	// commitInfoLines + blank line + stats line = total non-file lines
+	// Calculate available height for tree view (subtract commit info lines + tree section header)
+	// commitInfoLines + blank line + stats line = total non-tree lines
 	commitInfoLinesCount := len(commitInfoLines)
-	fileSectionHeaderLines := 2 // blank line + stats line
-	availableHeight := max(ctx.Height()-commitInfoLinesCount-fileSectionHeaderLines, 1)
+	treeSectionHeaderLines := 2 // blank line + stats line
+	availableHeight := max(ctx.Height()-commitInfoLinesCount-treeSectionHeaderLines, 1)
 
-	// Determine which file lines to render based on viewport
-	// The FileSection returns: blank line, stats line, then all file lines
-	// We need to render the header (blank + stats) then only visible files
-	totalFileLines := len(fileSectionLines) - fileSectionHeaderLines
+	// Determine which tree lines to render based on viewport
+	// The TreeSection returns: blank line, stats line, then all tree item lines
+	// We need to render the header (blank + stats) then only visible items
+	totalTreeLines := len(treeSectionLines) - treeSectionHeaderLines
 
-	// Add the file section header (blank line + stats line)
-	for i := 0; i < fileSectionHeaderLines && i < len(fileSectionLines); i++ {
-		vb.AddLine(fileSectionLines[i])
+	// Add the tree section header (blank line + stats line)
+	for i := 0; i < treeSectionHeaderLines && i < len(treeSectionLines); i++ {
+		vb.AddLine(treeSectionLines[i])
 	}
 
-	// Calculate viewport for files
-	viewportEnd := min(s.ViewportStart+availableHeight, totalFileLines)
+	// Calculate viewport for tree items
+	viewportEnd := min(s.ViewportStart+availableHeight, totalTreeLines)
 
-	// Add only visible file lines
+	// Add only visible tree lines
 	for i := s.ViewportStart; i < viewportEnd; i++ {
-		lineIndex := fileSectionHeaderLines + i
-		if lineIndex < len(fileSectionLines) {
-			vb.AddLine(fileSectionLines[lineIndex])
+		lineIndex := treeSectionHeaderLines + i
+		if lineIndex < len(treeSectionLines) {
+			vb.AddLine(treeSectionLines[lineIndex])
 		}
 	}
 

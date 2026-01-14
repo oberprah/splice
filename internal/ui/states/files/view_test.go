@@ -51,15 +51,10 @@ func createTestFileChanges(count int) []core.FileChange {
 func TestFilesState_View_RendersHeader(t *testing.T) {
 	commit := createTestCommit()
 	files := []core.FileChange{
-		{Path: "internal/ui/app.go", Additions: 45, Deletions: 12},
+		{Path: "internal/ui/app.go", Additions: 45, Deletions: 12, Status: "M"},
 	}
 
-	s := State{
-		Source:        createTestDiffSource(commit),
-		Files:         files,
-		Cursor:        0,
-		ViewportStart: 0,
-	}
+	s := New(createTestDiffSource(commit), files)
 	ctx := testutils.MockContext{W: 80, H: 24}
 
 	output := s.View(ctx)
@@ -70,17 +65,12 @@ func TestFilesState_View_RendersHeader(t *testing.T) {
 func TestFilesState_View_RendersFileList(t *testing.T) {
 	commit := createTestCommit()
 	files := []core.FileChange{
-		{Path: "internal/ui/app.go", Additions: 45, Deletions: 12},
-		{Path: "internal/ui/model.go", Additions: 3, Deletions: 1},
-		{Path: "internal/git/git.go", Additions: 120, Deletions: 0},
+		{Path: "internal/ui/app.go", Additions: 45, Deletions: 12, Status: "M"},
+		{Path: "internal/ui/model.go", Additions: 3, Deletions: 1, Status: "M"},
+		{Path: "internal/git/git.go", Additions: 120, Deletions: 0, Status: "A"},
 	}
 
-	s := State{
-		Source:        createTestDiffSource(commit),
-		Files:         files,
-		Cursor:        0,
-		ViewportStart: 0,
-	}
+	s := New(createTestDiffSource(commit), files)
 	ctx := testutils.MockContext{W: 80, H: 24}
 
 	output := s.View(ctx)
@@ -104,12 +94,8 @@ func TestFilesState_View_SelectionIndicator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := State{
-				Source:        createTestDiffSource(commit),
-				Files:         files,
-				Cursor:        tt.cursor,
-				ViewportStart: 0,
-			}
+			s := New(createTestDiffSource(commit), files)
+			s.Cursor = tt.cursor
 			ctx := testutils.MockContext{W: 80, H: 24}
 
 			output := s.View(ctx)
@@ -123,12 +109,9 @@ func TestFilesState_View_ViewportLimits(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(20)
 
-	s := State{
-		Source:        createTestDiffSource(commit),
-		Files:         files,
-		Cursor:        10,
-		ViewportStart: 5,
-	}
+	s := New(createTestDiffSource(commit), files)
+	s.Cursor = 10
+	s.ViewportStart = 5
 	ctx := testutils.MockContext{W: 80, H: 10}
 
 	output := s.View(ctx)
@@ -139,16 +122,11 @@ func TestFilesState_View_ViewportLimits(t *testing.T) {
 func TestFilesState_View_BinaryFiles(t *testing.T) {
 	commit := createTestCommit()
 	files := []core.FileChange{
-		{Path: "image.png", Additions: 0, Deletions: 0, IsBinary: true},
-		{Path: "main.go", Additions: 10, Deletions: 5, IsBinary: false},
+		{Path: "image.png", Additions: 0, Deletions: 0, IsBinary: true, Status: "A"},
+		{Path: "main.go", Additions: 10, Deletions: 5, IsBinary: false, Status: "M"},
 	}
 
-	s := State{
-		Source:        createTestDiffSource(commit),
-		Files:         files,
-		Cursor:        0,
-		ViewportStart: 0,
-	}
+	s := New(createTestDiffSource(commit), files)
 	ctx := testutils.MockContext{W: 80, H: 24}
 
 	output := s.View(ctx)
@@ -160,12 +138,7 @@ func TestFilesState_View_EmptyFileList(t *testing.T) {
 	commit := createTestCommit()
 	files := []core.FileChange{}
 
-	s := State{
-		Source:        createTestDiffSource(commit),
-		Files:         files,
-		Cursor:        0,
-		ViewportStart: 0,
-	}
+	s := New(createTestDiffSource(commit), files)
 	ctx := testutils.MockContext{W: 80, H: 24}
 
 	output := s.View(ctx)
@@ -180,15 +153,11 @@ func TestFilesState_View_LongFilePaths(t *testing.T) {
 			Path:      "internal/ui/state/files/very/deeply/nested/directory/structure/with/a/very/long/filename.go",
 			Additions: 10,
 			Deletions: 5,
+			Status:    "M",
 		},
 	}
 
-	s := State{
-		Source:        createTestDiffSource(commit),
-		Files:         files,
-		Cursor:        0,
-		ViewportStart: 0,
-	}
+	s := New(createTestDiffSource(commit), files)
 
 	// Test with narrow terminal
 	ctx := testutils.MockContext{W: 50, H: 24}
@@ -201,17 +170,12 @@ func TestFilesState_View_LongFilePaths(t *testing.T) {
 func TestFilesState_View_FileStatsSummary(t *testing.T) {
 	commit := createTestCommit()
 	files := []core.FileChange{
-		{Path: "file1.go", Additions: 10, Deletions: 5},
-		{Path: "file2.go", Additions: 20, Deletions: 3},
-		{Path: "file3.go", Additions: 5, Deletions: 2},
+		{Path: "file1.go", Additions: 10, Deletions: 5, Status: "M"},
+		{Path: "file2.go", Additions: 20, Deletions: 3, Status: "M"},
+		{Path: "file3.go", Additions: 5, Deletions: 2, Status: "M"},
 	}
 
-	s := State{
-		Source:        createTestDiffSource(commit),
-		Files:         files,
-		Cursor:        0,
-		ViewportStart: 0,
-	}
+	s := New(createTestDiffSource(commit), files)
 	ctx := testutils.MockContext{W: 80, H: 24}
 
 	output := s.View(ctx)
@@ -287,12 +251,7 @@ func TestFilesState_View_StatusDisplay(t *testing.T) {
 		{Path: "deleted.go", Status: "D", Additions: 0, Deletions: 30},
 	}
 
-	s := State{
-		Source:        createTestDiffSource(commit),
-		Files:         files,
-		Cursor:        0,
-		ViewportStart: 0,
-	}
+	s := New(createTestDiffSource(commit), files)
 	ctx := testutils.MockContext{W: 80, H: 24}
 
 	output := s.View(ctx)
@@ -307,12 +266,7 @@ func TestFilesState_View_DynamicAlignment(t *testing.T) {
 		{Path: "large.go", Status: "M", Additions: 1234, Deletions: 567},
 	}
 
-	s := State{
-		Source:        createTestDiffSource(commit),
-		Files:         files,
-		Cursor:        0,
-		ViewportStart: 0,
-	}
+	s := New(createTestDiffSource(commit), files)
 	ctx := testutils.MockContext{W: 80, H: 24}
 
 	output := s.View(ctx)
@@ -328,15 +282,10 @@ func TestFilesState_View_WithRefs(t *testing.T) {
 		{Name: "origin/main", Type: core.RefTypeRemoteBranch},
 	}
 	files := []core.FileChange{
-		{Path: "internal/ui/app.go", Additions: 45, Deletions: 12},
+		{Path: "internal/ui/app.go", Additions: 45, Deletions: 12, Status: "M"},
 	}
 
-	s := State{
-		Source:        createTestDiffSource(commit),
-		Files:         files,
-		Cursor:        0,
-		ViewportStart: 0,
-	}
+	s := New(createTestDiffSource(commit), files)
 	ctx := testutils.MockContext{W: 80, H: 24}
 
 	output := s.View(ctx)

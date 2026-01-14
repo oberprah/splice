@@ -156,32 +156,36 @@ func TestFlattenVisible_AllExpanded(t *testing.T) {
 
 	// Check parentLines for specific items
 	// App.tsx (depth 2, parent src is not last, parent components is not last)
-	// ParentLines should be [false, false] (two parent levels, neither is last)
+	// ParentLines should be [true, true] (both ancestors have more siblings)
+	// Level 0: src is not last child of root → needs │ → true
+	// Level 1: components is not last child of src → needs │ → true
 	appTsxItem := result[2]
 	if len(appTsxItem.ParentLines) != 2 {
 		t.Errorf("App.tsx: expected 2 parent lines, got %d", len(appTsxItem.ParentLines))
 	}
 	if len(appTsxItem.ParentLines) == 2 {
-		if appTsxItem.ParentLines[0] != false {
-			t.Errorf("App.tsx: expected ParentLines[0]=false, got %v", appTsxItem.ParentLines[0])
+		if appTsxItem.ParentLines[0] != true {
+			t.Errorf("App.tsx: expected ParentLines[0]=true, got %v", appTsxItem.ParentLines[0])
 		}
-		if appTsxItem.ParentLines[1] != false {
-			t.Errorf("App.tsx: expected ParentLines[1]=false, got %v", appTsxItem.ParentLines[1])
+		if appTsxItem.ParentLines[1] != true {
+			t.Errorf("App.tsx: expected ParentLines[1]=true, got %v", appTsxItem.ParentLines[1])
 		}
 	}
 
 	// helper.ts (depth 2, parent src is not last, parent utils is last)
-	// ParentLines should be [false, true]
+	// ParentLines should be [true, false]
+	// Level 0: src is not last child of root → needs │ → true
+	// Level 1: utils is last child of src → no │ needed → false
 	helperTsItem := result[4]
 	if len(helperTsItem.ParentLines) != 2 {
 		t.Errorf("helper.ts: expected 2 parent lines, got %d", len(helperTsItem.ParentLines))
 	}
 	if len(helperTsItem.ParentLines) == 2 {
-		if helperTsItem.ParentLines[0] != false {
-			t.Errorf("helper.ts: expected ParentLines[0]=false, got %v", helperTsItem.ParentLines[0])
+		if helperTsItem.ParentLines[0] != true {
+			t.Errorf("helper.ts: expected ParentLines[0]=true, got %v", helperTsItem.ParentLines[0])
 		}
-		if helperTsItem.ParentLines[1] != true {
-			t.Errorf("helper.ts: expected ParentLines[1]=true, got %v", helperTsItem.ParentLines[1])
+		if helperTsItem.ParentLines[1] != false {
+			t.Errorf("helper.ts: expected ParentLines[1]=false, got %v", helperTsItem.ParentLines[1])
 		}
 	}
 }
@@ -396,13 +400,16 @@ func TestFlattenVisible_ParentLinesDeepNesting(t *testing.T) {
 	}
 
 	// file.txt should have 3 parent levels, all are last children
-	// ParentLines should be [true, true, true]
+	// ParentLines should be [false, false, false] (no continuation lines needed)
+	// Level 0: a/ is last child of root → no │ needed → false
+	// Level 1: b/ is last child of a/ → no │ needed → false
+	// Level 2: c/ is last child of b/ → no │ needed → false
 	fileItem := result[3]
 	if fileItem.Node.GetName() != "file.txt" {
 		t.Fatalf("Expected last item to be 'file.txt', got '%s'", fileItem.Node.GetName())
 	}
 
-	expectedParentLines := []bool{true, true, true}
+	expectedParentLines := []bool{false, false, false}
 	if len(fileItem.ParentLines) != len(expectedParentLines) {
 		t.Fatalf("Expected %d parent lines, got %d", len(expectedParentLines), len(fileItem.ParentLines))
 	}

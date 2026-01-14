@@ -1,5 +1,5 @@
 Uncommitted changes (staged)
 
 2 files · +58 -3
-→ A +50 -0  auth.go
-  M + 8 -3  config.go
+→├── A +50 -0  auth.go
+ └── M +8 -3  config.go

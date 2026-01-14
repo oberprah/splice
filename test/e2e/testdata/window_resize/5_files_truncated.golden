@@ -7,8 +7,14 @@ Additional context about this change that provides
 more detailed information.
 
 5 files · +741 -312
-→ M +245 -123  internal/authentication/oauth2/prov
-  M +198 - 87  internal/authentication/oauth2/prov
-  M + 67 - 12  pkg/database/migrations/v2/user_pre
-  M +142 - 56  cmd/server/handlers/api/v1/users/pr
-  M + 89 - 34  web/components/settings/themes/dark
+→├── cmd/server/handlers/api/v1/users
+ │   └── M +142 -56  profile_handler.go
+ ├── internal/authentication/oauth2/providers
+ │   ├── github
+ │   │   └── M +245 -123  client.go
+ │   └── google
+ │       └── M +198 -87  client.go
+ ├── pkg/database/migrations/v2
+ │   └── M +67 -12  user_preferences_schema.sql
+ └── web/components/settings/themes
+     └── M +89 -34  dark_mode_toggle.tsx

@@ -42,9 +42,11 @@ func walk(node TreeNode, isLastChild bool, parentLines []bool, result *[]Visible
 	if folder, ok := node.(*FolderNode); ok && folder.isExpanded {
 		// Build parent lines for children
 		// Each child needs to know about all ancestor continuation lines
+		// ParentLines[i] = true means "draw │ at level i" (ancestor has more siblings)
+		// If current node is NOT last child, its children need a continuation line
 		childParentLines := make([]bool, len(parentLines)+1)
 		copy(childParentLines, parentLines)
-		childParentLines[len(parentLines)] = isLastChild
+		childParentLines[len(parentLines)] = !isLastChild
 
 		// Process each child
 		for i, child := range folder.children {
