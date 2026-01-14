@@ -844,3 +844,110 @@ func TestFilesState_Update_ArrowKeysOnFile_NoToggle(t *testing.T) {
 		t.Error("Expected no change when pressing Right on file")
 	}
 }
+
+func TestFilesState_Update_CollapseFolder_MaintainsViewportPosition(t *testing.T) {
+	// This test reproduces the bug where collapsing a folder causes unexpected viewport scrolling.
+	// Expected: After collapsing a folder, the viewport should remain stable and show items above
+	//           the collapsed folder.
+	// Actual (buggy): The viewport scrolls down, hiding all items above the collapsed folder.
+
+	commit := createTestCommit()
+	// Create a file structure with multiple top-level folders
+	// This mimics the structure shown in the bug report:
+	// docs/, internal/, sandbox/, test/
+	files := []core.FileChange{
+		// docs/ folder
+		{Path: "docs/specs/file1.md", Status: "A", Additions: 100, Deletions: 0},
+		{Path: "docs/specs/file2.md", Status: "A", Additions: 200, Deletions: 0},
+		{Path: "docs/specs/file3.md", Status: "A", Additions: 300, Deletions: 0},
+
+		// internal/ folder with many files
+		{Path: "internal/ui/states/files/state.go", Status: "M", Additions: 50, Deletions: 10},
+		{Path: "internal/ui/states/files/update.go", Status: "M", Additions: 100, Deletions: 20},
+		{Path: "internal/ui/states/files/view.go", Status: "M", Additions: 30, Deletions: 5},
+		{Path: "internal/domain/tree/tree.go", Status: "A", Additions: 200, Deletions: 0},
+
+		// sandbox/ folder
+		{Path: "sandbox/docker-compose.yml", Status: "M", Additions: 3, Deletions: 3},
+		{Path: "sandbox/sandbox.sh", Status: "M", Additions: 5, Deletions: 3},
+
+		// test/ folder with many files (this is what we'll collapse)
+		{Path: "test/e2e/testdata/file1.go", Status: "M", Additions: 10, Deletions: 5},
+		{Path: "test/e2e/testdata/file2.go", Status: "M", Additions: 15, Deletions: 8},
+		{Path: "test/e2e/tree_navigation_test.go", Status: "A", Additions: 431, Deletions: 0},
+	}
+
+	source := createTestDiffSource(commit)
+	s := New(source, files)
+	ctx := testutils.MockContext{W: 80, H: 20}
+
+	// Find the test/e2e folder in visible items
+	testE2EFolderIdx := -1
+	for i, item := range s.VisibleItems {
+		if folder, ok := item.Node.(*tree.FolderNode); ok {
+			// Looking for collapsed path "test/e2e"
+			if folder.GetName() == "test/e2e" {
+				testE2EFolderIdx = i
+				break
+			}
+		}
+	}
+
+	if testE2EFolderIdx == -1 {
+		t.Fatal("Expected to find test/e2e folder in visible items")
+	}
+
+	// Position cursor on test/e2e folder
+	s.Cursor = testE2EFolderIdx
+	s.ViewportStart = 0 // Start with viewport at the top
+
+	// Record the initial viewport state
+	initialViewportStart := s.ViewportStart
+	initialVisibleCount := len(s.VisibleItems)
+
+	// Collapse the test/e2e folder by pressing Enter
+	msg := tea.KeyMsg{Type: tea.KeyEnter}
+	newState, _ := s.Update(msg, ctx)
+	filesState, ok := newState.(*State)
+	if !ok {
+		t.Fatalf("Expected state to remain FilesState, got %T", newState)
+	}
+
+	// After collapse, visible items count should decrease
+	if len(filesState.VisibleItems) >= initialVisibleCount {
+		t.Errorf("Expected fewer visible items after collapse, got %d (was %d)",
+			len(filesState.VisibleItems), initialVisibleCount)
+	}
+
+	// BUG: The viewport should not scroll down significantly just because we collapsed a folder.
+	// If the cursor was visible before, the viewport should remain stable.
+	// With the bug, ViewportStart gets set to a value near the cursor position,
+	// hiding all the folders above it.
+
+	// The viewport should either:
+	// 1. Stay at 0 (if cursor was already visible), or
+	// 2. Adjust minimally to keep cursor visible
+	//
+	// But it should NOT scroll down to hide the docs/, internal/, and sandbox/ folders
+	// that were visible before the collapse.
+
+	// With a height of 20 and cursor around index 3-5 (depending on exact tree structure),
+	// the viewport should still start at 0 or very close to it.
+	// The bug causes it to jump to a much higher value (close to cursor position).
+
+	if filesState.ViewportStart > 2 {
+		t.Errorf("BUG: Viewport scrolled unexpectedly far after collapse. "+
+			"ViewportStart=%d (was %d). This hides folders that should remain visible. "+
+			"Expected ViewportStart to remain at 0 or adjust minimally.",
+			filesState.ViewportStart, initialViewportStart)
+	}
+
+	// Additional verification: With ViewportStart near 0 and cursor still valid,
+	// we should be able to see multiple folders in the viewport
+	// (not just the one collapsed folder)
+	if filesState.ViewportStart == filesState.Cursor {
+		t.Errorf("BUG: ViewportStart (%d) equals Cursor (%d), meaning only the cursor line "+
+			"and items below it are visible. Items above the cursor are hidden.",
+			filesState.ViewportStart, filesState.Cursor)
+	}
+}
