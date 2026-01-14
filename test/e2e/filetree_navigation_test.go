@@ -42,7 +42,7 @@ func TestTreeNavigation_BasicStructure(t *testing.T) {
 	// Set window size and wait for loading
 	runner.Send(tea.WindowSizeMsg{Width: 80, Height: 24})
 	runner.WaitForContent("Add feature")
-	runner.AssertGolden("tree_navigation/basic_structure_log.golden")
+	runner.AssertGolden("filetree_navigation/01_basic_structure_log.golden")
 
 	// Press Enter to navigate to FilesState
 	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
@@ -51,7 +51,7 @@ func TestTreeNavigation_BasicStructure(t *testing.T) {
 	// - old/ folder next
 	// - README.md at bottom (files after folders)
 	// - Items within folders alphabetically sorted
-	runner.AssertGolden("tree_navigation/basic_structure_files.golden")
+	runner.AssertGolden("filetree_navigation/02_basic_structure_files.golden")
 
 	// Quit
 	runner.Quit()
@@ -85,27 +85,27 @@ func TestTreeNavigation_UpDown(t *testing.T) {
 	runner.WaitForContent("Update multiple files")
 	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
 	// Initial state: cursor on first item (src/ folder)
-	runner.AssertGolden("tree_navigation/updown_initial.golden")
+	runner.AssertGolden("filetree_navigation/01_updown_initial.golden")
 
 	// Navigate down with j - cursor moves to next item
 	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
-	runner.AssertGolden("tree_navigation/updown_after_j.golden")
+	runner.AssertGolden("filetree_navigation/02_updown_after_j.golden")
 
 	// Navigate down again
 	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
-	runner.AssertGolden("tree_navigation/updown_after_jj.golden")
+	runner.AssertGolden("filetree_navigation/03_updown_after_jj.golden")
 
 	// Navigate up with k
 	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("k")})
-	runner.AssertGolden("tree_navigation/updown_after_jjk.golden")
+	runner.AssertGolden("filetree_navigation/04_updown_after_jjk.golden")
 
 	// Jump to bottom with G
 	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("G")})
-	runner.AssertGolden("tree_navigation/updown_at_bottom.golden")
+	runner.AssertGolden("filetree_navigation/05_updown_at_bottom.golden")
 
 	// Jump to top with g
 	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("g")})
-	runner.AssertGolden("tree_navigation/updown_back_to_top.golden")
+	runner.AssertGolden("filetree_navigation/06_updown_back_to_top.golden")
 
 	runner.Quit()
 }
@@ -142,23 +142,23 @@ func TestTreeNavigation_CollapseExpand(t *testing.T) {
 	// Navigate to files view
 	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
 	// Initial: all folders expanded by default (FR4)
-	runner.AssertGolden("tree_navigation/collapse_initial.golden")
+	runner.AssertGolden("filetree_navigation/01_collapse_initial.golden")
 
 	// Cursor on src/ folder - press Enter to collapse
 	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
 	// Should show "src/ +105 -2 (4 files)" and hide children
-	runner.AssertGolden("tree_navigation/collapse_after_enter.golden")
+	runner.AssertGolden("filetree_navigation/02_collapse_after_enter.golden")
 
 	// Press Enter again to expand
 	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
 	// Should show children again
-	runner.AssertGolden("tree_navigation/collapse_after_expand.golden")
+	runner.AssertGolden("filetree_navigation/03_collapse_after_expand.golden")
 
 	// Navigate down to src/ folder again, then test Space key
 	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("g")}) // jump to top
 	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(" ")}) // Space to toggle
 	// Should collapse with Space (FR6)
-	runner.AssertGolden("tree_navigation/collapse_with_space.golden")
+	runner.AssertGolden("filetree_navigation/04_collapse_with_space.golden")
 
 	runner.Quit()
 }
@@ -190,27 +190,27 @@ func TestTreeNavigation_ArrowKeys(t *testing.T) {
 	runner.WaitForContent("Reorganize code")
 	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
 	// Initial: cursor on lib/ folder (expanded)
-	runner.AssertGolden("tree_navigation/arrows_initial.golden")
+	runner.AssertGolden("filetree_navigation/01_arrows_initial.golden")
 
 	// Press left arrow to collapse
 	runner.Send(tea.KeyMsg{Type: tea.KeyLeft})
 	// lib/ folder should collapse
-	runner.AssertGolden("tree_navigation/arrows_after_left.golden")
+	runner.AssertGolden("filetree_navigation/02_arrows_after_left.golden")
 
 	// Press left arrow again (should be no-op when already collapsed)
 	runner.Send(tea.KeyMsg{Type: tea.KeyLeft})
 	// Should remain collapsed
-	runner.AssertGolden("tree_navigation/arrows_after_left_noop.golden")
+	runner.AssertGolden("filetree_navigation/03_arrows_after_left_noop.golden")
 
 	// Press right arrow to expand
 	runner.Send(tea.KeyMsg{Type: tea.KeyRight})
 	// lib/ folder should expand
-	runner.AssertGolden("tree_navigation/arrows_after_right.golden")
+	runner.AssertGolden("filetree_navigation/04_arrows_after_right.golden")
 
 	// Press right arrow again (should be no-op when already expanded)
 	runner.Send(tea.KeyMsg{Type: tea.KeyRight})
 	// Should remain expanded
-	runner.AssertGolden("tree_navigation/arrows_after_right_noop.golden")
+	runner.AssertGolden("filetree_navigation/05_arrows_after_right_noop.golden")
 
 	runner.Quit()
 }
@@ -243,17 +243,17 @@ func TestTreeNavigation_CollapsedPaths(t *testing.T) {
 	runner.WaitForContent("Add deeply nested file")
 	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
 	// Should show "src/components/nested/deep/" as a single collapsed path
-	runner.AssertGolden("tree_navigation/collapsed_path_initial.golden")
+	runner.AssertGolden("filetree_navigation/01_collapsed_path_initial.golden")
 
 	// Cursor is on src/ - collapse the entire src folder
 	runner.Send(tea.KeyMsg{Type: tea.KeyEnter}) // collapse src/
 	// Should show "src/ +102 -1 (2 files)" hiding all nested content
-	runner.AssertGolden("tree_navigation/collapsed_path_collapsed.golden")
+	runner.AssertGolden("filetree_navigation/02_collapsed_path_collapsed.golden")
 
 	// Expand src/ again
 	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
 	// Should reveal the collapsed path and all files
-	runner.AssertGolden("tree_navigation/collapsed_path_expanded.golden")
+	runner.AssertGolden("filetree_navigation/03_collapsed_path_expanded.golden")
 
 	runner.Quit()
 }
@@ -295,7 +295,7 @@ func TestTreeNavigation_EnterFile(t *testing.T) {
 	runner.WaitForContent("Update components")
 	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
 	// Initial files view
-	runner.AssertGolden("tree_navigation/enter_file_initial.golden")
+	runner.AssertGolden("filetree_navigation/01_enter_file_initial.golden")
 
 	// Navigate to a file (src/App.tsx)
 	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")}) // move to src/ folder
@@ -304,12 +304,12 @@ func TestTreeNavigation_EnterFile(t *testing.T) {
 	// Press Enter on file to view diff
 	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
 	// Should show diff view
-	runner.AssertGolden("tree_navigation/enter_file_diff.golden")
+	runner.AssertGolden("filetree_navigation/02_enter_file_diff.golden")
 
 	// Press 'q' to go back to tree
 	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
 	// Should return to files view with cursor at same position
-	runner.AssertGolden("tree_navigation/enter_file_back_to_tree.golden")
+	runner.AssertGolden("filetree_navigation/03_enter_file_back_to_tree.golden")
 
 	runner.Quit()
 }
@@ -343,7 +343,7 @@ func TestTreeNavigation_MixedStatuses(t *testing.T) {
 	runner.WaitForContent("Refactor and cleanup")
 	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
 	// Should show all status types in tree with correct colors/indicators
-	runner.AssertGolden("tree_navigation/mixed_statuses.golden")
+	runner.AssertGolden("filetree_navigation/01_mixed_statuses.golden")
 
 	runner.Quit()
 }
@@ -374,7 +374,7 @@ func TestTreeNavigation_BinaryFiles(t *testing.T) {
 	runner.WaitForContent("Add images")
 	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
 	// Should show binary file with "(binary)" marker
-	runner.AssertGolden("tree_navigation/binary_files.golden")
+	runner.AssertGolden("filetree_navigation/01_binary_files.golden")
 
 	runner.Quit()
 }
@@ -406,7 +406,7 @@ func TestTreeNavigation_SingleFileFolder(t *testing.T) {
 	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
 	// Should show "utils/" folder separately (not collapsed)
 	// with the file as a child
-	runner.AssertGolden("tree_navigation/single_file_folder.golden")
+	runner.AssertGolden("filetree_navigation/01_single_file_folder.golden")
 
 	runner.Quit()
 }
@@ -434,7 +434,7 @@ func TestTreeNavigation_EmptyTree(t *testing.T) {
 	runner.WaitForContent("Empty commit")
 	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
 	// Should show "0 files · +0 -0" with empty tree
-	runner.AssertGolden("tree_navigation/empty_tree.golden")
+	runner.AssertGolden("filetree_navigation/01_empty_tree.golden")
 
 	runner.Quit()
 }
