@@ -243,10 +243,20 @@ func toggleFolder(s *State, expandOnly bool, collapseOnly bool, ctx core.Context
 	// Deep copy the tree for immutability
 	newRoot := tree.DeepCopy(s.Root)
 
-	// Find the folder in the new tree by traversing to the same position
-	targetFolder := findFolderInTree(newRoot, folder)
-	if targetFolder == nil {
+	// Find the folder in the new tree using the cursor index.
+	// Since flattening is deterministic, the same cursor index in the new tree
+	// after deep copy should point to the same logical item.
+	// This approach correctly handles duplicate folder names at the same depth.
+	newVisibleItems := tree.FlattenVisible(newRoot)
+	if s.Cursor >= len(newVisibleItems) {
 		// Shouldn't happen, but handle gracefully
+		return s, nil
+	}
+
+	targetNode := newVisibleItems[s.Cursor].Node
+	targetFolder, ok := targetNode.(*tree.FolderNode)
+	if !ok {
+		// Shouldn't happen (we already checked it's a folder), but handle gracefully
 		return s, nil
 	}
 
@@ -258,8 +268,8 @@ func toggleFolder(s *State, expandOnly bool, collapseOnly bool, ctx core.Context
 		tree.ApplyStats(newRoot)
 	}
 
-	// Re-flatten to get new visible items
-	newVisibleItems := tree.FlattenVisible(newRoot)
+	// Re-flatten to get new visible items (after toggle)
+	newVisibleItems = tree.FlattenVisible(newRoot)
 
 	// Preserve cursor position or adjust if needed
 	newCursor := s.Cursor
@@ -281,34 +291,6 @@ func toggleFolder(s *State, expandOnly bool, collapseOnly bool, ctx core.Context
 	newState.updateViewport(ctx.Height())
 
 	return newState, nil
-}
-
-// findFolderInTree finds a folder in the tree by matching its name and depth.
-// This is used to locate the corresponding folder in a deep-copied tree.
-func findFolderInTree(root tree.TreeNode, target *tree.FolderNode) *tree.FolderNode {
-	targetName := target.GetName()
-	targetDepth := target.GetDepth()
-
-	var found *tree.FolderNode
-	var walk func(tree.TreeNode)
-	walk = func(node tree.TreeNode) {
-		if found != nil {
-			return
-		}
-		if folder, ok := node.(*tree.FolderNode); ok {
-			if folder.GetName() == targetName && folder.GetDepth() == targetDepth {
-				found = folder
-				return
-			}
-			// Recurse into children
-			for _, child := range folder.Children() {
-				walk(child)
-			}
-		}
-	}
-
-	walk(root)
-	return found
 }
 
 // toggleFolderNode toggles the isExpanded field of a FolderNode.
