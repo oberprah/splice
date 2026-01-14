@@ -277,7 +277,9 @@ func (s *State) openFileInEditor() tea.Cmd {
 		}
 
 		// Build command
-		cmd := exec.Command(editor, fmt.Sprintf("+%d", lineNo), absolutePath)
+		// Use "+lineNo | normal! zt" to position the line at the top of the screen
+		// instead of centering it (vim's default behavior)
+		cmd := exec.Command(editor, fmt.Sprintf("+%d | normal! zt", lineNo), absolutePath)
 
 		// Use tea.ExecProcess to suspend TUI and run editor
 		return tea.ExecProcess(cmd, func(err error) tea.Msg {

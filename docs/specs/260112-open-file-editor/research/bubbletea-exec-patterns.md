@@ -28,7 +28,8 @@ type EditorFinishedMsg struct {
 
 // Function to launch editor
 func launchEditor(editorPath string, filePath string, lineNumber int) tea.Cmd {
-    cmd := exec.Command(editorPath, fmt.Sprintf("+%d", lineNumber), filePath)
+    // Use "+lineNo | normal! zt" for vim/nvim to position line at top (not centered)
+    cmd := exec.Command(editorPath, fmt.Sprintf("+%d | normal! zt", lineNumber), filePath)
 
     return tea.ExecProcess(cmd, func(err error) tea.Msg {
         return EditorFinishedMsg{err: err}
@@ -59,6 +60,22 @@ case EditorFinishedMsg:
 | emacs | `+<line>` | `emacs +42 file.go` |
 
 All common terminal editors support the `+line` syntax.
+
+### Vim Line Positioning Behavior
+
+**Default behavior:** When vim/nvim opens with `+lineNo`, it centers the target line in the viewport (similar to the `zz` command).
+
+**Problem:** If you want the line at the top of the diff view to appear at the top of the editor (not centered), you need to add positioning commands.
+
+**Solution:** Use `"+lineNo | normal! zt"` to position the line at the **t**op of the screen:
+```go
+cmd := exec.Command(editor, fmt.Sprintf("+%d | normal! zt", lineNo), absolutePath)
+```
+
+**Vim positioning commands:**
+- `zt` - Position current line at **t**op of screen
+- `zz` - Position current line at center (default behavior)
+- `zb` - Position current line at **b**ottom of screen
 
 ## Best Practices
 
