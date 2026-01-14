@@ -1,12 +1,12 @@
-→ ├ [1;38;5;220mabc123[0m [1;38;5;231mFirst commit[0m - [1;38;5;51mAlice[0m [1;38;5;250m11 months ago[0m                                 │ [38;5;214mabc123[0m[38;5;248m · [0m[38;5;86mAlice[0m[38;5;248m committed [0m[38;5;244m11 months ago[0m                                          
-  ├ [38;5;214mdef456[0m [38;5;252mSecond commit[0m - [38;5;86mBob[0m [38;5;244m11 months ago[0m                                  │                                                                                 
+→ ├ abc123 First commit - Alice 11 months ago                                 │ abc123 · Alice committed 11 months ago                                          
+  ├ def456 Second commit - Bob 11 months ago                                  │                                                                                 
                                                                               │ First commit                                                                    
                                                                               │                                                                                 
                                                                               │ This is the body                                                                
                                                                               │                                                                                 
-                                                                              │ [38;5;248m2 files[0m[38;5;248m · [0m[38;5;46m+30[0m[38;5;248m [0m[38;5;196m-5[0m                                                                
-                                                                              │ [38;5;214mM[0m[38;5;46m +10[0m[38;5;196m -5[0m[38;5;252m  src/main.go[0m                                                           
-                                                                              │ [38;5;46mA[0m[38;5;46m +20[0m[38;5;196m -0[0m[38;5;252m  README.md[0m                                                             
+                                                                              │ 2 files · +30 -5                                                                
+                                                                              │ M +10 -5  src/main.go                                                           
+                                                                              │ A +20 -0  README.md                                                             
                                                                               │                                                                                 
                                                                               │                                                                                 
                                                                               │                                                                                 

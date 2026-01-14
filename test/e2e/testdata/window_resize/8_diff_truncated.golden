@@ -1,4 +1,4 @@
-0000000 · internal/authentication/oauth2/providers/github/cl
+0000000 · cmd/server/handlers/api/v1/users/profile_handler.g
 ────────────────────────────────────────────────────────────
   1 - func authenticateUser… │   1 + func authenticateUser…
   2       if username == ""… │   2       if username == ""…

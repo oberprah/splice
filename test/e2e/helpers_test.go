@@ -95,6 +95,33 @@ func (r *E2ETestRunner) AssertGolden(goldenFile string, timeout ...time.Duration
 	assertEventually(r.t, r.out, goldenFile, assertTimeout)
 }
 
+// WaitForContent polls the output buffer until it contains the expected text.
+// This is used for timing/synchronization only - use AssertGolden for verifying output.
+// Returns when expectedText is found in the output, or fails the test on timeout.
+func (r *E2ETestRunner) WaitForContent(expectedText string, timeout ...time.Duration) {
+	r.t.Helper()
+
+	waitTimeout := defaultAssertTimeout
+	if len(timeout) > 0 {
+		waitTimeout = timeout[0]
+	}
+
+	deadline := time.Now().Add(waitTimeout)
+
+	for time.Now().Before(deadline) {
+		rawOutput := r.out.String()
+		frame := extractLatestFrame(rawOutput)
+
+		if strings.Contains(frame, expectedText) {
+			return // Success
+		}
+
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	r.t.Fatalf("WaitForContent timeout: '%s' not found in output", expectedText)
+}
+
 // stripAnsiCodes removes ANSI escape sequences from text, leaving only readable content
 func stripAnsiCodes(s string) string {
 	var result strings.Builder

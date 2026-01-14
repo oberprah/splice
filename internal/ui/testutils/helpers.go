@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -54,11 +55,51 @@ func SetupColorProfile() {
 	lipgloss.SetColorProfile(termenv.TrueColor)
 }
 
+// stripAnsiCodes removes ANSI escape sequences from text, leaving only readable content
+func stripAnsiCodes(s string) string {
+	var result strings.Builder
+	result.Grow(len(s))
+
+	i := 0
+	for i < len(s) {
+		if s[i] == '\x1b' && i+1 < len(s) && s[i+1] == '[' {
+			// Found start of ANSI escape sequence "\x1b["
+			// Skip until we find the terminating character (a letter)
+			j := i + 2
+			for j < len(s) {
+				ch := s[j]
+				// Check if this is the terminating character
+				if (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') {
+					// Skip the entire sequence including terminator
+					i = j + 1
+					break
+				}
+				// Continue scanning (digits, semicolons, question marks, etc.)
+				j++
+			}
+			if j >= len(s) {
+				// Malformed sequence at end of string, just skip to end
+				break
+			}
+		} else {
+			// Regular character, keep it
+			result.WriteByte(s[i])
+			i++
+		}
+	}
+
+	return result.String()
+}
+
 // AssertGolden compares the output against a golden file.
 // If update is true, it updates the golden file instead.
 // The goldenPath should be relative to the caller's testdata directory.
+// ANSI escape codes are stripped from output before comparison/storage.
 func AssertGolden(t *testing.T, output, goldenPath string, update bool) {
 	t.Helper()
+
+	// Strip ANSI codes from output for clean, readable golden files
+	strippedOutput := stripAnsiCodes(output)
 
 	if update {
 		dir := filepath.Dir(goldenPath)
@@ -66,7 +107,7 @@ func AssertGolden(t *testing.T, output, goldenPath string, update bool) {
 		if err != nil {
 			t.Fatalf("Failed to create directory %s: %v", dir, err)
 		}
-		err = os.WriteFile(goldenPath, []byte(output), 0644)
+		err = os.WriteFile(goldenPath, []byte(strippedOutput), 0644)
 		if err != nil {
 			t.Fatalf("Failed to write golden file: %v", err)
 		}
@@ -79,9 +120,9 @@ func AssertGolden(t *testing.T, output, goldenPath string, update bool) {
 		t.Fatalf("Failed to read golden file: %v\nRun with -update to create it", err)
 	}
 
-	if string(expected) != output {
+	if string(expected) != strippedOutput {
 		t.Errorf("Output does not match golden file %s.\nRun with -update to update golden files.\n\nExpected:\n%s\n\nGot:\n%s",
-			goldenPath, string(expected), output)
+			goldenPath, string(expected), strippedOutput)
 	}
 }
 

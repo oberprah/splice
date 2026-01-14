@@ -1,0 +1,9 @@
+→ ├ 0000000 Add deeply nested file - Test Author 1 year ago0000000 · Test Author committed 1 year ago
+
+Add deeply nested file
+
+2 files · +102 -1
+→└── src
+     ├── components/nested/deep
+     │   └── A +100 -0  VeryDeep.tsx
+     └── M +2 -1  index.ts

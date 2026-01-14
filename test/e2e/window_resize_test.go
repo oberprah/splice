@@ -153,23 +153,26 @@ func TestWindowResize(t *testing.T) {
 	runner.Send(tea.WindowSizeMsg{Width: 180, Height: 40})
 	runner.AssertGolden("window_resize/6_files_full.golden")
 
-	// 7. Select first file (Enter to go to diff view)
+	// 7. Navigate to first file (cursor starts on a folder)
+	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+
+	// 8. Select first file (Enter to go to diff view)
 	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
 	runner.AssertGolden("window_resize/7_diff_view.golden")
 
-	// 8. Make window smaller (diff lines truncated)
+	// 9. Make window smaller (diff lines truncated)
 	runner.Send(tea.WindowSizeMsg{Width: 60, Height: 20})
 	runner.AssertGolden("window_resize/8_diff_truncated.golden")
 
-	// 9. Make window larger again (full diff shown)
+	// 10. Make window larger again (full diff shown)
 	runner.Send(tea.WindowSizeMsg{Width: 180, Height: 40})
 	runner.AssertGolden("window_resize/9_diff_full.golden")
 
-	// 10. Go back to files (q from diff view)
+	// 11. Go back to files (q from diff view)
 	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
 	runner.AssertGolden("window_resize/10_back_to_files.golden")
 
-	// 11. Go back to log (q key from files view)
+	// 12. Go back to log (q key from files view)
 	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
 	runner.AssertGolden("window_resize/11_back_to_log.golden")
 
