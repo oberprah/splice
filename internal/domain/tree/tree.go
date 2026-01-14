@@ -52,6 +52,12 @@ func (f *FolderNode) IsExpanded() bool     { return f.isExpanded }
 func (f *FolderNode) Stats() FolderStats   { return f.stats }
 func (f *FolderNode) Children() []TreeNode { return f.children }
 
+// SetExpanded sets the expanded state of a folder.
+// Used when toggling folders in the UI.
+func (f *FolderNode) SetExpanded(expanded bool) {
+	f.isExpanded = expanded
+}
+
 // Implement TreeNode interface for FileNode
 func (f *FileNode) isTreeNode()     {}
 func (f *FileNode) GetName() string { return f.name }

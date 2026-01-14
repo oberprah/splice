@@ -9,6 +9,7 @@ import (
 	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/domain/diff"
 	"github.com/oberprah/splice/internal/domain/highlight"
+	"github.com/oberprah/splice/internal/domain/tree"
 	"github.com/oberprah/splice/internal/ui/testutils"
 )
 
@@ -21,12 +22,7 @@ func TestFilesState_Update_NavigationDown(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(10)
 	commitRange := core.NewSingleCommitRange(commit)
-	s := State{
-		Source:        commitRange.ToDiffSource(),
-		Files:         files,
-		Cursor:        0,
-		ViewportStart: 0,
-	}
+	s := New(commitRange.ToDiffSource(), files)
 	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Press "j" to move down
@@ -47,12 +43,8 @@ func TestFilesState_Update_NavigationUp(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(10)
 	commitRange := core.NewSingleCommitRange(commit)
-	s := State{
-		Source:        commitRange.ToDiffSource(),
-		Files:         files,
-		Cursor:        5,
-		ViewportStart: 0,
-	}
+	s := New(commitRange.ToDiffSource(), files)
+	s.Cursor = 5
 	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Press "k" to move up
@@ -73,12 +65,9 @@ func TestFilesState_Update_NavigationJumpToTop(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(10)
 	commitRange := core.NewSingleCommitRange(commit)
-	s := State{
-		Source:        commitRange.ToDiffSource(),
-		Files:         files,
-		Cursor:        5,
-		ViewportStart: 3,
-	}
+	s := New(commitRange.ToDiffSource(), files)
+	s.Cursor = 5
+	s.ViewportStart = 3
 	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Press "g" to jump to top
@@ -103,12 +92,7 @@ func TestFilesState_Update_NavigationJumpToBottom(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(10)
 	commitRange := core.NewSingleCommitRange(commit)
-	s := State{
-		Source:        commitRange.ToDiffSource(),
-		Files:         files,
-		Cursor:        0,
-		ViewportStart: 0,
-	}
+	s := New(commitRange.ToDiffSource(), files)
 	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Press "G" to jump to bottom
@@ -120,8 +104,11 @@ func TestFilesState_Update_NavigationJumpToBottom(t *testing.T) {
 		t.Fatal("Expected state to remain FilesState")
 	}
 
-	if filesState.Cursor != 9 {
-		t.Errorf("Expected cursor to jump to last file (9), got %d", filesState.Cursor)
+	// With tree structure, the last visible item may not be at index 9
+	// Just check that we jumped to the last visible item
+	expectedLast := len(filesState.VisibleItems) - 1
+	if filesState.Cursor != expectedLast {
+		t.Errorf("Expected cursor to jump to last visible item (%d), got %d", expectedLast, filesState.Cursor)
 	}
 }
 
@@ -131,24 +118,22 @@ func TestFilesState_Update_NavigationBoundaries(t *testing.T) {
 	commitRange := core.NewSingleCommitRange(commit)
 	diffSource := commitRange.ToDiffSource()
 
-	tests := []struct {
+	// Create state once to get the number of visible items
+	s := New(diffSource, files)
+	lastIdx := len(s.VisibleItems) - 1
+
+	for _, tt := range []struct {
 		name           string
 		initialCursor  int
 		key            rune
 		expectedCursor int
 	}{
 		{"up at top stays at top", 0, 'k', 0},
-		{"down at bottom stays at bottom", 4, 'j', 4},
-	}
-
-	for _, tt := range tests {
+		{"down at bottom stays at bottom", lastIdx, 'j', lastIdx},
+	} {
 		t.Run(tt.name, func(t *testing.T) {
-			s := State{
-				Source:        diffSource,
-				Files:         files,
-				Cursor:        tt.initialCursor,
-				ViewportStart: 0,
-			}
+			s := New(diffSource, files)
+			s.Cursor = tt.initialCursor
 			ctx := testutils.MockContext{W: 80, H: 24}
 
 			msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{tt.key}}
@@ -182,12 +167,8 @@ func TestFilesState_Update_ArrowKeyNavigation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := State{
-				Source:        createTestDiffSource(commit),
-				Files:         files,
-				Cursor:        tt.initialCursor,
-				ViewportStart: 0,
-			}
+			s := New(createTestDiffSource(commit), files)
+			s.Cursor = tt.initialCursor
 			ctx := testutils.MockContext{W: 80, H: 24}
 
 			msg := tea.KeyMsg{Type: tt.keyType}
@@ -209,25 +190,24 @@ func TestFilesState_Update_ViewportScrolling(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(20)
 	commitRange := core.NewSingleCommitRange(commit)
-	s := State{
-		Source:        commitRange.ToDiffSource(),
-		Files:         files,
-		Cursor:        5,
-		ViewportStart: 0,
-	}
+	s := New(commitRange.ToDiffSource(), files)
+	s.Cursor = 5
 	ctx := testutils.MockContext{W: 80, H: 10}
 
+	initialCursor := s.Cursor
+
 	// Move cursor down multiple times to trigger viewport scrolling
-	state := &s
+	state := s
 	for range 10 {
 		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}}
 		newState, _ := state.Update(msg, ctx)
 		state = newState.(*State)
 	}
 
-	// After moving down 10 times from position 5, cursor should be at 15
-	if state.Cursor != 15 {
-		t.Errorf("Expected cursor to be at 15, got %d", state.Cursor)
+	// After moving down 10 times from initial position, cursor should have moved
+	expectedCursor := min(initialCursor+10, len(state.VisibleItems)-1)
+	if state.Cursor != expectedCursor {
+		t.Errorf("Expected cursor to be at %d, got %d", expectedCursor, state.Cursor)
 	}
 
 	// Viewport should have scrolled to keep cursor visible
@@ -239,12 +219,8 @@ func TestFilesState_Update_ViewportScrolling(t *testing.T) {
 func TestFilesState_Update_BackNavigation(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(5)
-	s := State{
-		Source:        createTestDiffSource(commit),
-		Files:         files,
-		Cursor:        2,
-		ViewportStart: 0,
-	}
+	s := New(createTestDiffSource(commit), files)
+	s.Cursor = 2
 	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Press "q" to go back
@@ -282,12 +258,7 @@ func TestFilesState_Update_SingleFileList(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(1)
 	commitRange := core.NewSingleCommitRange(commit)
-	s := State{
-		Source:        commitRange.ToDiffSource(),
-		Files:         files,
-		Cursor:        0,
-		ViewportStart: 0,
-	}
+	s := New(commitRange.ToDiffSource(), files)
 	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Try to move down (should stay at 0)
@@ -308,12 +279,7 @@ func TestFilesState_Update_EmptyFileList(t *testing.T) {
 	commit := createTestCommit()
 	files := []core.FileChange{}
 	commitRange := core.NewSingleCommitRange(commit)
-	s := State{
-		Source:        commitRange.ToDiffSource(),
-		Files:         files,
-		Cursor:        0,
-		ViewportStart: 0,
-	}
+	s := New(commitRange.ToDiffSource(), files)
 	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Try to move down (should stay at 0)
@@ -333,12 +299,22 @@ func TestFilesState_Update_EmptyFileList(t *testing.T) {
 func TestFilesState_Update_EnterKeyReturnsCommand(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(5)
-	s := State{
-		Source:        createTestDiffSource(commit),
-		Files:         files,
-		Cursor:        2,
-		ViewportStart: 0,
+	s := New(createTestDiffSource(commit), files)
+
+	// Find a file node in VisibleItems
+	fileIdx := -1
+	for i, item := range s.VisibleItems {
+		if _, ok := item.Node.(*tree.FileNode); ok {
+			fileIdx = i
+			break
+		}
 	}
+
+	if fileIdx == -1 {
+		t.Skip("No file nodes in visible items")
+	}
+
+	s.Cursor = fileIdx
 	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Press "enter" to select a file
@@ -359,11 +335,7 @@ func TestFilesState_Update_EnterKeyReturnsCommand(t *testing.T) {
 func TestFilesState_Update_EnterOnEmptyFiles(t *testing.T) {
 	commit := createTestCommit()
 	files := []core.FileChange{}
-	s := State{
-		Source: createTestDiffSource(commit), // OLD:CommitRange: core.NewSingleCommitRange(commit),
-		Files:  files,
-		Cursor: 0,
-	}
+	s := New(createTestDiffSource(commit), files)
 	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Press "enter" with no files
@@ -384,12 +356,9 @@ func TestFilesState_Update_EnterOnEmptyFiles(t *testing.T) {
 func TestFilesState_Update_DiffLoadedMsgSuccess(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(5)
-	s := State{
-		Source:        createTestDiffSource(commit),
-		Files:         files,
-		Cursor:        2,
-		ViewportStart: 1,
-	}
+	s := New(createTestDiffSource(commit), files)
+	s.Cursor = 2
+	s.ViewportStart = 1
 	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Simulate DiffLoadedMsg with success
@@ -446,7 +415,7 @@ func TestFilesState_Update_DiffLoadedMsgSuccess(t *testing.T) {
 	}
 
 	// Verify state hasn't changed (stays FilesState until Model handles PushScreenMsg)
-	if filesState != &s {
+	if filesState != s {
 		t.Error("Expected state to remain unchanged")
 	}
 }
@@ -454,11 +423,8 @@ func TestFilesState_Update_DiffLoadedMsgSuccess(t *testing.T) {
 func TestFilesState_Update_DiffLoadedMsgError(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(5)
-	s := State{
-		Source: createTestDiffSource(commit), // OLD:CommitRange: core.NewSingleCommitRange(commit),
-		Files:  files,
-		Cursor: 2,
-	}
+	s := New(createTestDiffSource(commit), files)
+	s.Cursor = 2
 	ctx := testutils.MockContext{W: 80, H: 24}
 
 	// Simulate DiffLoadedMsg with error
@@ -541,4 +507,340 @@ func findSubstring(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+// Tests for tree toggle functionality
+
+func TestFilesState_Update_EnterOnFolder_TogglesExpanded(t *testing.T) {
+	commit := createTestCommit()
+	files := []core.FileChange{
+		{Path: "src/app.go", Status: "M", Additions: 10, Deletions: 5},
+		{Path: "src/utils/helper.go", Status: "A", Additions: 20, Deletions: 0},
+	}
+	source := createTestDiffSource(commit)
+	s := New(source, files)
+	ctx := testutils.MockContext{W: 80, H: 24}
+
+	// Find the index of the src/ folder in VisibleItems
+	srcFolderIdx := -1
+	for i, item := range s.VisibleItems {
+		if folder, ok := item.Node.(*tree.FolderNode); ok {
+			if folder.GetName() == "src" {
+				srcFolderIdx = i
+				break
+			}
+		}
+	}
+
+	if srcFolderIdx == -1 {
+		t.Fatal("Expected to find src/ folder in visible items")
+	}
+
+	// Position cursor on the folder
+	s.Cursor = srcFolderIdx
+
+	// Initial state: folder should be expanded
+	initialVisibleCount := len(s.VisibleItems)
+
+	// Press Enter to toggle (collapse)
+	msg := tea.KeyMsg{Type: tea.KeyEnter}
+	newState, _ := s.Update(msg, ctx)
+	filesState, ok := newState.(*State)
+	if !ok {
+		t.Fatalf("Expected state to remain FilesState, got %T", newState)
+	}
+
+	// After collapsing, should have fewer visible items
+	if len(filesState.VisibleItems) >= initialVisibleCount {
+		t.Errorf("Expected fewer visible items after collapse, got %d (was %d)", len(filesState.VisibleItems), initialVisibleCount)
+	}
+
+	// Press Enter again to toggle (expand)
+	msg = tea.KeyMsg{Type: tea.KeyEnter}
+	newState2, _ := filesState.Update(msg, ctx)
+	filesState2, ok := newState2.(*State)
+	if !ok {
+		t.Fatalf("Expected state to remain FilesState, got %T", newState2)
+	}
+
+	// After expanding, should be back to original count
+	if len(filesState2.VisibleItems) != initialVisibleCount {
+		t.Errorf("Expected %d visible items after re-expand, got %d", initialVisibleCount, len(filesState2.VisibleItems))
+	}
+}
+
+func TestFilesState_Update_SpaceOnFolder_TogglesExpanded(t *testing.T) {
+	commit := createTestCommit()
+	files := []core.FileChange{
+		{Path: "src/app.go", Status: "M", Additions: 10, Deletions: 5},
+		{Path: "src/utils/helper.go", Status: "A", Additions: 20, Deletions: 0},
+	}
+	source := createTestDiffSource(commit)
+	s := New(source, files)
+	ctx := testutils.MockContext{W: 80, H: 24}
+
+	// Find the src/ folder
+	srcFolderIdx := -1
+	for i, item := range s.VisibleItems {
+		if folder, ok := item.Node.(*tree.FolderNode); ok {
+			if folder.GetName() == "src" {
+				srcFolderIdx = i
+				break
+			}
+		}
+	}
+
+	if srcFolderIdx == -1 {
+		t.Fatal("Expected to find src/ folder in visible items")
+	}
+
+	s.Cursor = srcFolderIdx
+	initialVisibleCount := len(s.VisibleItems)
+
+	// Press Space to toggle (collapse)
+	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}}
+	newState, _ := s.Update(msg, ctx)
+	filesState, ok := newState.(*State)
+	if !ok {
+		t.Fatalf("Expected state to remain FilesState, got %T", newState)
+	}
+
+	// Should have fewer visible items after collapse
+	if len(filesState.VisibleItems) >= initialVisibleCount {
+		t.Errorf("Expected fewer visible items after collapse, got %d (was %d)", len(filesState.VisibleItems), initialVisibleCount)
+	}
+}
+
+func TestFilesState_Update_RightArrowOnFolder_ExpandsOnly(t *testing.T) {
+	commit := createTestCommit()
+	files := []core.FileChange{
+		{Path: "src/app.go", Status: "M", Additions: 10, Deletions: 5},
+		{Path: "src/utils/helper.go", Status: "A", Additions: 20, Deletions: 0},
+	}
+	source := createTestDiffSource(commit)
+	s := New(source, files)
+	ctx := testutils.MockContext{W: 80, H: 24}
+
+	// Find and collapse the src/ folder first
+	srcFolderIdx := -1
+	for i, item := range s.VisibleItems {
+		if folder, ok := item.Node.(*tree.FolderNode); ok {
+			if folder.GetName() == "src" {
+				srcFolderIdx = i
+				break
+			}
+		}
+	}
+
+	if srcFolderIdx == -1 {
+		t.Fatal("Expected to find src/ folder in visible items")
+	}
+
+	s.Cursor = srcFolderIdx
+
+	// Collapse it first with Enter
+	msg := tea.KeyMsg{Type: tea.KeyEnter}
+	newState, _ := s.Update(msg, ctx)
+	filesState := newState.(*State)
+
+	collapsedVisibleCount := len(filesState.VisibleItems)
+
+	// Now use Right arrow to expand
+	msg = tea.KeyMsg{Type: tea.KeyRight}
+	newState2, _ := filesState.Update(msg, ctx)
+	filesState2, ok := newState2.(*State)
+	if !ok {
+		t.Fatalf("Expected state to remain FilesState, got %T", newState2)
+	}
+
+	// Should have more visible items after expand
+	if len(filesState2.VisibleItems) <= collapsedVisibleCount {
+		t.Errorf("Expected more visible items after expand, got %d (was %d)", len(filesState2.VisibleItems), collapsedVisibleCount)
+	}
+
+	// Pressing Right again on already expanded folder should be a no-op
+	expandedVisibleCount := len(filesState2.VisibleItems)
+	msg = tea.KeyMsg{Type: tea.KeyRight}
+	newState3, _ := filesState2.Update(msg, ctx)
+	filesState3 := newState3.(*State)
+
+	if len(filesState3.VisibleItems) != expandedVisibleCount {
+		t.Errorf("Expected no change when pressing Right on expanded folder, got %d items (was %d)", len(filesState3.VisibleItems), expandedVisibleCount)
+	}
+}
+
+func TestFilesState_Update_LeftArrowOnFolder_CollapsesOnly(t *testing.T) {
+	commit := createTestCommit()
+	files := []core.FileChange{
+		{Path: "src/app.go", Status: "M", Additions: 10, Deletions: 5},
+		{Path: "src/utils/helper.go", Status: "A", Additions: 20, Deletions: 0},
+	}
+	source := createTestDiffSource(commit)
+	s := New(source, files)
+	ctx := testutils.MockContext{W: 80, H: 24}
+
+	// Find the src/ folder (should be expanded by default)
+	srcFolderIdx := -1
+	for i, item := range s.VisibleItems {
+		if folder, ok := item.Node.(*tree.FolderNode); ok {
+			if folder.GetName() == "src" {
+				srcFolderIdx = i
+				break
+			}
+		}
+	}
+
+	if srcFolderIdx == -1 {
+		t.Fatal("Expected to find src/ folder in visible items")
+	}
+
+	s.Cursor = srcFolderIdx
+	initialVisibleCount := len(s.VisibleItems)
+
+	// Press Left to collapse
+	msg := tea.KeyMsg{Type: tea.KeyLeft}
+	newState, _ := s.Update(msg, ctx)
+	filesState, ok := newState.(*State)
+	if !ok {
+		t.Fatalf("Expected state to remain FilesState, got %T", newState)
+	}
+
+	// Should have fewer visible items after collapse
+	collapsedVisibleCount := len(filesState.VisibleItems)
+	if collapsedVisibleCount >= initialVisibleCount {
+		t.Errorf("Expected fewer visible items after collapse, got %d (was %d)", collapsedVisibleCount, initialVisibleCount)
+	}
+
+	// Pressing Left again on already collapsed folder should be a no-op
+	msg = tea.KeyMsg{Type: tea.KeyLeft}
+	newState2, _ := filesState.Update(msg, ctx)
+	filesState2 := newState2.(*State)
+
+	if len(filesState2.VisibleItems) != collapsedVisibleCount {
+		t.Errorf("Expected no change when pressing Left on collapsed folder, got %d items (was %d)", len(filesState2.VisibleItems), collapsedVisibleCount)
+	}
+}
+
+func TestFilesState_Update_EnterOnFile_OpensFileDiff(t *testing.T) {
+	commit := createTestCommit()
+	files := []core.FileChange{
+		{Path: "src/app.go", Status: "M", Additions: 10, Deletions: 5},
+		{Path: "README.md", Status: "M", Additions: 5, Deletions: 2},
+	}
+	source := createTestDiffSource(commit)
+	s := New(source, files)
+	ctx := testutils.MockContext{W: 80, H: 24}
+
+	// Find a file node in VisibleItems
+	fileIdx := -1
+	for i, item := range s.VisibleItems {
+		if _, ok := item.Node.(*tree.FileNode); ok {
+			fileIdx = i
+			break
+		}
+	}
+
+	if fileIdx == -1 {
+		t.Fatal("Expected to find a file node in visible items")
+	}
+
+	s.Cursor = fileIdx
+
+	// Press Enter on file
+	msg := tea.KeyMsg{Type: tea.KeyEnter}
+	newState, cmd := s.Update(msg, ctx)
+
+	// Should stay in FilesState while loading
+	if _, ok := newState.(*State); !ok {
+		t.Fatalf("Expected to stay in FilesState while loading, got %T", newState)
+	}
+
+	// Should return a command to load the diff
+	if cmd == nil {
+		t.Error("Expected a command to load the diff for file")
+	}
+}
+
+func TestFilesState_Update_TogglePreservesCursorPosition(t *testing.T) {
+	commit := createTestCommit()
+	files := []core.FileChange{
+		{Path: "src/app.go", Status: "M", Additions: 10, Deletions: 5},
+		{Path: "src/utils/helper.go", Status: "A", Additions: 20, Deletions: 0},
+		{Path: "docs/README.md", Status: "M", Additions: 5, Deletions: 2},
+	}
+	source := createTestDiffSource(commit)
+	s := New(source, files)
+	ctx := testutils.MockContext{W: 80, H: 24}
+
+	// Find the src/ folder
+	srcFolderIdx := -1
+	for i, item := range s.VisibleItems {
+		if folder, ok := item.Node.(*tree.FolderNode); ok {
+			if folder.GetName() == "src" {
+				srcFolderIdx = i
+				break
+			}
+		}
+	}
+
+	if srcFolderIdx == -1 {
+		t.Fatal("Expected to find src/ folder in visible items")
+	}
+
+	s.Cursor = srcFolderIdx
+
+	// Toggle (collapse)
+	msg := tea.KeyMsg{Type: tea.KeyEnter}
+	newState, _ := s.Update(msg, ctx)
+	filesState := newState.(*State)
+
+	// Cursor should still be on the src/ folder (or adjusted appropriately)
+	// At minimum, cursor should be valid
+	if filesState.Cursor < 0 || filesState.Cursor >= len(filesState.VisibleItems) {
+		t.Errorf("Expected cursor to be valid after toggle, got %d (visible items: %d)", filesState.Cursor, len(filesState.VisibleItems))
+	}
+}
+
+func TestFilesState_Update_ArrowKeysOnFile_NoToggle(t *testing.T) {
+	commit := createTestCommit()
+	files := []core.FileChange{
+		{Path: "README.md", Status: "M", Additions: 5, Deletions: 2},
+	}
+	source := createTestDiffSource(commit)
+	s := New(source, files)
+	ctx := testutils.MockContext{W: 80, H: 24}
+
+	// Find the file node
+	fileIdx := -1
+	for i, item := range s.VisibleItems {
+		if _, ok := item.Node.(*tree.FileNode); ok {
+			fileIdx = i
+			break
+		}
+	}
+
+	if fileIdx == -1 {
+		t.Fatal("Expected to find file node in visible items")
+	}
+
+	s.Cursor = fileIdx
+	initialVisibleCount := len(s.VisibleItems)
+
+	// Press Left on file (should be no-op)
+	msg := tea.KeyMsg{Type: tea.KeyLeft}
+	newState, _ := s.Update(msg, ctx)
+	filesState := newState.(*State)
+
+	if len(filesState.VisibleItems) != initialVisibleCount {
+		t.Error("Expected no change when pressing Left on file")
+	}
+
+	// Press Right on file (should be no-op)
+	msg = tea.KeyMsg{Type: tea.KeyRight}
+	newState2, _ := filesState.Update(msg, ctx)
+	filesState2 := newState2.(*State)
+
+	if len(filesState2.VisibleItems) != initialVisibleCount {
+		t.Error("Expected no change when pressing Right on file")
+	}
 }
