@@ -951,3 +951,184 @@ func TestFilesState_Update_CollapseFolder_MaintainsViewportPosition(t *testing.T
 			filesState.ViewportStart, filesState.Cursor)
 	}
 }
+
+func TestFilesState_Update_ToggleFolderWithDuplicateName_TogglesCorrectFolder(t *testing.T) {
+	// This test reproduces the bug where toggling a folder with a duplicate name AND depth
+	// incorrectly toggles the first folder with that name instead of the one under the cursor.
+	//
+	// Setup: Create a tree structure where path collapsing creates two folders with the same name+depth
+	// Tree before collapsing:
+	//   frontend/
+	//     src/
+	//       components/
+	//         file1.js
+	//         file2.js
+	//   backend/
+	//     src/
+	//       components/
+	//         file3.go
+	//         file4.go
+	//
+	// After collapsing single-child chains:
+	//   frontend/
+	//     src/components/    <- name="src/components", depth=1
+	//       file1.js
+	//       file2.js
+	//   backend/
+	//     src/components/    <- name="src/components", depth=1 (SAME as frontend!)
+	//       file3.go
+	//       file4.go
+	//
+	// Expected: When cursor is on "backend/src/components/" and Enter is pressed,
+	//           only "backend/src/components/" should be collapsed.
+	// Actual (buggy): The "frontend/src/components/" gets collapsed instead because findFolderInTree
+	//                 matches on name+depth only, returning the first match.
+
+	commit := createTestCommit()
+	files := []core.FileChange{
+		// frontend/ has multiple children, preventing collapse
+		{Path: "frontend/package.json", Status: "M", Additions: 2, Deletions: 1},
+		{Path: "frontend/src/components/Button.js", Status: "M", Additions: 10, Deletions: 5},
+		{Path: "frontend/src/components/Input.js", Status: "A", Additions: 20, Deletions: 0},
+
+		// backend/ has multiple children, preventing collapse
+		{Path: "backend/go.mod", Status: "M", Additions: 1, Deletions: 1},
+		{Path: "backend/src/components/Handler.go", Status: "M", Additions: 15, Deletions: 3},
+		{Path: "backend/src/components/Parser.go", Status: "A", Additions: 25, Deletions: 0},
+	}
+
+	source := createTestDiffSource(commit)
+	s := New(source, files)
+	ctx := testutils.MockContext{W: 80, H: 24}
+
+	// Find both "src/components" folders in the visible items
+	// Both should have name="src/components" and depth=1
+	frontendSrcIdx := -1
+	backendSrcIdx := -1
+	for i, item := range s.VisibleItems {
+		if folder, ok := item.Node.(*tree.FolderNode); ok {
+			name := folder.GetName()
+			depth := folder.GetDepth()
+
+			if name == "src/components" && depth == 1 {
+				// First src/components folder encountered should be backend (alphabetical)
+				if backendSrcIdx == -1 {
+					backendSrcIdx = i
+				} else if frontendSrcIdx == -1 {
+					frontendSrcIdx = i
+				}
+			}
+		}
+	}
+
+	if backendSrcIdx == -1 {
+		t.Fatal("Expected to find backend/src/components folder in visible items")
+	}
+	if frontendSrcIdx == -1 {
+		t.Fatal("Expected to find frontend/src/components folder in visible items")
+	}
+
+	// Verify both folders start expanded
+	backendSrcFolder := s.VisibleItems[backendSrcIdx].Node.(*tree.FolderNode)
+	frontendSrcFolder := s.VisibleItems[frontendSrcIdx].Node.(*tree.FolderNode)
+
+	if !backendSrcFolder.IsExpanded() {
+		t.Fatal("Expected backend/src/components folder to start expanded")
+	}
+	if !frontendSrcFolder.IsExpanded() {
+		t.Fatal("Expected frontend/src/components folder to start expanded")
+	}
+
+	// Verify they have the same name and depth (this is the bug condition)
+	if backendSrcFolder.GetName() != frontendSrcFolder.GetName() {
+		t.Fatalf("Expected both folders to have the same name, got %q and %q",
+			backendSrcFolder.GetName(), frontendSrcFolder.GetName())
+	}
+	if backendSrcFolder.GetDepth() != frontendSrcFolder.GetDepth() {
+		t.Fatalf("Expected both folders to have the same depth, got %d and %d",
+			backendSrcFolder.GetDepth(), frontendSrcFolder.GetDepth())
+	}
+
+	// Position cursor on frontend/src/components (the second "src/components" folder)
+	s.Cursor = frontendSrcIdx
+
+	// Press Enter to toggle frontend/src/components
+	msg := tea.KeyMsg{Type: tea.KeyEnter}
+	newState, _ := s.Update(msg, ctx)
+	filesState, ok := newState.(*State)
+	if !ok {
+		t.Fatalf("Expected state to remain FilesState, got %T", newState)
+	}
+
+	// Find both folders again in the new state
+	newBackendSrcIdx := -1
+	newFrontendSrcIdx := -1
+	for i, item := range filesState.VisibleItems {
+		if folder, ok := item.Node.(*tree.FolderNode); ok {
+			name := folder.GetName()
+			depth := folder.GetDepth()
+
+			if name == "src/components" && depth == 1 {
+				if newBackendSrcIdx == -1 {
+					newBackendSrcIdx = i
+				} else if newFrontendSrcIdx == -1 {
+					newFrontendSrcIdx = i
+				}
+			}
+		}
+	}
+
+	if newBackendSrcIdx == -1 {
+		t.Fatal("Expected to find backend/src/components folder in visible items after toggle")
+	}
+	if newFrontendSrcIdx == -1 {
+		t.Fatal("Expected to find frontend/src/components folder in visible items after toggle")
+	}
+
+	newBackendSrcFolder := filesState.VisibleItems[newBackendSrcIdx].Node.(*tree.FolderNode)
+	newFrontendSrcFolder := filesState.VisibleItems[newFrontendSrcIdx].Node.(*tree.FolderNode)
+
+	// BUG VERIFICATION: backend/src/components should still be expanded (we didn't toggle it)
+	// but with the bug, it gets collapsed instead of frontend/src/components
+	if !newBackendSrcFolder.IsExpanded() {
+		t.Errorf("BUG DETECTED: backend/src/components folder was incorrectly collapsed. " +
+			"Expected it to remain expanded (cursor was on frontend/src/components, not backend/src/components). " +
+			"This happens because findFolderInTree matches on name+depth only, " +
+			"returning the first match instead of the folder under the cursor.")
+	}
+
+	// The correct behavior: frontend/src/components should be collapsed, backend/src/components should remain expanded
+	if newFrontendSrcFolder.IsExpanded() {
+		t.Errorf("Expected frontend/src/components to be collapsed (it was toggled), but it is still expanded")
+	}
+
+	// Additional verification: files under backend/src/components should still be visible
+	foundBackendFile := false
+	for _, item := range filesState.VisibleItems {
+		if file, ok := item.Node.(*tree.FileNode); ok {
+			if file.File().Path == "backend/src/components/Handler.go" || file.File().Path == "backend/src/components/Parser.go" {
+				foundBackendFile = true
+				break
+			}
+		}
+	}
+
+	if !foundBackendFile {
+		t.Errorf("Expected to still see files under backend/src/components (should remain expanded), but they are not visible")
+	}
+
+	// Files under frontend/src/components should NOT be visible (it's collapsed)
+	foundFrontendFile := false
+	for _, item := range filesState.VisibleItems {
+		if file, ok := item.Node.(*tree.FileNode); ok {
+			if file.File().Path == "frontend/src/components/Button.js" || file.File().Path == "frontend/src/components/Input.js" {
+				foundFrontendFile = true
+				break
+			}
+		}
+	}
+
+	if foundFrontendFile {
+		t.Errorf("Expected frontend/src/components files to be hidden (folder should be collapsed), but they are still visible")
+	}
+}
