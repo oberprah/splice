@@ -254,6 +254,135 @@ line 5`
 	runner.Quit()
 }
 
+// TestSmartNavigation_PScrollsThroughMultiScreenChange tests that p scrolls up through large changes
+func TestSmartNavigation_PScrollsThroughMultiScreenChange(t *testing.T) {
+	commits := testutils.CreateTestCommitsWithMessages([]string{
+		"Add large feature",
+	})
+
+	// Use root-level file to simplify tree navigation
+	mockFiles := []core.FileChange{
+		{Path: "large.go", Status: "A", Additions: 40, Deletions: 0},
+	}
+
+	// Create a diff with a large change block (40 lines)
+	// This exceeds typical viewport height, so p should scroll up first
+	oldContent := `line 1
+line 2
+line 3`
+
+	var newContent string
+	newContent = `line 1
+line 2
+line 3
+`
+	// Add 40 new lines
+	for i := 1; i <= 40; i++ {
+		newContent += "new added line number " + string(rune('0'+i/10)) + string(rune('0'+i%10)) + "\n"
+	}
+	newContent += `line 4
+line 5`
+
+	diffOutput := `@@ -1,3 +1,45 @@ line 1
+ line 1
+ line 2
+ line 3
++new added line number 01
++new added line number 02
++new added line number 03
++new added line number 04
++new added line number 05
++new added line number 06
++new added line number 07
++new added line number 08
++new added line number 09
++new added line number 10
++new added line number 11
++new added line number 12
++new added line number 13
++new added line number 14
++new added line number 15
++new added line number 16
++new added line number 17
++new added line number 18
++new added line number 19
++new added line number 20
++new added line number 21
++new added line number 22
++new added line number 23
++new added line number 24
++new added line number 25
++new added line number 26
++new added line number 27
++new added line number 28
++new added line number 29
++new added line number 30
++new added line number 31
++new added line number 32
++new added line number 33
++new added line number 34
++new added line number 35
++new added line number 36
++new added line number 37
++new added line number 38
++new added line number 39
++new added line number 40
++line 4
++line 5`
+
+	mockDiffResult := &core.FullFileDiffResult{
+		OldContent: oldContent,
+		NewContent: newContent,
+		DiffOutput: diffOutput,
+		OldPath:    "large.go",
+		NewPath:    "large.go",
+	}
+
+	fixedNow := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	m := app.NewModel(
+		app.WithInitialState(loading.State{}),
+		app.WithFetchCommits(testutils.MockFetchCommits(commits, nil)),
+		app.WithFetchFileChanges(testutils.MockFetchFileChanges(mockFiles, nil)),
+		app.WithFetchFullFileDiff(testutils.MockFetchFullFileDiff(mockDiffResult, nil)),
+		app.WithNow(func() time.Time { return fixedNow }),
+	)
+
+	runner := NewE2ETestRunner(t, m)
+
+	// Use small viewport to ensure scrolling is needed
+	runner.Send(tea.WindowSizeMsg{Width: 100, Height: 20})
+	runner.WaitForContent("Add large feature")
+
+	// Navigate to files view
+	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	runner.WaitForContent("large.go")
+
+	// Navigate to diff view (file is already selected since it's root level)
+	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	runner.WaitForContent("added line")
+
+	// Should start at first change block
+	runner.AssertGolden("smart_navigation/p_multi_screen_01_initial.golden")
+
+	// Press n twice to scroll down through the large change
+	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("n")})
+	runner.AssertGolden("smart_navigation/p_multi_screen_02_after_n1.golden")
+
+	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("n")})
+	runner.AssertGolden("smart_navigation/p_multi_screen_03_after_n2.golden")
+
+	// Now press p - should scroll UP half a page (not jump to previous change)
+	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("p")})
+	runner.AssertGolden("smart_navigation/p_multi_screen_04_after_p1.golden")
+
+	// Press p again - should continue scrolling up
+	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("p")})
+	runner.AssertGolden("smart_navigation/p_multi_screen_05_after_p2.golden")
+
+	runner.Quit()
+}
+
 // TestFileNavigation_NextAndPrevious tests ] and [ for file navigation
 func TestFileNavigation_NextAndPrevious(t *testing.T) {
 	commits := testutils.CreateTestCommitsWithMessages([]string{
@@ -424,6 +553,144 @@ func TestSmartNavigation_CrossFileNavigation(t *testing.T) {
 	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("p")})
 	runner.WaitForContent("alpha")
 	runner.AssertGolden("smart_navigation/cross_file_03_back_to_alpha.golden")
+
+	runner.Quit()
+}
+
+// TestSmartNavigation_NAtLastFileBoundary tests that n stays in place at the last change in the last file
+func TestSmartNavigation_NAtLastFileBoundary(t *testing.T) {
+	commits := testutils.CreateTestCommitsWithMessages([]string{
+		"Multi-file change",
+	})
+
+	mockFiles := []core.FileChange{
+		{Path: "alpha.go", Status: "M", Additions: 1, Deletions: 1},
+		{Path: "beta.go", Status: "M", Additions: 1, Deletions: 1},
+	}
+
+	// Create diff with single change in each file
+	mockDiffFunc := func(commitRange core.CommitRange, change core.FileChange) (*core.FullFileDiffResult, error) {
+		switch change.Path {
+		case "alpha.go":
+			return &core.FullFileDiffResult{
+				OldContent: "line 1\nold alpha\nline 3",
+				NewContent: "line 1\nnew alpha\nline 3",
+				DiffOutput: "@@ -1,3 +1,3 @@\n line 1\n-old alpha\n+new alpha\n line 3",
+				OldPath:    "alpha.go",
+				NewPath:    "alpha.go",
+			}, nil
+		case "beta.go":
+			return &core.FullFileDiffResult{
+				OldContent: "line 1\nold beta\nline 3",
+				NewContent: "line 1\nnew beta\nline 3",
+				DiffOutput: "@@ -1,3 +1,3 @@\n line 1\n-old beta\n+new beta\n line 3",
+				OldPath:    "beta.go",
+				NewPath:    "beta.go",
+			}, nil
+		default:
+			return &core.FullFileDiffResult{}, nil
+		}
+	}
+
+	fixedNow := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	m := app.NewModel(
+		app.WithInitialState(loading.State{}),
+		app.WithFetchCommits(testutils.MockFetchCommits(commits, nil)),
+		app.WithFetchFileChanges(testutils.MockFetchFileChanges(mockFiles, nil)),
+		app.WithFetchFullFileDiff(mockDiffFunc),
+		app.WithNow(func() time.Time { return fixedNow }),
+	)
+
+	runner := NewE2ETestRunner(t, m)
+
+	runner.Send(tea.WindowSizeMsg{Width: 100, Height: 24})
+	runner.WaitForContent("Multi-file change")
+
+	// Navigate to files view
+	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	runner.WaitForContent("alpha")
+
+	// Open first file diff
+	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	runner.WaitForContent("new alpha")
+
+	// Press n to go to the next file (beta.go)
+	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("n")})
+	runner.WaitForContent("new beta")
+
+	// Now we're at the last change in the last file (beta.go)
+	// Press n again - should stay in place (no wrapping)
+	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("n")})
+	// Should still be showing beta.go
+	runner.AssertGolden("smart_navigation/n_at_last_file_boundary.golden")
+
+	runner.Quit()
+}
+
+// TestSmartNavigation_PAtFirstFileBoundary tests that p stays in place at the first change in the first file
+func TestSmartNavigation_PAtFirstFileBoundary(t *testing.T) {
+	commits := testutils.CreateTestCommitsWithMessages([]string{
+		"Multi-file change",
+	})
+
+	mockFiles := []core.FileChange{
+		{Path: "alpha.go", Status: "M", Additions: 1, Deletions: 1},
+		{Path: "beta.go", Status: "M", Additions: 1, Deletions: 1},
+	}
+
+	// Create diff with single change in each file
+	mockDiffFunc := func(commitRange core.CommitRange, change core.FileChange) (*core.FullFileDiffResult, error) {
+		switch change.Path {
+		case "alpha.go":
+			return &core.FullFileDiffResult{
+				OldContent: "line 1\nold alpha\nline 3",
+				NewContent: "line 1\nnew alpha\nline 3",
+				DiffOutput: "@@ -1,3 +1,3 @@\n line 1\n-old alpha\n+new alpha\n line 3",
+				OldPath:    "alpha.go",
+				NewPath:    "alpha.go",
+			}, nil
+		case "beta.go":
+			return &core.FullFileDiffResult{
+				OldContent: "line 1\nold beta\nline 3",
+				NewContent: "line 1\nnew beta\nline 3",
+				DiffOutput: "@@ -1,3 +1,3 @@\n line 1\n-old beta\n+new beta\n line 3",
+				OldPath:    "beta.go",
+				NewPath:    "beta.go",
+			}, nil
+		default:
+			return &core.FullFileDiffResult{}, nil
+		}
+	}
+
+	fixedNow := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	m := app.NewModel(
+		app.WithInitialState(loading.State{}),
+		app.WithFetchCommits(testutils.MockFetchCommits(commits, nil)),
+		app.WithFetchFileChanges(testutils.MockFetchFileChanges(mockFiles, nil)),
+		app.WithFetchFullFileDiff(mockDiffFunc),
+		app.WithNow(func() time.Time { return fixedNow }),
+	)
+
+	runner := NewE2ETestRunner(t, m)
+
+	runner.Send(tea.WindowSizeMsg{Width: 100, Height: 24})
+	runner.WaitForContent("Multi-file change")
+
+	// Navigate to files view
+	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	runner.WaitForContent("alpha")
+
+	// Open first file diff (alpha.go)
+	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	runner.WaitForContent("new alpha")
+
+	// We're now at the first change in the first file (alpha.go)
+	// Press p - should stay in place (no wrapping)
+	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("p")})
+	// Should still be showing alpha.go
+	runner.AssertGolden("smart_navigation/p_at_first_file_boundary.golden")
 
 	runner.Quit()
 }

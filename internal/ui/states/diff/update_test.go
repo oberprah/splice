@@ -1670,3 +1670,103 @@ func TestPositionAtFirstChange_NilDiff(t *testing.T) {
 		t.Errorf("Expected CurrentBlockIdx to be -1 for nil diff, got %d", s.CurrentBlockIdx)
 	}
 }
+
+// TestNavigateToNextChange_SmallContent tests that navigating to the next change
+// works correctly when all content fits within the viewport.
+// This is a regression test for the bug where viewport position was incorrectly
+// clamped to 0 when calculateMaxViewportStart returns 0 (content < viewport height).
+func TestNavigateToNextChange_SmallContent(t *testing.T) {
+	// Create a diff with two change blocks separated by unchanged lines.
+	// Structure: 5 unchanged, 1 change, 7 unchanged, 1 change, 5 unchanged
+	// Total: 19 lines - all fit within a viewport of height 22 (available height = 20)
+	//
+	// Block structure:
+	// - Block 0: Unchanged (lines 0-4), 5 lines
+	// - Block 1: Change (line 5), 1 line - first change at position 5
+	// - Block 2: Unchanged (lines 6-12), 7 lines
+	// - Block 3: Change (line 13), 1 line - second change at position 13
+	// - Block 4: Unchanged (lines 14-18), 5 lines
+
+	var blocks []diff.Block
+
+	// Block 0: 5 unchanged lines (positions 0-4)
+	unchanged1 := make([]diff.LinePair, 5)
+	for i := 0; i < 5; i++ {
+		unchanged1[i] = diff.LinePair{
+			LeftLineNo:  i + 1,
+			RightLineNo: i + 1,
+			Tokens:      []highlight.Token{{Type: chroma.Text, Value: "unchanged line"}},
+		}
+	}
+	blocks = append(blocks, diff.UnchangedBlock{Lines: unchanged1})
+
+	// Block 1: First change block at position 5
+	blocks = append(blocks, diff.ChangeBlock{Lines: []diff.ChangeLine{
+		diff.AddedLine{RightLineNo: 6, Tokens: []highlight.Token{{Type: chroma.Text, Value: "first added line"}}},
+	}})
+
+	// Block 2: 7 unchanged lines (positions 6-12)
+	unchanged2 := make([]diff.LinePair, 7)
+	for i := 0; i < 7; i++ {
+		unchanged2[i] = diff.LinePair{
+			LeftLineNo:  7 + i,
+			RightLineNo: 7 + i,
+			Tokens:      []highlight.Token{{Type: chroma.Text, Value: "unchanged line"}},
+		}
+	}
+	blocks = append(blocks, diff.UnchangedBlock{Lines: unchanged2})
+
+	// Block 3: Second change block at position 13
+	blocks = append(blocks, diff.ChangeBlock{Lines: []diff.ChangeLine{
+		diff.AddedLine{RightLineNo: 14, Tokens: []highlight.Token{{Type: chroma.Text, Value: "second added line"}}},
+	}})
+
+	// Block 4: 5 unchanged lines (positions 14-18)
+	unchanged3 := make([]diff.LinePair, 5)
+	for i := 0; i < 5; i++ {
+		unchanged3[i] = diff.LinePair{
+			LeftLineNo:  15 + i,
+			RightLineNo: 15 + i,
+			Tokens:      []highlight.Token{{Type: chroma.Text, Value: "unchanged line"}},
+		}
+	}
+	blocks = append(blocks, diff.UnchangedBlock{Lines: unchanged3})
+
+	commit := core.GitCommit{Hash: "abc123"}
+	s := &State{
+		Source:          createTestDiffSource(commit),
+		File:            core.FileChange{Path: "file.go", Additions: 2, Deletions: 0},
+		Diff:            &diff.FileDiff{Path: "file.go", Blocks: blocks},
+		ViewportStart:   5, // Start at first change block
+		CurrentBlockIdx: 1, // Index of first change block
+	}
+
+	// Use a viewport height that can fit all 19 lines of content
+	// Height 22 - 2 header lines = 20 available lines, which fits all 19 lines
+	// This means calculateMaxViewportStart will return 0 (since 19 - 20 < 0)
+	ctx := testutils.MockContext{W: 80, H: 22}
+
+	// Press "n" to navigate to next change
+	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}}
+	newState, _ := s.Update(msg, ctx)
+
+	diffState, ok := newState.(*State)
+	if !ok {
+		t.Fatal("Expected state to remain DiffState")
+	}
+
+	// BUG: ViewportStart should move to 13 (second change block position)
+	// but due to the clamping bug, it gets clamped to 0 because
+	// calculateMaxViewportStart returns 0 when content fits in viewport.
+	//
+	// Expected: ViewportStart = 13 (position of second change block)
+	// Actual (bug): ViewportStart = 0 (incorrectly clamped)
+	if diffState.ViewportStart != 13 {
+		t.Errorf("Expected ViewportStart to be 13 (second change block), got %d", diffState.ViewportStart)
+	}
+
+	// Also verify CurrentBlockIdx was updated to the second change block (index 3)
+	if diffState.CurrentBlockIdx != 3 {
+		t.Errorf("Expected CurrentBlockIdx to be 3 (second change block), got %d", diffState.CurrentBlockIdx)
+	}
+}

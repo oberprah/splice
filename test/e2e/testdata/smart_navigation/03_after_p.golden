@@ -1,10 +1,5 @@
 
 
-  1   line 1                                     │   1   line 1                                    
-  2   line 2                                     │   2   line 2                                    
-  3   line 3                                     │   3   line 3                                    
-  4   line 4                                     │   4   line 4                                    
-  5   line 5                                     │   5   line 5                                    
   6 - old line 6                                 │   6 + new line 6                                
   7 - old line 7                                 │   7 + new line 7                                
   8 - old line 8                                 │   8 + new line 8                                

@@ -164,7 +164,9 @@ func (s *State) navigateToNextChange(ctx core.Context) (*State, tea.Cmd) {
 		s.CurrentBlockIdx = nextChangeIdx
 		s.ViewportStart = s.getBlockStartPosition(nextChangeIdx)
 		maxViewport := s.calculateMaxViewportStart(height)
-		if s.ViewportStart > maxViewport {
+		// Only clamp if there's actually content that extends beyond the viewport.
+		// When maxViewport is 0, all content fits on screen, so any position is valid.
+		if maxViewport > 0 && s.ViewportStart > maxViewport {
 			s.ViewportStart = maxViewport
 		}
 		return s, nil
