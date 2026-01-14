@@ -386,7 +386,90 @@ All 10 tests pass with 7 golden files:
 - `internal/ui/states/files/update.go` (current navigation handlers)
 - `internal/domain/tree/` (all tree functions from Steps 1-4)
 
-**Status:** Pending
+**Status:** ✅ Complete
+
+**Implementation:**
+- Modified `internal/ui/states/files/state.go`:
+  - Added `Root tree.TreeNode` field to store tree structure
+  - Added `VisibleItems []tree.VisibleTreeItem` field for cursor navigation
+  - Updated `New()` constructor to build tree pipeline:
+    1. `BuildTree(files)` - construct hierarchy
+    2. `CollapsePaths(root)` - merge single-child folders
+    3. `ApplyStats(root)` - compute folder statistics
+    4. `FlattenVisible(root)` - generate navigation list
+  - All folders start expanded (`isExpanded = true`)
+  - Preserved original `Files` field for backward compatibility
+
+- Created `internal/domain/tree/copy.go` with deep copy functionality:
+  - `DeepCopy(node TreeNode) TreeNode` - recursively copies entire tree
+  - Handles both FolderNode and FileNode via sum type pattern
+  - Creates new instances while preserving FileChange pointers (immutable data)
+  - Required for immutable state updates on toggle
+
+- Modified `internal/ui/states/files/update.go`:
+  - Updated Enter key handler to distinguish folders vs files:
+    - Folders: call `toggleFolder()` to expand/collapse
+    - Files: load diff (existing behavior)
+  - Added Space key handler: same as Enter on folders (no-op on files)
+  - Added Right arrow handler: expand folder only (no-op if already expanded)
+  - Added Left arrow handler: collapse folder only (no-op if already collapsed)
+  - Updated navigation handlers (j/k/g/G) to use `VisibleItems` instead of `Files`
+  - Added `toggleFolder()` helper function:
+    1. Deep copy tree for immutability
+    2. Find folder in copied tree by name + depth
+    3. Toggle `isExpanded` state (or force expand/collapse based on params)
+    4. Re-compute stats if collapsing
+    5. Re-flatten to update visible items
+    6. Adjust cursor if needed (bounds checking)
+    7. Return new state
+  - Added `findFolderInTree()` helper to locate folder in copied tree
+  - Added `toggleFolderNode()` helper to toggle expanded state
+
+- Added `SetExpanded(bool)` method to `tree.FolderNode` (in `tree.go`):
+  - Allows external code to modify folder expansion state
+  - Used by toggle functionality
+
+**Tests:**
+All unit tests pass (41 tests):
+- State construction tests (6 tests in `state_test.go`):
+  - `TestNew_BuildsTreeStructure`: Verifies tree created with root and children
+  - `TestNew_PopulatesVisibleItems`: Ensures visible items list is populated
+  - `TestNew_AllFoldersStartExpanded`: Confirms all folders start expanded
+  - `TestNew_PreservesOriginalFiles`: Verifies Files field unchanged
+  - `TestNew_InitializesCursorAndViewport`: Checks cursor/viewport initialization
+  - `TestNew_EmptyFileList`: Handles empty file list gracefully
+
+- Toggle tests (7 tests in `update_test.go`):
+  - `TestFilesState_Update_EnterOnFolder_TogglesExpanded`: Enter toggles folder state
+  - `TestFilesState_Update_SpaceOnFolder_TogglesExpanded`: Space toggles folder
+  - `TestFilesState_Update_RightArrowOnFolder_ExpandsOnly`: Right only expands (no-op if expanded)
+  - `TestFilesState_Update_LeftArrowOnFolder_CollapsesOnly`: Left only collapses (no-op if collapsed)
+  - `TestFilesState_Update_EnterOnFile_OpensFileDiff`: Enter on file opens diff
+  - `TestFilesState_Update_TogglePreservesCursorPosition`: Cursor remains valid after toggle
+  - `TestFilesState_Update_ArrowKeysOnFile_NoToggle`: Arrow keys on files are no-ops
+
+- Deep copy tests (5 tests in `copy_test.go`):
+  - `TestDeepCopy_FileNode`: File node copied correctly
+  - `TestDeepCopy_FolderNode_Empty`: Empty folder copied
+  - `TestDeepCopy_FolderNode_WithChildren`: Children copied recursively
+  - `TestDeepCopy_NestedFolders`: Deep nesting preserved
+  - `TestDeepCopy_Independence`: Modifications don't affect original
+
+- Updated existing navigation tests (28 tests):
+  - Modified to use `New()` constructor instead of direct `State{}` initialization
+  - Updated expectations to work with tree structure (VisibleItems instead of Files)
+  - All navigation tests pass with new tree-based state
+
+**Commit:** a5a84e1
+
+**Implementation decisions:**
+- Immutable state updates: Deep copy tree before modifying (matches BubbleTea patterns)
+- Cursor preservation: Adjusts cursor position if it exceeds new visible items length
+- Find-by-identity: Locate folder in copied tree by name + depth (assumes unique at each depth)
+- Re-compute stats on collapse: Ensures folder stats are up-to-date after hiding children
+- Navigation uses VisibleItems: Cursor now indexes into flattened list, not original Files array
+- Preserved Files field: Maintains backward compatibility with existing code that uses Files directly
+- E2E test failures expected: View rendering not yet updated (Step 8), so e2e tests fail on visual output
 
 ---
 
@@ -412,7 +495,68 @@ All 10 tests pass with 7 golden files:
 - `internal/ui/states/files/view.go` (current rendering)
 - `internal/ui/components/tree_section.go` (from Step 6)
 
-**Status:** Pending
+**Status:** ✅ Complete
+
+**Implementation:**
+- Modified `internal/ui/states/files/view.go`:
+  - Replaced `components.FileSection()` call with `components.TreeSection()`
+  - Pass `s.VisibleItems` instead of `s.Files` to render tree structure
+  - Pass `s.Cursor` directly (not as pointer) to match TreeSection signature
+  - Updated all variable names and comments from "file" to "tree" for clarity
+  - Viewport logic unchanged (still handles header + visible items windowing)
+
+- Modified `internal/ui/states/files/view_test.go`:
+  - Updated all tests to use `New()` constructor instead of direct `State{}` initialization
+  - Added `Status` field to all FileChange test data (required by tree building)
+  - Modified cursor setting to update field after construction: `s.Cursor = tt.cursor`
+  - All test structure unchanged, only constructor and data setup modified
+
+- Fixed bug in `internal/domain/tree/flatten.go`:
+  - Changed `childParentLines[len(parentLines)] = isLastChild` to `!isLastChild`
+  - ParentLines semantics: `true` means "draw │" (ancestor has more siblings)
+  - Original implementation was inverted, causing incorrect tree rendering
+  - Added clarifying comments explaining ParentLines semantics
+
+- Updated `internal/domain/tree/flatten_test.go`:
+  - Fixed test expectations to match corrected ParentLines semantics
+  - Updated comments to explain why each test expects specific values
+  - All tests now validate correct box-drawing character logic
+
+- Regenerated all golden files:
+  - Files state golden files (13 files): Show tree structure with proper indentation
+  - E2E golden files (16 files): Updated to reflect tree rendering in integration tests
+  - All files now display hierarchical structure with ├──, └──, and │ characters
+
+**Tests:**
+All tests pass:
+- Unit tests: `go test ./internal/ui/states/files/...` (14 tests)
+- Tree tests: `go test ./internal/domain/tree/...` (30 tests)
+- Full suite: `go test ./...` (all packages)
+- E2E tests: `go test ./test/e2e/...` (4 tests)
+
+**Commit:** 5ae7538
+
+**Implementation decisions:**
+- TDD approach: Updated tests first, then implementation, then golden files
+- Bug discovered and fixed: Parent line calculation was inverted in flatten.go
+- Existing viewport logic preserved: No changes to scrolling or navigation
+- Golden files manually reviewed: Verified tree structure renders correctly
+- Files at root level show as direct children (no fake root folder displayed)
+- Collapsed paths appear as single nodes with combined names (e.g., "internal/ui/state/files/very/deeply/nested")
+
+**Visual verification:**
+Tree rendering now displays:
+```
+3 files · +168 -13
+→└── internal
+    ├── git
+    │   └── A +120 -0  git.go
+    └── ui
+        ├── M +45 -12  app.go
+        └── M +3 -1  model.go
+```
+
+This matches the design specification for tree view rendering with proper box-drawing characters and indentation.
 
 ---
 
