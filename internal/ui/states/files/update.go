@@ -51,7 +51,7 @@ func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 				switch node := cursorNode.(type) {
 				case *tree.FolderNode:
 					// Toggle folder (collapse/expand)
-					return toggleFolder(s, false, false)
+					return toggleFolder(s, false, false, ctx)
 				case *tree.FileNode:
 					// Load diff for file
 					return s, s.loadDiff(*node.File(), ctx.FetchFullFileDiff())
@@ -64,7 +64,7 @@ func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 			if s.Cursor < len(s.VisibleItems) {
 				cursorNode := s.VisibleItems[s.Cursor].Node
 				if _, ok := cursorNode.(*tree.FolderNode); ok {
-					return toggleFolder(s, false, false)
+					return toggleFolder(s, false, false, ctx)
 				}
 			}
 			return s, nil
@@ -74,7 +74,7 @@ func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 			if s.Cursor < len(s.VisibleItems) {
 				cursorNode := s.VisibleItems[s.Cursor].Node
 				if _, ok := cursorNode.(*tree.FolderNode); ok {
-					return toggleFolder(s, true, false)
+					return toggleFolder(s, true, false, ctx)
 				}
 			}
 			return s, nil
@@ -84,7 +84,7 @@ func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 			if s.Cursor < len(s.VisibleItems) {
 				cursorNode := s.VisibleItems[s.Cursor].Node
 				if _, ok := cursorNode.(*tree.FolderNode); ok {
-					return toggleFolder(s, false, true)
+					return toggleFolder(s, false, true, ctx)
 				}
 			}
 			return s, nil
@@ -214,9 +214,10 @@ func fetchFileDiffForSource(source core.DiffSource, file core.FileChange, fetchF
 // Parameters:
 // - expandOnly: if true, only expand (don't collapse already expanded folders)
 // - collapseOnly: if true, only collapse (don't expand already collapsed folders)
+// - ctx: core.Context for accessing screen dimensions
 //
 // Returns a new state with the updated tree and cursor position preserved.
-func toggleFolder(s *State, expandOnly bool, collapseOnly bool) (*State, tea.Cmd) {
+func toggleFolder(s *State, expandOnly bool, collapseOnly bool, ctx core.Context) (*State, tea.Cmd) {
 	if s.Cursor >= len(s.VisibleItems) {
 		return s, nil
 	}
@@ -277,7 +278,7 @@ func toggleFolder(s *State, expandOnly bool, collapseOnly bool) (*State, tea.Cmd
 	}
 
 	// Adjust viewport if needed
-	newState.updateViewport(0) // Height will be updated by caller context
+	newState.updateViewport(ctx.Height())
 
 	return newState, nil
 }
