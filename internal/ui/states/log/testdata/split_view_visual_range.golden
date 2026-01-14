@@ -1,8 +1,8 @@
-▌ ├ [1;38;5;220mabc123[0m [1;38;5;231mThird commit[0m - [1;38;5;51mAlice[0m [1;38;5;250m11 months ago[0m                                 │ [38;5;214mghi789..abc123 (3 commits)[0m                                                      
-▌ ├ [1;38;5;220mdef456[0m [1;38;5;231mSecond commit[0m - [1;38;5;51mBob[0m [1;38;5;250m11 months ago[0m                                  │                                                                                 
-█ ├ [1;38;5;220mghi789[0m [1;38;5;231mFirst commit[0m - [1;38;5;51mCharlie[0m [1;38;5;250m11 months ago[0m                               │ [38;5;248m2 files[0m[38;5;248m · [0m[38;5;46m+30[0m[38;5;248m [0m[38;5;196m-5[0m                                                                
-                                                                              │ [38;5;214mM[0m[38;5;46m +10[0m[38;5;196m -5[0m[38;5;252m  src/main.go[0m                                                           
-                                                                              │ [38;5;46mA[0m[38;5;46m +20[0m[38;5;196m -0[0m[38;5;252m  README.md[0m                                                             
+▌ ├ abc123 Third commit - Alice 11 months ago                                 │ ghi789..abc123 (3 commits)                                                      
+▌ ├ def456 Second commit - Bob 11 months ago                                  │                                                                                 
+█ ├ ghi789 First commit - Charlie 11 months ago                               │ 2 files · +30 -5                                                                
+                                                                              │ M +10 -5  src/main.go                                                           
+                                                                              │ A +20 -0  README.md                                                             
                                                                               │                                                                                 
                                                                               │                                                                                 
                                                                               │                                                                                 
