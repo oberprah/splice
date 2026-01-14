@@ -47,7 +47,35 @@ func (f *FolderNode) isTreeNode()     {}
 func (f *FolderNode) GetName() string { return f.name }
 func (f *FolderNode) GetDepth() int   { return f.depth }
 
+// Getters for FolderNode fields (needed for UI formatting)
+func (f *FolderNode) IsExpanded() bool     { return f.isExpanded }
+func (f *FolderNode) Stats() FolderStats   { return f.stats }
+func (f *FolderNode) Children() []TreeNode { return f.children }
+
 // Implement TreeNode interface for FileNode
 func (f *FileNode) isTreeNode()     {}
 func (f *FileNode) GetName() string { return f.name }
 func (f *FileNode) GetDepth() int   { return f.depth }
+
+// Getter for FileNode file data (needed for UI formatting)
+func (f *FileNode) File() *core.FileChange { return f.file }
+
+// NewFolderNode creates a new FolderNode (for testing).
+func NewFolderNode(name string, depth int, isExpanded bool, stats FolderStats) *FolderNode {
+	return &FolderNode{
+		name:       name,
+		depth:      depth,
+		children:   []TreeNode{},
+		isExpanded: isExpanded,
+		stats:      stats,
+	}
+}
+
+// NewFileNode creates a new FileNode (for testing).
+func NewFileNode(name string, depth int, file *core.FileChange) *FileNode {
+	return &FileNode{
+		name:  name,
+		depth: depth,
+		file:  file,
+	}
+}
