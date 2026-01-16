@@ -6,7 +6,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SANDBOX_DIR="$(dirname "$SCRIPT_DIR")"
 PROJECT_ROOT="$(dirname "$SANDBOX_DIR")"
-CLUSTER_NAME="splice-sandbox"
+CLUSTER_NAME="sandbox-$(basename "$PROJECT_ROOT")"
 
 # Require API token from environment
 require_token() {
