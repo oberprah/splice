@@ -17,6 +17,7 @@ coverage.out
 # Sandbox agent persistent data
 .sandbox-agent-data/
 
-# Sandbox generated files
+# Sandbox local config (user-created from templates)
 sandbox/kind-config-resolved.yaml
 sandbox/docker/proxy/envoy.yaml
+sandbox/secrets.env

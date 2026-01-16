@@ -8,15 +8,59 @@ SANDBOX_DIR="$(dirname "$SCRIPT_DIR")"
 PROJECT_ROOT="$(dirname "$SANDBOX_DIR")"
 CLUSTER_NAME="sandbox-$(basename "$PROJECT_ROOT")"
 
-# Proxy configuration with defaults
-: "${PROXY_HOST:=taia.tngtech.com}"
-: "${PROXY_ANTHROPIC_PREFIX:=/proxy/anthropic/}"
-: "${PROXY_OPENAI_PREFIX:=/proxy/openai/}"
-export PROXY_HOST PROXY_ANTHROPIC_PREFIX PROXY_OPENAI_PREFIX
+# Check required local config files exist
+check_local_config() {
+    local missing=0
 
-# Require API token from environment
-require_token() {
-    : "${AGENT_SANDBOX_TOKEN:?Set AGENT_SANDBOX_TOKEN environment variable}"
+    if [ ! -f "$SANDBOX_DIR/docker/proxy/envoy.yaml" ]; then
+        echo "Error: sandbox/docker/proxy/envoy.yaml not found"
+        echo "  Copy from template: cp sandbox/docker/proxy/envoy.yaml.template sandbox/docker/proxy/envoy.yaml"
+        echo "  Then edit with your proxy settings"
+        missing=1
+    fi
+
+    if [ ! -f "$SANDBOX_DIR/secrets.env" ]; then
+        echo "Error: sandbox/secrets.env not found"
+        echo "  Copy from template: cp sandbox/secrets.env.example sandbox/secrets.env"
+        echo "  Then edit with the env var names your envoy.yaml uses"
+        missing=1
+    fi
+
+    if [ "$missing" -eq 1 ]; then
+        exit 1
+    fi
+}
+
+# Create Kubernetes secret from env vars listed in secrets.env
+create_secrets() {
+    local args=""
+    local missing=0
+
+    while IFS= read -r line || [ -n "$line" ]; do
+        # Skip comments and empty lines
+        [[ "$line" =~ ^#.*$ || -z "$line" ]] && continue
+
+        var=$(echo "$line" | xargs)  # trim whitespace
+        value="${!var}"
+
+        if [ -z "$value" ]; then
+            echo "Error: Environment variable $var is not set"
+            missing=1
+        else
+            args="$args --from-literal=$var=$value"
+        fi
+    done < "$SANDBOX_DIR/secrets.env"
+
+    if [ "$missing" -eq 1 ]; then
+        echo ""
+        echo "Set the required environment variables and try again"
+        exit 1
+    fi
+
+    kubectl create secret generic api-credentials \
+        $args \
+        --namespace=agent-env \
+        --dry-run=client -o yaml | kubectl apply -f -
 }
 
 # Check if cluster exists
@@ -50,10 +94,7 @@ create_cluster() {
 
 # Build images and deploy to existing cluster
 build_and_deploy() {
-    require_token
-
-    echo "-> Generating proxy config..."
-    envsubst < "$SANDBOX_DIR/docker/proxy/envoy.yaml.template" > "$SANDBOX_DIR/docker/proxy/envoy.yaml"
+    check_local_config
 
     echo "-> Building images..."
     docker build -q -t claude-agent:local "$SANDBOX_DIR/docker/agent/"
@@ -66,11 +107,8 @@ build_and_deploy() {
     echo "-> Applying Kubernetes manifests..."
     kubectl apply -f "$SANDBOX_DIR/k8s/namespace.yaml"
 
-    # Create secret from env var (never stored in git)
-    kubectl create secret generic api-credentials \
-        --from-literal=AGENT_SANDBOX_TOKEN="$AGENT_SANDBOX_TOKEN" \
-        --namespace=agent-env \
-        --dry-run=client -o yaml | kubectl apply -f -
+    echo "-> Creating secrets..."
+    create_secrets
 
     kubectl apply -f "$SANDBOX_DIR/k8s/network-policy.yaml"
 

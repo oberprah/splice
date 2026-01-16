@@ -13,8 +13,8 @@ This document describes the security architecture for running Claude Code in an 
 |  |  |  agent-env namespace                   |   |  |
 |  |  |  +-----------+      +---------------+  |   |  |
 |  |  |  | claude-   | ---- |  api-proxy    |  |   |  |
-|  |  |  | agent     |:8080 |  (envoy)      |------------> PROXY_HOST
-|  |  |  |           |:8081 |               |    (configurable)
+|  |  |  | agent     |:8080 |  (envoy)      |------------> configured upstream
+|  |  |  |           |:8081 |               |    (via envoy.yaml)
 |  |  |  +-----------+      +---------------+  |   |  |
 |  |  +----------------------------------------+   |  |
 |  +-----------------------------------------------+  |
@@ -37,7 +37,7 @@ All other egress is blocked. The agent cannot:
 
 All API traffic flows through the Envoy proxy which:
 - Injects authentication credentials (agent never sees real tokens)
-- Routes to configurable upstream (default: taia.tngtech.com)
+- Routes to upstream configured in `envoy.yaml`
 - Logs all requests for audit
 
 ### Layer 3: Container Hardening

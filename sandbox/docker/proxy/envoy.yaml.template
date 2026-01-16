@@ -1,5 +1,12 @@
+# Envoy proxy configuration for API routing and credential injection.
+# Copy this file to envoy.yaml and customize for your setup.
+#
+# This template shows direct API configuration. For corporate proxies,
+# adjust the cluster addresses, route prefixes, and auth headers as needed.
+
 static_resources:
   listeners:
+    # Anthropic API listener (port 8080)
     - name: anthropic_listener
       address:
         socket_address:
@@ -24,20 +31,21 @@ static_resources:
                         - match:
                             prefix: "/"
                           route:
-                            cluster: upstream_api
-                            prefix_rewrite: "${PROXY_ANTHROPIC_PREFIX}"
-                            host_rewrite_literal: ${PROXY_HOST}
+                            cluster: anthropic_api
+                            host_rewrite_literal: api.anthropic.com
                             timeout: 300s
                           request_headers_to_add:
+                            # Direct Anthropic API uses x-api-key header
                             - header:
-                                key: "Authorization"
-                                value: "Bearer %ENVIRONMENT(AGENT_SANDBOX_TOKEN)%"
+                                key: "x-api-key"
+                                value: "%ENVIRONMENT(ANTHROPIC_API_KEY)%"
                               append_action: OVERWRITE_IF_EXISTS_OR_ADD
                 http_filters:
                   - name: envoy.filters.http.router
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
 
+    # OpenAI API listener (port 8081)
     - name: openai_listener
       address:
         socket_address:
@@ -62,14 +70,14 @@ static_resources:
                         - match:
                             prefix: "/"
                           route:
-                            cluster: upstream_api
-                            prefix_rewrite: "${PROXY_OPENAI_PREFIX}"
-                            host_rewrite_literal: ${PROXY_HOST}
+                            cluster: openai_api
+                            host_rewrite_literal: api.openai.com
                             timeout: 300s
                           request_headers_to_add:
+                            # OpenAI API uses Bearer token
                             - header:
                                 key: "Authorization"
-                                value: "Bearer %ENVIRONMENT(AGENT_SANDBOX_TOKEN)%"
+                                value: "Bearer %ENVIRONMENT(OPENAI_API_KEY)%"
                               append_action: OVERWRITE_IF_EXISTS_OR_ADD
                 http_filters:
                   - name: envoy.filters.http.router
@@ -77,23 +85,43 @@ static_resources:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
 
   clusters:
-    - name: upstream_api
+    - name: anthropic_api
       type: STRICT_DNS
+      dns_lookup_family: V4_ONLY
       lb_policy: ROUND_ROBIN
       load_assignment:
-        cluster_name: upstream_api
+        cluster_name: anthropic_api
         endpoints:
           - lb_endpoints:
               - endpoint:
                   address:
                     socket_address:
-                      address: ${PROXY_HOST}
+                      address: api.anthropic.com
                       port_value: 443
       transport_socket:
         name: envoy.transport_sockets.tls
         typed_config:
           "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
-          sni: ${PROXY_HOST}
+          sni: api.anthropic.com
+
+    - name: openai_api
+      type: STRICT_DNS
+      dns_lookup_family: V4_ONLY
+      lb_policy: ROUND_ROBIN
+      load_assignment:
+        cluster_name: openai_api
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: api.openai.com
+                      port_value: 443
+      transport_socket:
+        name: envoy.transport_sockets.tls
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
+          sni: api.openai.com
 
 admin:
   address:

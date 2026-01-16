@@ -30,11 +30,33 @@ Defense-in-depth strategy against prompt injection and container breakout:
 - Kubernetes runs inside Docker container
 - Escape requires breaking out of pod AND kind container
 
+## Setup
+
+**1. Create local config files from templates:**
+
+```bash
+cp sandbox/docker/proxy/envoy.yaml.template sandbox/docker/proxy/envoy.yaml
+cp sandbox/secrets.env.example sandbox/secrets.env
+```
+
+**2. Edit `envoy.yaml` with your proxy settings:**
+
+The template is configured for direct API access. For corporate proxies, adjust the cluster addresses, route prefixes, and auth headers.
+
+**3. Edit `secrets.env` with the env var names your `envoy.yaml` uses:**
+
+The variable names must match the `%ENVIRONMENT(VAR_NAME)%` placeholders in your `envoy.yaml`.
+
+**4. Set the environment variables in your shell:**
+
+```bash
+export ANTHROPIC_API_KEY="sk-..."
+export OPENAI_API_KEY="sk-..."
+```
+
 ## Usage
 
 ```bash
-export AGENT_SANDBOX_TOKEN="your-api-key"
-
 ./sandbox/scripts/sandbox.sh           # Start Claude Code in sandbox
 ./sandbox/scripts/sandbox.sh codex     # Start Codex CLI in sandbox
 ./sandbox/scripts/sandbox.sh shell     # Open bash shell for debugging
@@ -42,16 +64,6 @@ export AGENT_SANDBOX_TOKEN="your-api-key"
 ./sandbox/scripts/sandbox.sh down      # Remove cluster completely
 ./sandbox/scripts/sandbox.sh status    # Check sandbox status
 ```
-
-## Configuration
-
-The API proxy can be configured via environment variables:
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PROXY_HOST` | `taia.tngtech.com` | Upstream API host |
-| `PROXY_ANTHROPIC_PREFIX` | `/proxy/anthropic/` | Path prefix for Anthropic API |
-| `PROXY_OPENAI_PREFIX` | `/proxy/openai/` | Path prefix for OpenAI API |
 
 ## Architecture
 
@@ -64,7 +76,7 @@ Kind (Docker container running Kubernetes)
   v
 agent-env namespace
   +-- claude-agent pod (Claude Code + Codex CLI + Go toolchain, no internet)
-  +-- api-proxy pod (Envoy, injects credentials, routes to Anthropic/OpenAI APIs)
+  +-- api-proxy pod (Envoy, injects credentials, routes to configured API)
 ```
 
 ## Project Structure
@@ -73,12 +85,13 @@ agent-env namespace
 sandbox/
 +-- docker/
 |   +-- agent/
-|   |   +-- Dockerfile        # Go toolchain + Claude Code + Codex CLI
-|   |   +-- claude.json       # Pre-configured Claude settings
-|   |   +-- codex-config.toml # Pre-configured Codex settings
+|   |   +-- Dockerfile            # Go toolchain + Claude Code + Codex CLI
+|   |   +-- claude.json           # Pre-configured Claude settings
+|   |   +-- codex-config.toml     # Pre-configured Codex settings
 |   +-- proxy/
 |       +-- Dockerfile            # Envoy proxy
-|       +-- envoy.yaml.template   # API routing config (templated)
+|       +-- envoy.yaml.template   # API routing config template
+|       +-- envoy.yaml            # Your local config (gitignored)
 +-- k8s/
 |   +-- namespace.yaml
 |   +-- agent-pod.yaml
@@ -86,9 +99,9 @@ sandbox/
 |   +-- proxy-service.yaml
 |   +-- network-policy.yaml
 +-- scripts/
-|   +-- sandbox.sh          # Start, stop, shell commands
-+-- kind-config.yaml        # Kind cluster configuration
-+-- SECURITY.md             # Threat model and isolation layers
+|   +-- sandbox.sh                # Start, stop, shell commands
++-- secrets.env.example           # Template for secret var names
++-- secrets.env                   # Your local config (gitignored)
++-- kind-config.yaml              # Kind cluster configuration
++-- SECURITY.md                   # Threat model and isolation layers
 ```
-
-Agent state persists in the project directory across container restarts.
