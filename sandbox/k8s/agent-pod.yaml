@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: claude-agent
+  namespace: agent-env
+  labels:
+    app: claude-agent
+spec:
+  automountServiceAccountToken: false
+  containers:
+    - name: agent
+      image: claude-agent:local
+      stdin: true
+      tty: true
+      workingDir: /workspace
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+        seccompProfile:
+          type: RuntimeDefault
+      env:
+        # Enable true colors for nicer UI
+        - name: COLORTERM
+          value: "truecolor"
+        - name: TERM
+          value: "xterm-256color"
+        # Claude Code: Route API calls through internal proxy
+        - name: ANTHROPIC_BASE_URL
+          value: "http://api-proxy:8080/"
+        - name: CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+          value: "1"
+        # Dummy token to skip login prompt (proxy injects real token)
+        - name: ANTHROPIC_AUTH_TOKEN
+          value: "dummy-token-proxy-handles-auth"
+        # Codex CLI: Dummy token (proxy injects real token)
+        - name: OPENAI_API_KEY
+          value: "dummy-token-proxy-handles-auth"
+      resources:
+        limits:
+          memory: "4Gi"
+          cpu: "2"
+      volumeMounts:
+        - name: project
+          mountPath: /workspace
+  volumes:
+    - name: project
+      hostPath:
+        path: /mnt/project
+        type: Directory

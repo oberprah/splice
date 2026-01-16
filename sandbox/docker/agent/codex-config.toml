@@ -1,0 +1,17 @@
+# Codex CLI configuration for sandbox environment
+# Routes API calls through internal proxy which injects real credentials
+
+model_provider = "openai_via_proxy"
+
+# Full-auto mode: skip all approvals and sandbox restrictions
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+
+[features]
+web_search_request = true
+
+[model_providers.openai_via_proxy]
+name = "OpenAI via Proxy"
+wire_api = "responses"
+base_url = "http://api-proxy:8081/v1"
+env_key = "OPENAI_API_KEY"

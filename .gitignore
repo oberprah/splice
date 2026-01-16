@@ -16,3 +16,6 @@ coverage.out
 
 # Sandbox agent persistent data
 .sandbox-agent-data/
+
+# Sandbox generated files
+sandbox/kind-config-resolved.yaml
