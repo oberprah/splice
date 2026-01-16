@@ -39,19 +39,14 @@ cp sandbox/docker/proxy/envoy.yaml.template sandbox/docker/proxy/envoy.yaml
 cp sandbox/secrets.env.example sandbox/secrets.env
 ```
 
-**2. Edit `envoy.yaml` with your proxy settings:**
+**2. Edit the files if needed:**
 
-The template is configured for direct API access. For corporate proxies, adjust the cluster addresses, route prefixes, and auth headers.
+The templates are configured for taia.tngtech.com. For other setups, adjust `envoy.yaml` (cluster addresses, route prefixes, auth headers) and `secrets.env` (env var names matching your `envoy.yaml`).
 
-**3. Edit `secrets.env` with the env var names your `envoy.yaml` uses:**
-
-The variable names must match the `%ENVIRONMENT(VAR_NAME)%` placeholders in your `envoy.yaml`.
-
-**4. Set the environment variables in your shell:**
+**3. Set the environment variable in your shell:**
 
 ```bash
-export ANTHROPIC_API_KEY="sk-..."
-export OPENAI_API_KEY="sk-..."
+export AGENT_SANDBOX_TOKEN="tngai_..."
 ```
 
 ## Usage
