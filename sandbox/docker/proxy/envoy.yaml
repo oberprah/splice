@@ -77,6 +77,7 @@ static_resources:
   clusters:
     - name: anthropic_api
       type: STRICT_DNS
+      dns_lookup_family: V4_ONLY
       lb_policy: ROUND_ROBIN
       load_assignment:
         cluster_name: anthropic_api
@@ -95,6 +96,7 @@ static_resources:
 
     - name: openai_api
       type: STRICT_DNS
+      dns_lookup_family: V4_ONLY
       lb_policy: ROUND_ROBIN
       load_assignment:
         cluster_name: openai_api

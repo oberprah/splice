@@ -25,6 +25,9 @@ ENV GOPATH="/home/agent/go"
 ENV HOME="/home/agent"
 ENV TERM="xterm-256color"
 
+# Mark /workspace as safe for git (volume has different ownership)
+RUN git config --global --add safe.directory /workspace
+
 # Pre-configure Claude Code (skip onboarding)
 COPY --chown=agent:agent claude.json /home/agent/.claude.json
 
