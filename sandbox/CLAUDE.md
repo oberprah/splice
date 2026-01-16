@@ -43,6 +43,16 @@ export AGENT_SANDBOX_TOKEN="your-api-key"
 ./sandbox/scripts/sandbox.sh status    # Check sandbox status
 ```
 
+## Configuration
+
+The API proxy can be configured via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PROXY_HOST` | `taia.tngtech.com` | Upstream API host |
+| `PROXY_ANTHROPIC_PREFIX` | `/proxy/anthropic/` | Path prefix for Anthropic API |
+| `PROXY_OPENAI_PREFIX` | `/proxy/openai/` | Path prefix for OpenAI API |
+
 ## Architecture
 
 ```
@@ -67,8 +77,8 @@ sandbox/
 |   |   +-- claude.json       # Pre-configured Claude settings
 |   |   +-- codex-config.toml # Pre-configured Codex settings
 |   +-- proxy/
-|       +-- Dockerfile        # Envoy proxy
-|       +-- envoy.yaml        # API routing and credential injection
+|       +-- Dockerfile            # Envoy proxy
+|       +-- envoy.yaml.template   # API routing config (templated)
 +-- k8s/
 |   +-- namespace.yaml
 |   +-- agent-pod.yaml

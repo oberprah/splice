@@ -19,3 +19,4 @@ coverage.out
 
 # Sandbox generated files
 sandbox/kind-config-resolved.yaml
+sandbox/docker/proxy/envoy.yaml

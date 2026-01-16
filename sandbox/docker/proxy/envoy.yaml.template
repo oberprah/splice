@@ -24,9 +24,9 @@ static_resources:
                         - match:
                             prefix: "/"
                           route:
-                            cluster: taia_api
-                            prefix_rewrite: "/proxy/anthropic/"
-                            host_rewrite_literal: taia.tngtech.com
+                            cluster: upstream_api
+                            prefix_rewrite: "${PROXY_ANTHROPIC_PREFIX}"
+                            host_rewrite_literal: ${PROXY_HOST}
                             timeout: 300s
                           request_headers_to_add:
                             - header:
@@ -62,9 +62,9 @@ static_resources:
                         - match:
                             prefix: "/"
                           route:
-                            cluster: taia_api
-                            prefix_rewrite: "/proxy/openai/"
-                            host_rewrite_literal: taia.tngtech.com
+                            cluster: upstream_api
+                            prefix_rewrite: "${PROXY_OPENAI_PREFIX}"
+                            host_rewrite_literal: ${PROXY_HOST}
                             timeout: 300s
                           request_headers_to_add:
                             - header:
@@ -77,23 +77,23 @@ static_resources:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
 
   clusters:
-    - name: taia_api
+    - name: upstream_api
       type: STRICT_DNS
       lb_policy: ROUND_ROBIN
       load_assignment:
-        cluster_name: taia_api
+        cluster_name: upstream_api
         endpoints:
           - lb_endpoints:
               - endpoint:
                   address:
                     socket_address:
-                      address: taia.tngtech.com
+                      address: ${PROXY_HOST}
                       port_value: 443
       transport_socket:
         name: envoy.transport_sockets.tls
         typed_config:
           "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
-          sni: taia.tngtech.com
+          sni: ${PROXY_HOST}
 
 admin:
   address:

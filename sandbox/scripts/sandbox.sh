@@ -8,6 +8,12 @@ SANDBOX_DIR="$(dirname "$SCRIPT_DIR")"
 PROJECT_ROOT="$(dirname "$SANDBOX_DIR")"
 CLUSTER_NAME="sandbox-$(basename "$PROJECT_ROOT")"
 
+# Proxy configuration with defaults
+: "${PROXY_HOST:=taia.tngtech.com}"
+: "${PROXY_ANTHROPIC_PREFIX:=/proxy/anthropic/}"
+: "${PROXY_OPENAI_PREFIX:=/proxy/openai/}"
+export PROXY_HOST PROXY_ANTHROPIC_PREFIX PROXY_OPENAI_PREFIX
+
 # Require API token from environment
 require_token() {
     : "${AGENT_SANDBOX_TOKEN:?Set AGENT_SANDBOX_TOKEN environment variable}"
@@ -45,6 +51,9 @@ create_cluster() {
 # Build images and deploy to existing cluster
 build_and_deploy() {
     require_token
+
+    echo "-> Generating proxy config..."
+    envsubst < "$SANDBOX_DIR/docker/proxy/envoy.yaml.template" > "$SANDBOX_DIR/docker/proxy/envoy.yaml"
 
     echo "-> Building images..."
     docker build -q -t claude-agent:local "$SANDBOX_DIR/docker/agent/"
