@@ -34,8 +34,9 @@ ENV PATH="/usr/local/go/bin:${PATH}"
 # Install Codex CLI globally (as root)
 RUN npm install -g @openai/codex
 
-# Create non-root user
-RUN useradd -m -u 1000 agent
+# Create non-root user (delete existing UID 1000 user if present)
+RUN userdel -r $(getent passwd 1000 | cut -d: -f1) 2>/dev/null || true && \
+    useradd -m -u 1000 agent
 
 # Install Claude Code as agent user
 USER agent
