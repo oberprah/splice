@@ -1,42 +1,21 @@
 # Claude Code Sandbox Agent
-# Go toolchain + Claude Code CLI in isolated environment
+# Go toolchain + Claude Code CLI + Codex CLI in isolated environment
 
-FROM ubuntu:24.04
+FROM golang:1.25.2-bookworm
 
 # Avoid interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install base dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    ca-certificates \
-    git \
-    gnupg \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Node.js 22.x (required for Claude Code CLI)
+# Install Node.js 22.x (required for Claude Code and Codex CLI)
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Go (detect architecture)
-ARG GO_VERSION=1.25.2
-RUN ARCH=$(dpkg --print-architecture) && \
-    case "$ARCH" in \
-        amd64) GOARCH=amd64 ;; \
-        arm64) GOARCH=arm64 ;; \
-        *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
-    esac && \
-    curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${GOARCH}.tar.gz" | tar -C /usr/local -xzf -
-
-ENV PATH="/usr/local/go/bin:${PATH}"
-
 # Install Codex CLI globally (as root)
 RUN npm install -g @openai/codex
 
-# Create non-root user (delete existing UID 1000 user if present)
-RUN userdel -r $(getent passwd 1000 | cut -d: -f1) 2>/dev/null || true && \
-    useradd -m -u 1000 agent
+# Create non-root user
+RUN useradd -m -u 1000 agent
 
 # Install Claude Code as agent user
 USER agent
