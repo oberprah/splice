@@ -98,5 +98,4 @@ sandbox/
 +-- secrets.env.example           # Template for secret var names
 +-- secrets.env                   # Your local config (gitignored)
 +-- kind-config.yaml              # Kind cluster configuration
-+-- SECURITY.md                   # Threat model and isolation layers
 ```
