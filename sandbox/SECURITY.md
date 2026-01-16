@@ -13,8 +13,8 @@ This document describes the security architecture for running Claude Code in an 
 |  |  |  agent-env namespace                   |   |  |
 |  |  |  +-----------+      +---------------+  |   |  |
 |  |  |  | claude-   | ---- |  api-proxy    |  |   |  |
-|  |  |  | agent     |:8080 |  (envoy)      |------------> api.anthropic.com
-|  |  |  |           |:8081 |               |------------> api.openai.com
+|  |  |  | agent     |:8080 |  (envoy)      |------------> taia.tngtech.com
+|  |  |  |           |:8081 |               |
 |  |  |  +-----------+      +---------------+  |   |  |
 |  |  +----------------------------------------+   |  |
 |  +-----------------------------------------------+  |
@@ -37,7 +37,7 @@ All other egress is blocked. The agent cannot:
 
 All API traffic flows through the Envoy proxy which:
 - Injects authentication credentials (agent never sees real tokens)
-- Routes to api.anthropic.com (port 8080) and api.openai.com (port 8081)
+- Routes to taia.tngtech.com (corporate API proxy)
 - Logs all requests for audit
 
 ### Layer 3: Container Hardening

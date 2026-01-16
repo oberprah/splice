@@ -24,13 +24,14 @@ static_resources:
                         - match:
                             prefix: "/"
                           route:
-                            cluster: anthropic_api
-                            host_rewrite_literal: api.anthropic.com
+                            cluster: taia_api
+                            prefix_rewrite: "/proxy/anthropic/"
+                            host_rewrite_literal: taia.tngtech.com
                             timeout: 300s
                           request_headers_to_add:
                             - header:
-                                key: "x-api-key"
-                                value: "%ENVIRONMENT(AGENT_SANDBOX_TOKEN)%"
+                                key: "Authorization"
+                                value: "Bearer %ENVIRONMENT(AGENT_SANDBOX_TOKEN)%"
                               append_action: OVERWRITE_IF_EXISTS_OR_ADD
                 http_filters:
                   - name: envoy.filters.http.router
@@ -61,8 +62,9 @@ static_resources:
                         - match:
                             prefix: "/"
                           route:
-                            cluster: openai_api
-                            host_rewrite_literal: api.openai.com
+                            cluster: taia_api
+                            prefix_rewrite: "/proxy/openai/"
+                            host_rewrite_literal: taia.tngtech.com
                             timeout: 300s
                           request_headers_to_add:
                             - header:
@@ -75,43 +77,23 @@ static_resources:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
 
   clusters:
-    - name: anthropic_api
+    - name: taia_api
       type: STRICT_DNS
-      dns_lookup_family: V4_ONLY
       lb_policy: ROUND_ROBIN
       load_assignment:
-        cluster_name: anthropic_api
+        cluster_name: taia_api
         endpoints:
           - lb_endpoints:
               - endpoint:
                   address:
                     socket_address:
-                      address: api.anthropic.com
+                      address: taia.tngtech.com
                       port_value: 443
       transport_socket:
         name: envoy.transport_sockets.tls
         typed_config:
           "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
-          sni: api.anthropic.com
-
-    - name: openai_api
-      type: STRICT_DNS
-      dns_lookup_family: V4_ONLY
-      lb_policy: ROUND_ROBIN
-      load_assignment:
-        cluster_name: openai_api
-        endpoints:
-          - lb_endpoints:
-              - endpoint:
-                  address:
-                    socket_address:
-                      address: api.openai.com
-                      port_value: 443
-      transport_socket:
-        name: envoy.transport_sockets.tls
-        typed_config:
-          "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
-          sni: api.openai.com
+          sni: taia.tngtech.com
 
 admin:
   address:
