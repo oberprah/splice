@@ -990,3 +990,109 @@ func TestDiffState_Update_OpenInEditor(t *testing.T) {
 		t.Fatal("Expected non-nil command to launch editor")
 	}
 }
+
+func TestDiffState_Update_HalfPageScrollDown(t *testing.T) {
+	s := createTestDiffState(50)
+	s.ViewportStart = 0
+	ctx := testutils.MockContext{W: 80, H: 20}
+
+	// Press "ctrl+d" to scroll down half page
+	msg := tea.KeyMsg{Type: tea.KeyCtrlD}
+	newState, _ := s.Update(msg, ctx)
+
+	diffState, ok := newState.(*State)
+	if !ok {
+		t.Fatal("Expected state to remain DiffState")
+	}
+
+	// Available height = 20 - 2 (header) = 18
+	// Half page = 18 / 2 = 9
+	expectedViewport := 9
+	if diffState.ViewportStart != expectedViewport {
+		t.Errorf("Expected ViewportStart to be %d, got %d", expectedViewport, diffState.ViewportStart)
+	}
+}
+
+func TestDiffState_Update_HalfPageScrollUp(t *testing.T) {
+	s := createTestDiffState(50)
+	s.ViewportStart = 20
+	ctx := testutils.MockContext{W: 80, H: 20}
+
+	// Press "ctrl+u" to scroll up half page
+	msg := tea.KeyMsg{Type: tea.KeyCtrlU}
+	newState, _ := s.Update(msg, ctx)
+
+	diffState, ok := newState.(*State)
+	if !ok {
+		t.Fatal("Expected state to remain DiffState")
+	}
+
+	// Available height = 20 - 2 (header) = 18
+	// Half page = 18 / 2 = 9
+	// ViewportStart should be 20 - 9 = 11
+	expectedViewport := 11
+	if diffState.ViewportStart != expectedViewport {
+		t.Errorf("Expected ViewportStart to be %d, got %d", expectedViewport, diffState.ViewportStart)
+	}
+}
+
+func TestDiffState_Update_HalfPageScrollDown_AtBottom(t *testing.T) {
+	s := createTestDiffState(50)
+	s.ViewportStart = 30
+	ctx := testutils.MockContext{W: 80, H: 20}
+
+	// Press "ctrl+d" to scroll down half page
+	msg := tea.KeyMsg{Type: tea.KeyCtrlD}
+	newState, _ := s.Update(msg, ctx)
+
+	diffState, ok := newState.(*State)
+	if !ok {
+		t.Fatal("Expected state to remain DiffState")
+	}
+
+	// Max viewport = 50 - 18 = 32
+	// Should clamp to 32
+	expectedViewport := 32
+	if diffState.ViewportStart != expectedViewport {
+		t.Errorf("Expected ViewportStart to clamp at %d, got %d", expectedViewport, diffState.ViewportStart)
+	}
+}
+
+func TestDiffState_Update_HalfPageScrollUp_AtTop(t *testing.T) {
+	s := createTestDiffState(50)
+	s.ViewportStart = 5
+	ctx := testutils.MockContext{W: 80, H: 20}
+
+	// Press "ctrl+u" to scroll up half page
+	msg := tea.KeyMsg{Type: tea.KeyCtrlU}
+	newState, _ := s.Update(msg, ctx)
+
+	diffState, ok := newState.(*State)
+	if !ok {
+		t.Fatal("Expected state to remain DiffState")
+	}
+
+	// Should clamp to 0
+	expectedViewport := 0
+	if diffState.ViewportStart != expectedViewport {
+		t.Errorf("Expected ViewportStart to clamp at %d, got %d", expectedViewport, diffState.ViewportStart)
+	}
+}
+
+func TestDiffState_Update_HalfPageScrollEmptyDiff(t *testing.T) {
+	s := createTestDiffState(0) // Empty diff
+	ctx := testutils.MockContext{W: 80, H: 20}
+
+	// Try to scroll in empty diff
+	msg := tea.KeyMsg{Type: tea.KeyCtrlD}
+	newState, _ := s.Update(msg, ctx)
+
+	diffState, ok := newState.(*State)
+	if !ok {
+		t.Fatal("Expected state to remain DiffState")
+	}
+
+	if diffState.ViewportStart != 0 {
+		t.Errorf("Expected ViewportStart to stay at 0 for empty diff, got %d", diffState.ViewportStart)
+	}
+}

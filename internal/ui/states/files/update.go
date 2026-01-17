@@ -114,6 +114,28 @@ func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 				s.updateViewport(ctx.Height())
 			}
 			return s, nil
+
+		case "ctrl+d":
+			// Scroll down half page
+			if len(s.VisibleItems) > 0 {
+				headerLines := 2
+				availableHeight := max(ctx.Height()-headerLines, 1)
+				halfPage := availableHeight / 2
+				s.Cursor = min(s.Cursor+halfPage, len(s.VisibleItems)-1)
+				s.updateViewport(ctx.Height())
+			}
+			return s, nil
+
+		case "ctrl+u":
+			// Scroll up half page
+			if len(s.VisibleItems) > 0 {
+				headerLines := 2
+				availableHeight := max(ctx.Height()-headerLines, 1)
+				halfPage := availableHeight / 2
+				s.Cursor = max(s.Cursor-halfPage, 0)
+				s.updateViewport(ctx.Height())
+			}
+			return s, nil
 		}
 	}
 

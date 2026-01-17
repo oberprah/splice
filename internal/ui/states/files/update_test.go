@@ -296,6 +296,123 @@ func TestFilesState_Update_EmptyFileList(t *testing.T) {
 	}
 }
 
+func TestFilesState_Update_HalfPageScrollDown(t *testing.T) {
+	commit := createTestCommit()
+	files := createTestFileChanges(50)
+	s := New(createTestDiffSource(commit), files)
+	s.Cursor = 0
+	ctx := testutils.MockContext{W: 80, H: 20}
+
+	// Press "ctrl+d" to scroll down half page
+	msg := tea.KeyMsg{Type: tea.KeyCtrlD}
+	newState, _ := s.Update(msg, ctx)
+
+	filesState, ok := newState.(*State)
+	if !ok {
+		t.Fatal("Expected state to remain FilesState")
+	}
+
+	// Available height = 20 - 2 (header) = 18
+	// Half page = 18 / 2 = 9
+	expectedCursor := 9
+	if filesState.Cursor != expectedCursor {
+		t.Errorf("Expected cursor to be %d, got %d", expectedCursor, filesState.Cursor)
+	}
+}
+
+func TestFilesState_Update_HalfPageScrollUp(t *testing.T) {
+	commit := createTestCommit()
+	files := createTestFileChanges(50)
+	s := New(createTestDiffSource(commit), files)
+	s.Cursor = 20
+	ctx := testutils.MockContext{W: 80, H: 20}
+
+	// Press "ctrl+u" to scroll up half page
+	msg := tea.KeyMsg{Type: tea.KeyCtrlU}
+	newState, _ := s.Update(msg, ctx)
+
+	filesState, ok := newState.(*State)
+	if !ok {
+		t.Fatal("Expected state to remain FilesState")
+	}
+
+	// Available height = 20 - 2 (header) = 18
+	// Half page = 18 / 2 = 9
+	// Cursor should be 20 - 9 = 11
+	expectedCursor := 11
+	if filesState.Cursor != expectedCursor {
+		t.Errorf("Expected cursor to be %d, got %d", expectedCursor, filesState.Cursor)
+	}
+}
+
+func TestFilesState_Update_HalfPageScrollDown_AtBottom(t *testing.T) {
+	commit := createTestCommit()
+	files := createTestFileChanges(20)
+	commitRange := core.NewSingleCommitRange(commit)
+	s := New(commitRange.ToDiffSource(), files)
+	lastIdx := len(s.VisibleItems) - 5
+	s.Cursor = lastIdx
+	ctx := testutils.MockContext{W: 80, H: 20}
+
+	// Press "ctrl+d" to scroll down half page
+	msg := tea.KeyMsg{Type: tea.KeyCtrlD}
+	newState, _ := s.Update(msg, ctx)
+
+	filesState, ok := newState.(*State)
+	if !ok {
+		t.Fatal("Expected state to remain FilesState")
+	}
+
+	// Should clamp to last item
+	expectedCursor := len(filesState.VisibleItems) - 1
+	if filesState.Cursor != expectedCursor {
+		t.Errorf("Expected cursor to clamp at %d, got %d", expectedCursor, filesState.Cursor)
+	}
+}
+
+func TestFilesState_Update_HalfPageScrollUp_AtTop(t *testing.T) {
+	commit := createTestCommit()
+	files := createTestFileChanges(50)
+	s := New(createTestDiffSource(commit), files)
+	s.Cursor = 5
+	ctx := testutils.MockContext{W: 80, H: 20}
+
+	// Press "ctrl+u" to scroll up half page
+	msg := tea.KeyMsg{Type: tea.KeyCtrlU}
+	newState, _ := s.Update(msg, ctx)
+
+	filesState, ok := newState.(*State)
+	if !ok {
+		t.Fatal("Expected state to remain FilesState")
+	}
+
+	// Should clamp to 0
+	expectedCursor := 0
+	if filesState.Cursor != expectedCursor {
+		t.Errorf("Expected cursor to clamp at %d, got %d", expectedCursor, filesState.Cursor)
+	}
+}
+
+func TestFilesState_Update_HalfPageScrollEmptyFiles(t *testing.T) {
+	commit := createTestCommit()
+	files := []core.FileChange{}
+	s := New(createTestDiffSource(commit), files)
+	ctx := testutils.MockContext{W: 80, H: 20}
+
+	// Try to scroll in empty file list
+	msg := tea.KeyMsg{Type: tea.KeyCtrlD}
+	newState, _ := s.Update(msg, ctx)
+
+	filesState, ok := newState.(*State)
+	if !ok {
+		t.Fatal("Expected state to remain FilesState")
+	}
+
+	if filesState.Cursor != 0 {
+		t.Errorf("Expected cursor to stay at 0 for empty files, got %d", filesState.Cursor)
+	}
+}
+
 func TestFilesState_Update_EnterKeyReturnsCommand(t *testing.T) {
 	commit := createTestCommit()
 	files := createTestFileChanges(5)
