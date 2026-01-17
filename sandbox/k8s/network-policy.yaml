@@ -33,3 +33,10 @@ spec:
           protocol: UDP
         - port: 53
           protocol: TCP
+    # Allow HTTPS/HTTP for Go package downloads and git operations
+    # (proxy.golang.org, sum.golang.org, github.com, etc.)
+    - ports:
+        - port: 443
+          protocol: TCP
+        - port: 80
+          protocol: TCP

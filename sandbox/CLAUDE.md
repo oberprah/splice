@@ -13,8 +13,8 @@ Isolated Kubernetes environment for running Claude Code with command execution a
 Defense-in-depth strategy against prompt injection and container breakout:
 
 **Layer 1: Network Isolation (NetworkPolicy)**
-- Agent can only reach the API proxy
-- All other egress blocked (no internet, no git push)
+- Agent can reach API proxy and public HTTPS/HTTP (for Go packages, git clone)
+- API credentials never exposed (injected by proxy)
 
 **Layer 2: API Proxy (Envoy)**
 - API keys injected by proxy (agent never sees real tokens)
@@ -70,7 +70,9 @@ Kind (Docker container running Kubernetes)
   |
   v
 agent-env namespace
-  +-- claude-agent pod (Claude Code + Codex CLI + Go toolchain, no internet)
+  +-- claude-agent pod (Claude Code + Codex CLI + Go toolchain + tmux)
+  |   - Can access: API proxy, public HTTPS/HTTP (Go packages, git)
+  |   - Cannot access: Direct API endpoints (credentials hidden)
   +-- api-proxy pod (Envoy, injects credentials, routes to configured API)
 ```
 
