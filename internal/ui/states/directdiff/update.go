@@ -45,32 +45,7 @@ func (s State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 // This is exported so it can be used when pushing DirectDiffLoadingState from main.go.
 func FetchFileChangesForSource(source core.DiffSource) tea.Cmd {
 	return func() tea.Msg {
-		var files []core.FileChange
-		var err error
-
-		// Type switch on source to determine which git function to call
-		switch src := source.(type) {
-		case core.CommitRangeDiffSource:
-			// For commit ranges, use existing FetchFileChanges with CommitRange
-			files, err = git.FetchFileChanges(src.ToCommitRange())
-
-		case core.UncommittedChangesDiffSource:
-			// For uncommitted changes, type switch on Type field
-			switch src.Type {
-			case core.UncommittedTypeUnstaged:
-				files, err = git.FetchUnstagedFileChanges()
-			case core.UncommittedTypeStaged:
-				files, err = git.FetchStagedFileChanges()
-			case core.UncommittedTypeAll:
-				files, err = git.FetchAllUncommittedFileChanges()
-			default:
-				err = fmt.Errorf("unknown uncommitted type: %v", src.Type)
-			}
-
-		default:
-			err = fmt.Errorf("unknown diff source type: %T", source)
-		}
-
+		files, err := git.FetchFileChangesForSource(source)
 		return core.FilesLoadedMsg{
 			Source: source,
 			Files:  files,
