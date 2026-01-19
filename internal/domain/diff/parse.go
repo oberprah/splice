@@ -23,8 +23,9 @@ type Line struct {
 	NewLineNo int    // Line number in new file (0 if N/A)
 }
 
-// FileDiff represents a parsed file diff
-type FileDiff struct {
+// ParsedFileDiff represents a parsed file diff from unified diff format.
+// This is an intermediate representation used during diff building.
+type ParsedFileDiff struct {
 	OldPath string
 	NewPath string
 	Lines   []Line
@@ -33,9 +34,9 @@ type FileDiff struct {
 // hunkHeaderRegex matches hunk headers like "@@ -14,8 +14,8 @@" or "@@ -1 +1,2 @@"
 var hunkHeaderRegex = regexp.MustCompile(`^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@`)
 
-// ParseUnifiedDiff parses a unified diff string into a FileDiff structure
-func ParseUnifiedDiff(raw string) (FileDiff, error) {
-	var result FileDiff
+// ParseUnifiedDiff parses a unified diff string into a ParsedFileDiff structure
+func ParseUnifiedDiff(raw string) (ParsedFileDiff, error) {
+	var result ParsedFileDiff
 	lines := strings.Split(raw, "\n")
 
 	// Remove trailing empty string from split (artifact of splitting)

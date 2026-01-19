@@ -5,31 +5,47 @@ import (
 	"github.com/oberprah/splice/internal/domain/diff"
 )
 
-// DiffState represents the state when viewing a file diff
+// State represents the state when viewing a file diff
 type State struct {
-	// Current diff data
-	Source core.DiffSource
-	File   core.FileChange
-	Diff   *diff.AlignedFileDiff
+	// File context for navigation
+	Source    core.DiffSource
+	Files     []core.FileChange // All files in current diff source
+	FileIndex int               // Position of current file in Files
+
+	// Current file's diff
+	File core.FileChange
+	Diff *diff.FileDiff
 
 	// Viewport control
-	ViewportStart    int
-	CurrentChangeIdx int   // Index into ChangeIndices for navigation
-	ChangeIndices    []int // Indices of alignments that have changes (for navigation)
+	ViewportStart   int
+	CurrentBlockIdx int // Index of current change block for navigation
 }
 
-// New creates a new DiffState with viewport positioned at the first change.
-func New(source core.DiffSource, file core.FileChange, d *diff.AlignedFileDiff, changeIndices []int) *State {
+// New creates a new State with viewport positioned at the first change block.
+func New(source core.DiffSource, files []core.FileChange, fileIndex int, file core.FileChange, d *diff.FileDiff) *State {
 	viewportStart := 0
-	if d != nil && len(changeIndices) > 0 {
-		viewportStart = changeIndices[0]
+	currentBlockIdx := -1 // -1 means "not in a change block"
+
+	// Find and position at the first change block
+	if d != nil {
+		lineOffset := 0
+		for i, block := range d.Blocks {
+			if _, isChange := block.(diff.ChangeBlock); isChange {
+				viewportStart = lineOffset
+				currentBlockIdx = i
+				break
+			}
+			lineOffset += block.LineCount()
+		}
 	}
+
 	return &State{
-		Source:           source,
-		File:             file,
-		Diff:             d,
-		ChangeIndices:    changeIndices,
-		ViewportStart:    viewportStart,
-		CurrentChangeIdx: 0,
+		Source:          source,
+		Files:           files,
+		FileIndex:       fileIndex,
+		File:            file,
+		Diff:            d,
+		ViewportStart:   viewportStart,
+		CurrentBlockIdx: currentBlockIdx,
 	}
 }

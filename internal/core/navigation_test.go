@@ -75,8 +75,8 @@ func TestPushDiffScreenMsg_WithCommitRangeDiffSource(t *testing.T) {
 	start := GitCommit{Hash: "abc123"}
 	end := GitCommit{Hash: "def456"}
 	file := FileChange{Path: "file1.go", Status: "M"}
-	alignedDiff := &diff.AlignedFileDiff{}
-	indices := []int{0, 5, 10}
+	files := []FileChange{file}
+	fileDiff := &diff.FileDiff{Path: "file1.go", Blocks: []diff.Block{}}
 
 	msg := PushDiffScreenMsg{
 		Source: CommitRangeDiffSource{
@@ -84,9 +84,10 @@ func TestPushDiffScreenMsg_WithCommitRangeDiffSource(t *testing.T) {
 			End:   end,
 			Count: 3,
 		},
-		File:          file,
-		Diff:          alignedDiff,
-		ChangeIndices: indices,
+		Files:     files,
+		FileIndex: 0,
+		File:      file,
+		Diff:      fileDiff,
 	}
 
 	// Verify fields are set correctly
@@ -96,8 +97,11 @@ func TestPushDiffScreenMsg_WithCommitRangeDiffSource(t *testing.T) {
 	if msg.Diff == nil {
 		t.Error("Expected Diff to be non-nil")
 	}
-	if len(msg.ChangeIndices) != 3 {
-		t.Errorf("Expected 3 change indices, got %d", len(msg.ChangeIndices))
+	if len(msg.Files) != 1 {
+		t.Errorf("Expected 1 file, got %d", len(msg.Files))
+	}
+	if msg.FileIndex != 0 {
+		t.Errorf("Expected file index 0, got %d", msg.FileIndex)
 	}
 
 	// Verify DiffSource is the correct type
@@ -115,15 +119,17 @@ func TestPushDiffScreenMsg_WithCommitRangeDiffSource(t *testing.T) {
 
 func TestPushDiffScreenMsg_WithUncommittedChangesDiffSource(t *testing.T) {
 	file := FileChange{Path: "main.go", Status: "A"}
-	alignedDiff := &diff.AlignedFileDiff{}
+	files := []FileChange{file}
+	fileDiff := &diff.FileDiff{Path: "main.go", Blocks: []diff.Block{}}
 
 	msg := PushDiffScreenMsg{
 		Source: UncommittedChangesDiffSource{
 			Type: UncommittedTypeStaged,
 		},
-		File:          file,
-		Diff:          alignedDiff,
-		ChangeIndices: []int{},
+		Files:     files,
+		FileIndex: 0,
+		File:      file,
+		Diff:      fileDiff,
 	}
 
 	// Verify fields are set correctly
@@ -143,7 +149,8 @@ func TestPushDiffScreenMsg_WithUncommittedChangesDiffSource(t *testing.T) {
 
 func TestPushDiffScreenMsg_AllUncommittedTypes(t *testing.T) {
 	file := FileChange{Path: "test.go", Status: "M"}
-	alignedDiff := &diff.AlignedFileDiff{}
+	files := []FileChange{file}
+	fileDiff := &diff.FileDiff{Path: "test.go", Blocks: []diff.Block{}}
 
 	types := []UncommittedType{
 		UncommittedTypeUnstaged,
@@ -157,9 +164,10 @@ func TestPushDiffScreenMsg_AllUncommittedTypes(t *testing.T) {
 				Source: UncommittedChangesDiffSource{
 					Type: uncommittedType,
 				},
-				File:          file,
-				Diff:          alignedDiff,
-				ChangeIndices: []int{},
+				Files:     files,
+				FileIndex: 0,
+				File:      file,
+				Diff:      fileDiff,
 			}
 
 			uncommitted, ok := msg.Source.(UncommittedChangesDiffSource)
@@ -207,16 +215,18 @@ func TestNavigationMessages_TypeSwitch(t *testing.T) {
 	}
 
 	diffMsg1 := PushDiffScreenMsg{
-		Source:        commitRangeSource,
-		File:          FileChange{},
-		Diff:          &diff.AlignedFileDiff{},
-		ChangeIndices: []int{},
+		Source:    commitRangeSource,
+		Files:     []FileChange{{}},
+		FileIndex: 0,
+		File:      FileChange{},
+		Diff:      &diff.FileDiff{Blocks: []diff.Block{}},
 	}
 	diffMsg2 := PushDiffScreenMsg{
-		Source:        uncommittedSource,
-		File:          FileChange{},
-		Diff:          &diff.AlignedFileDiff{},
-		ChangeIndices: []int{},
+		Source:    uncommittedSource,
+		Files:     []FileChange{{}},
+		FileIndex: 0,
+		File:      FileChange{},
+		Diff:      &diff.FileDiff{Blocks: []diff.Block{}},
 	}
 
 	// Verify type switch works for PushDiffScreenMsg

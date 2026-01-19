@@ -24,10 +24,11 @@ type PushFilesScreenMsg struct {
 
 // PushDiffScreenMsg signals navigation to the diff screen
 type PushDiffScreenMsg struct {
-	Source        DiffSource
-	File          FileChange
-	Diff          *diff.AlignedFileDiff
-	ChangeIndices []int
+	Source    DiffSource
+	Files     []FileChange   // All files in the diff source (for navigation)
+	FileIndex int            // Index of current file in Files slice
+	File      FileChange     // The current file
+	Diff      *diff.FileDiff // Block-based diff
 }
 
 // PushErrorScreenMsg signals navigation to the error screen

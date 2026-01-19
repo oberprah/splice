@@ -1,14 +1,13 @@
 package files
 
 import (
-	"fmt"
+	"sort"
 
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/domain/diff"
 	"github.com/oberprah/splice/internal/domain/filetree"
-	"github.com/oberprah/splice/internal/git"
 )
 
 // Update handles messages for the files state
@@ -25,10 +24,11 @@ func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 		// Return command that produces PushDiffScreenMsg to navigate to DiffState
 		return s, func() tea.Msg {
 			return core.PushDiffScreenMsg{
-				Source:        msg.Source,
-				File:          msg.File,
-				Diff:          msg.Diff,
-				ChangeIndices: msg.ChangeIndices,
+				Source:    msg.Source,
+				Files:     msg.Files,
+				FileIndex: msg.FileIndex,
+				File:      msg.File,
+				Diff:      msg.Diff,
 			}
 		}
 
@@ -54,7 +54,7 @@ func (s *State) Update(msg tea.Msg, ctx core.Context) (core.State, tea.Cmd) {
 					return toggleFolder(s, false, false, ctx)
 				case *filetree.FileNode:
 					// Load diff for file
-					return s, s.loadDiff(*node.File(), ctx.FetchFullFileDiff())
+					return s, s.loadDiff(*node.File(), ctx.FetchFullFileDiffForSource())
 				}
 			}
 			return s, nil
@@ -143,10 +143,10 @@ func (s *State) updateViewport(height int) {
 }
 
 // loadDiff creates a command to fetch and parse the diff for a file
-func (s *State) loadDiff(file core.FileChange, fetchFullFileDiff core.FetchFullFileDiffFunc) tea.Cmd {
+func (s *State) loadDiff(file core.FileChange, fetchFullFileDiff core.FetchFullFileDiffForSourceFunc) tea.Cmd {
 	return func() tea.Msg {
 		// Fetch full file content and diff based on DiffSource type
-		fullDiffResult, err := fetchFileDiffForSource(s.Source, file, fetchFullFileDiff)
+		fullDiffResult, err := fetchFullFileDiff(s.Source, file)
 		if err != nil {
 			return core.DiffLoadedMsg{
 				Source: s.Source,
@@ -155,8 +155,8 @@ func (s *State) loadDiff(file core.FileChange, fetchFullFileDiff core.FetchFullF
 			}
 		}
 
-		// Build the complete aligned diff with change indices
-		alignedDiff, changeIndices, err := diff.BuildAlignedFileDiff(
+		// Build the block-based diff
+		fileDiff, err := diff.BuildFileDiff(
 			file.Path,
 			fullDiffResult.OldContent,
 			fullDiffResult.NewContent,
@@ -170,41 +170,35 @@ func (s *State) loadDiff(file core.FileChange, fetchFullFileDiff core.FetchFullF
 			}
 		}
 
+		// Use the same ordering as the files view (alphabetical by path).
+		orderedFiles := sortedFilesByPath(s.Files)
+
+		// Find the file index in the ordered list
+		fileIndex := 0
+		for i, f := range orderedFiles {
+			if f.Path == file.Path {
+				fileIndex = i
+				break
+			}
+		}
+
 		return core.DiffLoadedMsg{
-			Source:        s.Source,
-			File:          file,
-			Diff:          alignedDiff,
-			ChangeIndices: changeIndices,
-			Err:           nil,
+			Source:    s.Source,
+			Files:     orderedFiles,
+			FileIndex: fileIndex,
+			File:      file,
+			Diff:      fileDiff,
+			Err:       nil,
 		}
 	}
 }
 
-// fetchFileDiffForSource fetches the full file diff based on the DiffSource type.
-// Uses type switch to call the appropriate git function for each source type.
-func fetchFileDiffForSource(source core.DiffSource, file core.FileChange, fetchFullFileDiff core.FetchFullFileDiffFunc) (*core.FullFileDiffResult, error) {
-	switch src := source.(type) {
-	case core.CommitRangeDiffSource:
-		// For commit ranges, use the injected fetchFullFileDiff function
-		commitRange := src.ToCommitRange()
-		return fetchFullFileDiff(commitRange, file)
-
-	case core.UncommittedChangesDiffSource:
-		// For uncommitted changes, type switch on Type field to call appropriate git function
-		switch src.Type {
-		case core.UncommittedTypeUnstaged:
-			return git.FetchUnstagedFileDiff(file)
-		case core.UncommittedTypeStaged:
-			return git.FetchStagedFileDiff(file)
-		case core.UncommittedTypeAll:
-			return git.FetchAllUncommittedFileDiff(file)
-		default:
-			return nil, fmt.Errorf("unknown uncommitted type: %v", src.Type)
-		}
-
-	default:
-		return nil, fmt.Errorf("unknown diff source type: %T", source)
-	}
+func sortedFilesByPath(files []core.FileChange) []core.FileChange {
+	ordered := append([]core.FileChange(nil), files...)
+	sort.SliceStable(ordered, func(i, j int) bool {
+		return ordered[i].Path < ordered[j].Path
+	})
+	return ordered
 }
 
 // toggleFolder toggles the expanded state of a folder at the cursor position.
