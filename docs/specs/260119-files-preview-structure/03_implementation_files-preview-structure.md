@@ -72,7 +72,33 @@
 - `internal/domain/filetree/` package (understand BuildTree, CollapsePaths, ApplyStats, FlattenVisible)
 - Step 1 completion notes (TreeSection signature)
 
-**Status:** Pending
+**Status:** Complete
+
+**Commits:** 7d220c9
+
+**Verification:**
+- All log state view tests pass with updated golden files
+- All E2E tests pass with updated golden files
+- Build succeeds: `go build -o splice .`
+- Full test suite passes: `go test ./...`
+- Golden file diffs reviewed and verified:
+  - Tree structure displays with proper indentation and tree symbols (├──, └──, │)
+  - Folder hierarchy is shown (e.g., "src/" folder containing "main.go")
+  - File stats remain visible (e.g., "M +10 -5  main.go")
+  - All folders are expanded (no collapsed folders in preview)
+  - Overflow message correctly changed from "files" to "items"
+
+**Notes:**
+- Added `buildTreeForPreview()` helper function that runs the full filetree pipeline:
+  - BuildTree: Creates hierarchical structure from flat file list
+  - CollapsePaths: Optimizes display by collapsing single-child folder chains
+  - ApplyStats: Computes aggregate statistics for folders
+  - FlattenVisible: Converts to renderable list (all folders expanded)
+- Updated `renderFileList()` to use `TreeSection` with `nil` cursor (no selection in preview)
+- Updated truncation logic to count tree items instead of just files
+- Changed overflow indicator from "N more files" to "N more items" to accurately reflect tree structure
+- Golden files show consistent tree rendering across both unit tests and E2E tests
+- The tree structure matches the design doc expectations and is consistent with the files view
 
 ---
 
