@@ -25,7 +25,7 @@ func TestTreeSection_EmptyTree(t *testing.T) {
 	files := []core.FileChange{}
 	cursor := 0
 
-	lines := TreeSection(items, files, cursor, 80)
+	lines := TreeSection(items, files, &cursor, 80)
 
 	// Should have: blank line + stats line = 2 total (no tree items)
 	if len(lines) != 2 {
@@ -61,7 +61,7 @@ func TestTreeSection_SingleFile(t *testing.T) {
 	files := []core.FileChange{*file}
 	cursor := 0
 
-	output := strings.Join(TreeSection(items, files, cursor, 80), "\n")
+	output := strings.Join(TreeSection(items, files, &cursor, 80), "\n")
 	assertTreeSectionGolden(t, output, "tree_section_single_file.golden")
 }
 
@@ -97,7 +97,7 @@ func TestTreeSection_FolderAndFiles(t *testing.T) {
 	files := []core.FileChange{*file1, *file2}
 	cursor := 0
 
-	output := strings.Join(TreeSection(items, files, cursor, 80), "\n")
+	output := strings.Join(TreeSection(items, files, &cursor, 80), "\n")
 	assertTreeSectionGolden(t, output, "tree_section_folder_and_files.golden")
 }
 
@@ -123,7 +123,7 @@ func TestTreeSection_CollapsedFolder(t *testing.T) {
 	}
 	cursor := 0
 
-	output := strings.Join(TreeSection(items, files, cursor, 80), "\n")
+	output := strings.Join(TreeSection(items, files, &cursor, 80), "\n")
 	assertTreeSectionGolden(t, output, "tree_section_collapsed_folder.golden")
 }
 
@@ -176,7 +176,7 @@ func TestTreeSection_NestedFolders(t *testing.T) {
 	files := []core.FileChange{*file1, *file2}
 	cursor := 0
 
-	output := strings.Join(TreeSection(items, files, cursor, 80), "\n")
+	output := strings.Join(TreeSection(items, files, &cursor, 80), "\n")
 	assertTreeSectionGolden(t, output, "tree_section_nested_folders.golden")
 }
 
@@ -203,7 +203,7 @@ func TestTreeSection_CursorOnFolder(t *testing.T) {
 	files := []core.FileChange{*file1}
 	cursor := 0 // Cursor on folder
 
-	output := strings.Join(TreeSection(items, files, cursor, 80), "\n")
+	output := strings.Join(TreeSection(items, files, &cursor, 80), "\n")
 	assertTreeSectionGolden(t, output, "tree_section_cursor_on_folder.golden")
 }
 
@@ -230,7 +230,7 @@ func TestTreeSection_CursorOnFile(t *testing.T) {
 	files := []core.FileChange{*file1}
 	cursor := 1 // Cursor on file
 
-	output := strings.Join(TreeSection(items, files, cursor, 80), "\n")
+	output := strings.Join(TreeSection(items, files, &cursor, 80), "\n")
 	assertTreeSectionGolden(t, output, "tree_section_cursor_on_file.golden")
 }
 
@@ -252,7 +252,7 @@ func TestTreeSection_MixedStatuses(t *testing.T) {
 	files := []core.FileChange{*file1, *file2, *file3, *file4}
 	cursor := 1 // Select modified file
 
-	output := strings.Join(TreeSection(items, files, cursor, 80), "\n")
+	output := strings.Join(TreeSection(items, files, &cursor, 80), "\n")
 	assertTreeSectionGolden(t, output, "tree_section_mixed_statuses.golden")
 }
 
@@ -267,12 +267,45 @@ func TestTreeSection_BinaryFile(t *testing.T) {
 	files := []core.FileChange{*binaryFile}
 	cursor := 0
 
-	output := strings.Join(TreeSection(items, files, cursor, 80), "\n")
+	output := strings.Join(TreeSection(items, files, &cursor, 80), "\n")
 	plainOutput := ansi.Strip(output)
 
 	if !strings.Contains(plainOutput, "(binary)") {
 		t.Errorf("Expected '(binary)' marker in output, got: %q", plainOutput)
 	}
+}
+
+// TestTreeSection_NilCursor tests rendering with no selection (nil cursor)
+func TestTreeSection_NilCursor(t *testing.T) {
+	testutils.SetupColorProfile()
+
+	srcFolder := filetree.NewFolderNode("src/", 0, true, filetree.FolderStats{FileCount: 2, Additions: 59, Deletions: 13})
+	file1 := &core.FileChange{Path: "src/App.tsx", Status: "M", Additions: 17, Deletions: 13, IsBinary: false}
+	file2 := &core.FileChange{Path: "src/index.ts", Status: "A", Additions: 42, Deletions: 0, IsBinary: false}
+	fileNode1 := filetree.NewFileNode("App.tsx", 1, file1)
+	fileNode2 := filetree.NewFileNode("index.ts", 1, file2)
+
+	items := []filetree.VisibleTreeItem{
+		{
+			Node:        srcFolder,
+			IsLastChild: true,
+			ParentLines: []bool{},
+		},
+		{
+			Node:        fileNode1,
+			IsLastChild: false,
+			ParentLines: []bool{false},
+		},
+		{
+			Node:        fileNode2,
+			IsLastChild: true,
+			ParentLines: []bool{false},
+		},
+	}
+	files := []core.FileChange{*file1, *file2}
+
+	output := strings.Join(TreeSection(items, files, nil, 80), "\n")
+	assertTreeSectionGolden(t, output, "tree_section_nil_cursor.golden")
 }
 
 // TestTreeSection_StatsCalculation tests that total stats are calculated correctly
@@ -291,7 +324,7 @@ func TestTreeSection_StatsCalculation(t *testing.T) {
 	files := []core.FileChange{*file1, *file2, *file3}
 	cursor := 0
 
-	lines := TreeSection(items, files, cursor, 80)
+	lines := TreeSection(items, files, &cursor, 80)
 	statsLine := ansi.Strip(lines[1])
 
 	// Total: +120 -80

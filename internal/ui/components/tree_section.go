@@ -16,7 +16,7 @@ import (
 // Parameters:
 //   - items: Visible tree items (already flattened and windowed by caller)
 //   - files: Original flat list of all files for calculating header stats
-//   - cursor: Index of the selected item in the items slice
+//   - cursor: Pointer to index of the selected item in the items slice (nil for no selection)
 //   - width: Panel width (currently unused but kept for consistency with FileSection)
 //
 // The component renders:
@@ -27,7 +27,7 @@ import (
 // Note: This component does NOT handle viewport windowing - the caller is responsible
 // for passing only the visible items. This follows the same pattern as FileSection
 // where viewport logic is handled in the state's View() method.
-func TreeSection(items []filetree.VisibleTreeItem, files []core.FileChange, cursor int, width int) []string {
+func TreeSection(items []filetree.VisibleTreeItem, files []core.FileChange, cursor *int, width int) []string {
 	lines := make([]string, 0, len(items)+2)
 
 	// 1. Blank line separator
@@ -50,7 +50,7 @@ func TreeSection(items []filetree.VisibleTreeItem, files []core.FileChange, curs
 
 	// 3. Tree item lines
 	for i, item := range items {
-		isSelected := i == cursor
+		isSelected := cursor != nil && *cursor == i
 		line := format.FormatTreeLine(item, isSelected)
 		lines = append(lines, line)
 	}

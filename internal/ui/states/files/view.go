@@ -36,7 +36,7 @@ func (s *State) View(ctx core.Context) core.ViewRenderer {
 
 	// Render tree section using TreeSection component
 	// Note: TreeSection includes blank line separator and stats line
-	treeSectionLines := components.TreeSection(s.VisibleItems, s.Files, s.Cursor, ctx.Width())
+	treeSectionLines := components.TreeSection(s.VisibleItems, s.Files, &s.Cursor, ctx.Width())
 
 	// Calculate available height for tree view (subtract commit info lines + tree section header)
 	// commitInfoLines + blank line + stats line = total non-tree lines
