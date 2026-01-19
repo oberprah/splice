@@ -7,6 +7,92 @@ import (
 	"github.com/oberprah/splice/internal/git/commands"
 )
 
+// contentSource identifies where to fetch file content from
+type contentSource int
+
+const (
+	sourceIndex       contentSource = iota // Git index (staging area)
+	sourceWorkingTree                      // Working tree (filesystem)
+	sourceHEAD                             // HEAD commit
+)
+
+// fetchContent retrieves file content from the specified source
+func fetchContent(source contentSource, filePath string) (string, error) {
+	switch source {
+	case sourceIndex:
+		return commands.FetchIndexFileContent(filePath)
+	case sourceWorkingTree:
+		return commands.FetchWorkingTreeFileContent(filePath)
+	case sourceHEAD:
+		return commands.FetchFileContent("HEAD", filePath)
+	default:
+		return "", fmt.Errorf("unknown content source: %d", source)
+	}
+}
+
+// fetchUncommittedFileDiff is the consolidated implementation for all uncommitted diff types.
+// It fetches old content, new content, and diff output based on the specified sources.
+func fetchUncommittedFileDiff(
+	file core.FileChange,
+	oldSource contentSource,
+	newSource contentSource,
+	diffFlags ...string,
+) (*core.FullFileDiffResult, error) {
+	result := &core.FullFileDiffResult{
+		NewPath: file.Path,
+		OldPath: file.Path,
+	}
+
+	// Fetch old content
+	switch file.Status {
+	case "A": // Added file - no old content
+		result.OldContent = ""
+	default:
+		oldContent, err := fetchContent(oldSource, file.Path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch old content: %w", err)
+		}
+		result.OldContent = oldContent
+	}
+
+	// Fetch new content
+	switch file.Status {
+	case "D": // Deleted file - no new content
+		result.NewContent = ""
+	default:
+		newContent, err := fetchContent(newSource, file.Path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch new content: %w", err)
+		}
+		result.NewContent = newContent
+	}
+
+	// Fetch the unified diff
+	args := append([]string{"diff"}, diffFlags...)
+	diffOutput, err := commands.FetchFileDiffWithFlags(file.Path, args...)
+	if err != nil {
+		return nil, err
+	}
+	result.DiffOutput = diffOutput
+
+	return result, nil
+}
+
+// FetchUncommittedFileDiff fetches the full file diff for any uncommitted change type.
+// This is the unified interface that dispatches to the correct sources based on type.
+func FetchUncommittedFileDiff(uncommittedType core.UncommittedType, file core.FileChange) (*core.FullFileDiffResult, error) {
+	switch uncommittedType {
+	case core.UncommittedTypeUnstaged:
+		return fetchUncommittedFileDiff(file, sourceIndex, sourceWorkingTree)
+	case core.UncommittedTypeStaged:
+		return fetchUncommittedFileDiff(file, sourceHEAD, sourceIndex, "--staged")
+	case core.UncommittedTypeAll:
+		return fetchUncommittedFileDiff(file, sourceHEAD, sourceWorkingTree, "HEAD")
+	default:
+		return nil, fmt.Errorf("unknown uncommitted type: %v", uncommittedType)
+	}
+}
+
 // FetchFullFileDiff fetches the complete file content before and after a change,
 // along with the diff output. This enables showing the full file with changes highlighted.
 func FetchFullFileDiff(commitRange core.CommitRange, change core.FileChange) (*core.FullFileDiffResult, error) {
@@ -61,135 +147,6 @@ func FetchFullFileDiff(commitRange core.CommitRange, change core.FileChange) (*c
 	diffOutput, err := commands.FetchFileDiffForRange(rangeSpec, change.Path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch diff: %w", err)
-	}
-	result.DiffOutput = diffOutput
-
-	return result, nil
-}
-
-// FetchUnstagedFileDiff fetches the complete file content before and after an unstaged change,
-// along with the diff output. This enables showing the full file with changes highlighted.
-// Unstaged changes compare the index (old) with the working tree (new).
-func FetchUnstagedFileDiff(file core.FileChange) (*core.FullFileDiffResult, error) {
-	result := &core.FullFileDiffResult{
-		NewPath: file.Path,
-		OldPath: file.Path,
-	}
-
-	// Fetch old content (from index)
-	switch file.Status {
-	case "A": // Added file - no old content in index
-		result.OldContent = ""
-	default:
-		oldContent, err := commands.FetchIndexFileContent(file.Path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch old content: %w", err)
-		}
-		result.OldContent = oldContent
-	}
-
-	// Fetch new content (from working tree)
-	switch file.Status {
-	case "D": // Deleted file - no new content in working tree
-		result.NewContent = ""
-	default:
-		newContent, err := commands.FetchWorkingTreeFileContent(file.Path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch new content: %w", err)
-		}
-		result.NewContent = newContent
-	}
-
-	// Fetch the unified diff
-	diffOutput, err := commands.FetchFileDiffWithFlags(file.Path, "diff")
-	if err != nil {
-		return nil, err
-	}
-	result.DiffOutput = diffOutput
-
-	return result, nil
-}
-
-// FetchStagedFileDiff fetches the complete file content before and after a staged change,
-// along with the diff output. This enables showing the full file with changes highlighted.
-// Staged changes compare HEAD (old) with the index (new).
-func FetchStagedFileDiff(file core.FileChange) (*core.FullFileDiffResult, error) {
-	result := &core.FullFileDiffResult{
-		NewPath: file.Path,
-		OldPath: file.Path,
-	}
-
-	// Fetch old content (from HEAD)
-	switch file.Status {
-	case "A": // Added file - no old content in HEAD
-		result.OldContent = ""
-	default:
-		oldContent, err := commands.FetchFileContent("HEAD", file.Path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch old content: %w", err)
-		}
-		result.OldContent = oldContent
-	}
-
-	// Fetch new content (from index)
-	switch file.Status {
-	case "D": // Deleted file - no new content in index
-		result.NewContent = ""
-	default:
-		newContent, err := commands.FetchIndexFileContent(file.Path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch new content: %w", err)
-		}
-		result.NewContent = newContent
-	}
-
-	// Fetch the unified diff
-	diffOutput, err := commands.FetchFileDiffWithFlags(file.Path, "diff", "--staged")
-	if err != nil {
-		return nil, err
-	}
-	result.DiffOutput = diffOutput
-
-	return result, nil
-}
-
-// FetchAllUncommittedFileDiff fetches the complete file content before and after all uncommitted changes,
-// along with the diff output. This enables showing the full file with changes highlighted.
-// All uncommitted changes compare HEAD (old) with the working tree (new).
-func FetchAllUncommittedFileDiff(file core.FileChange) (*core.FullFileDiffResult, error) {
-	result := &core.FullFileDiffResult{
-		NewPath: file.Path,
-		OldPath: file.Path,
-	}
-
-	// Fetch old content (from HEAD)
-	switch file.Status {
-	case "A": // Added file - no old content in HEAD
-		result.OldContent = ""
-	default:
-		oldContent, err := commands.FetchFileContent("HEAD", file.Path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch old content: %w", err)
-		}
-		result.OldContent = oldContent
-	}
-
-	// Fetch new content (from working tree)
-	switch file.Status {
-	case "D": // Deleted file - no new content in working tree
-		result.NewContent = ""
-	default:
-		newContent, err := commands.FetchWorkingTreeFileContent(file.Path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch new content: %w", err)
-		}
-		result.NewContent = newContent
-	}
-
-	// Fetch the unified diff
-	diffOutput, err := commands.FetchFileDiffWithFlags(file.Path, "diff", "HEAD")
-	if err != nil {
-		return nil, err
 	}
 	result.DiffOutput = diffOutput
 

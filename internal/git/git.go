@@ -44,16 +44,7 @@ func FetchFullFileDiffForSource(
 		return fetchFullFileDiff(commitRange, change)
 
 	case core.UncommittedChangesDiffSource:
-		switch src.Type {
-		case core.UncommittedTypeUnstaged:
-			return FetchUnstagedFileDiff(change)
-		case core.UncommittedTypeStaged:
-			return FetchStagedFileDiff(change)
-		case core.UncommittedTypeAll:
-			return FetchAllUncommittedFileDiff(change)
-		default:
-			return nil, fmt.Errorf("unknown uncommitted type: %v", src.Type)
-		}
+		return operations.FetchUncommittedFileDiff(src.Type, change)
 
 	default:
 		return nil, fmt.Errorf("unknown diff source type: %T", source)
@@ -101,27 +92,6 @@ func FetchIndexFileContent(filePath string) (string, error) {
 // Returns empty string without error if the file doesn't exist.
 func FetchWorkingTreeFileContent(filePath string) (string, error) {
 	return operations.FetchWorkingTreeFileContent(filePath)
-}
-
-// FetchUnstagedFileDiff fetches the complete file content before and after an unstaged change,
-// along with the diff output. This enables showing the full file with changes highlighted.
-// Unstaged changes compare the index (old) with the working tree (new).
-func FetchUnstagedFileDiff(file core.FileChange) (*core.FullFileDiffResult, error) {
-	return operations.FetchUnstagedFileDiff(file)
-}
-
-// FetchStagedFileDiff fetches the complete file content before and after a staged change,
-// along with the diff output. This enables showing the full file with changes highlighted.
-// Staged changes compare HEAD (old) with the index (new).
-func FetchStagedFileDiff(file core.FileChange) (*core.FullFileDiffResult, error) {
-	return operations.FetchStagedFileDiff(file)
-}
-
-// FetchAllUncommittedFileDiff fetches the complete file content before and after all uncommitted changes,
-// along with the diff output. This enables showing the full file with changes highlighted.
-// All uncommitted changes compare HEAD (old) with the working tree (new).
-func FetchAllUncommittedFileDiff(file core.FileChange) (*core.FullFileDiffResult, error) {
-	return operations.FetchAllUncommittedFileDiff(file)
 }
 
 // ValidateDiffHasChanges checks if a diff specification has any changes.
