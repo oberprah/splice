@@ -1,6 +1,8 @@
 package git
 
 import (
+	"fmt"
+
 	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/git/operations"
 	"github.com/oberprah/splice/internal/git/parsing"
