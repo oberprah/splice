@@ -145,20 +145,58 @@
 
 ## Final Verification
 
-- [ ] Full test suite passes: `go test ./...`
-- [ ] Build succeeds: `go build -o splice .`
-- [ ] All requirements from `01_requirements_files-preview-structure.md` verified:
-  - [ ] Tree structure displays in preview panel
-  - [ ] All folders expanded by default in preview
-  - [ ] No cursor/selection in preview (read-only)
-  - [ ] Same tree symbols and indentation as files view
-  - [ ] File stats display unchanged
-- [ ] Design decisions from `02_design_files-preview-structure.md` followed:
-  - [ ] TreeSection uses `cursor *int` (no magic number)
-  - [ ] Log preview uses `buildTreeForPreview()` helper
-  - [ ] FileSection deleted entirely
-  - [ ] Performance acceptable (tree building < 1ms for typical commits)
+- [x] Full test suite passes: `go test ./...` ✓
+- [x] Build succeeds: `go build -o splice .` ✓
+- [x] All requirements from `01_requirements_files-preview-structure.md` verified:
+  - [x] Tree structure displays in preview panel ✓
+  - [x] All folders expanded by default in preview ✓
+  - [x] No cursor/selection in preview (read-only) ✓
+  - [x] Same tree symbols and indentation as files view ✓
+  - [x] File stats display unchanged ✓
+- [x] Design decisions from `02_design_files-preview-structure.md` followed:
+  - [x] TreeSection uses `cursor *int` (no magic number) ✓
+  - [x] Log preview uses `buildTreeForPreview()` helper ✓
+  - [x] FileSection deleted entirely ✓
+  - [x] Performance acceptable (tree building < 1ms for typical commits) ✓
 
 ## Summary
 
-_To be completed after implementation_
+Successfully implemented tree structure display in the files preview panel, achieving visual consistency between the log view preview and the dedicated files view.
+
+### What Was Built
+
+1. **Refactored TreeSection component** - Changed from magic number cursor (-1) to nullable pointer (`cursor *int`), improving type safety and making "no selection" explicit.
+
+2. **Implemented tree structure in log preview** - Added `buildTreeForPreview()` helper that runs the filetree pipeline (BuildTree → CollapsePaths → ApplyStats → FlattenVisible) to generate a fully-expanded tree structure for display.
+
+3. **Deleted FileSection component** - Removed 743 lines of now-unused code (component, tests, and orphaned helper test).
+
+### Key Achievements
+
+- **Visual consistency**: Both log preview and files view now show identical tree structure representations
+- **Code quality improvement**: Eliminated magic number, made code more idiomatic
+- **Code reduction**: Net deletion of 743 lines while delivering the feature
+- **Zero regressions**: All tests pass, including 10 updated golden files showing correct tree rendering
+
+### Deviations from Design
+
+None. The implementation follows the design document exactly:
+- TreeSection uses nullable cursor as designed
+- Log preview uses the complete filetree pipeline as specified
+- FileSection was deleted as planned
+- Performance is well within acceptable limits (tree building is negligible overhead)
+
+### Testing
+
+- All unit tests pass (TreeSection, files state, log state)
+- All E2E tests pass with updated golden files
+- Golden files verified to show correct tree structure with proper indentation, tree symbols, folder hierarchy, and file stats
+- Pre-commit hooks pass (lint, tests, build)
+
+### Commits
+
+1. `d07ca1d` - Replace TreeSection magic number cursor with nullable pointer
+2. `7d220c9` - Show tree structure in log preview panel
+3. `68a4f9a` - Update implementation doc with Step 2 completion
+4. `d53ec13` - Remove unused FileSection component
+5. `5114895` - Update implementation doc with Step 3 completion
