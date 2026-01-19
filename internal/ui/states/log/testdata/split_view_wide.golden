@@ -5,9 +5,9 @@
                                                                               │ This is the body                                                                
                                                                               │                                                                                 
                                                                               │ 2 files · +30 -5                                                                
-                                                                              │ M +10 -5  src/main.go                                                           
-                                                                              │ A +20 -0  README.md                                                             
-                                                                              │                                                                                 
+                                                                              │  ├── src                                                                        
+                                                                              │  │   └── M +10 -5  main.go                                                      
+                                                                              │  └── A +20 -0  README.md                                                        
                                                                               │                                                                                 
                                                                               │                                                                                 
                                                                               │                                                                                 
