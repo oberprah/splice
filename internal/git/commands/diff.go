@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/oberprah/splice/internal/core"
-	"github.com/oberprah/splice/internal/git"
+	"github.com/oberprah/splice/internal/git/parsing"
 )
 
 // FetchFileChangesWithFlags executes git diff with custom flags and returns file changes.
@@ -38,7 +38,7 @@ func FetchFileChangesWithFlags(args ...string) ([]core.FileChange, error) {
 	}
 
 	// Parse file changes
-	changes, err := git.ParseFileChangesOutput(numstatOut)
+	changes, err := parsing.ParseFileChangesOutput(numstatOut)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +125,7 @@ func FetchFileChangesForRange(rangeSpec string) ([]core.FileChange, error) {
 	}
 
 	// Parse file changes and add status
-	changes, err := git.ParseFileChangesOutput(numstatOut)
+	changes, err := parsing.ParseFileChangesOutput(numstatOut)
 	if err != nil {
 		return nil, err
 	}

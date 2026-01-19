@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/oberprah/splice/internal/core"
-	"github.com/oberprah/splice/internal/git"
+	"github.com/oberprah/splice/internal/git/parsing"
 )
 
 // FetchLog executes git log with custom format and returns parsed commits.
@@ -25,7 +25,7 @@ func FetchLog(limit int) ([]core.GitCommit, error) {
 		return nil, checkGitError(stderr, err, "git log")
 	}
 
-	return git.ParseGitLogOutput(stdout)
+	return parsing.ParseGitLogOutput(stdout)
 }
 
 // ResolveRefToCommit resolves a git ref (like "HEAD", "main", "abc123") to a GitCommit.
