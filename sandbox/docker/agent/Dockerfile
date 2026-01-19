@@ -19,6 +19,9 @@ RUN apt-get update \
 # Install Codex CLI globally (as root)
 RUN npm install -g @openai/codex
 
+# Symlink go to /usr/local/bin (Codex CLI uses a minimal PATH that includes this)
+RUN ln -s /usr/local/go/bin/go /usr/local/bin/go
+
 # Create non-root user
 RUN useradd -m -u 1000 agent
 

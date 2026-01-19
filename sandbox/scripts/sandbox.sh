@@ -146,7 +146,7 @@ case "${1:-claude}" in
     codex)
         ensure_running
         echo ""
-        kubectl exec -it -n agent-env claude-agent -- codex --full-auto
+        kubectl exec -it -n agent-env claude-agent -- codex --yolo
         ;;
 
     shell)
