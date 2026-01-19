@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/oberprah/splice/internal/domain/highlight"
-	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 // BuildFileDiff is the main entry point for building a block-based file diff.
@@ -109,51 +108,18 @@ func buildBlocks(left, right FileContent, parsedDiff *ParsedFileDiff) []Block {
 			return
 		}
 
-		// Extract the lines for pairing
-		removedLines := make([]AlignedLine, len(hunkRemoved))
-		addedLines := make([]AlignedLine, len(hunkAdded))
-		for i, idx := range hunkRemoved {
-			removedLines[i] = left.Lines[idx]
-		}
-		for i, idx := range hunkAdded {
-			addedLines[i] = right.Lines[idx]
-		}
+		// Emit removed and added lines in their original hunk order.
 
-		// Pair the lines based on similarity
-		pairs, unpairedRemoved, unpairedAdded := pairLines(removedLines, addedLines)
-
-		// Emit ModifiedLine for each pair with inline diffs
-		for _, pair := range pairs {
-			removedIdx := hunkRemoved[pair[0]]
-			addedIdx := hunkAdded[pair[1]]
-
-			// Compute inline character-level diff
-			dmp := diffmatchpatch.New()
-			leftText := left.Lines[removedIdx].Text()
-			rightText := right.Lines[addedIdx].Text()
-			diffs := dmp.DiffMain(leftText, rightText, false)
-
-			currentChanged = append(currentChanged, ModifiedLine{
-				LeftLineNo:  removedIdx + 1, // Convert to 1-indexed
-				RightLineNo: addedIdx + 1,   // Convert to 1-indexed
-				LeftTokens:  left.Lines[removedIdx].Tokens,
-				RightTokens: right.Lines[addedIdx].Tokens,
-				InlineDiff:  diffs,
-			})
-		}
-
-		// Emit RemovedLine for unpaired removed lines
-		for _, idx := range unpairedRemoved {
-			leftIdx := hunkRemoved[idx]
+		// Emit RemovedLine in hunk order
+		for _, leftIdx := range hunkRemoved {
 			currentChanged = append(currentChanged, RemovedLine{
 				LeftLineNo: leftIdx + 1, // Convert to 1-indexed
 				Tokens:     left.Lines[leftIdx].Tokens,
 			})
 		}
 
-		// Emit AddedLine for unpaired added lines
-		for _, idx := range unpairedAdded {
-			rightIdx := hunkAdded[idx]
+		// Emit AddedLine in hunk order
+		for _, rightIdx := range hunkAdded {
 			currentChanged = append(currentChanged, AddedLine{
 				RightLineNo: rightIdx + 1, // Convert to 1-indexed
 				Tokens:      right.Lines[rightIdx].Tokens,

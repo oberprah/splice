@@ -387,8 +387,6 @@ func (s *State) getCurrentFileLineNumber() (int, error) {
 			for _, cl := range b.Lines {
 				if currentLine == s.ViewportStart {
 					switch line := cl.(type) {
-					case diff.ModifiedLine:
-						return line.RightLineNo, nil
 					case diff.AddedLine:
 						return line.RightLineNo, nil
 					case diff.RemovedLine:
@@ -422,8 +420,6 @@ func (s *State) findNextRightLineNo(startLine int) (int, error) {
 			for _, cl := range b.Lines {
 				if currentLine >= startLine {
 					switch line := cl.(type) {
-					case diff.ModifiedLine:
-						return line.RightLineNo, nil
 					case diff.AddedLine:
 						return line.RightLineNo, nil
 					case diff.RemovedLine:

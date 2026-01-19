@@ -1,4 +1,4 @@
-abc123d · internal/auth/handler.go · +2 -2
+abc123d · internal/auth/handler.go · +2 -4
 ────────────────────────────────────────────────────────────────────────────────
   1   package auth                     │   1   package auth                    
   2                                    │   2                                   
@@ -7,6 +7,7 @@ abc123d · internal/auth/handler.go · +2 -2
   5 -                                  │                                       
   6   func Login() {                   │   3   func Login() {                  
   7       validateUser()               │   4       validateUser()              
-  8 -     oldFunction()                │   5 +     newFunction()               
+  8 -     oldFunction()                │                                       
+                                       │   5 +     newFunction()               
                                        │   6 +     checkPermissions()          
   9   }                                │   7   }                               

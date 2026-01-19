@@ -1,8 +1,10 @@
 0000000 · cmd/server/handlers/api/v1/users/profile_handler.go · +142 -56
 ────────────────────────────────────────────────────────────────────────────────
-  1 - func authenticateUser(username, password string) (*User, error) {                  │   1 + func authenticateUser(username, password string, options *AuthenticationOptions) …
+  1 - func authenticateUser(username, password string) (*User, error) {                  │                                                                                         
+                                                                                         │   1 + func authenticateUser(username, password string, options *AuthenticationOptions) …
   2       if username == "" || password == "" {                                          │   2       if username == "" || password == "" {                                         
-  3 -         return nil, errors.New("username and password required")                   │   3 +         return nil, fmt.Errorf("authentication failed: username and password are …
+  3 -         return nil, errors.New("username and password required")                   │                                                                                         
+                                                                                         │   3 +         return nil, fmt.Errorf("authentication failed: username and password are …
   4       }                                                                              │   4       }                                                                             
   5 -     return nil, errors.New("not implemented")                                      │                                                                                         
                                                                                          │   5 +                                                                                   

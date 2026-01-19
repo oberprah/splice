@@ -1,11 +1,6 @@
 package diff
 
-import (
-	"testing"
-
-	"github.com/oberprah/splice/internal/domain/highlight"
-	"github.com/sergi/go-diff/diffmatchpatch"
-)
+import "testing"
 
 func TestUnchangedBlock_LineCount(t *testing.T) {
 	block := UnchangedBlock{
@@ -24,8 +19,8 @@ func TestUnchangedBlock_LineCount(t *testing.T) {
 func TestChangeBlock_LineCount(t *testing.T) {
 	block := ChangeBlock{
 		Lines: []ChangeLine{
-			ModifiedLine{LeftLineNo: 1, RightLineNo: 1},
-			RemovedLine{LeftLineNo: 2},
+			RemovedLine{LeftLineNo: 1},
+			AddedLine{RightLineNo: 1},
 			AddedLine{RightLineNo: 2},
 		},
 	}
@@ -66,24 +61,6 @@ func TestBlockInterface_Sealed(t *testing.T) {
 
 func TestChangeLineInterface_Sealed(t *testing.T) {
 	// Verify that ChangeLine interface is properly implemented
-	var _ ChangeLine = ModifiedLine{}
 	var _ ChangeLine = RemovedLine{}
 	var _ ChangeLine = AddedLine{}
-}
-
-func TestModifiedLine_HasInlineDiff(t *testing.T) {
-	dmp := diffmatchpatch.New()
-	diffs := dmp.DiffMain("old", "new", false)
-
-	line := ModifiedLine{
-		LeftLineNo:  1,
-		RightLineNo: 1,
-		LeftTokens:  []highlight.Token{{Value: "old"}},
-		RightTokens: []highlight.Token{{Value: "new"}},
-		InlineDiff:  diffs,
-	}
-
-	if len(line.InlineDiff) == 0 {
-		t.Error("Expected InlineDiff to have diffs")
-	}
 }

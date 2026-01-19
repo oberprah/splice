@@ -642,48 +642,6 @@ func TestGetCurrentFileLineNumber_UnchangedBlock(t *testing.T) {
 	}
 }
 
-func TestGetCurrentFileLineNumber_ModifiedLine(t *testing.T) {
-	// Create a diff with a modified line at line 4
-	commit := core.GitCommit{Hash: "abc123"}
-	s := &State{
-		Source: createTestDiffSource(commit),
-		File:   core.FileChange{Path: "file.go"},
-		Diff: &diff.FileDiff{
-			Path: "file.go",
-			Blocks: []diff.Block{
-				diff.UnchangedBlock{Lines: []diff.LinePair{
-					{LeftLineNo: 1, RightLineNo: 1, Tokens: []highlight.Token{{Type: chroma.Text, Value: "line 1"}}},
-					{LeftLineNo: 2, RightLineNo: 2, Tokens: []highlight.Token{{Type: chroma.Text, Value: "line 2"}}},
-					{LeftLineNo: 3, RightLineNo: 3, Tokens: []highlight.Token{{Type: chroma.Text, Value: "line 3"}}},
-				}},
-				diff.ChangeBlock{Lines: []diff.ChangeLine{
-					diff.ModifiedLine{
-						LeftLineNo:  4,
-						RightLineNo: 4,
-						LeftTokens:  []highlight.Token{{Type: chroma.Text, Value: "old line 4"}},
-						RightTokens: []highlight.Token{{Type: chroma.Text, Value: "new line 4"}},
-					},
-				}},
-				diff.UnchangedBlock{Lines: []diff.LinePair{
-					{LeftLineNo: 5, RightLineNo: 5, Tokens: []highlight.Token{{Type: chroma.Text, Value: "line 5"}}},
-				}},
-			},
-		},
-		ViewportStart: 3, // Line 4 (0-indexed position 3)
-	}
-
-	lineNo, err := s.getCurrentFileLineNumber()
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-
-	// ModifiedLine at viewport position 3 has RightLineNo=4
-	expected := 4
-	if lineNo != expected {
-		t.Errorf("Expected line number %d, got %d", expected, lineNo)
-	}
-}
-
 func TestGetCurrentFileLineNumber_AddedLine(t *testing.T) {
 	// Create a diff with an added line
 	commit := core.GitCommit{Hash: "abc123"}

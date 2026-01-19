@@ -11,7 +11,6 @@ import (
 	"github.com/oberprah/splice/internal/domain/highlight"
 	"github.com/oberprah/splice/internal/ui/components"
 	"github.com/oberprah/splice/internal/ui/testutils"
-	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 var update = flag.Bool("update", false, "update golden files")
@@ -24,8 +23,6 @@ func assertDiffViewGolden(t *testing.T, output *components.ViewBuilder, filename
 }
 
 func TestDiffState_View_AllLineTypes(t *testing.T) {
-	dmp := diffmatchpatch.New()
-
 	commit := core.GitCommit{
 		Hash:    "abc123def456789012345678901234567890abcd",
 		Message: "Refactor authentication module",
@@ -48,7 +45,7 @@ func TestDiffState_View_AllLineTypes(t *testing.T) {
 		File: core.FileChange{
 			Path:      "internal/auth/handler.go",
 			Additions: 2,
-			Deletions: 2,
+			Deletions: 4,
 		},
 		Diff: &diff.FileDiff{
 			Path: "internal/auth/handler.go",
@@ -69,19 +66,10 @@ func TestDiffState_View_AllLineTypes(t *testing.T) {
 					{LeftLineNo: 6, RightLineNo: 3, Tokens: funcLoginTokens},
 					{LeftLineNo: 7, RightLineNo: 4, Tokens: validateUserTokens},
 				}},
-				// Change block: modified oldFunction->newFunction, added checkPermissions
+				// Change block: removed oldFunction, added newFunction and checkPermissions
 				diff.ChangeBlock{Lines: []diff.ChangeLine{
-					diff.ModifiedLine{
-						LeftLineNo:  8,
-						RightLineNo: 5,
-						LeftTokens:  oldFunctionTokens,
-						RightTokens: newFunctionTokens,
-						InlineDiff: dmp.DiffMain(
-							"    oldFunction()",
-							"    newFunction()",
-							false,
-						),
-					},
+					diff.RemovedLine{LeftLineNo: 8, Tokens: oldFunctionTokens},
+					diff.AddedLine{RightLineNo: 5, Tokens: newFunctionTokens},
 					diff.AddedLine{RightLineNo: 6, Tokens: checkPermissionsTokens},
 				}},
 				// Final unchanged block: closing brace
@@ -148,114 +136,6 @@ func TestDiffState_View_TokenRendering(t *testing.T) {
 	output := state.View(ctx)
 
 	assertDiffViewGolden(t, output.(*components.ViewBuilder), "token_rendering.golden")
-}
-
-func TestDiffState_View_InlineDiffRendering(t *testing.T) {
-	dmp := diffmatchpatch.New()
-
-	commit := core.GitCommit{Hash: "abc123"}
-
-	// Tokens for left side
-	leftMainTokens := []highlight.Token{
-		{Type: chroma.Keyword, Value: "func"},
-		{Type: chroma.Text, Value: " "},
-		{Type: chroma.NameFunction, Value: "main"},
-		{Type: chroma.Punctuation, Value: "() {"},
-	}
-	leftIfXTokens := []highlight.Token{
-		{Type: chroma.Text, Value: "    "},
-		{Type: chroma.Keyword, Value: "if"},
-		{Type: chroma.Text, Value: " "},
-		{Type: chroma.Name, Value: "x"},
-		{Type: chroma.Text, Value: " "},
-		{Type: chroma.Operator, Value: "=="},
-		{Type: chroma.Text, Value: " "},
-		{Type: chroma.Number, Value: "1"},
-	}
-	leftOldVarTokens := []highlight.Token{
-		{Type: chroma.Text, Value: "    "},
-		{Type: chroma.Name, Value: "oldVar"},
-		{Type: chroma.Text, Value: " "},
-		{Type: chroma.Operator, Value: ":="},
-		{Type: chroma.Text, Value: " "},
-		{Type: chroma.Number, Value: "42"},
-	}
-
-	// Tokens for right side
-	rightMainTokens := []highlight.Token{
-		{Type: chroma.Keyword, Value: "func"},
-		{Type: chroma.Text, Value: " "},
-		{Type: chroma.NameFunction, Value: "Main"},
-		{Type: chroma.Punctuation, Value: "() {"},
-	}
-	rightIfYTokens := []highlight.Token{
-		{Type: chroma.Text, Value: "    "},
-		{Type: chroma.Keyword, Value: "if"},
-		{Type: chroma.Text, Value: " "},
-		{Type: chroma.Name, Value: "y"},
-		{Type: chroma.Text, Value: " "},
-		{Type: chroma.Operator, Value: "=="},
-		{Type: chroma.Text, Value: " "},
-		{Type: chroma.Number, Value: "1"},
-	}
-	rightNewVarTokens := []highlight.Token{
-		{Type: chroma.Text, Value: "    "},
-		{Type: chroma.Name, Value: "newVar"},
-		{Type: chroma.Text, Value: " "},
-		{Type: chroma.Operator, Value: ":="},
-		{Type: chroma.Text, Value: " "},
-		{Type: chroma.Number, Value: "42"},
-	}
-
-	state := &State{
-		Source: createTestDiffSource(commit),
-		File:   core.FileChange{Path: "test.go"},
-		Diff: &diff.FileDiff{
-			Path: "test.go",
-			Blocks: []diff.Block{
-				diff.ChangeBlock{Lines: []diff.ChangeLine{
-					diff.ModifiedLine{
-						LeftLineNo:  1,
-						RightLineNo: 1,
-						LeftTokens:  leftMainTokens,
-						RightTokens: rightMainTokens,
-						InlineDiff: dmp.DiffMain(
-							"func main() {",
-							"func Main() {",
-							false,
-						),
-					},
-					diff.ModifiedLine{
-						LeftLineNo:  2,
-						RightLineNo: 2,
-						LeftTokens:  leftIfXTokens,
-						RightTokens: rightIfYTokens,
-						InlineDiff: dmp.DiffMain(
-							"    if x == 1",
-							"    if y == 1",
-							false,
-						),
-					},
-					diff.ModifiedLine{
-						LeftLineNo:  3,
-						RightLineNo: 3,
-						LeftTokens:  leftOldVarTokens,
-						RightTokens: rightNewVarTokens,
-						InlineDiff: dmp.DiffMain(
-							"    oldVar := 42",
-							"    newVar := 42",
-							false,
-						),
-					},
-				}},
-			},
-		},
-	}
-
-	ctx := testutils.MockContext{W: 80, H: 24}
-	output := state.View(ctx)
-
-	assertDiffViewGolden(t, output.(*components.ViewBuilder), "inline_diff_rendering.golden")
 }
 
 func TestDiffState_View_EmptyDiff(t *testing.T) {
@@ -335,18 +215,8 @@ func TestDiffState_View_RangeHeader(t *testing.T) {
 					{LeftLineNo: 1, RightLineNo: 1, Tokens: packageAuthTokens},
 				}},
 				diff.ChangeBlock{Lines: []diff.ChangeLine{
-					diff.ModifiedLine{
-						LeftLineNo:  2,
-						RightLineNo: 2,
-						LeftTokens:  oldFuncTokens,
-						RightTokens: newFuncTokens,
-						InlineDiff: []diffmatchpatch.Diff{
-							{Type: diffmatchpatch.DiffEqual, Text: "func "},
-							{Type: diffmatchpatch.DiffDelete, Text: "Old"},
-							{Type: diffmatchpatch.DiffInsert, Text: "New"},
-							{Type: diffmatchpatch.DiffEqual, Text: "() {"},
-						},
-					},
+					diff.RemovedLine{LeftLineNo: 2, Tokens: oldFuncTokens},
+					diff.AddedLine{RightLineNo: 2, Tokens: newFuncTokens},
 				}},
 			},
 		},
@@ -378,18 +248,8 @@ func TestDiffState_View_UnstagedChangesHeader(t *testing.T) {
 					{LeftLineNo: 1, RightLineNo: 1, Tokens: packageAuthTokens},
 				}},
 				diff.ChangeBlock{Lines: []diff.ChangeLine{
-					diff.ModifiedLine{
-						LeftLineNo:  2,
-						RightLineNo: 2,
-						LeftTokens:  oldFuncTokens,
-						RightTokens: newFuncTokens,
-						InlineDiff: []diffmatchpatch.Diff{
-							{Type: diffmatchpatch.DiffEqual, Text: "func "},
-							{Type: diffmatchpatch.DiffDelete, Text: "Old"},
-							{Type: diffmatchpatch.DiffInsert, Text: "New"},
-							{Type: diffmatchpatch.DiffEqual, Text: "() {"},
-						},
-					},
+					diff.RemovedLine{LeftLineNo: 2, Tokens: oldFuncTokens},
+					diff.AddedLine{RightLineNo: 2, Tokens: newFuncTokens},
 				}},
 			},
 		},
@@ -421,18 +281,8 @@ func TestDiffState_View_StagedChangesHeader(t *testing.T) {
 					{LeftLineNo: 1, RightLineNo: 1, Tokens: packageAuthTokens},
 				}},
 				diff.ChangeBlock{Lines: []diff.ChangeLine{
-					diff.ModifiedLine{
-						LeftLineNo:  2,
-						RightLineNo: 2,
-						LeftTokens:  oldFuncTokens,
-						RightTokens: newFuncTokens,
-						InlineDiff: []diffmatchpatch.Diff{
-							{Type: diffmatchpatch.DiffEqual, Text: "func "},
-							{Type: diffmatchpatch.DiffDelete, Text: "Old"},
-							{Type: diffmatchpatch.DiffInsert, Text: "New"},
-							{Type: diffmatchpatch.DiffEqual, Text: "() {"},
-						},
-					},
+					diff.RemovedLine{LeftLineNo: 2, Tokens: oldFuncTokens},
+					diff.AddedLine{RightLineNo: 2, Tokens: newFuncTokens},
 				}},
 			},
 		},
@@ -464,18 +314,8 @@ func TestDiffState_View_AllUncommittedChangesHeader(t *testing.T) {
 					{LeftLineNo: 1, RightLineNo: 1, Tokens: packageAuthTokens},
 				}},
 				diff.ChangeBlock{Lines: []diff.ChangeLine{
-					diff.ModifiedLine{
-						LeftLineNo:  2,
-						RightLineNo: 2,
-						LeftTokens:  oldFuncTokens,
-						RightTokens: newFuncTokens,
-						InlineDiff: []diffmatchpatch.Diff{
-							{Type: diffmatchpatch.DiffEqual, Text: "func "},
-							{Type: diffmatchpatch.DiffDelete, Text: "Old"},
-							{Type: diffmatchpatch.DiffInsert, Text: "New"},
-							{Type: diffmatchpatch.DiffEqual, Text: "() {"},
-						},
-					},
+					diff.RemovedLine{LeftLineNo: 2, Tokens: oldFuncTokens},
+					diff.AddedLine{RightLineNo: 2, Tokens: newFuncTokens},
 				}},
 			},
 		},

@@ -1,10 +1,6 @@
 package diff
 
-import (
-	"testing"
-
-	"github.com/sergi/go-diff/diffmatchpatch"
-)
+import "testing"
 
 // ═══════════════════════════════════════════════════════════
 // BuildFileContent Tests
@@ -264,7 +260,7 @@ func TestBuildFileDiff_SingleChangeBlock_OnlyRemoved(t *testing.T) {
 
 func TestBuildFileDiff_MixedBlocks(t *testing.T) {
 	// Unchanged, then changed, then unchanged
-	// Using similar text to ensure pairing
+	// Similar text here is fine; no pairing is applied in this implementation.
 	oldContent := "same1\nold_value\nsame2"
 	newContent := "same1\nnew_value\nsame2"
 	diffOutput := `@@ -1,3 +1,3 @@
@@ -278,7 +274,7 @@ func TestBuildFileDiff_MixedBlocks(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Should produce: UnchangedBlock(1), ChangeBlock(1 ModifiedLine), UnchangedBlock(1)
+	// Should produce: UnchangedBlock(1), ChangeBlock(2 lines), UnchangedBlock(1)
 	if len(fd.Blocks) != 3 {
 		t.Fatalf("expected 3 blocks, got %d", len(fd.Blocks))
 	}
@@ -292,24 +288,19 @@ func TestBuildFileDiff_MixedBlocks(t *testing.T) {
 		t.Errorf("block 0: expected 1 line, got %d", len(unchanged1.Lines))
 	}
 
-	// Second block: change with 1 ModifiedLine
+	// Second block: change with Removed + Added
 	change, ok := fd.Blocks[1].(ChangeBlock)
 	if !ok {
 		t.Fatalf("block 1: expected ChangeBlock, got %T", fd.Blocks[1])
 	}
-	if len(change.Lines) != 1 {
-		t.Fatalf("block 1: expected 1 line, got %d", len(change.Lines))
+	if len(change.Lines) != 2 {
+		t.Fatalf("block 1: expected 2 lines, got %d", len(change.Lines))
 	}
-	modified, ok := change.Lines[0].(ModifiedLine)
-	if !ok {
-		t.Fatalf("block 1, line 0: expected ModifiedLine, got %T", change.Lines[0])
+	if _, ok := change.Lines[0].(RemovedLine); !ok {
+		t.Fatalf("block 1, line 0: expected RemovedLine, got %T", change.Lines[0])
 	}
-	if modified.LeftLineNo != 2 || modified.RightLineNo != 2 {
-		t.Errorf("expected line numbers (2, 2), got (%d, %d)", modified.LeftLineNo, modified.RightLineNo)
-	}
-	// Verify inline diff exists
-	if len(modified.InlineDiff) == 0 {
-		t.Error("expected inline diff, got none")
+	if _, ok := change.Lines[1].(AddedLine); !ok {
+		t.Fatalf("block 1, line 1: expected AddedLine, got %T", change.Lines[1])
 	}
 
 	// Third block: unchanged with 1 line
@@ -374,8 +365,8 @@ func TestBuildFileDiff_ConsecutiveChanges(t *testing.T) {
 	}
 }
 
-func TestBuildFileDiff_ConsecutiveChanges_WithPairing(t *testing.T) {
-	// Consecutive changes that are similar enough to pair
+func TestBuildFileDiff_ConsecutiveChanges_NoPairing(t *testing.T) {
+	// Consecutive changes remain as removed + added lines
 	oldContent := "fmt.Println(hello)\nfmt.Println(world)"
 	newContent := "fmt.Println(Hello)\nfmt.Println(World)"
 	diffOutput := `@@ -1,2 +1,2 @@
@@ -399,15 +390,58 @@ func TestBuildFileDiff_ConsecutiveChanges_WithPairing(t *testing.T) {
 		t.Fatalf("expected ChangeBlock, got %T", fd.Blocks[0])
 	}
 
-	// Should have 2 ModifiedLine (paired due to high similarity)
-	if len(changeBlock.Lines) != 2 {
-		t.Errorf("expected 2 lines (2 modified), got %d", len(changeBlock.Lines))
+	// Should have 4 lines: 2 removed + 2 added
+	if len(changeBlock.Lines) != 4 {
+		t.Errorf("expected 4 lines (2 removed + 2 added), got %d", len(changeBlock.Lines))
 	}
 
 	for i, cl := range changeBlock.Lines {
-		if _, ok := cl.(ModifiedLine); !ok {
-			t.Errorf("line %d: expected ModifiedLine, got %T", i, cl)
+		switch cl.(type) {
+		case RemovedLine, AddedLine:
+		default:
+			t.Errorf("line %d: expected RemovedLine or AddedLine, got %T", i, cl)
 		}
+	}
+}
+
+func TestBuildFileDiff_HunkOrderPreservedWithoutPairing(t *testing.T) {
+	oldContent := "foo bar baz\nalpha beta gamma"
+	newContent := "alpha beta gamma delta\nfoo bar"
+	diffOutput := `@@ -1,2 +1,2 @@
+-foo bar baz
+-alpha beta gamma
++alpha beta gamma delta
++foo bar`
+
+	fd, err := BuildFileDiff("test.txt", oldContent, newContent, diffOutput)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(fd.Blocks) != 1 {
+		t.Fatalf("expected 1 block, got %d", len(fd.Blocks))
+	}
+
+	changeBlock, ok := fd.Blocks[0].(ChangeBlock)
+	if !ok {
+		t.Fatalf("expected ChangeBlock, got %T", fd.Blocks[0])
+	}
+
+	if len(changeBlock.Lines) != 4 {
+		t.Fatalf("expected 4 lines, got %d", len(changeBlock.Lines))
+	}
+
+	if _, ok := changeBlock.Lines[0].(RemovedLine); !ok {
+		t.Fatalf("expected line 0 RemovedLine, got %T", changeBlock.Lines[0])
+	}
+	if _, ok := changeBlock.Lines[1].(RemovedLine); !ok {
+		t.Fatalf("expected line 1 RemovedLine, got %T", changeBlock.Lines[1])
+	}
+	if _, ok := changeBlock.Lines[2].(AddedLine); !ok {
+		t.Fatalf("expected line 2 AddedLine, got %T", changeBlock.Lines[2])
+	}
+	if _, ok := changeBlock.Lines[3].(AddedLine); !ok {
+		t.Fatalf("expected line 3 AddedLine, got %T", changeBlock.Lines[3])
 	}
 }
 
@@ -474,7 +508,7 @@ func TestBuildFileDiff_MultipleChangeBlocks(t *testing.T) {
 
 func TestBuildFileDiff_TotalLineCount(t *testing.T) {
 	// Verify TotalLineCount works correctly across blocks
-	// Using similar text to ensure pairing
+	// Similar text here is fine; no pairing is applied in this implementation.
 	oldContent := "same1\nold_value\nsame2"
 	newContent := "same1\nnew_value\nsame2"
 	diffOutput := `@@ -1,3 +1,3 @@
@@ -488,8 +522,8 @@ func TestBuildFileDiff_TotalLineCount(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// 3 blocks: 1 unchanged + 1 change (1 modified line) + 1 unchanged = 3 display lines total
-	expected := 3
+	// 3 blocks: 1 unchanged + 1 change (removed + added) + 1 unchanged = 4 display lines total
+	expected := 4
 	if fd.TotalLineCount() != expected {
 		t.Errorf("expected TotalLineCount %d, got %d", expected, fd.TotalLineCount())
 	}
@@ -536,8 +570,7 @@ func TestBuildFileDiff_PreservesTokens(t *testing.T) {
 	}
 }
 
-func TestBuildFileDiff_ModifiedLineHasInlineDiff(t *testing.T) {
-	// Verify inline diffs are computed for modified lines
+func TestBuildFileDiff_NoInlineDiffWithoutPairing(t *testing.T) {
 	oldContent := "Hello"
 	newContent := "Hello World"
 	diffOutput := `@@ -1 +1 @@
@@ -558,44 +591,20 @@ func TestBuildFileDiff_ModifiedLineHasInlineDiff(t *testing.T) {
 		t.Fatalf("expected ChangeBlock, got %T", fd.Blocks[0])
 	}
 
-	if len(changeBlock.Lines) != 1 {
-		t.Fatalf("expected 1 line, got %d", len(changeBlock.Lines))
+	if len(changeBlock.Lines) != 2 {
+		t.Fatalf("expected 2 lines, got %d", len(changeBlock.Lines))
 	}
 
-	modified, ok := changeBlock.Lines[0].(ModifiedLine)
-	if !ok {
-		t.Fatalf("expected ModifiedLine, got %T", changeBlock.Lines[0])
+	if _, ok := changeBlock.Lines[0].(RemovedLine); !ok {
+		t.Fatalf("expected RemovedLine, got %T", changeBlock.Lines[0])
 	}
-
-	// Verify inline diff exists and makes sense
-	if len(modified.InlineDiff) == 0 {
-		t.Fatal("expected inline diff, got none")
-	}
-
-	// Reconstruct text from diffs to verify correctness
-	var leftText, rightText string
-	for _, d := range modified.InlineDiff {
-		switch d.Type {
-		case diffmatchpatch.DiffEqual:
-			leftText += d.Text
-			rightText += d.Text
-		case diffmatchpatch.DiffDelete:
-			leftText += d.Text
-		case diffmatchpatch.DiffInsert:
-			rightText += d.Text
-		}
-	}
-
-	if leftText != "Hello" {
-		t.Errorf("expected left text 'Hello', got %q", leftText)
-	}
-	if rightText != "Hello World" {
-		t.Errorf("expected right text 'Hello World', got %q", rightText)
+	if _, ok := changeBlock.Lines[1].(AddedLine); !ok {
+		t.Fatalf("expected AddedLine, got %T", changeBlock.Lines[1])
 	}
 }
 
 func TestBuildFileDiff_MixedChangeTypes(t *testing.T) {
-	// A change block with all types: modified, removed, and added
+	// A change block with removed and added lines
 	oldContent := "same\nmodified_old\nremoved\nsame"
 	newContent := "same\nmodified_new\nadded\nsame"
 	diffOutput := `@@ -1,4 +1,4 @@
@@ -622,11 +631,9 @@ func TestBuildFileDiff_MixedChangeTypes(t *testing.T) {
 	}
 
 	// Count types in change block
-	var modified, removed, added int
+	var removed, added int
 	for _, cl := range changeBlock.Lines {
 		switch cl.(type) {
-		case ModifiedLine:
-			modified++
 		case RemovedLine:
 			removed++
 		case AddedLine:
@@ -634,14 +641,11 @@ func TestBuildFileDiff_MixedChangeTypes(t *testing.T) {
 		}
 	}
 
-	// "modified_old" and "modified_new" should pair (similar), but "removed" and "added" should not
-	if modified != 1 {
-		t.Errorf("expected 1 ModifiedLine, got %d", modified)
+	// Expect 2 removed + 2 added
+	if removed != 2 {
+		t.Errorf("expected 2 RemovedLine, got %d", removed)
 	}
-	if removed != 1 {
-		t.Errorf("expected 1 RemovedLine, got %d", removed)
-	}
-	if added != 1 {
-		t.Errorf("expected 1 AddedLine, got %d", added)
+	if added != 2 {
+		t.Errorf("expected 2 AddedLine, got %d", added)
 	}
 }

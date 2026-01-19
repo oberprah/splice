@@ -1,9 +1,6 @@
 package diff
 
-import (
-	"github.com/oberprah/splice/internal/domain/highlight"
-	"github.com/sergi/go-diff/diffmatchpatch"
-)
+import "github.com/oberprah/splice/internal/domain/highlight"
 
 // Block is a sealed interface for diff content blocks
 type Block interface {
@@ -38,17 +35,6 @@ func (b ChangeBlock) LineCount() int { return len(b.Lines) }
 type ChangeLine interface {
 	changeLine()
 }
-
-// ModifiedLine: line exists in both files but content differs
-type ModifiedLine struct {
-	LeftLineNo  int
-	RightLineNo int
-	LeftTokens  []highlight.Token
-	RightTokens []highlight.Token
-	InlineDiff  []diffmatchpatch.Diff
-}
-
-func (ModifiedLine) changeLine() {}
 
 // RemovedLine: line exists only in old file
 type RemovedLine struct {

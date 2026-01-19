@@ -1,16 +1,22 @@
 0000000 · app.go · +10 -5
 ────────────────────────────────────────────────────────────────────────────────
-  6 - old line 6                                 │   6 + new line 6                                
-  7 - old line 7                                 │   7 + new line 7                                
-  8 - old line 8                                 │   8 + new line 8                                
+  6 - old line 6                                 │                                                 
+  7 - old line 7                                 │                                                 
+  8 - old line 8                                 │                                                 
+                                                 │   6 + new line 6                                
+                                                 │   7 + new line 7                                
+                                                 │   8 + new line 8                                
   9   line 9                                     │   9   line 9                                    
  10   line 10                                    │  10   line 10                                   
  11   line 11                                    │  11   line 11                                   
  12   line 12                                    │  12   line 12                                   
  13   line 13                                    │  13   line 13                                   
- 14 - old line 14                                │  14 + new line 14                               
- 15 - old line 15                                │  15 + new line 15                               
- 16 - old line 16                                │  16 + new line 16                               
+ 14 - old line 14                                │                                                 
+ 15 - old line 15                                │                                                 
+ 16 - old line 16                                │                                                 
+                                                 │  14 + new line 14                               
+                                                 │  15 + new line 15                               
+                                                 │  16 + new line 16                               
  17   line 17                                    │  17   line 17                                   
  18   line 18                                    │  18   line 18                                   
  19   line 19                                    │  19   line 19                                   
