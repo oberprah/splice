@@ -1420,6 +1420,53 @@ func TestNavigateToNextChange_CrossesFiles(t *testing.T) {
 	}
 }
 
+func TestNavigateToNextChange_ClampedJumpAdvancesToNextFile(t *testing.T) {
+	// Change block start beyond max viewport should still advance to the next file
+	// Layout: 3 unchanged, 1 change, 1 unchanged, 1 change, 1 unchanged (7 total lines)
+	// Height 6 => availableHeight 4, maxViewportStart = 3, next change starts at 5
+	s := createTestDiffStateWithChangesAndFiles(7, []int{3, 5}, 2, 0)
+	s.ViewportStart = 3
+
+	mockDiffResult := &core.FullFileDiffResult{
+		OldContent: "old\n",
+		NewContent: "new\n",
+		DiffOutput: "@@ -1 +1 @@\n-old\n+new\n",
+		OldPath:    "file1.go",
+		NewPath:    "file1.go",
+	}
+
+	ctx := testutils.MockContext{
+		W: 80,
+		H: 6,
+		MockFetchFullFileDiff: func(commitRange core.CommitRange, change core.FileChange) (*core.FullFileDiffResult, error) {
+			return mockDiffResult, nil
+		},
+	}
+
+	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}}
+
+	// First "n" attempts to jump to the last change block (clamped)
+	_, cmd := s.Update(msg, ctx)
+	if cmd != nil {
+		t.Fatal("Expected no file navigation on first n")
+	}
+
+	// Second "n" should move to the next file
+	_, cmd = s.Update(msg, ctx)
+	if cmd == nil {
+		t.Fatal("Expected non-nil command to load next file's diff")
+	}
+
+	result := cmd()
+	loadedMsg, ok := result.(core.DiffLoadedMsg)
+	if !ok {
+		t.Fatalf("Expected DiffLoadedMsg, got %T", result)
+	}
+	if loadedMsg.FileIndex != 1 {
+		t.Errorf("Expected FileIndex to be 1, got %d", loadedMsg.FileIndex)
+	}
+}
+
 func TestNavigateToPrevChange_CrossesFiles(t *testing.T) {
 	// At first change block, pressing 'p' should trigger file navigation
 	// Create a state with a single change at position 5, positioned at that change

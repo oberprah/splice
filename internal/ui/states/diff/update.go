@@ -142,11 +142,12 @@ func (s *State) navigateToNextChange(ctx core.Context) (*State, tea.Cmd) {
 	halfPage := availableHeight / 2
 
 	// Find which block we're currently in
-	currentBlockIdx, _ := s.getBlockAtPosition(s.ViewportStart)
+	currentBlockIdx := s.currentBlockIndexForNavigation(availableHeight)
 
 	// Check if we're in a ChangeBlock
 	if currentBlockIdx >= 0 && currentBlockIdx < len(s.Diff.Blocks) {
 		if _, isChange := s.Diff.Blocks[currentBlockIdx].(diff.ChangeBlock); isChange {
+			s.CurrentBlockIdx = currentBlockIdx
 			// We're in a change block - check if we need to scroll through it
 			if !s.isChangeBlockEndVisible(currentBlockIdx, availableHeight) {
 				// Scroll down half page to show more of current change
@@ -195,11 +196,12 @@ func (s *State) navigateToPrevChange(ctx core.Context) (*State, tea.Cmd) {
 	halfPage := availableHeight / 2
 
 	// Find which block we're currently in
-	currentBlockIdx, _ := s.getBlockAtPosition(s.ViewportStart)
+	currentBlockIdx := s.currentBlockIndexForNavigation(availableHeight)
 
 	// Check if we're in a ChangeBlock
 	if currentBlockIdx >= 0 && currentBlockIdx < len(s.Diff.Blocks) {
 		if _, isChange := s.Diff.Blocks[currentBlockIdx].(diff.ChangeBlock); isChange {
+			s.CurrentBlockIdx = currentBlockIdx
 			blockStart := s.getBlockStartPosition(currentBlockIdx)
 
 			// Check if we're not at the start of this change block
@@ -269,6 +271,34 @@ func (s *State) getBlockAtPosition(linePos int) (blockIdx int, lineInBlock int) 
 		return lastBlock, s.Diff.Blocks[lastBlock].LineCount()
 	}
 	return -1, 0
+}
+
+// currentBlockIndexForNavigation chooses the block index to use for navigation.
+// It prefers the CurrentBlockIdx if that block is visible in the viewport,
+// otherwise it falls back to the block at the viewport start position.
+func (s *State) currentBlockIndexForNavigation(availableHeight int) int {
+	if s.CurrentBlockIdx >= 0 && s.CurrentBlockIdx < len(s.Diff.Blocks) {
+		if s.isBlockVisible(s.CurrentBlockIdx, availableHeight) {
+			return s.CurrentBlockIdx
+		}
+	}
+
+	blockIdx, _ := s.getBlockAtPosition(s.ViewportStart)
+	return blockIdx
+}
+
+// isBlockVisible reports whether any part of the block is visible in the viewport.
+func (s *State) isBlockVisible(blockIdx, availableHeight int) bool {
+	if blockIdx < 0 || blockIdx >= len(s.Diff.Blocks) {
+		return false
+	}
+
+	blockStart := s.getBlockStartPosition(blockIdx)
+	blockEnd := s.getBlockEndPosition(blockIdx)
+	viewportStart := s.ViewportStart
+	viewportEnd := s.ViewportStart + availableHeight
+
+	return blockEnd > viewportStart && blockStart < viewportEnd
 }
 
 // getBlockStartPosition returns the global line position where a block starts
