@@ -109,6 +109,7 @@
 **Structure:**
 - Delete: `internal/ui/components/file_section.go`
 - Delete: `internal/ui/components/file_section_test.go`
+- Update: `internal/ui/states/files/view_test.go` (remove orphaned test)
 
 **Verify:**
 - No compilation errors after deletion
@@ -119,7 +120,26 @@
 **Read:**
 - Verify no other references exist before deleting
 
-**Status:** Pending
+**Status:** Complete
+
+**Commits:** d53ec13
+
+**Verification:**
+- No usages of FileSection found outside deleted files: `git grep -i "filesection"` returned only documentation references
+- No function calls to FileSection found: `git grep "FileSection("` returned no code references
+- Build succeeds: `go build -o splice .`
+- Full test suite passes: `go test ./...`
+- Pre-commit hooks pass (lint, tests, build)
+
+**Notes:**
+- Deleted `internal/ui/components/file_section.go` (188 lines)
+- Deleted `internal/ui/components/file_section_test.go` (495 lines)
+- Also removed `TestFilesState_CalculateMaxStatWidth` test from `internal/ui/states/files/view_test.go` (60 lines)
+  - This test was testing the now-deleted `CalculateMaxStatWidth` helper function
+  - TreeSection doesn't need column width calculation (tree format doesn't show per-file stats inline)
+- Total deletion: 743 lines removed
+- No code references to FileSection remain (only historical references in spec docs)
+- The comment in `tree_section.go` mentioning FileSection for consistency is acceptable
 
 ---
 
