@@ -29,6 +29,11 @@ func (m *Model) FetchFullFileDiff() core.FetchFullFileDiffFunc {
 	return m.fetchFullFileDiff
 }
 
+// FetchFullFileDiffForSource returns the diff fetcher for a DiffSource
+func (m *Model) FetchFullFileDiffForSource() core.FetchFullFileDiffForSourceFunc {
+	return m.fetchFullFileDiffForSource
+}
+
 // Now returns the current time (for testing time-dependent formatting)
 func (m *Model) Now() time.Time {
 	return m.nowFunc()

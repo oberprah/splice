@@ -1396,7 +1396,7 @@ func TestNavigateToNextChange_ClampedJumpAdvancesToNextFile(t *testing.T) {
 	ctx := testutils.MockContext{
 		W: 80,
 		H: 6,
-		MockFetchFullFileDiff: func(commitRange core.CommitRange, change core.FileChange) (*core.FullFileDiffResult, error) {
+		MockFetchFullFileDiffForSource: func(source core.DiffSource, change core.FileChange) (*core.FullFileDiffResult, error) {
 			return mockDiffResult, nil
 		},
 	}

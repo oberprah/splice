@@ -21,14 +21,15 @@ type FetchCommitsFunc func(limit int) ([]core.GitCommit, error)
 // Model represents the application model using the state pattern.
 // It implements tea.Model for Bubbletea and core.Context for states.
 type Model struct {
-	stack                     []core.State // Navigation stack - current state is always stack[len-1]
-	width                     int
-	height                    int
-	fetchCommits              FetchCommitsFunc
-	fetchFileChanges          core.FetchFileChangesFunc
-	fetchFileChangesForSource core.FetchFileChangesForSourceFunc
-	fetchFullFileDiff         core.FetchFullFileDiffFunc
-	nowFunc                   func() time.Time
+	stack                      []core.State // Navigation stack - current state is always stack[len-1]
+	width                      int
+	height                     int
+	fetchCommits               FetchCommitsFunc
+	fetchFileChanges           core.FetchFileChangesFunc
+	fetchFileChangesForSource  core.FetchFileChangesForSourceFunc
+	fetchFullFileDiff          core.FetchFullFileDiffFunc
+	fetchFullFileDiffForSource core.FetchFullFileDiffForSourceFunc
+	nowFunc                    func() time.Time
 }
 
 // current returns the current state (top of stack).
@@ -56,6 +57,12 @@ func NewModel(opts ...ModelOption) Model {
 
 	for _, opt := range opts {
 		opt(&m)
+	}
+
+	if m.fetchFullFileDiffForSource == nil {
+		m.fetchFullFileDiffForSource = func(source core.DiffSource, change core.FileChange) (*core.FullFileDiffResult, error) {
+			return git.FetchFullFileDiffForSource(source, change, m.fetchFullFileDiff)
+		}
 	}
 
 	return m

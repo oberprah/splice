@@ -37,6 +37,13 @@ func WithFetchFullFileDiff(fn core.FetchFullFileDiffFunc) ModelOption {
 	}
 }
 
+// WithFetchFullFileDiffForSource allows injecting a custom diff fetcher for a DiffSource.
+func WithFetchFullFileDiffForSource(fn core.FetchFullFileDiffForSourceFunc) ModelOption {
+	return func(m *Model) {
+		m.fetchFullFileDiffForSource = fn
+	}
+}
+
 // WithNow allows injecting a custom time function for deterministic testing
 func WithNow(fn func() time.Time) ModelOption {
 	return func(m *Model) {

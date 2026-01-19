@@ -440,6 +440,36 @@ func FetchFullFileDiff(commitRange core.CommitRange, change core.FileChange) (*c
 	return result, nil
 }
 
+// FetchFullFileDiffForSource fetches the full file diff based on DiffSource.
+// For commit ranges, it delegates to the injected fetchFullFileDiff.
+// For uncommitted changes, it uses the git package helpers.
+func FetchFullFileDiffForSource(
+	source core.DiffSource,
+	change core.FileChange,
+	fetchFullFileDiff core.FetchFullFileDiffFunc,
+) (*core.FullFileDiffResult, error) {
+	switch src := source.(type) {
+	case core.CommitRangeDiffSource:
+		commitRange := src.ToCommitRange()
+		return fetchFullFileDiff(commitRange, change)
+
+	case core.UncommittedChangesDiffSource:
+		switch src.Type {
+		case core.UncommittedTypeUnstaged:
+			return FetchUnstagedFileDiff(change)
+		case core.UncommittedTypeStaged:
+			return FetchStagedFileDiff(change)
+		case core.UncommittedTypeAll:
+			return FetchAllUncommittedFileDiff(change)
+		default:
+			return nil, fmt.Errorf("unknown uncommitted type: %v", src.Type)
+		}
+
+	default:
+		return nil, fmt.Errorf("unknown diff source type: %T", source)
+	}
+}
+
 // FetchFileDiff retrieves the unified diff for a specific file in a commit.
 // The filePath should be relative to the repository root.
 func FetchFileDiff(commitHash, filePath string) (string, error) {

@@ -10,6 +10,7 @@ import (
 	"github.com/oberprah/splice/internal/domain/diff"
 	"github.com/oberprah/splice/internal/domain/filetree"
 	"github.com/oberprah/splice/internal/domain/highlight"
+	"github.com/oberprah/splice/internal/git"
 	"github.com/oberprah/splice/internal/ui/testutils"
 )
 
@@ -457,7 +458,7 @@ func TestFetchFileDiffForSource_CommitRange(t *testing.T) {
 		}, nil
 	}
 
-	result, err := fetchFileDiffForSource(source, file, mockFetch)
+	result, err := git.FetchFullFileDiffForSource(source, file, mockFetch)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -478,7 +479,7 @@ func TestFetchFileDiffForSource_UnknownType(t *testing.T) {
 	}
 
 	// Test with nil source (will cause type switch default case)
-	_, err := fetchFileDiffForSource(nil, file, mockFetch)
+	_, err := git.FetchFullFileDiffForSource(nil, file, mockFetch)
 	if err == nil {
 		t.Error("Expected error for unknown diff source type")
 	}

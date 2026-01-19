@@ -540,7 +540,7 @@ func (s *State) navigateToPrevFile(ctx core.Context) (*State, tea.Cmd) {
 func (s *State) loadDiffForFile(file core.FileChange, fileIndex int, ctx core.Context) tea.Cmd {
 	return func() tea.Msg {
 		// Fetch full file content and diff based on DiffSource type
-		fullDiffResult, err := fetchFileDiffForSource(s.Source, file, ctx.FetchFullFileDiff())
+		fullDiffResult, err := ctx.FetchFullFileDiffForSource()(s.Source, file)
 		if err != nil {
 			return core.DiffLoadedMsg{
 				Source:    s.Source,
@@ -575,33 +575,6 @@ func (s *State) loadDiffForFile(file core.FileChange, fileIndex int, ctx core.Co
 			File:      file,
 			Diff:      fileDiff,
 		}
-	}
-}
-
-// fetchFileDiffForSource fetches the full file diff based on the DiffSource type.
-// Uses type switch to call the appropriate git function for each source type.
-func fetchFileDiffForSource(source core.DiffSource, file core.FileChange, fetchFullFileDiff core.FetchFullFileDiffFunc) (*core.FullFileDiffResult, error) {
-	switch src := source.(type) {
-	case core.CommitRangeDiffSource:
-		// For commit ranges, use the injected fetchFullFileDiff function
-		commitRange := src.ToCommitRange()
-		return fetchFullFileDiff(commitRange, file)
-
-	case core.UncommittedChangesDiffSource:
-		// For uncommitted changes, type switch on Type field to call appropriate git function
-		switch src.Type {
-		case core.UncommittedTypeUnstaged:
-			return git.FetchUnstagedFileDiff(file)
-		case core.UncommittedTypeStaged:
-			return git.FetchStagedFileDiff(file)
-		case core.UncommittedTypeAll:
-			return git.FetchAllUncommittedFileDiff(file)
-		default:
-			return nil, fmt.Errorf("unknown uncommitted type: %v", src.Type)
-		}
-
-	default:
-		return nil, fmt.Errorf("unknown diff source type: %T", source)
 	}
 }
 

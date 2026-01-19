@@ -15,6 +15,9 @@ type FetchFileChangesForSourceFunc func(source DiffSource) ([]FileChange, error)
 // FetchFullFileDiffFunc is a function type for fetching full file diff content
 type FetchFullFileDiffFunc func(commitRange CommitRange, change FileChange) (*FullFileDiffResult, error)
 
+// FetchFullFileDiffForSourceFunc fetches full file diff content for a DiffSource
+type FetchFullFileDiffForSourceFunc func(source DiffSource, change FileChange) (*FullFileDiffResult, error)
+
 // FullFileDiffResult contains the full file content before and after a change
 type FullFileDiffResult struct {
 	OldContent string // Content of the file before the change (empty for new files)
@@ -30,6 +33,7 @@ type Context interface {
 	Height() int
 	FetchFileChanges() FetchFileChangesFunc
 	FetchFullFileDiff() FetchFullFileDiffFunc
+	FetchFullFileDiffForSource() FetchFullFileDiffForSourceFunc
 	Now() time.Time
 }
 
