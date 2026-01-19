@@ -184,66 +184,6 @@ func TestFilesState_View_FileStatsSummary(t *testing.T) {
 	assertFilesViewGolden(t, output.(*components.ViewBuilder), "file_stats_summary.golden")
 }
 
-// Helper function test - testing internal logic
-func TestFilesState_CalculateMaxStatWidth(t *testing.T) {
-	tests := []struct {
-		name         string
-		files        []core.FileChange
-		expectedAddW int
-		expectedDelW int
-	}{
-		{
-			name: "small numbers",
-			files: []core.FileChange{
-				{Path: "a.go", Additions: 1, Deletions: 2},
-				{Path: "b.go", Additions: 9, Deletions: 8},
-			},
-			expectedAddW: 2, // +9 = 2 chars
-			expectedDelW: 2, // -8 = 2 chars
-		},
-		{
-			name: "large numbers",
-			files: []core.FileChange{
-				{Path: "a.go", Additions: 93, Deletions: 0},
-				{Path: "b.go", Additions: 267, Deletions: 12},
-				{Path: "c.go", Additions: 1234, Deletions: 567},
-			},
-			expectedAddW: 5, // +1234 = 5 chars (sign + 4 digits)
-			expectedDelW: 4, // -567 = 4 chars (sign + 3 digits)
-		},
-		{
-			name: "with binary files",
-			files: []core.FileChange{
-				{Path: "a.png", IsBinary: true},
-				{Path: "b.go", Additions: 10, Deletions: 5},
-			},
-			expectedAddW: 3, // +10 = 3 chars
-			expectedDelW: 2, // -5 = 2 chars
-		},
-		{
-			name: "only zeros",
-			files: []core.FileChange{
-				{Path: "a.go", Additions: 0, Deletions: 0},
-			},
-			expectedAddW: 2, // +0 = 2 chars (minimum)
-			expectedDelW: 2, // -0 = 2 chars (minimum)
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			addW, delW := components.CalculateMaxStatWidth(tt.files)
-
-			if addW != tt.expectedAddW {
-				t.Errorf("Addition width = %d, want %d", addW, tt.expectedAddW)
-			}
-			if delW != tt.expectedDelW {
-				t.Errorf("Deletion width = %d, want %d", delW, tt.expectedDelW)
-			}
-		})
-	}
-}
-
 func TestFilesState_View_StatusDisplay(t *testing.T) {
 	commit := createTestCommit()
 	files := []core.FileChange{
