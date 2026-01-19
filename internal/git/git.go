@@ -18,6 +18,19 @@ func FetchFileChanges(commitRange core.CommitRange) ([]core.FileChange, error) {
 	return operations.FetchFileChanges(commitRange)
 }
 
+// FetchFileChangesForSource fetches file changes based on DiffSource.
+// This is the unified interface for getting file changes from any source.
+func FetchFileChangesForSource(source core.DiffSource) ([]core.FileChange, error) {
+	switch src := source.(type) {
+	case core.CommitRangeDiffSource:
+		return operations.FetchFileChanges(src.ToCommitRange())
+	case core.UncommittedChangesDiffSource:
+		return operations.FetchUncommittedFileChanges(src.Type)
+	default:
+		return nil, fmt.Errorf("unknown diff source type: %T", source)
+	}
+}
+
 // FetchFileContent retrieves the content of a file at a specific commit.
 // Returns empty string without error if the file doesn't exist at that commit.
 func FetchFileContent(commitHash, filePath string) (string, error) {
@@ -62,24 +75,6 @@ func FetchFileDiff(commitHash, filePath string) (string, error) {
 // The filePath should be relative to the repository root.
 func FetchFileDiffRange(rangeSpec, filePath string) (string, error) {
 	return operations.FetchFileDiffRange(rangeSpec, filePath)
-}
-
-// FetchUnstagedFileChanges executes git diff and returns a slice of file changes
-// for unstaged changes (working tree vs index).
-func FetchUnstagedFileChanges() ([]core.FileChange, error) {
-	return operations.FetchUnstagedFileChanges()
-}
-
-// FetchStagedFileChanges executes git diff --staged and returns a slice of file changes
-// for staged changes (index vs HEAD).
-func FetchStagedFileChanges() ([]core.FileChange, error) {
-	return operations.FetchStagedFileChanges()
-}
-
-// FetchAllUncommittedFileChanges executes git diff HEAD and returns a slice of file changes
-// for all uncommitted changes (working tree vs HEAD).
-func FetchAllUncommittedFileChanges() ([]core.FileChange, error) {
-	return operations.FetchAllUncommittedFileChanges()
 }
 
 // FetchIndexFileContent retrieves the content of a file from the index (staging area).
