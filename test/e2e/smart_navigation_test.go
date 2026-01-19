@@ -485,6 +485,81 @@ func TestFileNavigation_NextAndPrevious(t *testing.T) {
 	runner.Quit()
 }
 
+// TestFileNavigation_RespectsFilesViewOrder verifies that diff view file navigation
+// follows the same sorted order as the files view.
+func TestFileNavigation_RespectsFilesViewOrder(t *testing.T) {
+	commits := testutils.CreateTestCommitsWithMessages([]string{
+		"Unsorted file list",
+	})
+
+	// Intentionally unsorted order to differ from files view sorting.
+	mockFiles := []core.FileChange{
+		{Path: "b.go", Status: "M", Additions: 1, Deletions: 1},
+		{Path: "a.go", Status: "M", Additions: 1, Deletions: 1},
+		{Path: "c.go", Status: "M", Additions: 1, Deletions: 1},
+	}
+
+	mockDiffFunc := func(commitRange core.CommitRange, change core.FileChange) (*core.FullFileDiffResult, error) {
+		switch change.Path {
+		case "a.go":
+			return &core.FullFileDiffResult{
+				OldContent: "old a",
+				NewContent: "new a",
+				DiffOutput: "@@ -1 +1 @@\n-old a\n+new a",
+				OldPath:    "a.go",
+				NewPath:    "a.go",
+			}, nil
+		case "b.go":
+			return &core.FullFileDiffResult{
+				OldContent: "old b",
+				NewContent: "new b",
+				DiffOutput: "@@ -1 +1 @@\n-old b\n+new b",
+				OldPath:    "b.go",
+				NewPath:    "b.go",
+			}, nil
+		case "c.go":
+			return &core.FullFileDiffResult{
+				OldContent: "old c",
+				NewContent: "new c",
+				DiffOutput: "@@ -1 +1 @@\n-old c\n+new c",
+				OldPath:    "c.go",
+				NewPath:    "c.go",
+			}, nil
+		default:
+			return &core.FullFileDiffResult{}, nil
+		}
+	}
+
+	fixedNow := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	m := app.NewModel(
+		app.WithInitialState(loading.State{}),
+		app.WithFetchCommits(testutils.MockFetchCommits(commits, nil)),
+		app.WithFetchFileChanges(testutils.MockFetchFileChanges(mockFiles, nil)),
+		app.WithFetchFullFileDiff(mockDiffFunc),
+		app.WithNow(func() time.Time { return fixedNow }),
+	)
+
+	runner := NewE2ETestRunner(t, m)
+
+	runner.Send(tea.WindowSizeMsg{Width: 100, Height: 24})
+	runner.WaitForContent("Unsorted file list")
+
+	// Navigate to files view
+	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	runner.WaitForContent("a.go")
+
+	// Open first file diff (files view sorts alphabetically, so cursor is on a.go)
+	runner.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	runner.WaitForContent("new a")
+
+	// Press ] - should navigate to b.go in files view order.
+	runner.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("]")})
+	runner.WaitForContent("new b")
+
+	runner.Quit()
+}
+
 // TestSmartNavigation_CrossFileNavigation tests n/p crossing file boundaries
 func TestSmartNavigation_CrossFileNavigation(t *testing.T) {
 	commits := testutils.CreateTestCommitsWithMessages([]string{

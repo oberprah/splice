@@ -1,6 +1,8 @@
 package files
 
 import (
+	"sort"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/oberprah/splice/internal/core"
@@ -168,9 +170,12 @@ func (s *State) loadDiff(file core.FileChange, fetchFullFileDiff core.FetchFullF
 			}
 		}
 
-		// Find the file index in the file list
+		// Use the same ordering as the files view (alphabetical by path).
+		orderedFiles := sortedFilesByPath(s.Files)
+
+		// Find the file index in the ordered list
 		fileIndex := 0
-		for i, f := range s.Files {
+		for i, f := range orderedFiles {
 			if f.Path == file.Path {
 				fileIndex = i
 				break
@@ -179,13 +184,21 @@ func (s *State) loadDiff(file core.FileChange, fetchFullFileDiff core.FetchFullF
 
 		return core.DiffLoadedMsg{
 			Source:    s.Source,
-			Files:     s.Files,
+			Files:     orderedFiles,
 			FileIndex: fileIndex,
 			File:      file,
 			Diff:      fileDiff,
 			Err:       nil,
 		}
 	}
+}
+
+func sortedFilesByPath(files []core.FileChange) []core.FileChange {
+	ordered := append([]core.FileChange(nil), files...)
+	sort.SliceStable(ordered, func(i, j int) bool {
+		return ordered[i].Path < ordered[j].Path
+	})
+	return ordered
 }
 
 // toggleFolder toggles the expanded state of a folder at the cursor position.
