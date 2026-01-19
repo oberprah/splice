@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/oberprah/splice/internal/core"
+	"github.com/oberprah/splice/internal/git/parsing"
 )
 
 func TestParseGitLogOutput(t *testing.T) {
@@ -253,14 +254,14 @@ func TestParseGitLogOutput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			commits, err := ParseGitLogOutput(tt.input)
+			commits, err := parsing.ParseGitLogOutput(tt.input)
 
 			if err != nil {
-				t.Fatalf("ParseGitLogOutput() error = %v", err)
+				t.Fatalf("parsing.ParseGitLogOutput() error = %v", err)
 			}
 
 			if !reflect.DeepEqual(commits, tt.expected) {
-				t.Errorf("ParseGitLogOutput() mismatch:\ngot:  %+v\nwant: %+v", commits, tt.expected)
+				t.Errorf("parsing.ParseGitLogOutput() mismatch:\ngot:  %+v\nwant: %+v", commits, tt.expected)
 			}
 		})
 	}
@@ -269,14 +270,14 @@ func TestParseGitLogOutput(t *testing.T) {
 func TestParseGitLogOutput_InvalidDate(t *testing.T) {
 	input := "hash\x00parent\x00\x00Author\x00INVALID_DATE\x00Message\x00\x1e"
 
-	commits, err := ParseGitLogOutput(input)
+	commits, err := parsing.ParseGitLogOutput(input)
 
 	if err == nil {
-		t.Fatal("ParseGitLogOutput() expected error for invalid date, got nil")
+		t.Fatal("parsing.ParseGitLogOutput() expected error for invalid date, got nil")
 	}
 
 	if commits != nil {
-		t.Errorf("ParseGitLogOutput() expected nil commits on error, got %d commits", len(commits))
+		t.Errorf("parsing.ParseGitLogOutput() expected nil commits on error, got %d commits", len(commits))
 	}
 
 	// Verify error message contains the invalid date
@@ -316,14 +317,14 @@ func TestParseGitLogOutput_IncompleteData(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			commits, err := ParseGitLogOutput(tt.input)
+			commits, err := parsing.ParseGitLogOutput(tt.input)
 
 			if err != nil {
-				t.Fatalf("ParseGitLogOutput() unexpected error: %v", err)
+				t.Fatalf("parsing.ParseGitLogOutput() unexpected error: %v", err)
 			}
 
 			if !reflect.DeepEqual(commits, tt.expected) {
-				t.Errorf("ParseGitLogOutput() mismatch:\ngot:  %+v\nwant: %+v", commits, tt.expected)
+				t.Errorf("parsing.ParseGitLogOutput() mismatch:\ngot:  %+v\nwant: %+v", commits, tt.expected)
 			}
 		})
 	}
@@ -469,14 +470,14 @@ func TestParseFileChangesOutput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			changes, err := ParseFileChangesOutput(tt.input)
+			changes, err := parsing.ParseFileChangesOutput(tt.input)
 
 			if err != nil {
-				t.Fatalf("ParseFileChangesOutput() error = %v", err)
+				t.Fatalf("parsing.ParseFileChangesOutput() error = %v", err)
 			}
 
 			if !reflect.DeepEqual(changes, tt.expected) {
-				t.Errorf("ParseFileChangesOutput() mismatch:\ngot:  %+v\nwant: %+v", changes, tt.expected)
+				t.Errorf("parsing.ParseFileChangesOutput() mismatch:\ngot:  %+v\nwant: %+v", changes, tt.expected)
 			}
 		})
 	}
@@ -517,14 +518,14 @@ func TestParseFileChangesOutput_InvalidInput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			changes, err := ParseFileChangesOutput(tt.input)
+			changes, err := parsing.ParseFileChangesOutput(tt.input)
 
 			if err == nil {
-				t.Fatal("ParseFileChangesOutput() expected error for invalid input, got nil")
+				t.Fatal("parsing.ParseFileChangesOutput() expected error for invalid input, got nil")
 			}
 
 			if changes != nil {
-				t.Errorf("ParseFileChangesOutput() expected nil changes on error, got %d changes", len(changes))
+				t.Errorf("parsing.ParseFileChangesOutput() expected nil changes on error, got %d changes", len(changes))
 			}
 
 			if !strings.Contains(err.Error(), tt.expectedErrSubstr) {
@@ -651,9 +652,9 @@ func TestParseUncommittedFileChanges(t *testing.T) {
 			}
 
 			// Parse file changes
-			changes, err := ParseFileChangesOutput(tt.numstatOut)
+			changes, err := parsing.ParseFileChangesOutput(tt.numstatOut)
 			if err != nil {
-				t.Fatalf("ParseFileChangesOutput() error = %v", err)
+				t.Fatalf("parsing.ParseFileChangesOutput() error = %v", err)
 			}
 
 			// Add status to each change

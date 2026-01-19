@@ -5,7 +5,6 @@ import (
 
 	"github.com/oberprah/splice/internal/core"
 	"github.com/oberprah/splice/internal/git/operations"
-	"github.com/oberprah/splice/internal/git/parsing"
 )
 
 // FetchCommits executes git log and returns a slice of commits
@@ -29,12 +28,6 @@ func FetchFileChangesForSource(source core.DiffSource) ([]core.FileChange, error
 	default:
 		return nil, fmt.Errorf("unknown diff source type: %T", source)
 	}
-}
-
-// FetchFileContent retrieves the content of a file at a specific commit.
-// Returns empty string without error if the file doesn't exist at that commit.
-func FetchFileContent(commitHash, filePath string) (string, error) {
-	return operations.FetchFileContent(commitHash, filePath)
 }
 
 // FetchFullFileDiff fetches the complete file content before and after a change,
@@ -64,31 +57,6 @@ func FetchFullFileDiffForSource(
 	}
 }
 
-// FetchFileDiff retrieves the unified diff for a specific file in a commit.
-// The filePath should be relative to the repository root.
-func FetchFileDiff(commitHash, filePath string) (string, error) {
-	return operations.FetchFileDiff(commitHash, filePath)
-}
-
-// FetchFileDiffRange retrieves the unified diff for a specific file in a commit range.
-// The rangeSpec should be in the format "fromHash..toHash".
-// The filePath should be relative to the repository root.
-func FetchFileDiffRange(rangeSpec, filePath string) (string, error) {
-	return operations.FetchFileDiffRange(rangeSpec, filePath)
-}
-
-// FetchIndexFileContent retrieves the content of a file from the index (staging area).
-// Returns empty string without error if the file doesn't exist in the index.
-func FetchIndexFileContent(filePath string) (string, error) {
-	return operations.FetchIndexFileContent(filePath)
-}
-
-// FetchWorkingTreeFileContent retrieves the content of a file from the working tree.
-// Returns empty string without error if the file doesn't exist.
-func FetchWorkingTreeFileContent(filePath string) (string, error) {
-	return operations.FetchWorkingTreeFileContent(filePath)
-}
-
 // ValidateDiffHasChanges checks if a diff specification has any changes.
 // For uncommitted changes, checks the appropriate git diff.
 // For commit ranges, checks if the range has any diff.
@@ -103,24 +71,7 @@ func ResolveCommitRange(spec string) (core.CommitRangeDiffSource, error) {
 	return operations.ResolveCommitRange(spec)
 }
 
-// ResolveRef resolves a git ref (like "HEAD", "main", "abc123") to a GitCommit.
-func ResolveRef(ref string) (core.GitCommit, error) {
-	return operations.ResolveRef(ref)
-}
-
 // GetRepositoryRoot executes git rev-parse --show-toplevel to get the absolute path of the repository root.
 func GetRepositoryRoot() (string, error) {
 	return operations.GetRepositoryRoot()
-}
-
-// ParseGitLogOutput parses git log output into GitCommit structs.
-// Input format: "hash\0parents\0refs\0author\0date\0subject\0body\x1e" (NULL-separated fields, record separator between commits).
-func ParseGitLogOutput(output string) ([]core.GitCommit, error) {
-	return parsing.ParseGitLogOutput(output)
-}
-
-// ParseFileChangesOutput parses git diff output into FileChange structs.
-// Input format: "additions\tdeletions\tfilepath" (one file per line).
-func ParseFileChangesOutput(output string) ([]core.FileChange, error) {
-	return parsing.ParseFileChangesOutput(output)
 }
