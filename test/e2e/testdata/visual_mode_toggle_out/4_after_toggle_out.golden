@@ -3,8 +3,8 @@
   ├ 0000000 Third commit - Test Author 1 year ago                             │ Second commit                                                                   
                                                                               │                                                                                 
                                                                               │ 2 files · +23 -5                                                                
-                                                                              │ M +15 -3  second.go                                                             
-                                                                              │ A + 8 -2  another.go                                                            
+                                                                              │  ├── A +8 -2  another.go                                                        
+                                                                              │  └── M +15 -3  second.go                                                        
 
 
 

@@ -3,8 +3,8 @@
   ├ 0000000 Third commit - Test Author 1 year ago                             │ First commit                                                                    
                                                                               │                                                                                 
                                                                               │ 2 files · +30 -5                                                                
-                                                                              │ M +10 -5  first.go                                                              
-                                                                              │ A +20 -0  shared.go                                                             
+                                                                              │  ├── M +10 -5  first.go                                                         
+                                                                              │  └── A +20 -0  shared.go                                                        
                                                                               │                                                                                 
                                                                               │                                                                                 
                                                                               │                                                                                 

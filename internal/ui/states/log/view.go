@@ -5,6 +5,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/oberprah/splice/internal/core"
+	"github.com/oberprah/splice/internal/domain/filetree"
 	"github.com/oberprah/splice/internal/domain/graph"
 	"github.com/oberprah/splice/internal/ui/components"
 	"github.com/oberprah/splice/internal/ui/format"
@@ -188,6 +189,22 @@ func (s State) renderFilesPreviewPanel(width, height int, ctx core.Context) []st
 	return lines
 }
 
+// buildTreeForPreview builds a fully-expanded tree from flat file list.
+// Returns visible items ready for TreeSection rendering.
+func buildTreeForPreview(files []core.FileChange) []filetree.VisibleTreeItem {
+	// Build tree - all folders start expanded
+	root := filetree.BuildTree(files)
+
+	// Collapse single-child folder chains (e.g., "src/components/nested")
+	root = filetree.CollapsePaths(root)
+
+	// Apply aggregate statistics to folders
+	filetree.ApplyStats(root)
+
+	// Flatten to visible items (all folders expanded, so all items visible)
+	return filetree.FlattenVisible(root)
+}
+
 // renderFileList renders the file list based on Preview state
 func (s State) renderFileList(width, maxLines int) []string {
 	var lines []string
@@ -217,34 +234,36 @@ func (s State) renderFileList(width, maxLines int) []string {
 			lines = append(lines, "")
 			lines = append(lines, styles.TimeStyle.Render("Loading files..."))
 		} else {
-			// Use FileSection component to render files
-			// Calculate how many files we can show
-			fileSectionLines := components.FileSection(preview.Files, width, nil)
+			// Build tree structure from files
+			visibleItems := buildTreeForPreview(preview.Files)
+
+			// Render using TreeSection (nil cursor means no selection)
+			treeSectionLines := components.TreeSection(visibleItems, preview.Files, nil, width)
 
 			// Truncate to available space if needed
-			if len(fileSectionLines) > maxLines {
-				// Keep blank line and stats line, truncate file list
-				lines = append(lines, fileSectionLines[0]) // blank line
-				lines = append(lines, fileSectionLines[1]) // stats line
+			if len(treeSectionLines) > maxLines {
+				// Keep blank line and stats line, truncate tree list
+				lines = append(lines, treeSectionLines[0]) // blank line
+				lines = append(lines, treeSectionLines[1]) // stats line
 
-				// Add as many file lines as will fit, leaving room for overflow indicator
-				filesShown := 0
-				for i := 2; i < len(fileSectionLines) && i-2 < maxLines-3; i++ {
-					lines = append(lines, fileSectionLines[i])
-					filesShown++
+				// Add as many tree lines as will fit, leaving room for overflow indicator
+				itemsShown := 0
+				for i := 2; i < len(treeSectionLines) && i-2 < maxLines-3; i++ {
+					lines = append(lines, treeSectionLines[i])
+					itemsShown++
 				}
 
 				// Add overflow indicator if needed
-				remaining := len(preview.Files) - filesShown
+				remaining := len(visibleItems) - itemsShown
 				if remaining > 0 {
-					indicator := fmt.Sprintf("... and %d more file", remaining)
+					indicator := fmt.Sprintf("... and %d more item", remaining)
 					if remaining > 1 {
 						indicator += "s"
 					}
 					lines = append(lines, styles.TimeStyle.Render(indicator))
 				}
 			} else {
-				lines = append(lines, fileSectionLines...)
+				lines = append(lines, treeSectionLines...)
 			}
 		}
 
