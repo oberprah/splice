@@ -31,8 +31,9 @@ func FetchFileChanges(commitRange core.CommitRange) ([]core.FileChange, error) {
 		fromHash = commitRange.End.Hash + "^"
 		toHash = commitRange.End.Hash
 	} else {
-		// Range: compare Start commit with End commit
-		fromHash = commitRange.Start.Hash
+		// Range: compare parent of Start commit with End commit to get combined changes
+		// Using Start^ ensures we see all changes from Start to End, not just changes in End
+		fromHash = commitRange.Start.Hash + "^"
 		toHash = commitRange.End.Hash
 	}
 
