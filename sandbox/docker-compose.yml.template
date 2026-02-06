@@ -34,7 +34,7 @@ services:
       # - ~/.codex:/home/agent/.codex
 
     tmpfs:
-      - /tmp:noexec,nosuid,size=1G              # Isolated temp storage
+      - /tmp:exec,nosuid,size=1G              # Isolated temp storage
 
     environment:
       # Optional environment variables you need for the AI agent tools

@@ -34,11 +34,6 @@ RUN mise use -g node@24
 # Install Codex CLI (as agent user)
 RUN npm install -g @openai/codex
 
-# Install project-specific tools from .mise.toml
-WORKDIR /workspace
-COPY .mise.toml /workspace/.mise.toml
-RUN mise trust && mise install -y
-
 # Install Claude Code CLI
 RUN curl -fsSL https://claude.ai/install.sh | bash
 ENV PATH="/home/agent/.local/bin:${PATH}"
@@ -46,6 +41,11 @@ ENV PATH="/home/agent/.local/bin:${PATH}"
 # Install OpenCode
 RUN curl -fsSL https://opencode.ai/install | bash
 ENV PATH="/home/agent/.opencode/bin:${PATH}"
+
+# Install project-specific tools from .mise.toml
+WORKDIR /workspace
+COPY .mise.toml /workspace/.mise.toml
+RUN mise trust && mise install -y
 
 # Mark /workspace as safe for git (volume has different ownership)
 RUN git config --global --add safe.directory /workspace
