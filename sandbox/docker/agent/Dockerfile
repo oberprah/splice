@@ -1,48 +1,59 @@
-# Claude Code Sandbox Agent
-# Go toolchain + Claude Code CLI + Codex CLI in isolated environment
+# Lightweight base + mise for language/tool management + AI agent CLIs
 
-FROM golang:1.25.2-bookworm
+FROM debian:bookworm-slim
 
 # Avoid interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install Node.js 22.x (required for Claude Code and Codex CLI)
-RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y nodejs \
-    && rm -rf /var/lib/apt/lists/*
+# Configure mise directories and install path
+ENV MISE_DATA_DIR="/usr/local/mise"
+ENV MISE_CACHE_DIR="/usr/local/mise/cache"
+ENV MISE_INSTALL_PATH="/usr/local/bin/mise"
+ENV PATH="/usr/local/mise/shims:$PATH"
 
-# Install tmux (required for tape-runner tests)
+# Install mise and essential build tools
 RUN apt-get update \
-    && apt-get install -y tmux \
+    && apt-get install -y curl git ca-certificates build-essential tmux \
+    && curl https://mise.run | sh \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Codex CLI globally (as root)
-RUN npm install -g @openai/codex
+# Create non-root user and mise directories with proper permissions
+RUN useradd -m -u 1000 agent \
+    && mkdir -p /usr/local/mise/cache \
+    && chown -R agent:agent /usr/local/mise
 
-# Symlink go to /usr/local/bin (Codex CLI uses a minimal PATH that includes this)
-RUN ln -s /usr/local/go/bin/go /usr/local/bin/go
-
-# Create non-root user
-RUN useradd -m -u 1000 agent
-
-# Install Claude Code as agent user
+# Switch to agent user and set up environment
 USER agent
-RUN curl -fsSL https://claude.ai/install.sh | bash
-ENV PATH="/home/agent/.local/bin:/home/agent/go/bin:${PATH}"
-ENV GOPATH="/home/agent/go"
 ENV HOME="/home/agent"
 ENV TERM="xterm-256color"
 
+# Install Node.js 24.x as agent user (required for AI agent CLIs)
+RUN mise use -g node@24
+
+# Install Codex CLI (as agent user)
+RUN npm install -g @openai/codex
+
+# Install Claude Code CLI
+RUN curl -fsSL https://claude.ai/install.sh | bash
+ENV PATH="/home/agent/.local/bin:${PATH}"
+
+# Install OpenCode
+RUN curl -fsSL https://opencode.ai/install | bash
+ENV PATH="/home/agent/.opencode/bin:${PATH}"
+
+# Install project-specific tools from .mise.toml
+WORKDIR /workspace
+COPY .mise.toml /workspace/.mise.toml
+RUN mise trust && mise install -y
+
+# Add mise shims to PATH in user profile for Codex CLI
+# Codex runs commands with login shells (/bin/sh -lc) which load ~/.profile
+RUN echo '' >> ~/.profile \
+    && echo '# mise tool version manager' >> ~/.profile \
+    && echo 'export PATH="/usr/local/mise/shims:$PATH"' >> ~/.profile
+
 # Mark /workspace as safe for git (volume has different ownership)
 RUN git config --global --add safe.directory /workspace
-
-# Pre-configure Claude Code (skip onboarding)
-COPY --chown=agent:agent claude.json /home/agent/.claude.json
-
-# Pre-configure Codex CLI to use internal proxy
-COPY --chown=agent:agent codex-config.toml /home/agent/.codex/config.toml
-
-WORKDIR /workspace
 
 # Keep container running for interactive access
 CMD ["sleep", "infinity"]

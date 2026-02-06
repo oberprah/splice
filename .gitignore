@@ -14,10 +14,8 @@
 # Test coverage
 coverage.out
 
-# Sandbox agent persistent data
+# Sandbox agent persistent data (deprecated - not used anymore)
 .sandbox-agent-data/
 
-# Sandbox local config (user-created from templates)
-sandbox/kind-config-resolved.yaml
-sandbox/docker/proxy/envoy.yaml
-sandbox/secrets.env
+# Sandbox docker-compose (user-specific config)
+sandbox/docker-compose.yml
