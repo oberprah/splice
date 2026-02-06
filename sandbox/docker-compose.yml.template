@@ -3,11 +3,11 @@
 #   cp docker-compose.yml.template docker-compose.yml
 
 services:
-  sandbox:
+  agent:
     build:
       context: ..
       dockerfile: sandbox/docker/agent/Dockerfile
-    container_name: splice-sandbox
+    working_dir: /workspace
     security_opt:
       - no-new-privileges:true
       # Use default seccomp profile to block dangerous syscalls
@@ -41,6 +41,8 @@ services:
 
     stdin_open: true
     tty: true
+    ports:
+      - "${OPENCODE_PORT:-4096}:4096"  # OpenCode server port (unique per repo)
     networks:
       - sandbox-net
 

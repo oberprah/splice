@@ -4,6 +4,12 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_NAME="$(basename "$(dirname "$SCRIPT_DIR")")-sandbox"
+
+# Generate a deterministic port (4096-5095) based on directory name
+# This ensures each repo copy gets a unique, consistent port
+DIR_HASH=$(echo "$PROJECT_NAME" | cksum | cut -d' ' -f1)
+OPENCODE_PORT=$((4096 + (DIR_HASH % 1000)))
 
 # Check if docker-compose.yml exists
 if [ ! -f "$SCRIPT_DIR/docker-compose.yml" ]; then
@@ -26,18 +32,21 @@ fi
 
 # Note: Environment variable validation removed - now configured per-user in docker-compose.yml
 
+# Export port for docker-compose.yml
+export OPENCODE_PORT
+
 # Check if container is running
 is_running() {
-    docker compose -f "$SCRIPT_DIR/docker-compose.yml" ps -q sandbox | grep -q .
+    docker compose -p "$PROJECT_NAME" -f "$SCRIPT_DIR/docker-compose.yml" ps -q agent | grep -q .
 }
 
 # Ensure container is running
 ensure_running() {
     if ! is_running; then
         echo "-> Starting sandbox..."
-        docker compose -f "$SCRIPT_DIR/docker-compose.yml" up -d
+        docker compose -p "$PROJECT_NAME" -f "$SCRIPT_DIR/docker-compose.yml" up -d
         echo ""
-        echo "Sandbox ready"
+        echo "Sandbox ready (OpenCode port: $OPENCODE_PORT)"
         echo ""
     fi
 }
@@ -46,63 +55,63 @@ ensure_running() {
 case "${1:-claude}" in
     up)
         echo "-> Starting sandbox..."
-        docker compose -f "$SCRIPT_DIR/docker-compose.yml" up -d
+        docker compose -p "$PROJECT_NAME" -f "$SCRIPT_DIR/docker-compose.yml" up -d
         echo ""
-        echo "Sandbox ready"
+        echo "Sandbox ready (OpenCode port: $OPENCODE_PORT)"
         ;;
 
     claude|"")
         ensure_running
-        docker compose -f "$SCRIPT_DIR/docker-compose.yml" exec sandbox claude --dangerously-skip-permissions
+        docker compose -p "$PROJECT_NAME" -f "$SCRIPT_DIR/docker-compose.yml" exec agent claude --dangerously-skip-permissions
         ;;
 
     codex)
         ensure_running
-        docker compose -f "$SCRIPT_DIR/docker-compose.yml" exec sandbox codex --yolo -c shell_environment_policy.inherit=all
+        docker compose -p "$PROJECT_NAME" -f "$SCRIPT_DIR/docker-compose.yml" exec agent codex --yolo -c shell_environment_policy.inherit=all
         ;;
 
     opencode)
         ensure_running
 
         # Check if OpenCode server is already running
-        if docker compose -f "$SCRIPT_DIR/docker-compose.yml" exec -T sandbox pgrep -f "opencode serve" > /dev/null 2>&1; then
-            echo "-> OpenCode server already running"
+        if docker compose -p "$PROJECT_NAME" -f "$SCRIPT_DIR/docker-compose.yml" exec -T agent pgrep -f "opencode serve" > /dev/null 2>&1; then
+            echo "-> OpenCode server already running on port $OPENCODE_PORT"
         else
-            echo "-> Starting OpenCode server..."
-            docker compose -f "$SCRIPT_DIR/docker-compose.yml" exec -d sandbox opencode serve --hostname 0.0.0.0 --port 4096
+            echo "-> Starting OpenCode server on port $OPENCODE_PORT..."
+            docker compose -p "$PROJECT_NAME" -f "$SCRIPT_DIR/docker-compose.yml" exec -d agent opencode serve --hostname 0.0.0.0 --port 4096
             echo "-> Waiting for server to start..."
             sleep 3
         fi
 
         echo "-> Connecting to OpenCode..."
-        opencode attach http://localhost:4096
+        opencode attach http://localhost:$OPENCODE_PORT
         ;;
 
     shell)
         ensure_running
-        docker compose -f "$SCRIPT_DIR/docker-compose.yml" exec sandbox /bin/bash
+        docker compose -p "$PROJECT_NAME" -f "$SCRIPT_DIR/docker-compose.yml" exec agent /bin/bash
         ;;
 
     stop)
         echo "-> Stopping sandbox..."
-        docker compose -f "$SCRIPT_DIR/docker-compose.yml" stop
+        docker compose -p "$PROJECT_NAME" -f "$SCRIPT_DIR/docker-compose.yml" stop
         echo "Stopped"
         ;;
 
     down)
         echo "-> Stopping and removing sandbox..."
-        docker compose -f "$SCRIPT_DIR/docker-compose.yml" down
+        docker compose -p "$PROJECT_NAME" -f "$SCRIPT_DIR/docker-compose.yml" down
         echo "Removed"
         ;;
 
     logs)
-        docker compose -f "$SCRIPT_DIR/docker-compose.yml" logs -f sandbox
+        docker compose -p "$PROJECT_NAME" -f "$SCRIPT_DIR/docker-compose.yml" logs -f agent
         ;;
 
     status)
         if is_running; then
-            echo "Sandbox: running"
-            docker compose -f "$SCRIPT_DIR/docker-compose.yml" ps
+            echo "Sandbox: running (OpenCode port: $OPENCODE_PORT)"
+            docker compose -p "$PROJECT_NAME" -f "$SCRIPT_DIR/docker-compose.yml" ps
         else
             echo "Sandbox: not running"
         fi
