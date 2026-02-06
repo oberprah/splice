@@ -1,0 +1,5 @@
+# mise configuration for Splice
+# Manages language toolchains and development tools
+
+[tools]
+go = "1.25.2"

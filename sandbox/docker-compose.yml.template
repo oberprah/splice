@@ -5,8 +5,8 @@
 services:
   sandbox:
     build:
-      context: ./docker/agent
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: sandbox/docker/agent/Dockerfile
     container_name: splice-sandbox
     security_opt:
       - no-new-privileges:true

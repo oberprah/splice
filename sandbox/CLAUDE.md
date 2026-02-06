@@ -115,21 +115,36 @@ The first run will build the Docker image (includes Go toolchain, Claude Code CL
 
 ```
 Host Machine → Docker Compose → sandbox container
+  ├── mise (language/tool version manager)
   ├── Claude Code CLI (will configure on first run)
   ├── Codex CLI (optional, mount ~/.codex config)
   ├── OpenCode (optional, mount ~/.local/share/opencode and ~/.config/opencode)
-  ├── Go 1.25.2 toolchain
+  ├── Node.js 24.x (global via mise)
+  ├── Go 1.25.2 (from .mise.toml)
   ├── tmux (for tape-runner tests)
   └── Internet access
 ```
 
+**Changing language toolchains:**
+
+Edit `.mise.toml` in the repo root to add/change languages:
+
+```toml
+[tools]
+go = "1.25.2"      # Or remove for Rust migration
+rust = "latest"    # Add when migrating to Rust
+```
+
+Then rebuild: `docker compose -f sandbox/docker-compose.yml build`
+
 ## Project Structure
 
 ```
+.mise.toml                                 # Language toolchain config (Go, Rust, etc.)
 sandbox/
 ├── docker/
 │   └── agent/
-│       └── Dockerfile                     # Go + Claude + Codex + tmux
+│       └── Dockerfile                     # Debian + mise + AI CLIs
 ├── docker-compose.yml.template            # Base configuration template
 ├── docker-compose.yml                     # Your personal config (gitignored)
 ├── sandbox.sh                             # Convenience wrapper script
@@ -139,12 +154,16 @@ sandbox/
 ## What's Included
 
 **Pre-installed tools:**
-- Go 1.25.2 toolchain
-- Node.js 22.x
+- [mise](https://mise.jdx.dev/) - Universal version manager for languages and tools
+- Node.js 24.x (via mise, for AI agent CLIs)
 - Claude Code CLI (native binary with auto-update)
 - OpenAI Codex CLI
 - OpenCode
 - tmux (required for tape-runner tests)
+
+**Language toolchains** (managed via `.mise.toml`):
+- Go 1.25.2 (configured in `.mise.toml` at repo root)
+- Add/change languages by editing `.mise.toml` - no Dockerfile changes needed
 
 **Volume mounts:**
 - `/workspace` - Project root (read/write)

@@ -1,38 +1,43 @@
 # Claude Code Sandbox Agent
-# Go toolchain + Claude Code CLI + Codex CLI in isolated environment
+# Lightweight base + mise for language/tool management + AI agent CLIs
 
-FROM golang:1.25.2-bookworm
+FROM debian:bookworm-slim
 
 # Avoid interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install Node.js 24.x (required for Claude Code, Codex CLI, and OpenCode)
-RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
-    && apt-get install -y nodejs \
-    && rm -rf /var/lib/apt/lists/*
+# Configure mise directories and install path
+ENV MISE_DATA_DIR="/usr/local/mise"
+ENV MISE_CACHE_DIR="/usr/local/mise/cache"
+ENV MISE_INSTALL_PATH="/usr/local/bin/mise"
+ENV PATH="/usr/local/mise/shims:$PATH"
 
-# Install tmux (required for tape-runner tests)
+# Install mise and essential build tools
 RUN apt-get update \
-    && apt-get install -y tmux \
+    && apt-get install -y curl git ca-certificates build-essential tmux \
+    && curl https://mise.run | sh \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Codex CLI globally (as root)
-RUN npm install -g @openai/codex
-
-# Symlink go to /usr/local/bin (Codex CLI uses a minimal PATH that includes this)
-RUN ln -s /usr/local/go/bin/go /usr/local/bin/go
-
-# Create non-root user
-RUN useradd -m -u 1000 agent
+# Create non-root user and mise directories with proper permissions
+RUN useradd -m -u 1000 agent \
+    && mkdir -p /usr/local/mise/cache \
+    && chown -R agent:agent /usr/local/mise
 
 # Switch to agent user and set up environment
 USER agent
 ENV HOME="/home/agent"
 ENV TERM="xterm-256color"
 
-# Set up Go environment
-ENV GOPATH="/home/agent/go"
-ENV PATH="/home/agent/go/bin:${PATH}"
+# Install Node.js 24.x as agent user (required for AI agent CLIs)
+RUN mise use -g node@24
+
+# Install Codex CLI (as agent user)
+RUN npm install -g @openai/codex
+
+# Install project-specific tools from .mise.toml
+WORKDIR /workspace
+COPY .mise.toml /workspace/.mise.toml
+RUN mise trust && mise install -y
 
 # Install Claude Code CLI
 RUN curl -fsSL https://claude.ai/install.sh | bash
@@ -44,8 +49,6 @@ ENV PATH="/home/agent/.opencode/bin:${PATH}"
 
 # Mark /workspace as safe for git (volume has different ownership)
 RUN git config --global --add safe.directory /workspace
-
-WORKDIR /workspace
 
 # Keep container running for interactive access
 CMD ["sleep", "infinity"]
