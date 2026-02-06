@@ -1,103 +1,151 @@
 # Sandbox Environment
 
-Isolated Kubernetes environment for running Claude Code with command execution and internet access. Uses Kind (Kubernetes in Docker) for defense-in-depth security.
+Isolated Docker environment for running Claude Code and Codex CLI with full command execution and internet access.
 
 ## Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/)
-- [Kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation)
-- [kubectl](https://kubernetes.io/docs/tasks/tools/)
+- [Docker Compose](https://docs.docker.com/compose/install/)
 
 ## Security Model
 
-Defense-in-depth strategy against prompt injection and container breakout:
+**Threat Model**: Protect host machine from compromised AI agent (prompt injection attacks)
 
-**Layer 1: Network Isolation (NetworkPolicy)**
-- Agent can reach API proxy and public HTTPS/HTTP (for Go packages, git clone)
-- API credentials never exposed (injected by proxy)
+This docker-compose setup provides **basic container isolation** with **accepted security tradeoffs for simplicity**.
 
-**Layer 2: API Proxy (Envoy)**
-- API keys injected by proxy (agent never sees real tokens)
-- All requests logged for audit
+### Key Security Features
 
-**Layer 3: Container Hardening**
 - Non-root user (UID 1000)
-- No privilege escalation
-- All capabilities dropped
-- Seccomp profile restricts syscalls
+- All capabilities dropped except 4 essential
+- Default seccomp profile blocks dangerous syscalls
+- Resource limits (4 CPUs, 8GB RAM, 200 PIDs)
+- Protected volumes (.github, sandbox are read-only)
 
-**Layer 4: Kind Isolation**
-- Kubernetes runs inside Docker container
-- Escape requires breaking out of pod AND kind container
+### Critical Risks
+
+**🔴 API Key Exposed**: Agent can read `ANTHROPIC_AUTH_TOKEN` from environment
+- Mitigation: Set spending limits, monitor usage, use dedicated sandbox key
+
+**🟠 Data Exfiltration**: Agent has internet access and can read all workspace files
+- Mitigation: Don't use on repos with secrets/credentials
+
+**🟡 Container Escape**: Single container boundary, requires updated Docker/kernel
+- Mitigation: Keep system updated, use dedicated dev machine
+
+### When NOT to use
+
+- Repository contains secrets, API keys, or credentials
+- Code is highly sensitive or proprietary
+- Compliance requirements exist (SOC2, HIPAA, etc.)
 
 ## Setup
 
-**1. Create local config files from templates:**
+**1. Create your docker-compose.yml:**
 
 ```bash
-cp sandbox/docker/proxy/envoy.yaml.template sandbox/docker/proxy/envoy.yaml
-cp sandbox/secrets.env.example sandbox/secrets.env
+cd sandbox
+cp docker-compose.yml.template docker-compose.yml
 ```
 
-**2. Edit the files if needed:**
+**2. Configure docker-compose.yml:**
 
-The templates are configured for taia.tngtech.com. For other setups, adjust `envoy.yaml` (cluster addresses, route prefixes, auth headers) and `secrets.env` (env var names matching your `envoy.yaml`).
+Edit `sandbox/docker-compose.yml`:
 
-**3. Set the environment variable in your shell:**
+**Optional: Mount Codex config** (uncomment if you want to use Codex CLI):
+```yaml
+volumes:
+  - ~/.codex:/home/agent/.codex
+```
+
+**Environment variables** (uncomment what you need):
+```yaml
+environment:
+  - ANTHROPIC_AUTH_TOKEN              # Required for Claude Code
+  - ANTHROPIC_BASE_URL                # Optional: corporate proxy
+  - OPENAI_API_KEY                    # Optional: for Codex CLI
+```
+
+**3. Set environment variables in your shell:**
 
 ```bash
-export AGENT_SANDBOX_TOKEN="tngai_..."
+# bash/zsh
+export ANTHROPIC_AUTH_TOKEN='sk-ant-...'
+
+# fish
+set -gx ANTHROPIC_AUTH_TOKEN 'sk-ant-...'
 ```
+
+To persist across sessions, add to your shell config (`~/.zshrc`, `~/.config/fish/config.fish`).
 
 ## Usage
 
 ```bash
-./sandbox/scripts/sandbox.sh           # Start Claude Code in sandbox
-./sandbox/scripts/sandbox.sh codex     # Start Codex CLI in sandbox
-./sandbox/scripts/sandbox.sh shell     # Open bash shell for debugging
-./sandbox/scripts/sandbox.sh stop      # Stop pods (fast restart later)
-./sandbox/scripts/sandbox.sh down      # Remove cluster completely
-./sandbox/scripts/sandbox.sh status    # Check sandbox status
+./sandbox/sandbox.sh           # Start Claude Code (default)
+./sandbox/sandbox.sh codex     # Start Codex CLI
+./sandbox/sandbox.sh shell     # Open bash shell for debugging
+./sandbox/sandbox.sh stop      # Stop sandbox (keeps container)
+./sandbox/sandbox.sh down      # Stop and remove sandbox
+./sandbox/sandbox.sh status    # Check sandbox status
+./sandbox/sandbox.sh logs      # View sandbox logs
 ```
+
+The first run will build the Docker image (includes Go toolchain, Claude Code CLI, Codex CLI, tmux).
 
 ## Architecture
 
 ```
-Host Machine
-  |
-  v
-Kind (Docker container running Kubernetes)
-  |
-  v
-agent-env namespace
-  +-- claude-agent pod (Claude Code + Codex CLI + Go toolchain + tmux)
-  |   - Can access: API proxy, public HTTPS/HTTP (Go packages, git)
-  |   - Cannot access: Direct API endpoints (credentials hidden)
-  +-- api-proxy pod (Envoy, injects credentials, routes to configured API)
+Host Machine → Docker Compose → sandbox container
+  ├── Claude Code CLI (will configure on first run)
+  ├── Codex CLI (optional, mount ~/.codex config)
+  ├── Go 1.25.2 toolchain
+  ├── tmux (for tape-runner tests)
+  └── Internet access
 ```
 
 ## Project Structure
 
 ```
 sandbox/
-+-- docker/
-|   +-- agent/
-|   |   +-- Dockerfile            # Go toolchain + Claude Code + Codex CLI
-|   |   +-- claude.json           # Pre-configured Claude settings
-|   |   +-- codex-config.toml     # Pre-configured Codex settings
-|   +-- proxy/
-|       +-- Dockerfile            # Envoy proxy
-|       +-- envoy.yaml.template   # API routing config template
-|       +-- envoy.yaml            # Your local config (gitignored)
-+-- k8s/
-|   +-- namespace.yaml
-|   +-- agent-pod.yaml
-|   +-- proxy-pod.yaml
-|   +-- proxy-service.yaml
-|   +-- network-policy.yaml
-+-- scripts/
-|   +-- sandbox.sh                # Start, stop, shell commands
-+-- secrets.env.example           # Template for secret var names
-+-- secrets.env                   # Your local config (gitignored)
-+-- kind-config.yaml              # Kind cluster configuration
+├── docker/
+│   └── agent/
+│       └── Dockerfile                     # Go + Claude + Codex + tmux
+├── docker-compose.yml.template            # Base configuration template
+├── docker-compose.yml                     # Your personal config (gitignored)
+├── sandbox.sh                             # Convenience wrapper script
+└── CLAUDE.md                              # This file
+```
+
+## What's Included
+
+**Pre-installed tools:**
+- Go 1.25.2 toolchain
+- Node.js 22.x
+- Claude Code CLI (native binary with auto-update)
+- OpenAI Codex CLI
+- tmux (required for tape-runner tests)
+
+**Volume mounts:**
+- `/workspace` - Project root (read/write)
+- `/workspace/.github` - CI/CD workflows (read-only)
+- `/workspace/sandbox` - Sandbox config (read-only)
+
+**Configuration:**
+- Claude Code: Configures on first run (no mount needed)
+- Codex CLI: Optional mount of `~/.codex` for your config
+
+## Development Notes
+
+**Testing with tape-runner:**
+- The `./run-tape` script works inside the sandbox
+- Run with `./sandbox/sandbox.sh shell` then `./run-tape --help`
+
+**Agent state:**
+- State is stored inside the container (not persisted to host)
+- Use `./sandbox/sandbox.sh down` to destroy all state
+- State persists between stops/starts as long as container exists
+
+**Rebuilding after changes:**
+```bash
+docker compose -f sandbox/docker-compose.yml build
+./sandbox/sandbox.sh down && ./sandbox/sandbox.sh up
 ```

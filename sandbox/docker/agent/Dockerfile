@@ -36,12 +36,6 @@ ENV TERM="xterm-256color"
 # Mark /workspace as safe for git (volume has different ownership)
 RUN git config --global --add safe.directory /workspace
 
-# Pre-configure Claude Code (skip onboarding)
-COPY --chown=agent:agent claude.json /home/agent/.claude.json
-
-# Pre-configure Codex CLI to use internal proxy
-COPY --chown=agent:agent codex-config.toml /home/agent/.codex/config.toml
-
 WORKDIR /workspace
 
 # Keep container running for interactive access
