@@ -58,7 +58,7 @@ case "${1:-claude}" in
 
     codex)
         ensure_running
-        docker compose -f "$SCRIPT_DIR/docker-compose.yml" exec sandbox codex --yolo
+        docker compose -f "$SCRIPT_DIR/docker-compose.yml" exec sandbox codex --yolo -c shell_environment_policy.inherit=all
         ;;
 
     opencode)

@@ -1,4 +1,3 @@
-# Claude Code Sandbox Agent
 # Lightweight base + mise for language/tool management + AI agent CLIs
 
 FROM debian:bookworm-slim
@@ -46,6 +45,12 @@ ENV PATH="/home/agent/.opencode/bin:${PATH}"
 WORKDIR /workspace
 COPY .mise.toml /workspace/.mise.toml
 RUN mise trust && mise install -y
+
+# Add mise shims to PATH in user profile for Codex CLI
+# Codex runs commands with login shells (/bin/sh -lc) which load ~/.profile
+RUN echo '' >> ~/.profile \
+    && echo '# mise tool version manager' >> ~/.profile \
+    && echo 'export PATH="/usr/local/mise/shims:$PATH"' >> ~/.profile
 
 # Mark /workspace as safe for git (volume has different ownership)
 RUN git config --global --add safe.directory /workspace

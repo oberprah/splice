@@ -95,6 +95,10 @@ To persist across sessions, add to your shell config (`~/.zshrc`, `~/.config/fis
 ./sandbox/sandbox.sh logs      # View sandbox logs
 ```
 
+**Codex CLI Usage:**
+
+Codex CLI runs with `--yolo` (disables internal sandboxing since Docker provides isolation) and `-c shell_environment_policy.inherit=all` to pass through all environment variables. The mise shims PATH is added to `~/.profile` so login shells can access tools from `.mise.toml`.
+
 **OpenCode Usage:**
 
 OpenCode's TUI doesn't work directly inside Docker containers ([known issue](https://github.com/anomalyco/opencode/issues/12439)). We use server mode instead:
@@ -116,14 +120,20 @@ The first run will build the Docker image (includes Go toolchain, Claude Code CL
 ```
 Host Machine → Docker Compose → sandbox container
   ├── mise (language/tool version manager)
+  │   └── Shims added to PATH via ~/.profile
   ├── Claude Code CLI (will configure on first run)
   ├── Codex CLI (optional, mount ~/.codex config)
+  │   └── Runs with shell_environment_policy.inherit=all
   ├── OpenCode (optional, mount ~/.local/share/opencode and ~/.config/opencode)
   ├── Node.js 24.x (global via mise)
   ├── Go 1.25.2 (from .mise.toml)
   ├── tmux (for tape-runner tests)
   └── Internet access
 ```
+
+### Codex CLI Environment Configuration
+
+Codex CLI uses a restricted PATH by default for security. Since we're in a sandboxed container, we disable this restriction with `shell_environment_policy.inherit=all` to access mise-managed tools.
 
 **Changing language toolchains:**
 
