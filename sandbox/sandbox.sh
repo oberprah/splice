@@ -61,6 +61,23 @@ case "${1:-claude}" in
         docker compose -f "$SCRIPT_DIR/docker-compose.yml" exec sandbox codex --yolo
         ;;
 
+    opencode)
+        ensure_running
+
+        # Check if OpenCode server is already running
+        if docker compose -f "$SCRIPT_DIR/docker-compose.yml" exec -T sandbox pgrep -f "opencode serve" > /dev/null 2>&1; then
+            echo "-> OpenCode server already running"
+        else
+            echo "-> Starting OpenCode server..."
+            docker compose -f "$SCRIPT_DIR/docker-compose.yml" exec -d sandbox opencode serve --hostname 0.0.0.0 --port 4096
+            echo "-> Waiting for server to start..."
+            sleep 3
+        fi
+
+        echo "-> Connecting to OpenCode..."
+        opencode attach http://localhost:4096
+        ;;
+
     shell)
         ensure_running
         docker compose -f "$SCRIPT_DIR/docker-compose.yml" exec sandbox /bin/bash
@@ -99,6 +116,7 @@ Commands:
   up        Start sandbox container
   claude    Start Claude Code in sandbox (default)
   codex     Start OpenAI Codex CLI in sandbox
+  opencode  Start OpenCode (auto-connects to sandbox)
   shell     Open bash shell in sandbox
   stop      Stop sandbox (keeps container)
   down      Stop and remove sandbox
@@ -108,6 +126,7 @@ Commands:
 Examples:
   $0              # Start Claude Code
   $0 codex        # Start Codex CLI
+  $0 opencode     # Start OpenCode and connect
   $0 shell        # Debug with bash
   $0 stop         # Stop container
   $0 down         # Stop and remove

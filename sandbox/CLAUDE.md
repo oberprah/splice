@@ -1,6 +1,6 @@
 # Sandbox Environment
 
-Isolated Docker environment for running Claude Code and Codex CLI with full command execution and internet access.
+Isolated Docker environment for running AI coding agents (Claude Code, Codex CLI, OpenCode) with full command execution and internet access.
 
 ## Prerequisites
 
@@ -51,10 +51,15 @@ cp docker-compose.yml.template docker-compose.yml
 
 Edit `sandbox/docker-compose.yml`:
 
-**Optional: Mount Codex config** (uncomment if you want to use Codex CLI):
+**Optional: Mount AI agent configs** (uncomment what you need):
 ```yaml
 volumes:
+  # Codex CLI
   - ~/.codex:/home/agent/.codex
+
+  # OpenCode
+  - ~/.local/share/opencode:/home/agent/.local/share/opencode
+  - ~/.config/opencode:/home/agent/.config/opencode
 ```
 
 **Environment variables** (uncomment what you need):
@@ -82,14 +87,29 @@ To persist across sessions, add to your shell config (`~/.zshrc`, `~/.config/fis
 ```bash
 ./sandbox/sandbox.sh           # Start Claude Code (default)
 ./sandbox/sandbox.sh codex     # Start Codex CLI
-./sandbox/sandbox.sh shell     # Open bash shell for debugging
+./sandbox/sandbox.sh opencode  # Start OpenCode server
+./sandbox/sandbox.sh shell     # Open bash shell
 ./sandbox/sandbox.sh stop      # Stop sandbox (keeps container)
 ./sandbox/sandbox.sh down      # Stop and remove sandbox
 ./sandbox/sandbox.sh status    # Check sandbox status
 ./sandbox/sandbox.sh logs      # View sandbox logs
 ```
 
-The first run will build the Docker image (includes Go toolchain, Claude Code CLI, Codex CLI, tmux).
+**OpenCode Usage:**
+
+OpenCode's TUI doesn't work directly inside Docker containers ([known issue](https://github.com/anomalyco/opencode/issues/12439)). We use server mode instead:
+
+```bash
+./sandbox/sandbox.sh opencode
+```
+
+This automatically:
+- Starts OpenCode server in the container (if not already running)
+- Connects your host terminal to it
+
+You get OpenCode's full TUI experience on your host terminal, while the agent executes commands inside the sandboxed container. Run the command multiple times - it's safe and will reuse the existing server.
+
+The first run will build the Docker image (includes Go toolchain, Claude Code CLI, Codex CLI, OpenCode, tmux).
 
 ## Architecture
 
@@ -97,6 +117,7 @@ The first run will build the Docker image (includes Go toolchain, Claude Code CL
 Host Machine → Docker Compose → sandbox container
   ├── Claude Code CLI (will configure on first run)
   ├── Codex CLI (optional, mount ~/.codex config)
+  ├── OpenCode (optional, mount ~/.local/share/opencode and ~/.config/opencode)
   ├── Go 1.25.2 toolchain
   ├── tmux (for tape-runner tests)
   └── Internet access
@@ -122,6 +143,7 @@ sandbox/
 - Node.js 22.x
 - Claude Code CLI (native binary with auto-update)
 - OpenAI Codex CLI
+- OpenCode
 - tmux (required for tape-runner tests)
 
 **Volume mounts:**
@@ -132,6 +154,7 @@ sandbox/
 **Configuration:**
 - Claude Code: Configures on first run (no mount needed)
 - Codex CLI: Optional mount of `~/.codex` for your config
+- OpenCode: Optional mount of `~/.local/share/opencode` and `~/.config/opencode`
 
 ## Development Notes
 

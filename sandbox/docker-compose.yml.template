@@ -30,7 +30,7 @@ services:
       - ../.github:/workspace/.github:ro        # Protect CI/CD workflows
       - ../sandbox:/workspace/sandbox:ro        # Protect container config
 
-      # Codex config (uncomment if you want to use Codex CLI):
+      # Mount AI agent tools config (e.g. uncomment if you want to use Codex CLI):
       # - ~/.codex:/home/agent/.codex
 
     tmpfs:
