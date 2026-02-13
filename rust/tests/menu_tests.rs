@@ -2,24 +2,40 @@ use crossterm::event::KeyCode;
 use ratatui::{backend::TestBackend, Terminal};
 use splice_rust::{render, App};
 
-fn setup_terminal() -> (Terminal<TestBackend>, App) {
-    let backend = TestBackend::new(80, 24);
-    let terminal = Terminal::new(backend).unwrap();
-    let app = App::new();
-    (terminal, app)
+struct TestHarness {
+    terminal: Terminal<TestBackend>,
+    app: App,
 }
 
-fn key_event(code: KeyCode) -> crossterm::event::KeyEvent {
-    crossterm::event::KeyEvent::new(code, crossterm::event::KeyModifiers::NONE)
+impl TestHarness {
+    fn new() -> Self {
+        let backend = TestBackend::new(80, 24);
+        let terminal = Terminal::new(backend).unwrap();
+        let app = App::new();
+        Self { terminal, app }
+    }
+
+    fn press(&mut self, key: KeyCode) {
+        let event = crossterm::event::KeyEvent::new(key, crossterm::event::KeyModifiers::NONE);
+        self.app.handle_input(event);
+    }
+
+    fn render(&mut self) {
+        self.terminal.draw(|f| render(f, &self.app)).unwrap();
+    }
+
+    fn snapshot(&self) -> &TestBackend {
+        self.terminal.backend()
+    }
 }
 
 #[test]
 fn test_menu_navigation_and_view_transitions() {
-    let (mut terminal, mut app) = setup_terminal();
+    let mut h = TestHarness::new();
 
-    // Initial render - first item selected
-    terminal.draw(|f| render(f, &app)).unwrap();
-    insta::assert_snapshot!(terminal.backend(), @r###"
+    // Initial render
+    h.render();
+    insta::assert_snapshot!(h.snapshot(), @r###"
     "                                                                                "
     "                                                                                "
     "                                                                                "
@@ -46,10 +62,10 @@ fn test_menu_navigation_and_view_transitions() {
     "                                                                                "
     "###);
 
-    // Navigate down - second item selected
-    app.handle_input(key_event(KeyCode::Char('j')));
-    terminal.draw(|f| render(f, &app)).unwrap();
-    insta::assert_snapshot!(terminal.backend(), @r###"
+    // Press 'j' - navigate down
+    h.press(KeyCode::Char('j'));
+    h.render();
+    insta::assert_snapshot!(h.snapshot(), @r###"
     "                                                                                "
     "                                                                                "
     "                                                                                "
@@ -76,10 +92,10 @@ fn test_menu_navigation_and_view_transitions() {
     "                                                                                "
     "###);
 
-    // Enter files view
-    app.handle_input(key_event(KeyCode::Enter));
-    terminal.draw(|f| render(f, &app)).unwrap();
-    insta::assert_snapshot!(terminal.backend(), @r###"
+    // Press Enter - enter files view
+    h.press(KeyCode::Enter);
+    h.render();
+    insta::assert_snapshot!(h.snapshot(), @r###"
     "                                                                                "
     "                                                                                "
     "                                                                                "
@@ -106,10 +122,10 @@ fn test_menu_navigation_and_view_transitions() {
     "                                                                                "
     "###);
 
-    // Navigate within files
-    app.handle_input(key_event(KeyCode::Char('j')));
-    terminal.draw(|f| render(f, &app)).unwrap();
-    insta::assert_snapshot!(terminal.backend(), @r###"
+    // Press 'j' - navigate within files
+    h.press(KeyCode::Char('j'));
+    h.render();
+    insta::assert_snapshot!(h.snapshot(), @r###"
     "                                                                                "
     "                                                                                "
     "                                                                                "
@@ -136,10 +152,10 @@ fn test_menu_navigation_and_view_transitions() {
     "                                                                                "
     "###);
 
-    // Escape back to menu - selection preserved at "View files"
-    app.handle_input(key_event(KeyCode::Esc));
-    terminal.draw(|f| render(f, &app)).unwrap();
-    insta::assert_snapshot!(terminal.backend(), @r###"
+    // Press Esc - back to menu
+    h.press(KeyCode::Esc);
+    h.render();
+    insta::assert_snapshot!(h.snapshot(), @r###"
     "                                                                                "
     "                                                                                "
     "                                                                                "
