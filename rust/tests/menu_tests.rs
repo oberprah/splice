@@ -26,12 +26,18 @@ impl TestHarness {
     }
 }
 
+macro_rules! assert_snapshot {
+    ($h:expr, @$snapshot:literal) => {
+        insta::assert_snapshot!($h.snapshot(), @$snapshot);
+    };
+}
+
 #[test]
 fn test_menu_navigation_and_view_transitions() {
     let mut h = TestHarness::new();
 
     // Initial render
-    insta::assert_snapshot!(h.snapshot(), @r###"
+    assert_snapshot!(h, @r###"
     "                                                                                "
     "                                                                                "
     "                                                                                "
@@ -60,7 +66,7 @@ fn test_menu_navigation_and_view_transitions() {
 
     // Press 'j' - navigate down
     h.press(KeyCode::Char('j'));
-    insta::assert_snapshot!(h.snapshot(), @r###"
+    assert_snapshot!(h, @r###"
     "                                                                                "
     "                                                                                "
     "                                                                                "
@@ -89,7 +95,7 @@ fn test_menu_navigation_and_view_transitions() {
 
     // Press Enter - enter files view
     h.press(KeyCode::Enter);
-    insta::assert_snapshot!(h.snapshot(), @r###"
+    assert_snapshot!(h, @r###"
     "                                                                                "
     "                                                                                "
     "                                                                                "
@@ -118,7 +124,7 @@ fn test_menu_navigation_and_view_transitions() {
 
     // Press 'j' - navigate within files
     h.press(KeyCode::Char('j'));
-    insta::assert_snapshot!(h.snapshot(), @r###"
+    assert_snapshot!(h, @r###"
     "                                                                                "
     "                                                                                "
     "                                                                                "
@@ -147,7 +153,7 @@ fn test_menu_navigation_and_view_transitions() {
 
     // Press Esc - back to menu
     h.press(KeyCode::Esc);
-    insta::assert_snapshot!(h.snapshot(), @r###"
+    assert_snapshot!(h, @r###"
     "                                                                                "
     "                                                                                "
     "                                                                                "
