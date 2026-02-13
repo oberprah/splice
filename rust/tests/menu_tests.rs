@@ -20,11 +20,8 @@ impl TestHarness {
         self.app.handle_input(event);
     }
 
-    fn render(&mut self) {
+    fn snapshot(&mut self) -> &TestBackend {
         self.terminal.draw(|f| render(f, &self.app)).unwrap();
-    }
-
-    fn snapshot(&self) -> &TestBackend {
         self.terminal.backend()
     }
 }
@@ -34,7 +31,6 @@ fn test_menu_navigation_and_view_transitions() {
     let mut h = TestHarness::new();
 
     // Initial render
-    h.render();
     insta::assert_snapshot!(h.snapshot(), @r###"
     "                                                                                "
     "                                                                                "
@@ -64,7 +60,6 @@ fn test_menu_navigation_and_view_transitions() {
 
     // Press 'j' - navigate down
     h.press(KeyCode::Char('j'));
-    h.render();
     insta::assert_snapshot!(h.snapshot(), @r###"
     "                                                                                "
     "                                                                                "
@@ -94,7 +89,6 @@ fn test_menu_navigation_and_view_transitions() {
 
     // Press Enter - enter files view
     h.press(KeyCode::Enter);
-    h.render();
     insta::assert_snapshot!(h.snapshot(), @r###"
     "                                                                                "
     "                                                                                "
@@ -124,7 +118,6 @@ fn test_menu_navigation_and_view_transitions() {
 
     // Press 'j' - navigate within files
     h.press(KeyCode::Char('j'));
-    h.render();
     insta::assert_snapshot!(h.snapshot(), @r###"
     "                                                                                "
     "                                                                                "
@@ -154,7 +147,6 @@ fn test_menu_navigation_and_view_transitions() {
 
     // Press Esc - back to menu
     h.press(KeyCode::Esc);
-    h.render();
     insta::assert_snapshot!(h.snapshot(), @r###"
     "                                                                                "
     "                                                                                "
