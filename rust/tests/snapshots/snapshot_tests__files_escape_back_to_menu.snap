@@ -1,0 +1,28 @@
+---
+source: tests/snapshot_tests.rs
+expression: terminal.backend()
+---
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                    ╭ Splice Rust ─────────────────────────╮                    "
+"                    │View git log                          │                    "
+"                    │View files                            │                    "
+"                    │Settings                              │                    "
+"                    │Help                                  │                    "
+"                    │Quit                                  │                    "
+"                    │                                      │                    "
+"                    │                                      │                    "
+"                    │                                      │                    "
+"                    │                                      │                    "
+"                    │                                      │                    "
+"                    ╰──────────────────────────────────────╯                    "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "

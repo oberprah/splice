@@ -1,0 +1,28 @@
+---
+source: tests/snapshot_tests.rs
+expression: terminal.backend()
+---
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"             ╭ Files ────────────────────────────────────────────╮              "
+"             │internal/app/model.go                              │              "
+"             │internal/core/messages.go                          │              "
+"             │internal/git/commands.go                           │              "
+"             │internal/ui/states/log/state.go                    │              "
+"             │internal/ui/states/log/view.go                     │              "
+"             │internal/ui/components/commit_list.go              │              "
+"             │go.mod                                             │              "
+"             │go.sum                                             │              "
+"             │                                                   │              "
+"             │                                                   │              "
+"             │                                                   │              "
+"             │                                                   │              "
+"             │                                                   │              "
+"             │                                                   │              "
+"             ╰───────────────────────────────────────────────────╯              "
+"                                                                                "
+"                                                                                "
+"                    ↑/↓ or j/k: navigate | Esc: back | q: qu                    "
+"                                                                                "
