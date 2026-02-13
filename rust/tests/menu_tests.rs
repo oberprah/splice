@@ -14,41 +14,10 @@ fn key_event(code: KeyCode) -> crossterm::event::KeyEvent {
 }
 
 #[test]
-fn test_menu_initial_render() {
-    let (mut terminal, app) = setup_terminal();
-    terminal.draw(|f| render(f, &app)).unwrap();
-    insta::assert_snapshot!(terminal.backend(), @r###"
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                    ╭ Splice Rust ─────────────────────────╮                    "
-    "                    │> View git log                        │                    "
-    "                    │  View files                          │                    "
-    "                    │  Settings                            │                    "
-    "                    │  Help                                │                    "
-    "                    │  Quit                                │                    "
-    "                    │                                      │                    "
-    "                    │                                      │                    "
-    "                    │                                      │                    "
-    "                    │                                      │                    "
-    "                    │                                      │                    "
-    "                    ╰──────────────────────────────────────╯                    "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "###);
-}
-
-#[test]
-fn test_menu_navigation_down() {
+fn test_menu_navigation_and_view_transitions() {
     let (mut terminal, mut app) = setup_terminal();
 
+    // Initial render - first item selected
     terminal.draw(|f| render(f, &app)).unwrap();
     insta::assert_snapshot!(terminal.backend(), @r###"
     "                                                                                "
@@ -77,6 +46,7 @@ fn test_menu_navigation_down() {
     "                                                                                "
     "###);
 
+    // Navigate down - second item selected
     app.handle_input(key_event(KeyCode::Char('j')));
     terminal.draw(|f| render(f, &app)).unwrap();
     insta::assert_snapshot!(terminal.backend(), @r###"
@@ -106,6 +76,37 @@ fn test_menu_navigation_down() {
     "                                                                                "
     "###);
 
+    // Enter files view
+    app.handle_input(key_event(KeyCode::Enter));
+    terminal.draw(|f| render(f, &app)).unwrap();
+    insta::assert_snapshot!(terminal.backend(), @r###"
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "             ╭ Files ────────────────────────────────────────────╮              "
+    "             │> internal/app/model.go                            │              "
+    "             │  internal/core/messages.go                        │              "
+    "             │  internal/git/commands.go                         │              "
+    "             │  internal/ui/states/log/state.go                  │              "
+    "             │  internal/ui/states/log/view.go                   │              "
+    "             │  internal/ui/components/commit_list.go            │              "
+    "             │  go.mod                                           │              "
+    "             │  go.sum                                           │              "
+    "             │                                                   │              "
+    "             │                                                   │              "
+    "             │                                                   │              "
+    "             │                                                   │              "
+    "             │                                                   │              "
+    "             │                                                   │              "
+    "             ╰───────────────────────────────────────────────────╯              "
+    "                                                                                "
+    "                                                                                "
+    "                    ↑/↓ or j/k: navigate | Esc: back | q: qu                    "
+    "                                                                                "
+    "###);
+
+    // Navigate within files
     app.handle_input(key_event(KeyCode::Char('j')));
     terminal.draw(|f| render(f, &app)).unwrap();
     insta::assert_snapshot!(terminal.backend(), @r###"
@@ -113,64 +114,30 @@ fn test_menu_navigation_down() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
+    "             ╭ Files ────────────────────────────────────────────╮              "
+    "             │  internal/app/model.go                            │              "
+    "             │> internal/core/messages.go                        │              "
+    "             │  internal/git/commands.go                         │              "
+    "             │  internal/ui/states/log/state.go                  │              "
+    "             │  internal/ui/states/log/view.go                   │              "
+    "             │  internal/ui/components/commit_list.go            │              "
+    "             │  go.mod                                           │              "
+    "             │  go.sum                                           │              "
+    "             │                                                   │              "
+    "             │                                                   │              "
+    "             │                                                   │              "
+    "             │                                                   │              "
+    "             │                                                   │              "
+    "             │                                                   │              "
+    "             ╰───────────────────────────────────────────────────╯              "
     "                                                                                "
     "                                                                                "
-    "                    ╭ Splice Rust ─────────────────────────╮                    "
-    "                    │  View git log                        │                    "
-    "                    │  View files                          │                    "
-    "                    │> Settings                            │                    "
-    "                    │  Help                                │                    "
-    "                    │  Quit                                │                    "
-    "                    │                                      │                    "
-    "                    │                                      │                    "
-    "                    │                                      │                    "
-    "                    │                                      │                    "
-    "                    │                                      │                    "
-    "                    ╰──────────────────────────────────────╯                    "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "###);
-}
-
-#[test]
-fn test_menu_navigation_up() {
-    let (mut terminal, mut app) = setup_terminal();
-
-    app.handle_input(key_event(KeyCode::Char('j')));
-    app.handle_input(key_event(KeyCode::Char('j')));
-    terminal.draw(|f| render(f, &app)).unwrap();
-    insta::assert_snapshot!(terminal.backend(), @r###"
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                    ╭ Splice Rust ─────────────────────────╮                    "
-    "                    │  View git log                        │                    "
-    "                    │  View files                          │                    "
-    "                    │> Settings                            │                    "
-    "                    │  Help                                │                    "
-    "                    │  Quit                                │                    "
-    "                    │                                      │                    "
-    "                    │                                      │                    "
-    "                    │                                      │                    "
-    "                    │                                      │                    "
-    "                    │                                      │                    "
-    "                    ╰──────────────────────────────────────╯                    "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
+    "                    ↑/↓ or j/k: navigate | Esc: back | q: qu                    "
     "                                                                                "
     "###);
 
-    app.handle_input(key_event(KeyCode::Char('k')));
+    // Escape back to menu - selection preserved at "View files"
+    app.handle_input(key_event(KeyCode::Esc));
     terminal.draw(|f| render(f, &app)).unwrap();
     insta::assert_snapshot!(terminal.backend(), @r###"
     "                                                                                "
