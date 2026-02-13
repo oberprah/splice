@@ -1,0 +1,40 @@
+  ├ 0000000 Refactor authentication module to support OAuth2.0 and JWT tokens with … - Alex…      │ 0000000 · Benjamin O'Sullivan-Smith committed 1 year ago                        
+→ ├ 0000000 Add comprehensive error handling for network failures in API client wit… - Benj…      │                                                                                 
+  ├ 0000000 Update database schema migration to include new user preferences and no… - Chri…      │ Add comprehensive error handling for network failures in API client with retry  
+  ├ 0000000 Implement dark mode toggle with system preference detection and custom … - Alex…      │ logic                                                                           
+  ├ 0000000 Fix critical security vulnerability in session management discovered du… - Benj…      │                                                                                 
+  ├ 0000000 Optimize rendering performance for large commit lists using virtualizat… - Chri…      │ Additional context about this change that provides more detailed information.   
+  ├ 0000000 Add internationalization support for multiple languages including right… - Alex…      │                                                                                 
+  ├ 0000000 Migrate legacy codebase from deprecated framework to modern architectur… - Benj…      │ 5 files · +741 -312                                                             
+  ├ 0000000 Implement automated backup system with incremental snapshots and cloud … - Chri…      │  ├── cmd/server/handlers/api/v1/users                                           
+  ├ 0000000 Add real-time collaboration features with WebSocket support and conflic… - Alex…      │  │   └── M +142 -56  profile_handler.go                                         
+  ├ 0000000 Refactor authentication module to support OAuth2.0 and JWT tokens with … - Benj…      │  ├── internal/authentication/oauth2/providers                                   
+  ├ 0000000 Add comprehensive error handling for network failures in API client wit… - Chri…      │  │   ├── github                                                                 
+  ├ 0000000 Update database schema migration to include new user preferences and no… - Alex…      │  │   │   └── M +245 -123  client.go                                             
+  ├ 0000000 Implement dark mode toggle with system preference detection and custom … - Benj…      │  │   └── google                                                                 
+  ├ 0000000 Fix critical security vulnerability in session management discovered du… - Chri…      │  │       └── M +198 -87  client.go                                              
+                                                                                                  │  ├── pkg/database/migrations/v2                                                 
+                                                                                                  │  │   └── M +67 -12  user_preferences_schema.sql                                 
+                                                                                                  │  └── web/components/settings/themes                                             
+                                                                                                  │      └── M +89 -34  dark_mode_toggle.tsx                                        
+                                                                                                  │                                                                                 
+                                                                                                  │                                                                                 
+                                                                                                  │                                                                                 
+                                                                                                  │                                                                                 
+                                                                                                  │                                                                                 
+                                                                                                  │                                                                                 
+                                                                                                  │                                                                                 
+                                                                                                  │                                                                                 
+                                                                                                  │                                                                                 
+                                                                                                  │                                                                                 
+                                                                                                  │                                                                                 
+                                                                                                  │                                                                                 
+                                                                                                  │                                                                                 
+                                                                                                  │                                                                                 
+                                                                                                  │                                                                                 
+                                                                                                  │                                                                                 
+                                                                                                  │                                                                                 
+                                                                                                  │                                                                                 
+                                                                                                  │                                                                                 
+                                                                                                  │                                                                                 
+                                                                                                  │                                                                                 

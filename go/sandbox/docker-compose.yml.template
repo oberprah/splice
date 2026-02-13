@@ -1,0 +1,51 @@
+# Docker Compose configuration template for Splice sandbox
+# Copy this file to docker-compose.yml and configure for your setup:
+#   cp docker-compose.yml.template docker-compose.yml
+
+services:
+  agent:
+    build:
+      context: ..
+      dockerfile: sandbox/docker/agent/Dockerfile
+    working_dir: /workspace
+    security_opt:
+      - no-new-privileges:true
+      # Use default seccomp profile to block dangerous syscalls
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN         # Required for npm/go installs
+      - DAC_OVERRIDE  # Required for git operations
+      - SETUID        # Required for user switching
+      - SETGID        # Required for user switching
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+          pids: 200
+    volumes:
+      # Core mounts (required):
+      - ..:/workspace:rw                        # Repo read/write
+      - ../.github:/workspace/.github:ro        # Protect CI/CD workflows
+      - ../sandbox:/workspace/sandbox:ro        # Protect container config
+
+      # Mount AI agent tools config (e.g. uncomment if you want to use Codex CLI):
+      # - ~/.codex:/home/agent/.codex
+
+    tmpfs:
+      - /tmp:exec,nosuid,size=1G              # Isolated temp storage
+
+    environment:
+      # Optional environment variables you need for the AI agent tools
+
+    stdin_open: true
+    tty: true
+    ports:
+      - "${OPENCODE_PORT:-4096}:4096"  # OpenCode server port (unique per repo)
+    networks:
+      - sandbox-net
+
+networks:
+  sandbox-net:
+    driver: bridge

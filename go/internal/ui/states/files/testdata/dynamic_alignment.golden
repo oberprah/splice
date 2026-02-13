@@ -1,0 +1,7 @@
+abc123d · John Doe committed 2 months ago
+
+Add automatic light/dark theme support
+
+2 files · +1239 -569
+→├── M +1234 -567  large.go
+ └── M +5 -2  small.go

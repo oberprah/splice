@@ -1,0 +1,35 @@
+package core
+
+import (
+	"github.com/oberprah/splice/internal/domain/diff"
+)
+
+// CommitsLoadedMsg is sent when commits have been loaded
+type CommitsLoadedMsg struct {
+	Commits []GitCommit
+	Err     error
+}
+
+// FilesLoadedMsg is sent when files for a diff source have been loaded
+type FilesLoadedMsg struct {
+	Source DiffSource
+	Files  []FileChange
+	Err    error
+}
+
+// FilesPreviewLoadedMsg is sent when files for a preview panel have been loaded
+type FilesPreviewLoadedMsg struct {
+	ForHash string
+	Files   []FileChange
+	Err     error
+}
+
+// DiffLoadedMsg is sent when diff content for a file has been loaded
+type DiffLoadedMsg struct {
+	Source    DiffSource
+	Files     []FileChange   // All files in the diff source (for navigation)
+	FileIndex int            // Index of current file in Files slice
+	File      FileChange     // The current file
+	Diff      *diff.FileDiff // Block-based diff
+	Err       error
+}

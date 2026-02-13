@@ -7,6 +7,13 @@ set -e
 
 echo "Running pre-commit checks..."
 
+cd go
+
+# Source mise if available
+if [ -f "$HOME/.local/share/mise.sh" ]; then
+    . "$HOME/.local/share/mise.sh"
+fi
+
 # 1. Lint
 printf "→ Lint... "
 if go tool golangci-lint run > /tmp/splice-lint.log 2>&1; then
