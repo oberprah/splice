@@ -86,7 +86,12 @@ fn render_menu(f: &mut Frame, app: &App) {
             } else {
                 Style::default()
             };
-            ListItem::new(item).style(style)
+            let text = if i == app.menu_selected {
+                format!("> {}", item)
+            } else {
+                format!("  {}", item)
+            };
+            ListItem::new(text).style(style)
         })
         .collect();
 
@@ -97,8 +102,7 @@ fn render_menu(f: &mut Frame, app: &App) {
                 .title_style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded),
-        )
-        .highlight_symbol("> ");
+        );
 
     let area = centered_rect(40, 12, size);
     f.render_widget(list, area);
@@ -116,8 +120,9 @@ fn render_git_log(f: &mut Frame, app: &App) {
             } else {
                 Style::default()
             };
+            let prefix = if i == app.git_log_selected { "> " } else { "  " };
             let hash_span = Span::styled(hash, Style::default().fg(Color::Green));
-            let msg_span = Span::styled(format!(" {}", msg), style);
+            let msg_span = Span::styled(format!(" {}{}", prefix, msg), style);
             let time_span = Span::styled(
                 format!(" ({})", time),
                 Style::default().fg(Color::DarkGray),
@@ -133,8 +138,7 @@ fn render_git_log(f: &mut Frame, app: &App) {
                 .title_style(Style::default().fg(Color::Green).add_modifier(Modifier::BOLD))
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded),
-        )
-        .highlight_symbol("> ");
+        );
 
     let area = Rect::new(
         size.width / 8,
@@ -166,7 +170,12 @@ fn render_files(f: &mut Frame, app: &App) {
             } else {
                 Style::default().fg(Color::White)
             };
-            ListItem::new(item).style(style)
+            let text = if i == app.files_selected {
+                format!("> {}", item)
+            } else {
+                format!("  {}", item)
+            };
+            ListItem::new(text).style(style)
         })
         .collect();
 
@@ -177,8 +186,7 @@ fn render_files(f: &mut Frame, app: &App) {
                 .title_style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded),
-        )
-        .highlight_symbol("> ");
+        );
 
     let area = Rect::new(
         size.width / 6,
