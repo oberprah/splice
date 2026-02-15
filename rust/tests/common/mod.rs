@@ -1,17 +1,23 @@
+mod test_repo;
+
 use crossterm::event::KeyCode;
+pub use test_repo::TestRepo;
+
 use ratatui::{backend::TestBackend, Terminal};
 use splice_rust::{render, App};
 
+#[allow(dead_code)]
 pub struct Harness {
     terminal: Terminal<TestBackend>,
     app: App,
 }
 
+#[allow(dead_code)]
 impl Harness {
-    pub fn new() -> Self {
+    pub fn with_repo(repo: &TestRepo) -> Self {
         let backend = TestBackend::new(80, 24);
         let terminal = Terminal::new(backend).unwrap();
-        let app = App::new();
+        let app = App::with_repo_path(repo.path());
         Self { terminal, app }
     }
 
@@ -25,11 +31,4 @@ impl Harness {
         self.terminal.draw(|f| render(f, &self.app)).unwrap();
         self.terminal.backend()
     }
-}
-
-#[macro_export]
-macro_rules! assert_snapshot {
-    ($h:expr, @$snapshot:literal) => {
-        insta::assert_snapshot!($h.snapshot(), @$snapshot);
-    };
 }

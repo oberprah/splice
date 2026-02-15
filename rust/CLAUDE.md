@@ -11,17 +11,17 @@ This is a port of the Go implementation (`../go/`). The Go codebase is the sourc
 ## Development Commands
 
 ```bash
-cargo run                  # Run application
+cargo run                  # Run application (uses current directory)
+cargo run -- /path/to/repo # Run with specific repo path
 cargo test                 # Run all tests
-cargo test --test <name>   # Run specific test file
 cargo clippy               # Lint
 ```
 
 ## Testing
 
-- **Domain tests**: Pure unit tests, no git needed
-- **Git tests**: Use `tempfile` to create real git repos
-- **UI tests**: Snapshot tests with `insta`, mocked git
+- **Unit tests**: In source files via `#[cfg(test)] mod tests`
+- **Integration tests**: Real git repos via `TestRepo` helper
+- **E2E tests**: Snapshot tests with `insta`
 
 ## Project Structure
 
@@ -37,5 +37,5 @@ src/
 
 - **Port from Go**: Reference `../go/` for behavior
 - **Use enums**: Rust enums replace Go's sealed interfaces
-- **Real git for integration tests**: Better than mocking
-- **Snapshot UI tests**: Deterministic with mocked git
+- **Real git for tests**: `tempfile` creates isolated repos
+- **Deterministic test data**: `TestRepo` uses fixed git env vars for predictable hashes
