@@ -55,7 +55,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, repo_path: std::path::PathBuf
 
     loop {
         terminal.draw(|f| {
-            render(f, &app);
+            render(f, &mut app);
         })?;
 
         if let Event::Key(key) = event::read()? {

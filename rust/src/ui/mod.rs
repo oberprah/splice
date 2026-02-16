@@ -8,7 +8,7 @@ use ratatui::{
     widgets::{List, ListItem, Paragraph},
 };
 
-pub fn render_log_view(f: &mut Frame, commits: &[Commit], selected: usize, area: Rect) {
+pub fn render_log_view(f: &mut Frame, commits: &[Commit], selected: usize, scroll_offset: usize, area: Rect) {
     if commits.is_empty() {
         let msg = Paragraph::new("No commits found")
             .style(Style::default().fg(Color::Gray))
@@ -17,9 +17,14 @@ pub fn render_log_view(f: &mut Frame, commits: &[Commit], selected: usize, area:
         return;
     }
 
+    let visible_height = area.height.saturating_sub(1) as usize;
+    let end = (scroll_offset + visible_height).min(commits.len());
+
     let items: Vec<ListItem> = commits
         .iter()
         .enumerate()
+        .skip(scroll_offset)
+        .take(end - scroll_offset)
         .map(|(i, commit)| {
             let is_selected = i == selected;
             let prefix = if is_selected { "→ " } else { "  " };
@@ -55,7 +60,7 @@ pub fn render_log_view(f: &mut Frame, commits: &[Commit], selected: usize, area:
     let list = List::new(items);
     f.render_widget(list, area);
 
-    let help = Paragraph::new("j/k: navigate  g/G: jump  q: quit")
+    let help = Paragraph::new("j/k: navigate  Ctrl+d/u: half-page  q: quit")
         .style(Style::default().fg(Color::DarkGray))
         .alignment(Alignment::Left);
     let help_area = Rect::new(area.x, area.y + area.height.saturating_sub(1), area.width, 1);

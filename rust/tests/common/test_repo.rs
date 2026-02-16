@@ -8,12 +8,19 @@
 // - Fixed date (2020-01-01T00:00:00+0000) ensures same timestamp across runs
 //
 // This allows snapshot tests to use actual commit hashes instead of regex replacements.
+//
+// NOTE: Tests using TestRepo should use `serial_test` and call `reset_counter()` at
+// the start to ensure deterministic commit hashes across parallel test execution.
 use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use tempfile::TempDir;
 
 static COMMIT_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+pub fn reset_counter() {
+    COMMIT_COUNTER.store(0, Ordering::SeqCst);
+}
 
 pub struct TestRepo {
     _temp_dir: TempDir,
@@ -43,7 +50,7 @@ impl TestRepo {
         let counter = COMMIT_COUNTER.fetch_add(1, Ordering::SeqCst);
         let file_name = format!("file_{}.txt", counter);
         let file_path = self.path.join(&file_name);
-        std::fs::write(&file_path, "content").expect("Failed to write file");
+        std::fs::write(&file_path, format!("content_{}", counter)).expect("Failed to write file");
 
         Self::run_git(&self.path, &["add", &file_name]);
         Self::run_git_with_env(
