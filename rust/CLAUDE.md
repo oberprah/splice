@@ -20,8 +20,10 @@ cargo clippy               # Lint
 ## Testing
 
 - **Unit tests**: In source files via `#[cfg(test)] mod tests`
-- **Integration tests**: Real git repos via `TestRepo` helper
-- **E2E tests**: Snapshot tests with `insta`
+- **Integration tests**: In `tests/integration_tests/` with `TestRepo`
+- **E2E tests**: One file per test under `tests/e2e/` with inline snapshots
+- **Test entrypoint**: `tests/tests.rs`
+- **Snapshot updates**: Update inline snapshots manually; avoid running `cargo insta review/accept` so `.pending-snap` files are not created
 
 ## Project Structure
 
@@ -48,8 +50,11 @@ src/
 
 - **Port from Go**: Reference `../go/` for behavior
 - **Use enums**: Rust enums replace Go's sealed interfaces
+- **Test behavior, not code**: Prefer assertions on visible behavior/output
+- **Never mutate the current repo in tests/manual testing**: Always use `TestRepo` temp repos
 - **Real git for tests**: `tempfile` creates isolated repos
 - **Deterministic test data**: `TestRepo` uses fixed git env vars for predictable hashes
+- **Serial + reset counter**: Tests using `TestRepo` should use `serial_test` and call `reset_counter()`
 
 ## Ratatui Best Practices (for this repo)
 

@@ -1,12 +1,10 @@
-mod common;
-
-use common::{reset_counter, TestRepo};
+use crate::common::{reset_counter, Harness, TestRepo};
 use crossterm::event::KeyCode;
 use serial_test::serial;
 
 #[test]
 #[serial]
-fn test_log_view() {
+fn log_view_navigation() {
     reset_counter();
 
     let repo = TestRepo::new();
@@ -16,9 +14,8 @@ fn test_log_view() {
     repo.create_branch("feature");
     repo.create_tag("v1.0.0");
 
-    let mut h = common::Harness::with_repo(&repo);
+    let mut h = Harness::with_repo(&repo);
 
-    // Initial view shows first commit selected with branch and tag refs
     insta::assert_snapshot!(h.snapshot(), @r###"
     "  → f00429c (main, tag: v1.0.0, feature) Commit 29                              "
     "    d975d5b Commit 28                                                           "
@@ -46,7 +43,6 @@ fn test_log_view() {
     "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
     "###);
 
-    // Ctrl+d moves down half a page
     h.press_ctrl(KeyCode::Char('d'));
     insta::assert_snapshot!(h.snapshot(), @r###"
     "    f00429c (main, tag: v1.0.0, feature) Commit 29                              "
@@ -75,7 +71,6 @@ fn test_log_view() {
     "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
     "###);
 
-    // j moves down one commit
     h.press(KeyCode::Char('j'));
     insta::assert_snapshot!(h.snapshot(), @r###"
     "    f00429c (main, tag: v1.0.0, feature) Commit 29                              "
@@ -104,7 +99,6 @@ fn test_log_view() {
     "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
     "###);
 
-    // Ctrl+u moves up half a page
     h.press_ctrl(KeyCode::Char('u'));
     insta::assert_snapshot!(h.snapshot(), @r###"
     "    f00429c (main, tag: v1.0.0, feature) Commit 29                              "
