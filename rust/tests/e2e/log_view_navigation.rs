@@ -173,3 +173,77 @@ fn log_view_with_merge_graph() {
     "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
     "###);
 }
+
+#[test]
+#[serial]
+fn log_view_complex_multi_branch_graph() {
+    reset_counter();
+
+    let repo = TestRepo::new();
+    
+    repo.commit("A: Initial commit");
+    
+    repo.commit("B: Add main feature");
+    repo.create_branch("feature-1");
+    
+    repo.checkout("feature-1");
+    repo.commit("C: Feature 1 work");
+    
+    repo.checkout("main");
+    repo.commit("D: Main work after feature-1 branch");
+    repo.merge("feature-1");
+    
+    repo.create_branch("hotfix");
+    repo.checkout("hotfix");
+    repo.commit("E: Hotfix");
+    
+    repo.checkout("main");
+    repo.commit("F: Main work before hotfix merge");
+    repo.merge("hotfix");
+    
+    repo.create_branch("feature-2");
+    repo.checkout("feature-2");
+    repo.commit("G: Feature 2 start");
+    repo.commit("H: Feature 2 continued");
+    
+    repo.checkout("main");
+    repo.commit("I: Main work");
+    repo.merge("feature-2");
+    
+    repo.create_branch("feature-3");
+    repo.checkout("feature-3");
+    repo.commit("J: Feature 3 work");
+    repo.commit("K: Feature 3 more work");
+    
+    repo.checkout("main");
+    repo.merge("feature-3");
+
+    let mut h = Harness::with_repo(&repo);
+
+    insta::assert_snapshot!(h.snapshot(), @r###"
+    "  → ├─╮ f2fc4e4 (main) Merge feature-3                                          "
+    "    ├─│─╮ 76df0c4 Merge feature-2                                               "
+    "    │ ├ │ a6b0937 (feature-3) K: Feature 3 more work                            "
+    "    ├ │ │ 6b7f66b I: Main work                                                  "
+    "    │ │ ├ ba8b781 (feature-2) H: Feature 2 continued                            "
+    "    │ ├ │ d9bf69c J: Feature 3 work                                             "
+    "    ├─│─│─╮ 381cc3f Merge hotfix                                                "
+    "    │ │ ├ │ 3586de7 G: Feature 2 start                                          "
+    "    ├ │ │ │ 211229e F: Main work before hotfix merge                            "
+    "    │ │ │ ├ 9de1637 (hotfix) E: Hotfix                                          "
+    "    ├─│─│─┤ 1176b68 Merge feature-1                                             "
+    "    ├ │ │ │ 4cb86f7 D: Main work after feature-1 branch                         "
+    "    │ │ │ ├ d99dd31 (feature-1) C: Feature 1 work                               "
+    "    ├─│─│─╯ 1325d3f B: Add main feature                                         "
+    "    ├ │ │ dc21982 A: Initial commit                                             "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "###);
+}
