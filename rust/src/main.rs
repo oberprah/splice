@@ -1,11 +1,12 @@
-use crossterm::event::{self, Event};
+use crossterm::event;
 use crossterm::execute;
 use crossterm::terminal::{self, EnterAlternateScreen, LeaveAlternateScreen};
 use ratatui::{backend::CrosstermBackend, prelude::Backend, Terminal};
-use splice_rust::{render, App};
+use splice_rust::{action_from_event, render, Action, App};
 use std::env;
 use std::io;
 use std::path::Path;
+use std::time::{Duration, Instant};
 
 struct TerminalGuard;
 
@@ -38,6 +39,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     execute!(stdout, EnterAlternateScreen)?;
     let _guard = TerminalGuard;
 
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let _ = terminal::disable_raw_mode();
+        let _ = execute!(io::stdout(), LeaveAlternateScreen);
+        default_panic(info);
+    }));
+
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
@@ -50,18 +58,36 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn run_app<B: Backend>(terminal: &mut Terminal<B>, repo_path: std::path::PathBuf) -> io::Result<()> {
+fn run_app<B: Backend>(
+    terminal: &mut Terminal<B>,
+    repo_path: std::path::PathBuf,
+) -> io::Result<()> {
     let mut app = App::with_repo_path(repo_path);
+    let tick_rate = Duration::from_millis(250);
+    let mut last_tick = Instant::now();
+    let mut should_render = true;
 
     loop {
-        terminal.draw(|f| {
-            render(f, &mut app);
-        })?;
+        if should_render {
+            terminal.draw(|f| {
+                render(f, &mut app);
+            })?;
+            should_render = false;
+        }
 
-        if let Event::Key(key) = event::read()? {
-            if app.handle_input(key) {
-                return Ok(());
+        let timeout = tick_rate.saturating_sub(last_tick.elapsed());
+        if event::poll(timeout)? {
+            let action = action_from_event(event::read()?);
+            if action != Action::None {
+                should_render = true;
+                if app.update(action) {
+                    return Ok(());
+                }
             }
+        }
+
+        if last_tick.elapsed() >= tick_rate {
+            last_tick = Instant::now();
         }
     }
 }

@@ -28,9 +28,10 @@ cargo clippy               # Lint
 ```
 src/
 ├── core/           # Shared types (enums, traits)
-├── domain/         # Pure business logic (diff, graph, filetree)
 ├── git/            # Git operations
-└── ui/             # UI layer
+├── input.rs        # Event → Action mapping
+├── app.rs          # App state + reducer/update logic
+└── ui/             # UI layer (pure rendering)
 ```
 
 ## Key Principles
@@ -39,3 +40,11 @@ src/
 - **Use enums**: Rust enums replace Go's sealed interfaces
 - **Real git for tests**: `tempfile` creates isolated repos
 - **Deterministic test data**: `TestRepo` uses fixed git env vars for predictable hashes
+
+## Ratatui Best Practices (for this repo)
+
+- **Pure rendering**: `ui::render` should be read-only and deterministic
+- **Action mapping**: map keys/events → `Action`, then apply `App::update`
+- **Controlled redraw**: render on state change or resize, not every loop
+- **Safe terminal cleanup**: guard + panic hook to restore raw mode/screen
+- **Layout clarity**: compute list height from area minus footer rows

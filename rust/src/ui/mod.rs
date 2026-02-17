@@ -3,12 +3,45 @@ mod theme;
 pub use theme::*;
 
 use crate::core::{Commit, RefInfo, RefType};
+use crate::App;
 use ratatui::{
     prelude::*,
     widgets::{List, ListItem, Paragraph},
 };
 
-pub fn render_log_view(f: &mut Frame, commits: &[Commit], selected: usize, scroll_offset: usize, area: Rect) {
+const LOG_AREA_X: u16 = 2;
+const LOG_AREA_Y: u16 = 0;
+const LOG_AREA_RIGHT_MARGIN: u16 = 4;
+const LOG_AREA_BOTTOM_MARGIN: u16 = 0;
+
+pub fn render(f: &mut Frame, app: &mut App) {
+    let size = f.area();
+
+    if let Some(ref error) = app.error {
+        let msg = Paragraph::new(format!("Error: {}", error))
+            .style(Style::default().fg(Color::Red))
+            .alignment(Alignment::Center);
+        f.render_widget(msg, size);
+        return;
+    }
+
+    let log_area = Rect::new(
+        LOG_AREA_X,
+        LOG_AREA_Y,
+        size.width.saturating_sub(LOG_AREA_RIGHT_MARGIN),
+        size.height.saturating_sub(LOG_AREA_BOTTOM_MARGIN),
+    );
+    app.set_viewport_height(log_area.height.saturating_sub(1) as usize);
+    render_log_view(f, &app.commits, app.selected, app.scroll_offset, log_area);
+}
+
+pub fn render_log_view(
+    f: &mut Frame,
+    commits: &[Commit],
+    selected: usize,
+    scroll_offset: usize,
+    area: Rect,
+) {
     if commits.is_empty() {
         let msg = Paragraph::new("No commits found")
             .style(Style::default().fg(Color::Gray))
@@ -63,7 +96,12 @@ pub fn render_log_view(f: &mut Frame, commits: &[Commit], selected: usize, scrol
     let help = Paragraph::new("j/k: navigate  Ctrl+d/u: half-page  q: quit")
         .style(Style::default().fg(Color::DarkGray))
         .alignment(Alignment::Left);
-    let help_area = Rect::new(area.x, area.y + area.height.saturating_sub(1), area.width, 1);
+    let help_area = Rect::new(
+        area.x,
+        area.y + area.height.saturating_sub(1),
+        area.width,
+        1,
+    );
     f.render_widget(help, help_area);
 }
 

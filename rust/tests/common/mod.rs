@@ -2,11 +2,11 @@
 
 pub mod test_repo;
 
-use crossterm::event::KeyCode;
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 pub use test_repo::{reset_counter, TestRepo};
 
 use ratatui::{backend::TestBackend, Terminal};
-use splice_rust::{render, App};
+use splice_rust::{action_from_event, render, Action, App};
 
 #[allow(dead_code)]
 pub struct Harness {
@@ -25,15 +25,22 @@ impl Harness {
     }
 
     pub fn press(&mut self, key: KeyCode) -> &mut Self {
-        let event = crossterm::event::KeyEvent::new(key, crossterm::event::KeyModifiers::NONE);
-        self.app.handle_input(event);
+        let event = Event::Key(KeyEvent::new(key, KeyModifiers::NONE));
+        self.apply_event(event);
         self
     }
 
     pub fn press_ctrl(&mut self, key: KeyCode) -> &mut Self {
-        let event = crossterm::event::KeyEvent::new(key, crossterm::event::KeyModifiers::CONTROL);
-        self.app.handle_input(event);
+        let event = Event::Key(KeyEvent::new(key, KeyModifiers::CONTROL));
+        self.apply_event(event);
         self
+    }
+
+    fn apply_event(&mut self, event: Event) {
+        let action = action_from_event(event);
+        if action != Action::None {
+            self.app.update(action);
+        }
     }
 
     pub fn snapshot(&mut self) -> String {
