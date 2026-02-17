@@ -1,7 +1,9 @@
 use crate::core::Commit;
+use crate::domain::graph::{compute_layout, GraphCommit, Layout};
 
 pub struct LogView {
     pub commits: Vec<Commit>,
+    pub graph_layout: Layout,
     pub selected: usize,
     pub scroll_offset: usize,
     pub viewport_height: usize,
@@ -9,8 +11,17 @@ pub struct LogView {
 
 impl LogView {
     pub fn new(commits: Vec<Commit>) -> Self {
+        let graph_commits: Vec<GraphCommit> = commits
+            .iter()
+            .map(|c| GraphCommit {
+                hash: c.hash.clone(),
+                parents: c.parent_hashes.clone(),
+            })
+            .collect();
+        let graph_layout = compute_layout(&graph_commits);
         Self {
             commits,
+            graph_layout,
             selected: 0,
             scroll_offset: 0,
             viewport_height: 0,

@@ -1,4 +1,5 @@
 pub mod core;
+pub mod domain;
 pub mod git;
 pub mod ui;
 pub mod input;

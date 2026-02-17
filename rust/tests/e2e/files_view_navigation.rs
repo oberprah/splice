@@ -73,7 +73,7 @@ fn files_view_navigation() {
 
     h.press(KeyCode::Char('q'));
     insta::assert_snapshot!(h.snapshot(), @r#"
-    "  → ec332cd (main) Add initial files                                            "
+    "  → ├ ec332cd (main) Add initial files                                          "
     "                                                                                "
     "                                                                                "
     "                                                                                "

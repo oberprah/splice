@@ -86,6 +86,25 @@ impl TestRepo {
         Self::run_git(&self.path, &["branch", name]);
     }
 
+    pub fn checkout(&self, ref_name: &str) {
+        Self::run_git(&self.path, &["checkout", ref_name]);
+    }
+
+    pub fn merge(&self, branch: &str) {
+        Self::run_git_with_env(
+            &self.path,
+            &["merge", branch, "--no-ff", "-m", &format!("Merge {}", branch)],
+            &[
+                ("GIT_AUTHOR_NAME", "Test"),
+                ("GIT_AUTHOR_EMAIL", "test@test.com"),
+                ("GIT_COMMITTER_NAME", "Test"),
+                ("GIT_COMMITTER_EMAIL", "test@test.com"),
+                ("GIT_AUTHOR_DATE", "2020-01-01T00:00:00+0000"),
+                ("GIT_COMMITTER_DATE", "2020-01-01T00:00:00+0000"),
+            ],
+        );
+    }
+
     pub fn create_tag(&self, name: &str) {
         Self::run_git(&self.path, &["tag", name]);
     }

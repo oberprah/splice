@@ -38,7 +38,7 @@ pub fn render(f: &mut Frame, app: &mut App) {
 
     match &app.view {
         View::Log(log) => {
-            log::render_log_view(f, &log.commits, log.selected, log.scroll_offset, area);
+            log::render_log_view(f, &log.commits, &log.graph_layout, log.selected, log.scroll_offset, area);
         }
         View::Files(files) => {
             files::render_files_view(f, files, area);

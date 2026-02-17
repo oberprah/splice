@@ -1,4 +1,5 @@
 use crate::core::{Commit, RefInfo, RefType};
+use crate::domain::graph::{render_row, Layout};
 use crate::ui::theme;
 use ratatui::{
     prelude::*,
@@ -8,6 +9,7 @@ use ratatui::{
 pub fn render_log_view(
     f: &mut Frame,
     commits: &[Commit],
+    graph_layout: &Layout,
     selected: usize,
     scroll_offset: usize,
     area: Rect,
@@ -45,6 +47,14 @@ pub fn render_log_view(
             };
 
             let mut spans = vec![Span::styled(prefix, message_style)];
+
+            let graph_str = if i < graph_layout.rows.len() {
+                render_row(&graph_layout.rows[i])
+            } else {
+                String::new()
+            };
+            spans.push(Span::styled(graph_str, Style::default().fg(Color::Blue)));
+
             spans.push(Span::styled(commit.short_hash(), hash_style));
 
             if !commit.refs.is_empty() {
