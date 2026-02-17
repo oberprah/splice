@@ -90,6 +90,31 @@ impl TestRepo {
         Self::run_git(&self.path, &["checkout", ref_name]);
     }
 
+    pub fn rev_parse(&self, ref_name: &str) -> String {
+        let output = Command::new("git")
+            .current_dir(&self.path)
+            .args(["rev-parse", ref_name])
+            .output()
+            .expect("Failed to run git rev-parse");
+
+        if !output.status.success() {
+            panic!(
+                "git rev-parse {:?} failed: {}",
+                ref_name,
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+
+        String::from_utf8(output.stdout)
+            .expect("Invalid UTF-8 output")
+            .trim()
+            .to_string()
+    }
+
+    pub fn checkout_hash(&self, hash: &str) {
+        Self::run_git(&self.path, &["checkout", hash]);
+    }
+
     pub fn merge(&self, branch: &str) {
         Self::run_git_with_env(
             &self.path,
