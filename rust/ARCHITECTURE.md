@@ -8,24 +8,24 @@ Port of the Go implementation (`../go/`) with Rust-idiomatic patterns. The Go co
 
 ```
 src/
-├── core/           # Shared types (Commit, FileChange, DiffSource enums)
-├── domain/         # Pure business logic (diff, graph, filetree) - NO git, NO UI
-├── git/            # Git operations (commands, operations, parsing)
-└── ui/             # UI layer (views, components, theme)
+├── core/           # Shared types (Commit, FileChange, FileStatus)
+├── app/            # App state + view states (LogView, FilesView)
+├── git/            # Git operations (commands, parsing)
+└── ui/             # UI layer (views, theme)
 ```
 
 ### Import Direction
 
 ```
-app → ui → domain → git
-        ↑
-     core/ (shared)
+app → ui → git
+         ↑
+      core/ (shared)
 ```
 
 **Rules:**
-- `domain/` has NO dependencies on `git/` or `ui/`
-- `git/` only depends on `core/` and `domain/`
-- `ui/` depends on everything
+- `git/` only depends on `core/`
+- `ui/` depends on `core/`, `app/` (for view types), and `git/`
+- `app/` depends on `core/`, `git/`, and `input/`
 
 ## Go → Rust Pattern Mapping
 
@@ -45,7 +45,6 @@ app → ui → domain → git
 
 | Layer | Test Type | Git Strategy |
 |-------|-----------|--------------|
-| `domain/` | Unit tests | No git needed (pure functions) |
 | `git/` | Integration tests | **Real git repos** with `tempfile` |
 | `ui/` | Snapshot tests | Mocked git via trait |
 | Full app | E2E tests | Real git repos |
@@ -63,24 +62,19 @@ Use `insta` for deterministic UI tests. Mock git operations to ensure consistent
 
 ## Implementation Order
 
-1. **Core types** - Commit, FileChange, DiffSource enums
-2. **Domain layer** - Port from Go (pure functions, easy to test)
-3. **Git layer** - parsing → commands → operations
-4. **UI infrastructure** - theme, components
-5. **UI states** - loading → log → files → diff
-6. **Polish** - Error handling, edge cases
+1. **Core types** - Commit, FileChange, FileStatus
+2. **Git layer** - parsing → commands → operations
+3. **App layer** - View enum, LogView, FilesView states
+4. **UI layer** - theme → log view → files view
+5. **Polish** - Error handling, edge cases
 
 ## Go Reference Files
 
 | Rust Module | Go Reference |
 |-------------|--------------|
 | `core/types` | `go/internal/core/git_types.go`, `diff_source.go` |
-| `domain/diff` | `go/internal/domain/diff/` |
-| `domain/graph` | `go/internal/domain/graph/` |
-| `domain/filetree` | `go/internal/domain/filetree/` |
-| `git/commands` | `go/internal/git/commands/` |
-| `git/operations` | `go/internal/git/operations/` |
-| `git/parsing` | `go/internal/git/parsing/parsing.go` |
+| `git/log` | `go/internal/git/parsing/parsing.go` (log parsing) |
+| `git/file_changes` | `go/internal/git/parsing/parsing.go` (file changes) |
 | `ui/log` | `go/internal/ui/states/log/` |
 | `ui/files` | `go/internal/ui/states/files/` |
 | `ui/diff` | `go/internal/ui/states/diff/` |

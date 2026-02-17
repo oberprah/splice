@@ -27,11 +27,21 @@ cargo clippy               # Lint
 
 ```
 src/
-├── core/           # Shared types (enums, traits)
+├── core/           # Shared types (Commit, FileChange, FileStatus)
+├── app/            # App state, views (LogView, FilesView)
+│   ├── mod.rs      # App struct, View enum, update logic
+│   ├── log_view.rs # Log view state
+│   └── files_view.rs # Files view state
 ├── git/            # Git operations
+│   ├── mod.rs      # fetch_commits, fetch_file_changes
+│   ├── log.rs      # Log output parsing
+│   └── file_changes.rs # File changes parsing
 ├── input.rs        # Event → Action mapping
-├── app.rs          # App state + reducer/update logic
 └── ui/             # UI layer (pure rendering)
+    ├── mod.rs      # render dispatcher
+    ├── log.rs      # Log view rendering
+    ├── files.rs    # Files view rendering
+    └── theme.rs    # Styles/colors
 ```
 
 ## Key Principles
