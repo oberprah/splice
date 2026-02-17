@@ -172,7 +172,7 @@ mod tests {
 
     #[test]
     fn test_parse_skips_empty_hash() {
-        let input = "\0\0\0Alice\02024-01-01T10:00:00Z\0No hash\x1ehash2\0\0\0Bob\02024-01-02T10:00:00Z\0Valid";
+        let input = "\0\0\0Alice\02024-01-01T10:00:00Z\0No hash\x1ehash2\0\0\0Bob\02024-01-01T10:00:00Z\0Valid";
         let commits = parse_log_output(input).unwrap();
         
         assert_eq!(commits.len(), 1);

@@ -56,3 +56,31 @@ impl Commit {
         }
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FileStatus {
+    Modified,
+    Added,
+    Deleted,
+    Renamed,
+}
+
+impl FileStatus {
+    pub fn status_char(&self) -> char {
+        match self {
+            FileStatus::Modified => 'M',
+            FileStatus::Added => 'A',
+            FileStatus::Deleted => 'D',
+            FileStatus::Renamed => 'R',
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FileChange {
+    pub path: String,
+    pub status: FileStatus,
+    pub additions: u32,
+    pub deletions: u32,
+    pub is_binary: bool,
+}

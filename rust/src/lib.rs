@@ -8,3 +8,4 @@ pub mod app;
 pub use app::*;
 pub use input::*;
 pub use ui::render;
+pub use app::View;

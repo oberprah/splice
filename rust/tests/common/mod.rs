@@ -59,10 +59,16 @@ impl Harness {
     }
 
     pub fn selected(&self) -> usize {
-        self.app.selected
+        match &self.app.view {
+            splice_rust::View::Log(log) => log.selected,
+            splice_rust::View::Files(files) => files.selected,
+        }
     }
 
     pub fn scroll_offset(&self) -> usize {
-        self.app.scroll_offset
+        match &self.app.view {
+            splice_rust::View::Log(log) => log.scroll_offset,
+            splice_rust::View::Files(files) => files.scroll_offset,
+        }
     }
 }

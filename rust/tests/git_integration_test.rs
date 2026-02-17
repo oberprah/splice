@@ -13,7 +13,8 @@ fn test_fetch_commits_empty_repo() {
 
 #[test]
 fn test_fetch_commits_single_commit() {
-    let repo = TestRepo::new().commit("Initial commit");
+    let repo = TestRepo::new();
+    repo.commit("Initial commit");
     let commits = fetch_commits(repo.path()).unwrap();
     
     assert_eq!(commits.len(), 1);
@@ -24,10 +25,10 @@ fn test_fetch_commits_single_commit() {
 
 #[test]
 fn test_fetch_commits_multiple_commits() {
-    let repo = TestRepo::new()
-        .commit("First commit")
-        .commit("Second commit")
-        .commit("Third commit");
+    let repo = TestRepo::new();
+    repo.commit("First commit");
+    repo.commit("Second commit");
+    repo.commit("Third commit");
     
     let commits = fetch_commits(repo.path()).unwrap();
     
@@ -39,9 +40,9 @@ fn test_fetch_commits_multiple_commits() {
 
 #[test]
 fn test_fetch_commits_has_parent_hashes() {
-    let repo = TestRepo::new()
-        .commit("First")
-        .commit("Second");
+    let repo = TestRepo::new();
+    repo.commit("First");
+    repo.commit("Second");
     
     let commits = fetch_commits(repo.path()).unwrap();
     
@@ -52,9 +53,9 @@ fn test_fetch_commits_has_parent_hashes() {
 
 #[test]
 fn test_fetch_commits_with_branch() {
-    let repo = TestRepo::new()
-        .commit("Initial commit")
-        .create_branch("feature");
+    let repo = TestRepo::new();
+    repo.commit("Initial commit");
+    repo.create_branch("feature");
     
     let commits = fetch_commits(repo.path()).unwrap();
     
@@ -65,9 +66,9 @@ fn test_fetch_commits_with_branch() {
 
 #[test]
 fn test_fetch_commits_with_tag() {
-    let repo = TestRepo::new()
-        .commit("Initial commit")
-        .create_tag("v1.0.0");
+    let repo = TestRepo::new();
+    repo.commit("Initial commit");
+    repo.create_tag("v1.0.0");
     
     let commits = fetch_commits(repo.path()).unwrap();
     
@@ -79,7 +80,8 @@ fn test_fetch_commits_with_tag() {
 
 #[test]
 fn test_fetch_commits_head_branch() {
-    let repo = TestRepo::new().commit("Initial commit");
+    let repo = TestRepo::new();
+    repo.commit("Initial commit");
     
     let commits = fetch_commits(repo.path()).unwrap();
     
@@ -106,7 +108,8 @@ fn test_fetch_commits_not_a_git_repo() {
 
 #[test]
 fn test_fetch_commits_author_info() {
-    let repo = TestRepo::new().commit("Test commit");
+    let repo = TestRepo::new();
+    repo.commit("Test commit");
     let commits = fetch_commits(repo.path()).unwrap();
     
     assert_eq!(commits.len(), 1);
@@ -115,7 +118,8 @@ fn test_fetch_commits_author_info() {
 
 #[test]
 fn test_fetch_commits_hash_format() {
-    let repo = TestRepo::new().commit("Test commit");
+    let repo = TestRepo::new();
+    repo.commit("Test commit");
     let commits = fetch_commits(repo.path()).unwrap();
     
     assert_eq!(commits.len(), 1);

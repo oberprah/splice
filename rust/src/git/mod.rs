@@ -1,13 +1,15 @@
-mod parsing;
+mod file_changes;
+mod log;
 
-pub use parsing::parse_log_output;
+pub use file_changes::parse_file_changes;
+pub use log::parse_log_output;
 
 use std::path::Path;
-
-const MAX_COMMITS: usize = 100;
 use std::process::Command;
 
-use crate::core::Commit;
+use crate::core::{Commit, FileChange};
+
+const MAX_COMMITS: usize = 100;
 
 pub fn fetch_commits(repo_path: &Path) -> Result<Vec<Commit>, String> {
     let output = Command::new("git")
@@ -31,4 +33,51 @@ pub fn fetch_commits(repo_path: &Path) -> Result<Vec<Commit>, String> {
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     parse_log_output(&stdout)
+}
+
+pub fn fetch_file_changes(repo_path: &Path, commit_hash: &str) -> Result<Vec<FileChange>, String> {
+    let numstat_output = Command::new("git")
+        .current_dir(repo_path)
+        .args([
+            "diff-tree",
+            "--no-commit-id",
+            "--numstat",
+            "-r",
+            "--root",
+            commit_hash,
+        ])
+        .output()
+        .map_err(|e| format!("Failed to run git diff-tree: {}", e))?;
+
+    if !numstat_output.status.success() {
+        return Err(format!(
+            "git diff-tree --numstat failed: {}",
+            String::from_utf8_lossy(&numstat_output.stderr)
+        ));
+    }
+
+    let name_status_output = Command::new("git")
+        .current_dir(repo_path)
+        .args([
+            "diff-tree",
+            "--no-commit-id",
+            "--name-status",
+            "-r",
+            "--root",
+            commit_hash,
+        ])
+        .output()
+        .map_err(|e| format!("Failed to run git diff-tree: {}", e))?;
+
+    if !name_status_output.status.success() {
+        return Err(format!(
+            "git diff-tree --name-status failed: {}",
+            String::from_utf8_lossy(&name_status_output.stderr)
+        ));
+    }
+
+    let numstat = String::from_utf8_lossy(&numstat_output.stdout);
+    let name_status = String::from_utf8_lossy(&name_status_output.stdout);
+    
+    parse_file_changes(&numstat, &name_status)
 }

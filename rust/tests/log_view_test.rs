@@ -9,12 +9,12 @@ use serial_test::serial;
 fn test_log_view() {
     reset_counter();
 
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
     for i in 0..30 {
-        repo = repo.commit(&format!("Commit {i}"));
+        repo.commit(&format!("Commit {i}"));
     }
-    repo = repo.create_branch("feature");
-    repo = repo.create_tag("v1.0.0");
+    repo.create_branch("feature");
+    repo.create_tag("v1.0.0");
 
     let mut h = common::Harness::with_repo(&repo);
 

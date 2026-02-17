@@ -46,7 +46,22 @@ impl TestRepo {
         &self.path
     }
 
-    pub fn commit(self, message: &str) -> Self {
+    pub fn add_file(&self, path: &str, content: &str) {
+        let file_path = self.path.join(path);
+        if let Some(parent) = file_path.parent() {
+            std::fs::create_dir_all(parent).expect("Failed to create dir");
+        }
+        std::fs::write(&file_path, content).expect("Failed to write file");
+        Self::run_git(&self.path, &["add", path]);
+    }
+
+    pub fn modify_file(&self, path: &str, content: &str) {
+        let file_path = self.path.join(path);
+        std::fs::write(&file_path, content).expect("Failed to write file");
+        Self::run_git(&self.path, &["add", path]);
+    }
+
+    pub fn commit(&self, message: &str) {
         let counter = COMMIT_COUNTER.fetch_add(1, Ordering::SeqCst);
         let file_name = format!("file_{}.txt", counter);
         let file_path = self.path.join(&file_name);
@@ -65,18 +80,14 @@ impl TestRepo {
                 ("GIT_COMMITTER_DATE", "2020-01-01T00:00:00+0000"),
             ],
         );
-
-        self
     }
 
-    pub fn create_branch(self, name: &str) -> Self {
+    pub fn create_branch(&self, name: &str) {
         Self::run_git(&self.path, &["branch", name]);
-        self
     }
 
-    pub fn create_tag(self, name: &str) -> Self {
+    pub fn create_tag(&self, name: &str) {
         Self::run_git(&self.path, &["tag", name]);
-        self
     }
 
     fn run_git(path: &std::path::Path, args: &[&str]) {
