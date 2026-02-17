@@ -16,6 +16,7 @@ pub fn fetch_commits(repo_path: &Path) -> Result<Vec<Commit>, String> {
         .current_dir(repo_path)
         .args([
             "log",
+            "--topo-order",
             "--pretty=format:%H%x00%P%x00%d%x00%an%x00%ad%x00%s%x1e",
             "--date=iso-strict",
             "-n",
