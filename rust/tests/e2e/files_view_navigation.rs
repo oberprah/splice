@@ -4,28 +4,60 @@ use serial_test::serial;
 
 #[test]
 #[serial]
-fn files_view_navigation() {
+fn files_view_navigation_with_modifications() {
     reset_counter();
 
     let repo = TestRepo::new();
-    repo.add_file("src/main.rs", "fn main() {}");
-    repo.add_file("src/lib.rs", "pub fn lib() {}");
-    repo.add_file("README.md", "# Test");
-    repo.commit("Add initial files");
+    repo.add_file("src/main.rs", "fn main() {}\n");
+    repo.add_file("README.md", "# Test\n");
+    repo.commit("Initial commit");
+    repo.modify_file(
+        "src/main.rs",
+        "fn main() {\n    println!(\"hello\");\n}\n",
+    );
+    repo.add_file("src/new.rs", "pub fn new() {}\n");
+    repo.commit("Modify and add files");
 
     let mut h = Harness::with_repo(&repo);
 
+    insta::assert_snapshot!(h.snapshot(), @r#"
+    "  → ├ e2af8ce (main) Modify and add files                                       "
+    "    ├ c500da6 Initial commit                                                    "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "#);
+
     h.press(KeyCode::Enter);
     insta::assert_snapshot!(h.snapshot(), @r#"
-    "  ec332cd · Test committed 6 years ago                                          "
+    "  e2af8ce · Test committed 6 years ago                                          "
     "                                                                                "
-    "  Add initial files                                                             "
+    "  Modify and add files                                                          "
     "                                                                                "
-    "  4 files · +4 -0                                                               "
-    "  → A +1 -0  README.md                                                          "
-    "    A +1 -0  file_0.txt                                                         "
-    "    A +1 -0  src/lib.rs                                                         "
-    "    A +1 -0  src/main.rs                                                        "
+    "  3 files · +5 -1                                                               "
+    "  → A +1 -0  file_1.txt                                                         "
+    "    M +3 -1  src/main.rs                                                        "
+    "    A +1 -0  src/new.rs                                                         "
+    "                                                                                "
     "                                                                                "
     "                                                                                "
     "                                                                                "
@@ -45,15 +77,15 @@ fn files_view_navigation() {
 
     h.press(KeyCode::Char('j'));
     insta::assert_snapshot!(h.snapshot(), @r#"
-    "  ec332cd · Test committed 6 years ago                                          "
+    "  e2af8ce · Test committed 6 years ago                                          "
     "                                                                                "
-    "  Add initial files                                                             "
+    "  Modify and add files                                                          "
     "                                                                                "
-    "  4 files · +4 -0                                                               "
-    "    A +1 -0  README.md                                                          "
-    "  → A +1 -0  file_0.txt                                                         "
-    "    A +1 -0  src/lib.rs                                                         "
-    "    A +1 -0  src/main.rs                                                        "
+    "  3 files · +5 -1                                                               "
+    "    A +1 -0  file_1.txt                                                         "
+    "  → M +3 -1  src/main.rs                                                        "
+    "    A +1 -0  src/new.rs                                                         "
+    "                                                                                "
     "                                                                                "
     "                                                                                "
     "                                                                                "
@@ -73,8 +105,8 @@ fn files_view_navigation() {
 
     h.press(KeyCode::Char('q'));
     insta::assert_snapshot!(h.snapshot(), @r#"
-    "  → ├ ec332cd (main) Add initial files                                          "
-    "                                                                                "
+    "  → ├ e2af8ce (main) Modify and add files                                       "
+    "    ├ c500da6 Initial commit                                                    "
     "                                                                                "
     "                                                                                "
     "                                                                                "

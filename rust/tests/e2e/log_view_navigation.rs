@@ -4,246 +4,223 @@ use serial_test::serial;
 
 #[test]
 #[serial]
-fn log_view_navigation() {
+fn log_view_complex_graph_navigation() {
     reset_counter();
 
     let repo = TestRepo::new();
-    for i in 0..30 {
-        repo.commit(&format!("Commit {i}"));
+
+    repo.commit("A");
+    repo.commit("B");
+    repo.create_branch("feature-1");
+    repo.checkout("feature-1");
+    repo.commit("C");
+
+    repo.checkout("main");
+    repo.merge("feature-1");
+    let d_hash = repo.rev_parse("HEAD");
+
+    repo.create_branch("hotfix");
+    repo.checkout("hotfix");
+    repo.commit("E");
+
+    repo.checkout("main");
+    repo.merge("hotfix");
+
+    repo.create_branch("feature-2");
+    repo.checkout("feature-2");
+    repo.commit("G");
+    let g_hash = repo.rev_parse("HEAD");
+
+    repo.checkout("main");
+    repo.merge("feature-2");
+
+    repo.checkout_hash(&g_hash);
+    repo.create_branch("feature-2b");
+    repo.checkout("feature-2b");
+    repo.commit("I");
+
+    repo.checkout("main");
+    repo.merge("feature-2b");
+
+    repo.checkout_hash(&d_hash);
+    repo.create_branch("feature-3");
+    repo.checkout("feature-3");
+    repo.commit("K");
+    repo.commit("L");
+
+    repo.checkout("main");
+    repo.merge("feature-3");
+
+    for i in 0..12 {
+        repo.commit(&format!("Linear {i}"));
     }
-    repo.create_branch("feature");
-    repo.create_tag("v1.0.0");
 
     let mut h = Harness::with_repo(&repo);
 
     insta::assert_snapshot!(h.snapshot(), @r###"
-    "  → ├ f00429c (main, tag: v1.0.0, feature) Commit 29                            "
-    "    ├ d975d5b Commit 28                                                         "
-    "    ├ d6fcefe Commit 27                                                         "
-    "    ├ 4c8fe93 Commit 26                                                         "
-    "    ├ 9feaeb4 Commit 25                                                         "
-    "    ├ 2e50686 Commit 24                                                         "
-    "    ├ cbbad51 Commit 23                                                         "
-    "    ├ dc6b3d8 Commit 22                                                         "
-    "    ├ 984d749 Commit 21                                                         "
-    "    ├ 8aeb3df Commit 20                                                         "
-    "    ├ 15df8f3 Commit 19                                                         "
-    "    ├ ca24928 Commit 18                                                         "
-    "    ├ 50c9441 Commit 17                                                         "
-    "    ├ b37126e Commit 16                                                         "
-    "    ├ 3a1959a Commit 15                                                         "
-    "    ├ 77f5868 Commit 14                                                         "
-    "    ├ 9593ccc Commit 13                                                         "
-    "    ├ 0198648 Commit 12                                                         "
-    "    ├ d4ec593 Commit 11                                                         "
-    "    ├ b33b874 Commit 10                                                         "
-    "    ├ 1817c0e Commit 9                                                          "
-    "    ├ 444ad36 Commit 8                                                          "
-    "    ├ 31b4d64 Commit 7                                                          "
+    "  → ├ d91fc04 (main) Linear 11                                                  "
+    "    ├ 32e3e44 Linear 10                                                         "
+    "    ├ a561433 Linear 9                                                          "
+    "    ├ b670e03 Linear 8                                                          "
+    "    ├ b091d37 Linear 7                                                          "
+    "    ├ 4aaaccb Linear 6                                                          "
+    "    ├ 4651237 Linear 5                                                          "
+    "    ├ d1ad270 Linear 4                                                          "
+    "    ├ 2c74952 Linear 3                                                          "
+    "    ├ adcfad5 Linear 2                                                          "
+    "    ├ 2a31f86 Linear 1                                                          "
+    "    ├ 73f72bc Linear 0                                                          "
+    "    ├─╮ 45fe0e3 Merge feature-3                                                 "
+    "    │ ├ 44eee0d (feature-3) L                                                   "
+    "    │ ├ 4c75a9d K                                                               "
+    "    ├─│─╮ 55fbe6d Merge feature-2b                                              "
+    "    │ │ ├ 02f5e0a (feature-2b) I                                                "
+    "    ├─│─│─╮ 6eab1a0 Merge feature-2                                             "
+    "    │ │ ├─╯ 6385fe0 (feature-2) G                                               "
+    "    ├─│─┤ 16b8252 Merge hotfix                                                  "
+    "    │ │ ├ e5790ed (hotfix) E                                                    "
+    "    ├─┼─╯ 3c1ac31 Merge feature-1                                               "
+    "    │ ├ e8faeba (feature-1) C                                                   "
     "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
     "###);
 
     h.press_ctrl(KeyCode::Char('d'));
     insta::assert_snapshot!(h.snapshot(), @r###"
-    "    ├ f00429c (main, tag: v1.0.0, feature) Commit 29                            "
-    "    ├ d975d5b Commit 28                                                         "
-    "    ├ d6fcefe Commit 27                                                         "
-    "    ├ 4c8fe93 Commit 26                                                         "
-    "    ├ 9feaeb4 Commit 25                                                         "
-    "    ├ 2e50686 Commit 24                                                         "
-    "    ├ cbbad51 Commit 23                                                         "
-    "    ├ dc6b3d8 Commit 22                                                         "
-    "    ├ 984d749 Commit 21                                                         "
-    "    ├ 8aeb3df Commit 20                                                         "
-    "    ├ 15df8f3 Commit 19                                                         "
-    "  → ├ ca24928 Commit 18                                                         "
-    "    ├ 50c9441 Commit 17                                                         "
-    "    ├ b37126e Commit 16                                                         "
-    "    ├ 3a1959a Commit 15                                                         "
-    "    ├ 77f5868 Commit 14                                                         "
-    "    ├ 9593ccc Commit 13                                                         "
-    "    ├ 0198648 Commit 12                                                         "
-    "    ├ d4ec593 Commit 11                                                         "
-    "    ├ b33b874 Commit 10                                                         "
-    "    ├ 1817c0e Commit 9                                                          "
-    "    ├ 444ad36 Commit 8                                                          "
-    "    ├ 31b4d64 Commit 7                                                          "
+    "    ├ d91fc04 (main) Linear 11                                                  "
+    "    ├ 32e3e44 Linear 10                                                         "
+    "    ├ a561433 Linear 9                                                          "
+    "    ├ b670e03 Linear 8                                                          "
+    "    ├ b091d37 Linear 7                                                          "
+    "    ├ 4aaaccb Linear 6                                                          "
+    "    ├ 4651237 Linear 5                                                          "
+    "    ├ d1ad270 Linear 4                                                          "
+    "    ├ 2c74952 Linear 3                                                          "
+    "    ├ adcfad5 Linear 2                                                          "
+    "    ├ 2a31f86 Linear 1                                                          "
+    "  → ├ 73f72bc Linear 0                                                          "
+    "    ├─╮ 45fe0e3 Merge feature-3                                                 "
+    "    │ ├ 44eee0d (feature-3) L                                                   "
+    "    │ ├ 4c75a9d K                                                               "
+    "    ├─│─╮ 55fbe6d Merge feature-2b                                              "
+    "    │ │ ├ 02f5e0a (feature-2b) I                                                "
+    "    ├─│─│─╮ 6eab1a0 Merge feature-2                                             "
+    "    │ │ ├─╯ 6385fe0 (feature-2) G                                               "
+    "    ├─│─┤ 16b8252 Merge hotfix                                                  "
+    "    │ │ ├ e5790ed (hotfix) E                                                    "
+    "    ├─┼─╯ 3c1ac31 Merge feature-1                                               "
+    "    │ ├ e8faeba (feature-1) C                                                   "
+    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "###);
+
+    h.press_ctrl(KeyCode::Char('d'));
+    insta::assert_snapshot!(h.snapshot(), @r###"
+    "    ├ d91fc04 (main) Linear 11                                                  "
+    "    ├ 32e3e44 Linear 10                                                         "
+    "    ├ a561433 Linear 9                                                          "
+    "    ├ b670e03 Linear 8                                                          "
+    "    ├ b091d37 Linear 7                                                          "
+    "    ├ 4aaaccb Linear 6                                                          "
+    "    ├ 4651237 Linear 5                                                          "
+    "    ├ d1ad270 Linear 4                                                          "
+    "    ├ 2c74952 Linear 3                                                          "
+    "    ├ adcfad5 Linear 2                                                          "
+    "    ├ 2a31f86 Linear 1                                                          "
+    "    ├ 73f72bc Linear 0                                                          "
+    "    ├─╮ 45fe0e3 Merge feature-3                                                 "
+    "    │ ├ 44eee0d (feature-3) L                                                   "
+    "    │ ├ 4c75a9d K                                                               "
+    "    ├─│─╮ 55fbe6d Merge feature-2b                                              "
+    "    │ │ ├ 02f5e0a (feature-2b) I                                                "
+    "    ├─│─│─╮ 6eab1a0 Merge feature-2                                             "
+    "    │ │ ├─╯ 6385fe0 (feature-2) G                                               "
+    "    ├─│─┤ 16b8252 Merge hotfix                                                  "
+    "    │ │ ├ e5790ed (hotfix) E                                                    "
+    "    ├─┼─╯ 3c1ac31 Merge feature-1                                               "
+    "  → │ ├ e8faeba (feature-1) C                                                   "
     "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
     "###);
 
     h.press(KeyCode::Char('j'));
     insta::assert_snapshot!(h.snapshot(), @r###"
-    "    ├ f00429c (main, tag: v1.0.0, feature) Commit 29                            "
-    "    ├ d975d5b Commit 28                                                         "
-    "    ├ d6fcefe Commit 27                                                         "
-    "    ├ 4c8fe93 Commit 26                                                         "
-    "    ├ 9feaeb4 Commit 25                                                         "
-    "    ├ 2e50686 Commit 24                                                         "
-    "    ├ cbbad51 Commit 23                                                         "
-    "    ├ dc6b3d8 Commit 22                                                         "
-    "    ├ 984d749 Commit 21                                                         "
-    "    ├ 8aeb3df Commit 20                                                         "
-    "    ├ 15df8f3 Commit 19                                                         "
-    "    ├ ca24928 Commit 18                                                         "
-    "  → ├ 50c9441 Commit 17                                                         "
-    "    ├ b37126e Commit 16                                                         "
-    "    ├ 3a1959a Commit 15                                                         "
-    "    ├ 77f5868 Commit 14                                                         "
-    "    ├ 9593ccc Commit 13                                                         "
-    "    ├ 0198648 Commit 12                                                         "
-    "    ├ d4ec593 Commit 11                                                         "
-    "    ├ b33b874 Commit 10                                                         "
-    "    ├ 1817c0e Commit 9                                                          "
-    "    ├ 444ad36 Commit 8                                                          "
-    "    ├ 31b4d64 Commit 7                                                          "
+    "    ├ 32e3e44 Linear 10                                                         "
+    "    ├ a561433 Linear 9                                                          "
+    "    ├ b670e03 Linear 8                                                          "
+    "    ├ b091d37 Linear 7                                                          "
+    "    ├ 4aaaccb Linear 6                                                          "
+    "    ├ 4651237 Linear 5                                                          "
+    "    ├ d1ad270 Linear 4                                                          "
+    "    ├ 2c74952 Linear 3                                                          "
+    "    ├ adcfad5 Linear 2                                                          "
+    "    ├ 2a31f86 Linear 1                                                          "
+    "    ├ 73f72bc Linear 0                                                          "
+    "    ├─╮ 45fe0e3 Merge feature-3                                                 "
+    "    │ ├ 44eee0d (feature-3) L                                                   "
+    "    │ ├ 4c75a9d K                                                               "
+    "    ├─│─╮ 55fbe6d Merge feature-2b                                              "
+    "    │ │ ├ 02f5e0a (feature-2b) I                                                "
+    "    ├─│─│─╮ 6eab1a0 Merge feature-2                                             "
+    "    │ │ ├─╯ 6385fe0 (feature-2) G                                               "
+    "    ├─│─┤ 16b8252 Merge hotfix                                                  "
+    "    │ │ ├ e5790ed (hotfix) E                                                    "
+    "    ├─┼─╯ 3c1ac31 Merge feature-1                                               "
+    "    │ ├ e8faeba (feature-1) C                                                   "
+    "  → ├─╯ cc4032c B                                                               "
     "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
     "###);
 
     h.press_ctrl(KeyCode::Char('u'));
     insta::assert_snapshot!(h.snapshot(), @r###"
-    "    ├ f00429c (main, tag: v1.0.0, feature) Commit 29                            "
-    "  → ├ d975d5b Commit 28                                                         "
-    "    ├ d6fcefe Commit 27                                                         "
-    "    ├ 4c8fe93 Commit 26                                                         "
-    "    ├ 9feaeb4 Commit 25                                                         "
-    "    ├ 2e50686 Commit 24                                                         "
-    "    ├ cbbad51 Commit 23                                                         "
-    "    ├ dc6b3d8 Commit 22                                                         "
-    "    ├ 984d749 Commit 21                                                         "
-    "    ├ 8aeb3df Commit 20                                                         "
-    "    ├ 15df8f3 Commit 19                                                         "
-    "    ├ ca24928 Commit 18                                                         "
-    "    ├ 50c9441 Commit 17                                                         "
-    "    ├ b37126e Commit 16                                                         "
-    "    ├ 3a1959a Commit 15                                                         "
-    "    ├ 77f5868 Commit 14                                                         "
-    "    ├ 9593ccc Commit 13                                                         "
-    "    ├ 0198648 Commit 12                                                         "
-    "    ├ d4ec593 Commit 11                                                         "
-    "    ├ b33b874 Commit 10                                                         "
-    "    ├ 1817c0e Commit 9                                                          "
-    "    ├ 444ad36 Commit 8                                                          "
-    "    ├ 31b4d64 Commit 7                                                          "
+    "    ├ 32e3e44 Linear 10                                                         "
+    "    ├ a561433 Linear 9                                                          "
+    "    ├ b670e03 Linear 8                                                          "
+    "    ├ b091d37 Linear 7                                                          "
+    "    ├ 4aaaccb Linear 6                                                          "
+    "    ├ 4651237 Linear 5                                                          "
+    "    ├ d1ad270 Linear 4                                                          "
+    "    ├ 2c74952 Linear 3                                                          "
+    "    ├ adcfad5 Linear 2                                                          "
+    "    ├ 2a31f86 Linear 1                                                          "
+    "    ├ 73f72bc Linear 0                                                          "
+    "  → ├─╮ 45fe0e3 Merge feature-3                                                 "
+    "    │ ├ 44eee0d (feature-3) L                                                   "
+    "    │ ├ 4c75a9d K                                                               "
+    "    ├─│─╮ 55fbe6d Merge feature-2b                                              "
+    "    │ │ ├ 02f5e0a (feature-2b) I                                                "
+    "    ├─│─│─╮ 6eab1a0 Merge feature-2                                             "
+    "    │ │ ├─╯ 6385fe0 (feature-2) G                                               "
+    "    ├─│─┤ 16b8252 Merge hotfix                                                  "
+    "    │ │ ├ e5790ed (hotfix) E                                                    "
+    "    ├─┼─╯ 3c1ac31 Merge feature-1                                               "
+    "    │ ├ e8faeba (feature-1) C                                                   "
+    "    ├─╯ cc4032c B                                                               "
     "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
     "###);
-}
 
-#[test]
-#[serial]
-fn log_view_with_merge_graph() {
-    reset_counter();
-
-    let repo = TestRepo::new();
-    repo.commit("Initial commit");
-    repo.commit("Second commit");
-    repo.create_branch("feature");
-    repo.checkout("feature");
-    repo.commit("Feature commit 1");
-    repo.commit("Feature commit 2");
-    repo.checkout("main");
-    repo.commit("Main commit after branch");
-    repo.merge("feature");
-
-    let mut h = Harness::with_repo(&repo);
-
+    h.press(KeyCode::Char('k'));
     insta::assert_snapshot!(h.snapshot(), @r###"
-    "  → ├─╮ 872d8a4 (main) Merge feature                                            "
-    "    │ ├ f1cb02f (feature) Feature commit 2                                      "
-    "    │ ├ 30beeb9 Feature commit 1                                                "
-    "    ├ │ 8afef21 Main commit after branch                                        "
-    "    ├─╯ a6e1387 Second commit                                                   "
-    "    ├ b2c992c Initial commit                                                    "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
-    "###);
-}
-
-#[test]
-#[serial]
-fn log_view_complex_multi_branch_graph() {
-    reset_counter();
-
-    let repo = TestRepo::new();
-    
-    repo.commit("A: Initial commit");
-    
-    repo.commit("B: Add main feature");
-    repo.create_branch("feature-1");
-    
-    repo.checkout("feature-1");
-    repo.commit("C: Feature 1 work");
-    
-    repo.checkout("main");
-    repo.commit("D: Main work after feature-1 branch");
-    repo.merge("feature-1");
-    
-    repo.create_branch("hotfix");
-    repo.checkout("hotfix");
-    repo.commit("E: Hotfix");
-    
-    repo.checkout("main");
-    repo.commit("F: Main work before hotfix merge");
-    repo.merge("hotfix");
-    
-    repo.create_branch("feature-2");
-    repo.checkout("feature-2");
-    repo.commit("G: Feature 2 start");
-    repo.commit("H: Feature 2 continued");
-    
-    repo.checkout("main");
-    repo.commit("I: Main work");
-    repo.merge("feature-2");
-    
-    repo.create_branch("feature-3");
-    repo.checkout("feature-3");
-    repo.commit("J: Feature 3 work");
-    repo.commit("K: Feature 3 more work");
-    
-    repo.checkout("main");
-    repo.merge("feature-3");
-
-    let mut h = Harness::with_repo(&repo);
-
-    insta::assert_snapshot!(h.snapshot(), @r###"
-    "  → ├─╮ f2fc4e4 (main) Merge feature-3                                          "
-    "    │ ├ a6b0937 (feature-3) K: Feature 3 more work                              "
-    "    │ ├ d9bf69c J: Feature 3 work                                               "
-    "    ├─┤ 76df0c4 Merge feature-2                                                 "
-    "    │ ├ ba8b781 (feature-2) H: Feature 2 continued                              "
-    "    │ ├ 3586de7 G: Feature 2 start                                              "
-    "    ├ │ 6b7f66b I: Main work                                                    "
-    "    ├─┤ 381cc3f Merge hotfix                                                    "
-    "    │ ├ 9de1637 (hotfix) E: Hotfix                                              "
-    "    ├ │ 211229e F: Main work before hotfix merge                                "
-    "    ├─┤ 1176b68 Merge feature-1                                                 "
-    "    │ ├ d99dd31 (feature-1) C: Feature 1 work                                   "
-    "    ├ │ 4cb86f7 D: Main work after feature-1 branch                             "
-    "    ├─╯ 1325d3f B: Add main feature                                             "
-    "    ├ dc21982 A: Initial commit                                                 "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
-    "                                                                                "
+    "    ├ 32e3e44 Linear 10                                                         "
+    "    ├ a561433 Linear 9                                                          "
+    "    ├ b670e03 Linear 8                                                          "
+    "    ├ b091d37 Linear 7                                                          "
+    "    ├ 4aaaccb Linear 6                                                          "
+    "    ├ 4651237 Linear 5                                                          "
+    "    ├ d1ad270 Linear 4                                                          "
+    "    ├ 2c74952 Linear 3                                                          "
+    "    ├ adcfad5 Linear 2                                                          "
+    "    ├ 2a31f86 Linear 1                                                          "
+    "  → ├ 73f72bc Linear 0                                                          "
+    "    ├─╮ 45fe0e3 Merge feature-3                                                 "
+    "    │ ├ 44eee0d (feature-3) L                                                   "
+    "    │ ├ 4c75a9d K                                                               "
+    "    ├─│─╮ 55fbe6d Merge feature-2b                                              "
+    "    │ │ ├ 02f5e0a (feature-2b) I                                                "
+    "    ├─│─│─╮ 6eab1a0 Merge feature-2                                             "
+    "    │ │ ├─╯ 6385fe0 (feature-2) G                                               "
+    "    ├─│─┤ 16b8252 Merge hotfix                                                  "
+    "    │ │ ├ e5790ed (hotfix) E                                                    "
+    "    ├─┼─╯ 3c1ac31 Merge feature-1                                               "
+    "    │ ├ e8faeba (feature-1) C                                                   "
+    "    ├─╯ cc4032c B                                                               "
     "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
     "###);
 }
