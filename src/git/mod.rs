@@ -11,9 +11,20 @@ use crate::core::{Commit, FileChange};
 
 const MAX_COMMITS: usize = 100;
 
+fn git_command(repo_path: &Path) -> Command {
+    let mut cmd = Command::new("git");
+    cmd.current_dir(repo_path)
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_WORK_TREE")
+        .env_remove("GIT_INDEX_FILE")
+        .env_remove("GIT_COMMON_DIR")
+        .env_remove("GIT_OBJECT_DIRECTORY")
+        .env_remove("GIT_ALTERNATE_OBJECT_DIRECTORIES");
+    cmd
+}
+
 pub fn fetch_commits(repo_path: &Path) -> Result<Vec<Commit>, String> {
-    let output = Command::new("git")
-        .current_dir(repo_path)
+    let output = git_command(repo_path)
         .args([
             "log",
             "--topo-order",
@@ -37,8 +48,7 @@ pub fn fetch_commits(repo_path: &Path) -> Result<Vec<Commit>, String> {
 }
 
 pub fn fetch_file_changes(repo_path: &Path, commit_hash: &str) -> Result<Vec<FileChange>, String> {
-    let numstat_output = Command::new("git")
-        .current_dir(repo_path)
+    let numstat_output = git_command(repo_path)
         .args([
             "diff-tree",
             "--no-commit-id",
@@ -57,8 +67,7 @@ pub fn fetch_file_changes(repo_path: &Path, commit_hash: &str) -> Result<Vec<Fil
         ));
     }
 
-    let name_status_output = Command::new("git")
-        .current_dir(repo_path)
+    let name_status_output = git_command(repo_path)
         .args([
             "diff-tree",
             "--no-commit-id",

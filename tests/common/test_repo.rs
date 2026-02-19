@@ -91,8 +91,7 @@ impl TestRepo {
     }
 
     pub fn rev_parse(&self, ref_name: &str) -> String {
-        let output = Command::new("git")
-            .current_dir(&self.path)
+        let output = Self::git_command(&self.path)
             .args(["rev-parse", ref_name])
             .output()
             .expect("Failed to run git rev-parse");
@@ -141,8 +140,7 @@ impl TestRepo {
     }
 
     fn run_git(path: &std::path::Path, args: &[&str]) {
-        let output = Command::new("git")
-            .current_dir(path)
+        let output = Self::git_command(path)
             .args(args)
             .output()
             .expect("Failed to run git");
@@ -157,8 +155,8 @@ impl TestRepo {
     }
 
     fn run_git_with_env(path: &std::path::Path, args: &[&str], env_vars: &[(&str, &str)]) {
-        let mut cmd = Command::new("git");
-        cmd.current_dir(path).args(args);
+        let mut cmd = Self::git_command(path);
+        cmd.args(args);
         for (key, value) in env_vars {
             cmd.env(key, value);
         }
@@ -171,5 +169,23 @@ impl TestRepo {
                 String::from_utf8_lossy(&output.stderr)
             );
         }
+    }
+
+    fn git_command(path: &std::path::Path) -> Command {
+        let mut cmd = Command::new("git");
+        cmd.current_dir(path)
+            .env_remove("GIT_DIR")
+            .env_remove("GIT_WORK_TREE")
+            .env_remove("GIT_INDEX_FILE")
+            .env_remove("GIT_COMMON_DIR")
+            .env_remove("GIT_OBJECT_DIRECTORY")
+            .env_remove("GIT_ALTERNATE_OBJECT_DIRECTORIES")
+            .args([
+                "-c",
+                "core.hooksPath=/dev/null",
+                "-c",
+                "commit.gpgsign=false",
+            ]);
+        cmd
     }
 }
