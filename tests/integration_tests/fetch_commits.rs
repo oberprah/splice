@@ -1,6 +1,6 @@
 use crate::common::{reset_counter, TestRepo};
-use splice_rust::git::fetch_commits;
 use serial_test::serial;
+use splice_rust::git::fetch_commits;
 
 #[test]
 #[serial]

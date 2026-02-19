@@ -79,6 +79,6 @@ pub fn fetch_file_changes(repo_path: &Path, commit_hash: &str) -> Result<Vec<Fil
 
     let numstat = String::from_utf8_lossy(&numstat_output.stdout);
     let name_status = String::from_utf8_lossy(&name_status_output.stdout);
-    
+
     parse_file_changes(&numstat, &name_status)
 }

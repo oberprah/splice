@@ -1,5 +1,5 @@
-use crate::core::{Commit, FileChange, FileStatus};
 use crate::app::FilesView;
+use crate::core::{Commit, FileChange, FileStatus};
 use ratatui::{
     prelude::*,
     widgets::{List, ListItem, Paragraph},
@@ -16,8 +16,8 @@ pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect) {
     f.render_widget(empty, Rect::new(area.x, y, area.width, 1));
     y += 1;
 
-    let subject = Paragraph::new(files.commit.message.as_str())
-        .style(Style::default().fg(Color::White));
+    let subject =
+        Paragraph::new(files.commit.message.as_str()).style(Style::default().fg(Color::White));
     f.render_widget(subject, Rect::new(area.x, y, area.width, 1));
     y += 1;
 
@@ -33,8 +33,7 @@ pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect) {
         total_additions,
         total_deletions
     );
-    let stats = Paragraph::new(stats_line)
-        .style(Style::default().fg(Color::Gray));
+    let stats = Paragraph::new(stats_line).style(Style::default().fg(Color::Gray));
     f.render_widget(stats, Rect::new(area.x, y, area.width, 1));
     y += 1;
 
@@ -44,7 +43,13 @@ pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect) {
         area.width,
         area.height.saturating_sub(y - area.y).saturating_sub(1),
     );
-    render_files_list(f, &files.files, files.selected, files.scroll_offset, list_area);
+    render_files_list(
+        f,
+        &files.files,
+        files.selected,
+        files.scroll_offset,
+        list_area,
+    );
 
     let help = Paragraph::new("j/k: navigate  Enter: open diff  q: back")
         .style(Style::default().fg(Color::DarkGray))
@@ -60,18 +65,22 @@ pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect) {
 
 fn render_commit_header(f: &mut Frame, commit: &Commit, x: u16, y: u16, width: usize) {
     let time_ago = format_time_ago(&commit.date);
-    let header = format!("{} · {} committed {}", commit.short_hash(), commit.author, time_ago);
-    
+    let header = format!(
+        "{} · {} committed {}",
+        commit.short_hash(),
+        commit.author,
+        time_ago
+    );
+
     let truncated: String = header.chars().take(width).collect();
-    let para = Paragraph::new(truncated)
-        .style(Style::default().fg(Color::Gray));
+    let para = Paragraph::new(truncated).style(Style::default().fg(Color::Gray));
     f.render_widget(para, Rect::new(x, y, width as u16, 1));
 }
 
 fn format_time_ago(date: &chrono::DateTime<chrono::Utc>) -> String {
     let now = chrono::Utc::now();
     let duration = now.signed_duration_since(*date);
-    
+
     if duration.num_seconds() < 60 {
         "just now".to_string()
     } else if duration.num_minutes() < 60 {
@@ -125,9 +134,12 @@ fn render_files_list(
             let deletions_style = Style::default().fg(Color::Red);
 
             let mut spans = vec![Span::styled(prefix, Style::default())];
-            spans.push(Span::styled(file.status.status_char().to_string(), status_style));
+            spans.push(Span::styled(
+                file.status.status_char().to_string(),
+                status_style,
+            ));
             spans.push(Span::raw(" "));
-            
+
             let add_str = format!("+{}", file.additions);
             let del_str = format!("-{}", file.deletions);
             spans.push(Span::styled(add_str, additions_style));

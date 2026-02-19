@@ -5,10 +5,7 @@ mod theme;
 pub use theme::*;
 
 use crate::app::{App, View};
-use ratatui::{
-    prelude::*,
-    widgets::Paragraph,
-};
+use ratatui::{prelude::*, widgets::Paragraph};
 
 const LOG_AREA_X: u16 = 2;
 const LOG_AREA_Y: u16 = 0;
@@ -38,7 +35,14 @@ pub fn render(f: &mut Frame, app: &mut App) {
 
     match &app.view {
         View::Log(log) => {
-            log::render_log_view(f, &log.commits, &log.graph_layout, log.selected, log.scroll_offset, area);
+            log::render_log_view(
+                f,
+                &log.commits,
+                &log.graph_layout,
+                log.selected,
+                log.scroll_offset,
+                area,
+            );
         }
         View::Files(files) => {
             files::render_files_view(f, files, area);

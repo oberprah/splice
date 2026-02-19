@@ -88,7 +88,11 @@ mod tests {
         layout
             .rows
             .iter()
-            .map(|row| super::super::types::render_row(row).trim_end_matches(' ').to_string())
+            .map(|row| {
+                super::super::types::render_row(row)
+                    .trim_end_matches(' ')
+                    .to_string()
+            })
             .collect()
     }
 
@@ -101,10 +105,22 @@ mod tests {
     #[test]
     fn test_linear_history() {
         let commits = vec![
-            GraphCommit { hash: "D".to_string(), parents: vec!["C".to_string()] },
-            GraphCommit { hash: "C".to_string(), parents: vec!["B".to_string()] },
-            GraphCommit { hash: "B".to_string(), parents: vec!["A".to_string()] },
-            GraphCommit { hash: "A".to_string(), parents: vec![] },
+            GraphCommit {
+                hash: "D".to_string(),
+                parents: vec!["C".to_string()],
+            },
+            GraphCommit {
+                hash: "C".to_string(),
+                parents: vec!["B".to_string()],
+            },
+            GraphCommit {
+                hash: "B".to_string(),
+                parents: vec!["A".to_string()],
+            },
+            GraphCommit {
+                hash: "A".to_string(),
+                parents: vec![],
+            },
         ];
 
         let layout = compute_layout(&commits);
@@ -116,11 +132,26 @@ mod tests {
     #[test]
     fn test_simple_merge() {
         let commits = vec![
-            GraphCommit { hash: "E".to_string(), parents: vec!["B".to_string(), "D".to_string()] },
-            GraphCommit { hash: "D".to_string(), parents: vec!["C".to_string()] },
-            GraphCommit { hash: "C".to_string(), parents: vec!["A".to_string()] },
-            GraphCommit { hash: "B".to_string(), parents: vec!["A".to_string()] },
-            GraphCommit { hash: "A".to_string(), parents: vec![] },
+            GraphCommit {
+                hash: "E".to_string(),
+                parents: vec!["B".to_string(), "D".to_string()],
+            },
+            GraphCommit {
+                hash: "D".to_string(),
+                parents: vec!["C".to_string()],
+            },
+            GraphCommit {
+                hash: "C".to_string(),
+                parents: vec!["A".to_string()],
+            },
+            GraphCommit {
+                hash: "B".to_string(),
+                parents: vec!["A".to_string()],
+            },
+            GraphCommit {
+                hash: "A".to_string(),
+                parents: vec![],
+            },
         ];
 
         let layout = compute_layout(&commits);
@@ -131,9 +162,10 @@ mod tests {
 
     #[test]
     fn test_root_commit() {
-        let commits = vec![
-            GraphCommit { hash: "A".to_string(), parents: vec![] },
-        ];
+        let commits = vec![GraphCommit {
+            hash: "A".to_string(),
+            parents: vec![],
+        }];
 
         let layout = compute_layout(&commits);
         let rendered = render_layout(&layout);
@@ -144,10 +176,22 @@ mod tests {
     #[test]
     fn test_multiple_roots() {
         let commits = vec![
-            GraphCommit { hash: "D".to_string(), parents: vec!["B".to_string(), "C".to_string()] },
-            GraphCommit { hash: "C".to_string(), parents: vec![] },
-            GraphCommit { hash: "B".to_string(), parents: vec!["A".to_string()] },
-            GraphCommit { hash: "A".to_string(), parents: vec![] },
+            GraphCommit {
+                hash: "D".to_string(),
+                parents: vec!["B".to_string(), "C".to_string()],
+            },
+            GraphCommit {
+                hash: "C".to_string(),
+                parents: vec![],
+            },
+            GraphCommit {
+                hash: "B".to_string(),
+                parents: vec!["A".to_string()],
+            },
+            GraphCommit {
+                hash: "A".to_string(),
+                parents: vec![],
+            },
         ];
 
         let layout = compute_layout(&commits);
@@ -159,64 +203,148 @@ mod tests {
     #[test]
     fn test_octopus_merge() {
         let commits = vec![
-            GraphCommit { hash: "G".to_string(), parents: vec!["A".to_string(), "D".to_string(), "F".to_string()] },
-            GraphCommit { hash: "F".to_string(), parents: vec!["E".to_string()] },
-            GraphCommit { hash: "E".to_string(), parents: vec!["A".to_string()] },
-            GraphCommit { hash: "D".to_string(), parents: vec!["C".to_string()] },
-            GraphCommit { hash: "C".to_string(), parents: vec!["A".to_string()] },
-            GraphCommit { hash: "A".to_string(), parents: vec![] },
+            GraphCommit {
+                hash: "G".to_string(),
+                parents: vec!["A".to_string(), "D".to_string(), "F".to_string()],
+            },
+            GraphCommit {
+                hash: "F".to_string(),
+                parents: vec!["E".to_string()],
+            },
+            GraphCommit {
+                hash: "E".to_string(),
+                parents: vec!["A".to_string()],
+            },
+            GraphCommit {
+                hash: "D".to_string(),
+                parents: vec!["C".to_string()],
+            },
+            GraphCommit {
+                hash: "C".to_string(),
+                parents: vec!["A".to_string()],
+            },
+            GraphCommit {
+                hash: "A".to_string(),
+                parents: vec![],
+            },
         ];
 
         let layout = compute_layout(&commits);
         let rendered = render_layout(&layout);
 
-        assert_eq!(rendered, vec!["├─┬─╮", "│ │ ├", "│ │ ├", "│ ├ │", "│ ├ │", "├─┴─╯"]);
+        assert_eq!(
+            rendered,
+            vec!["├─┬─╮", "│ │ ├", "│ │ ├", "│ ├ │", "│ ├ │", "├─┴─╯"]
+        );
     }
 
     #[test]
     fn test_sequential_merges() {
         let commits = vec![
-            GraphCommit { hash: "G".to_string(), parents: vec!["D".to_string(), "F".to_string()] },
-            GraphCommit { hash: "F".to_string(), parents: vec!["E".to_string()] },
-            GraphCommit { hash: "E".to_string(), parents: vec!["D".to_string()] },
-            GraphCommit { hash: "D".to_string(), parents: vec!["A".to_string(), "C".to_string()] },
-            GraphCommit { hash: "C".to_string(), parents: vec!["B".to_string()] },
-            GraphCommit { hash: "B".to_string(), parents: vec!["A".to_string()] },
-            GraphCommit { hash: "A".to_string(), parents: vec![] },
+            GraphCommit {
+                hash: "G".to_string(),
+                parents: vec!["D".to_string(), "F".to_string()],
+            },
+            GraphCommit {
+                hash: "F".to_string(),
+                parents: vec!["E".to_string()],
+            },
+            GraphCommit {
+                hash: "E".to_string(),
+                parents: vec!["D".to_string()],
+            },
+            GraphCommit {
+                hash: "D".to_string(),
+                parents: vec!["A".to_string(), "C".to_string()],
+            },
+            GraphCommit {
+                hash: "C".to_string(),
+                parents: vec!["B".to_string()],
+            },
+            GraphCommit {
+                hash: "B".to_string(),
+                parents: vec!["A".to_string()],
+            },
+            GraphCommit {
+                hash: "A".to_string(),
+                parents: vec![],
+            },
         ];
 
         let layout = compute_layout(&commits);
         let rendered = render_layout(&layout);
 
-        assert_eq!(rendered, vec!["├─╮", "│ ├", "│ ├", "├─┤", "│ ├", "│ ├", "├─╯"]);
+        assert_eq!(
+            rendered,
+            vec!["├─╮", "│ ├", "│ ├", "├─┤", "│ ├", "│ ├", "├─╯"]
+        );
     }
 
     #[test]
     fn test_sequential_merges_with_main_commits() {
         let commits = vec![
-            GraphCommit { hash: "H".to_string(), parents: vec!["F".to_string(), "G".to_string()] },
-            GraphCommit { hash: "G".to_string(), parents: vec!["F".to_string()] },
-            GraphCommit { hash: "F".to_string(), parents: vec!["E".to_string()] },
-            GraphCommit { hash: "E".to_string(), parents: vec!["B".to_string(), "D".to_string()] },
-            GraphCommit { hash: "D".to_string(), parents: vec!["C".to_string()] },
-            GraphCommit { hash: "C".to_string(), parents: vec!["B".to_string()] },
-            GraphCommit { hash: "B".to_string(), parents: vec!["A".to_string()] },
-            GraphCommit { hash: "A".to_string(), parents: vec![] },
+            GraphCommit {
+                hash: "H".to_string(),
+                parents: vec!["F".to_string(), "G".to_string()],
+            },
+            GraphCommit {
+                hash: "G".to_string(),
+                parents: vec!["F".to_string()],
+            },
+            GraphCommit {
+                hash: "F".to_string(),
+                parents: vec!["E".to_string()],
+            },
+            GraphCommit {
+                hash: "E".to_string(),
+                parents: vec!["B".to_string(), "D".to_string()],
+            },
+            GraphCommit {
+                hash: "D".to_string(),
+                parents: vec!["C".to_string()],
+            },
+            GraphCommit {
+                hash: "C".to_string(),
+                parents: vec!["B".to_string()],
+            },
+            GraphCommit {
+                hash: "B".to_string(),
+                parents: vec!["A".to_string()],
+            },
+            GraphCommit {
+                hash: "A".to_string(),
+                parents: vec![],
+            },
         ];
 
         let layout = compute_layout(&commits);
         let rendered = render_layout(&layout);
 
-        assert_eq!(rendered, vec!["├─╮", "│ ├", "├─╯", "├─╮", "│ ├", "│ ├", "├─╯", "├"]);
+        assert_eq!(
+            rendered,
+            vec!["├─╮", "│ ├", "├─╯", "├─╮", "│ ├", "│ ├", "├─╯", "├"]
+        );
     }
 
     #[test]
     fn test_passing_lanes() {
         let commits = vec![
-            GraphCommit { hash: "D".to_string(), parents: vec!["B".to_string(), "C".to_string()] },
-            GraphCommit { hash: "C".to_string(), parents: vec!["B".to_string()] },
-            GraphCommit { hash: "B".to_string(), parents: vec!["A".to_string()] },
-            GraphCommit { hash: "A".to_string(), parents: vec![] },
+            GraphCommit {
+                hash: "D".to_string(),
+                parents: vec!["B".to_string(), "C".to_string()],
+            },
+            GraphCommit {
+                hash: "C".to_string(),
+                parents: vec!["B".to_string()],
+            },
+            GraphCommit {
+                hash: "B".to_string(),
+                parents: vec!["A".to_string()],
+            },
+            GraphCommit {
+                hash: "A".to_string(),
+                parents: vec![],
+            },
         ];
 
         let layout = compute_layout(&commits);
@@ -228,38 +356,80 @@ mod tests {
     #[test]
     fn test_complex_multi_branch() {
         let commits = vec![
-            GraphCommit { hash: "M".to_string(), parents: vec!["J".to_string(), "L".to_string()] },
-            GraphCommit { hash: "L".to_string(), parents: vec!["K".to_string()] },
-            GraphCommit { hash: "K".to_string(), parents: vec!["D".to_string()] },
-            GraphCommit { hash: "J".to_string(), parents: vec!["H".to_string(), "I".to_string()] },
-            GraphCommit { hash: "I".to_string(), parents: vec!["G".to_string()] },
-            GraphCommit { hash: "H".to_string(), parents: vec!["F".to_string(), "G".to_string()] },
-            GraphCommit { hash: "G".to_string(), parents: vec!["F".to_string()] },
-            GraphCommit { hash: "F".to_string(), parents: vec!["D".to_string(), "E".to_string()] },
-            GraphCommit { hash: "E".to_string(), parents: vec!["D".to_string()] },
-            GraphCommit { hash: "D".to_string(), parents: vec!["B".to_string(), "C".to_string()] },
-            GraphCommit { hash: "C".to_string(), parents: vec!["B".to_string()] },
-            GraphCommit { hash: "B".to_string(), parents: vec!["A".to_string()] },
-            GraphCommit { hash: "A".to_string(), parents: vec![] },
+            GraphCommit {
+                hash: "M".to_string(),
+                parents: vec!["J".to_string(), "L".to_string()],
+            },
+            GraphCommit {
+                hash: "L".to_string(),
+                parents: vec!["K".to_string()],
+            },
+            GraphCommit {
+                hash: "K".to_string(),
+                parents: vec!["D".to_string()],
+            },
+            GraphCommit {
+                hash: "J".to_string(),
+                parents: vec!["H".to_string(), "I".to_string()],
+            },
+            GraphCommit {
+                hash: "I".to_string(),
+                parents: vec!["G".to_string()],
+            },
+            GraphCommit {
+                hash: "H".to_string(),
+                parents: vec!["F".to_string(), "G".to_string()],
+            },
+            GraphCommit {
+                hash: "G".to_string(),
+                parents: vec!["F".to_string()],
+            },
+            GraphCommit {
+                hash: "F".to_string(),
+                parents: vec!["D".to_string(), "E".to_string()],
+            },
+            GraphCommit {
+                hash: "E".to_string(),
+                parents: vec!["D".to_string()],
+            },
+            GraphCommit {
+                hash: "D".to_string(),
+                parents: vec!["B".to_string(), "C".to_string()],
+            },
+            GraphCommit {
+                hash: "C".to_string(),
+                parents: vec!["B".to_string()],
+            },
+            GraphCommit {
+                hash: "B".to_string(),
+                parents: vec!["A".to_string()],
+            },
+            GraphCommit {
+                hash: "A".to_string(),
+                parents: vec![],
+            },
         ];
 
         let layout = compute_layout(&commits);
         let rendered = render_layout(&layout);
 
-        assert_eq!(rendered, vec![
-            "├─╮",
-            "│ ├",
-            "│ ├",
-            "├─│─╮",
-            "│ │ ├",
-            "├─│─│─╮",
-            "│ │ ├─╯",
-            "├─│─┤",
-            "│ │ ├",
-            "├─┼─╯",
-            "│ ├",
-            "├─╯",
-            "├",
-        ]);
+        assert_eq!(
+            rendered,
+            vec![
+                "├─╮",
+                "│ ├",
+                "│ ├",
+                "├─│─╮",
+                "│ │ ├",
+                "├─│─│─╮",
+                "│ │ ├─╯",
+                "├─│─┤",
+                "│ │ ├",
+                "├─┼─╯",
+                "│ ├",
+                "├─╯",
+                "├",
+            ]
+        );
     }
 }

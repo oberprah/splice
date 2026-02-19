@@ -1,7 +1,7 @@
-mod types;
-mod lanes;
 mod generate;
+mod lanes;
 mod layout;
+mod types;
 
-pub use types::{GraphCommit, GraphSymbol, Layout, Row, render_row};
 pub use layout::compute_layout;
+pub use types::{render_row, GraphCommit, GraphSymbol, Layout, Row};

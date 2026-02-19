@@ -118,7 +118,13 @@ impl TestRepo {
     pub fn merge(&self, branch: &str) {
         Self::run_git_with_env(
             &self.path,
-            &["merge", branch, "--no-ff", "-m", &format!("Merge {}", branch)],
+            &[
+                "merge",
+                branch,
+                "--no-ff",
+                "-m",
+                &format!("Merge {}", branch),
+            ],
             &[
                 ("GIT_AUTHOR_NAME", "Test"),
                 ("GIT_AUTHOR_EMAIL", "test@test.com"),

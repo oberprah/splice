@@ -57,7 +57,8 @@ fn log_view_complex_graph_navigation() {
 
     let mut h = Harness::with_repo(&repo);
 
-    h.assert_snapshot(r###"
+    h.assert_snapshot(
+        r###"
     "  → ├ d91fc04 (main) Linear 11                                                  "
     "    ├ 32e3e44 Linear 10                                                         "
     "    ├ a561433 Linear 9                                                          "
@@ -82,10 +83,12 @@ fn log_view_complex_graph_navigation() {
     "    ├─┼─╯ 3c1ac31 Merge feature-1                                               "
     "    │ ├ e8faeba (feature-1) C                                                   "
     "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
-    "###);
+    "###,
+    );
 
     h.press_ctrl(KeyCode::Char('d'));
-    h.assert_snapshot(r###"
+    h.assert_snapshot(
+        r###"
     "    ├ d91fc04 (main) Linear 11                                                  "
     "    ├ 32e3e44 Linear 10                                                         "
     "    ├ a561433 Linear 9                                                          "
@@ -110,10 +113,12 @@ fn log_view_complex_graph_navigation() {
     "    ├─┼─╯ 3c1ac31 Merge feature-1                                               "
     "    │ ├ e8faeba (feature-1) C                                                   "
     "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
-    "###);
+    "###,
+    );
 
     h.press_ctrl(KeyCode::Char('d'));
-    h.assert_snapshot(r###"
+    h.assert_snapshot(
+        r###"
     "    ├ d91fc04 (main) Linear 11                                                  "
     "    ├ 32e3e44 Linear 10                                                         "
     "    ├ a561433 Linear 9                                                          "
@@ -138,10 +143,12 @@ fn log_view_complex_graph_navigation() {
     "    ├─┼─╯ 3c1ac31 Merge feature-1                                               "
     "  → │ ├ e8faeba (feature-1) C                                                   "
     "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
-    "###);
+    "###,
+    );
 
     h.press(KeyCode::Char('j'));
-    h.assert_snapshot(r###"
+    h.assert_snapshot(
+        r###"
     "    ├ 32e3e44 Linear 10                                                         "
     "    ├ a561433 Linear 9                                                          "
     "    ├ b670e03 Linear 8                                                          "
@@ -166,10 +173,12 @@ fn log_view_complex_graph_navigation() {
     "    │ ├ e8faeba (feature-1) C                                                   "
     "  → ├─╯ cc4032c B                                                               "
     "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
-    "###);
+    "###,
+    );
 
     h.press_ctrl(KeyCode::Char('u'));
-    h.assert_snapshot(r###"
+    h.assert_snapshot(
+        r###"
     "    ├ 32e3e44 Linear 10                                                         "
     "    ├ a561433 Linear 9                                                          "
     "    ├ b670e03 Linear 8                                                          "
@@ -194,10 +203,12 @@ fn log_view_complex_graph_navigation() {
     "    │ ├ e8faeba (feature-1) C                                                   "
     "    ├─╯ cc4032c B                                                               "
     "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
-    "###);
+    "###,
+    );
 
     h.press(KeyCode::Char('k'));
-    h.assert_snapshot(r###"
+    h.assert_snapshot(
+        r###"
     "    ├ 32e3e44 Linear 10                                                         "
     "    ├ a561433 Linear 9                                                          "
     "    ├ b670e03 Linear 8                                                          "
@@ -222,5 +233,6 @@ fn log_view_complex_graph_navigation() {
     "    │ ├ e8faeba (feature-1) C                                                   "
     "    ├─╯ cc4032c B                                                               "
     "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
-    "###);
+    "###,
+    );
 }

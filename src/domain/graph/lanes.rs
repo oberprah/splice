@@ -74,7 +74,6 @@ pub fn update_lanes(col: usize, parents: &[String], lanes: Vec<String>) -> Updat
     }
 
     for merge_parent in parents.iter().skip(1) {
-
         if let Some(existing_col) = find_in_lanes(merge_parent, &lanes) {
             merge_columns.push(existing_col);
             existing_lanes_merge.push(existing_col);
@@ -113,8 +112,13 @@ pub fn collapse_trailing_empty(lanes: Vec<String>) -> Vec<String> {
     }
 }
 
-pub fn detect_converging_columns(commit_col: usize, commit_hash: &str, lanes: &[String]) -> Vec<usize> {
-    lanes.iter()
+pub fn detect_converging_columns(
+    commit_col: usize,
+    commit_hash: &str,
+    lanes: &[String],
+) -> Vec<usize> {
+    lanes
+        .iter()
         .enumerate()
         .filter(|(i, hash)| *i != commit_col && *hash == commit_hash)
         .map(|(i, _)| i)
@@ -127,14 +131,15 @@ pub fn detect_passing_columns(
     merge_columns: &[usize],
     converging_columns: &[usize],
 ) -> Vec<usize> {
-    let exclude: std::collections::HashSet<usize> =
-        [commit_col].iter()
-            .chain(merge_columns.iter())
-            .chain(converging_columns.iter())
-            .copied()
-            .collect();
+    let exclude: std::collections::HashSet<usize> = [commit_col]
+        .iter()
+        .chain(merge_columns.iter())
+        .chain(converging_columns.iter())
+        .copied()
+        .collect();
 
-    lanes.iter()
+    lanes
+        .iter()
         .enumerate()
         .filter(|(i, hash)| !exclude.contains(i) && !hash.is_empty())
         .map(|(i, _)| i)
@@ -157,7 +162,7 @@ mod tests {
     fn test_find_empty_lane() {
         let lanes = vec!["A".to_string(), "".to_string(), "B".to_string()];
         assert_eq!(find_empty_lane(&lanes), Some(1));
-        
+
         let full_lanes = vec!["A".to_string(), "B".to_string()];
         assert_eq!(find_empty_lane(&full_lanes), None);
     }

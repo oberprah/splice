@@ -13,7 +13,11 @@ fn fetch_commits_includes_branch_ref() {
     let commits = fetch_commits(repo.path()).unwrap();
 
     assert_eq!(commits.len(), 1);
-    let branch_refs: Vec<_> = commits[0].refs.iter().filter(|r| r.name == "feature").collect();
+    let branch_refs: Vec<_> = commits[0]
+        .refs
+        .iter()
+        .filter(|r| r.name == "feature")
+        .collect();
     assert_eq!(branch_refs.len(), 1);
 }
 
@@ -28,9 +32,15 @@ fn fetch_commits_includes_tag_ref() {
     let commits = fetch_commits(repo.path()).unwrap();
 
     assert_eq!(commits.len(), 1);
-    let tag_refs: Vec<_> = commits[0].refs.iter().filter(|r| r.name == "v1.0.0").collect();
+    let tag_refs: Vec<_> = commits[0]
+        .refs
+        .iter()
+        .filter(|r| r.name == "v1.0.0")
+        .collect();
     assert_eq!(tag_refs.len(), 1);
-    assert!(tag_refs.iter().all(|r| r.ref_type == splice_rust::core::RefType::Tag));
+    assert!(tag_refs
+        .iter()
+        .all(|r| r.ref_type == splice_rust::core::RefType::Tag));
 }
 
 #[test]

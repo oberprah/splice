@@ -42,9 +42,11 @@ pub fn generate_row_symbols(
     }
 
     let merge_set: std::collections::HashSet<usize> = merge_columns.iter().copied().collect();
-    let converge_set: std::collections::HashSet<usize> = converging_columns.iter().copied().collect();
+    let converge_set: std::collections::HashSet<usize> =
+        converging_columns.iter().copied().collect();
     let passing_set: std::collections::HashSet<usize> = passing_columns.iter().copied().collect();
-    let existing_lane_merge_set: std::collections::HashSet<usize> = existing_lanes_merge.iter().copied().collect();
+    let existing_lane_merge_set: std::collections::HashSet<usize> =
+        existing_lanes_merge.iter().copied().collect();
 
     for (col, symbol) in symbols.iter_mut().enumerate() {
         if col == commit_col {
@@ -115,12 +117,18 @@ mod tests {
     #[test]
     fn test_generate_row_with_merge() {
         let row = generate_row_symbols(0, 2, &[1], &[], &[], &[], false);
-        assert_eq!(row.symbols, vec![GraphSymbol::MergeCommit, GraphSymbol::BranchTop]);
+        assert_eq!(
+            row.symbols,
+            vec![GraphSymbol::MergeCommit, GraphSymbol::BranchTop]
+        );
     }
 
     #[test]
     fn test_generate_row_with_convergence() {
         let row = generate_row_symbols(0, 2, &[], &[1], &[], &[], false);
-        assert_eq!(row.symbols, vec![GraphSymbol::MergeCommit, GraphSymbol::BranchBottom]);
+        assert_eq!(
+            row.symbols,
+            vec![GraphSymbol::MergeCommit, GraphSymbol::BranchBottom]
+        );
     }
 }
