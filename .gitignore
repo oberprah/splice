@@ -7,6 +7,7 @@
 # Build artifacts
 /splice
 /tape-runner
+target/
 
 # Test output
 /.test-output/
