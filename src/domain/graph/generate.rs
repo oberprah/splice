@@ -46,53 +46,56 @@ pub fn generate_row_symbols(
     let passing_set: std::collections::HashSet<usize> = passing_columns.iter().copied().collect();
     let existing_lane_merge_set: std::collections::HashSet<usize> = existing_lanes_merge.iter().copied().collect();
 
-    for col in 0..num_cols {
+    for (col, symbol) in symbols.iter_mut().enumerate() {
         if col == commit_col {
             if converges_to_parent || rightmost_horizontal > commit_col {
-                symbols[col] = GraphSymbol::MergeCommit;
+                *symbol = GraphSymbol::MergeCommit;
             } else {
-                symbols[col] = GraphSymbol::Commit;
+                *symbol = GraphSymbol::Commit;
             }
-        } else if merge_set.contains(&col) && converge_set.contains(&col) && !existing_lane_merge_set.contains(&col) {
+        } else if merge_set.contains(&col)
+            && converge_set.contains(&col)
+            && !existing_lane_merge_set.contains(&col)
+        {
             if col < rightmost_horizontal {
-                symbols[col] = GraphSymbol::MergeCross;
+                *symbol = GraphSymbol::MergeCross;
             } else {
-                symbols[col] = GraphSymbol::MergeJoin;
+                *symbol = GraphSymbol::MergeJoin;
             }
         } else if merge_set.contains(&col) && !existing_lane_merge_set.contains(&col) {
             if let Some(rm) = rightmost_merge {
                 if col < rm {
-                    symbols[col] = GraphSymbol::Octopus;
+                    *symbol = GraphSymbol::Octopus;
                 } else {
-                    symbols[col] = GraphSymbol::BranchTop;
+                    *symbol = GraphSymbol::BranchTop;
                 }
             } else {
-                symbols[col] = GraphSymbol::BranchTop;
+                *symbol = GraphSymbol::BranchTop;
             }
         } else if converge_set.contains(&col) {
             if let Some(rc) = rightmost_converge {
                 if col < rc {
-                    symbols[col] = GraphSymbol::Diverge;
+                    *symbol = GraphSymbol::Diverge;
                 } else {
-                    symbols[col] = GraphSymbol::BranchBottom;
+                    *symbol = GraphSymbol::BranchBottom;
                 }
             } else {
-                symbols[col] = GraphSymbol::BranchBottom;
+                *symbol = GraphSymbol::BranchBottom;
             }
         } else if passing_set.contains(&col) || existing_lane_merge_set.contains(&col) {
             if col > commit_col && col < rightmost_horizontal {
-                symbols[col] = GraphSymbol::BranchCross;
+                *symbol = GraphSymbol::BranchCross;
             } else {
-                symbols[col] = GraphSymbol::BranchPass;
+                *symbol = GraphSymbol::BranchPass;
             }
         }
 
         if col == rightmost_horizontal && !existing_lanes_merge.is_empty() {
-            symbols[col] = GraphSymbol::BranchTop;
+            *symbol = GraphSymbol::BranchTop;
         }
 
         if Some(col) == convergence_symbol_col {
-            symbols[col] = GraphSymbol::BranchBottom;
+            *symbol = GraphSymbol::BranchBottom;
         }
     }
 

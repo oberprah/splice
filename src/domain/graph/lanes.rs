@@ -52,9 +52,7 @@ pub fn update_lanes(col: usize, parents: &[String], lanes: Vec<String>) -> Updat
                 if parents.len() == 1 {
                     let mut future_parent_count = 0;
                     for (i, hash) in lanes.iter().enumerate() {
-                        if hash == first_parent {
-                            future_parent_count += 1;
-                        } else if i == col {
+                        if hash == first_parent || i == col {
                             future_parent_count += 1;
                         }
                     }
@@ -75,8 +73,7 @@ pub fn update_lanes(col: usize, parents: &[String], lanes: Vec<String>) -> Updat
         }
     }
 
-    for i in 1..parents.len() {
-        let merge_parent = &parents[i];
+    for merge_parent in parents.iter().skip(1) {
 
         if let Some(existing_col) = find_in_lanes(merge_parent, &lanes) {
             merge_columns.push(existing_col);
@@ -85,9 +82,9 @@ pub fn update_lanes(col: usize, parents: &[String], lanes: Vec<String>) -> Updat
         }
 
         let mut placed = false;
-        for j in (col + 1)..lanes.len() {
-            if lanes[j].is_empty() {
-                lanes[j] = merge_parent.clone();
+        for (j, lane) in lanes.iter_mut().enumerate().skip(col + 1) {
+            if lane.is_empty() {
+                *lane = merge_parent.clone();
                 merge_columns.push(j);
                 placed = true;
                 break;
@@ -110,7 +107,6 @@ pub fn update_lanes(col: usize, parents: &[String], lanes: Vec<String>) -> Updat
 
 pub fn collapse_trailing_empty(lanes: Vec<String>) -> Vec<String> {
     let last_non_empty = lanes.iter().rposition(|h| !h.is_empty());
-    
     match last_non_empty {
         Some(idx) => lanes.into_iter().take(idx + 1).collect(),
         None => Vec::new(),
@@ -131,7 +127,7 @@ pub fn detect_passing_columns(
     merge_columns: &[usize],
     converging_columns: &[usize],
 ) -> Vec<usize> {
-    let exclude: std::collections::HashSet<usize> = 
+    let exclude: std::collections::HashSet<usize> =
         [commit_col].iter()
             .chain(merge_columns.iter())
             .chain(converging_columns.iter())
