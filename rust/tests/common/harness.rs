@@ -2,7 +2,7 @@ use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{backend::TestBackend, Terminal};
 use splice_rust::{action_from_event, render, Action, App};
 
-use super::TestRepo;
+use super::{snapshot::assert_snapshot, TestRepo};
 
 pub struct Harness {
     terminal: Terminal<TestBackend>,
@@ -37,7 +37,7 @@ impl Harness {
         }
     }
 
-    pub fn snapshot(&mut self) -> String {
+    fn snapshot(&mut self) -> String {
         self.terminal.draw(|f| render(f, &mut self.app)).unwrap();
         let buffer = self.terminal.backend().buffer();
         let mut lines = Vec::new();
@@ -52,17 +52,9 @@ impl Harness {
         lines.join("\n")
     }
 
-    pub fn selected(&self) -> usize {
-        match &self.app.view {
-            splice_rust::View::Log(log) => log.selected,
-            splice_rust::View::Files(files) => files.selected,
-        }
-    }
-
-    pub fn scroll_offset(&self) -> usize {
-        match &self.app.view {
-            splice_rust::View::Log(log) => log.scroll_offset,
-            splice_rust::View::Files(files) => files.scroll_offset,
-        }
+    pub fn assert_snapshot(&mut self, expected: &str) -> &mut Self {
+        let actual = self.snapshot();
+        assert_snapshot(&actual, expected);
+        self
     }
 }

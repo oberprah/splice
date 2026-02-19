@@ -57,7 +57,7 @@ fn log_view_complex_graph_navigation() {
 
     let mut h = Harness::with_repo(&repo);
 
-    insta::assert_snapshot!(h.snapshot(), @r###"
+    h.assert_snapshot(r###"
     "  → ├ d91fc04 (main) Linear 11                                                  "
     "    ├ 32e3e44 Linear 10                                                         "
     "    ├ a561433 Linear 9                                                          "
@@ -85,7 +85,7 @@ fn log_view_complex_graph_navigation() {
     "###);
 
     h.press_ctrl(KeyCode::Char('d'));
-    insta::assert_snapshot!(h.snapshot(), @r###"
+    h.assert_snapshot(r###"
     "    ├ d91fc04 (main) Linear 11                                                  "
     "    ├ 32e3e44 Linear 10                                                         "
     "    ├ a561433 Linear 9                                                          "
@@ -113,7 +113,7 @@ fn log_view_complex_graph_navigation() {
     "###);
 
     h.press_ctrl(KeyCode::Char('d'));
-    insta::assert_snapshot!(h.snapshot(), @r###"
+    h.assert_snapshot(r###"
     "    ├ d91fc04 (main) Linear 11                                                  "
     "    ├ 32e3e44 Linear 10                                                         "
     "    ├ a561433 Linear 9                                                          "
@@ -141,7 +141,7 @@ fn log_view_complex_graph_navigation() {
     "###);
 
     h.press(KeyCode::Char('j'));
-    insta::assert_snapshot!(h.snapshot(), @r###"
+    h.assert_snapshot(r###"
     "    ├ 32e3e44 Linear 10                                                         "
     "    ├ a561433 Linear 9                                                          "
     "    ├ b670e03 Linear 8                                                          "
@@ -169,7 +169,7 @@ fn log_view_complex_graph_navigation() {
     "###);
 
     h.press_ctrl(KeyCode::Char('u'));
-    insta::assert_snapshot!(h.snapshot(), @r###"
+    h.assert_snapshot(r###"
     "    ├ 32e3e44 Linear 10                                                         "
     "    ├ a561433 Linear 9                                                          "
     "    ├ b670e03 Linear 8                                                          "
@@ -197,7 +197,7 @@ fn log_view_complex_graph_navigation() {
     "###);
 
     h.press(KeyCode::Char('k'));
-    insta::assert_snapshot!(h.snapshot(), @r###"
+    h.assert_snapshot(r###"
     "    ├ 32e3e44 Linear 10                                                         "
     "    ├ a561433 Linear 9                                                          "
     "    ├ b670e03 Linear 8                                                          "

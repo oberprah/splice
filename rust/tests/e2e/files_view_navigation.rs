@@ -20,7 +20,7 @@ fn files_view_navigation_with_modifications() {
 
     let mut h = Harness::with_repo(&repo);
 
-    insta::assert_snapshot!(h.snapshot(), @r#"
+    h.assert_snapshot(r#"
     "  → ├ e2af8ce (main) Modify and add files                                       "
     "    ├ c500da6 Initial commit                                                    "
     "                                                                                "
@@ -48,7 +48,7 @@ fn files_view_navigation_with_modifications() {
     "#);
 
     h.press(KeyCode::Enter);
-    insta::assert_snapshot!(h.snapshot(), @r#"
+    h.assert_snapshot(r#"
     "  e2af8ce · Test committed 6 years ago                                          "
     "                                                                                "
     "  Modify and add files                                                          "
@@ -76,7 +76,7 @@ fn files_view_navigation_with_modifications() {
     "#);
 
     h.press(KeyCode::Char('j'));
-    insta::assert_snapshot!(h.snapshot(), @r#"
+    h.assert_snapshot(r#"
     "  e2af8ce · Test committed 6 years ago                                          "
     "                                                                                "
     "  Modify and add files                                                          "
@@ -104,7 +104,7 @@ fn files_view_navigation_with_modifications() {
     "#);
 
     h.press(KeyCode::Char('q'));
-    insta::assert_snapshot!(h.snapshot(), @r#"
+    h.assert_snapshot(r#"
     "  → ├ e2af8ce (main) Modify and add files                                       "
     "    ├ c500da6 Initial commit                                                    "
     "                                                                                "

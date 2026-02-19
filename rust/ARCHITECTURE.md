@@ -58,7 +58,7 @@ app → ui → git
 
 ### Snapshot Testing for UI
 
-Use `insta` for deterministic UI tests. Mock git operations to ensure consistent output.
+Use the custom inline snapshot helper for deterministic UI tests. Mock git operations to ensure consistent output.
 
 ## Implementation Order
 

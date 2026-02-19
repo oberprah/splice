@@ -9,6 +9,5 @@ crossterm = "0.28"
 chrono = "0.4"
 
 [dev-dependencies]
-insta = "1.42"
 tempfile = "3"
 serial_test = "3"

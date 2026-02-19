@@ -23,7 +23,7 @@ cargo clippy               # Lint
 - **Integration tests**: In `tests/integration_tests/` with `TestRepo`
 - **E2E tests**: One file per test under `tests/e2e/` with inline snapshots
 - **Test entrypoint**: `tests/tests.rs`
-- **Snapshot updates**: Update inline snapshots manually; avoid running `cargo insta review/accept` so `.pending-snap` files are not created
+- **Snapshot updates**: Update inline snapshots manually; E2E tests use a small custom snapshot helper
 
 ## Project Structure
 
