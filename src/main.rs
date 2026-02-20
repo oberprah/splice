@@ -26,11 +26,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match command {
         cli::Command::Log => run_log_app(repo_path),
         cli::Command::Diff(spec) => {
-            let spec = match cli::parse_diff_args(&[]) {
-                Ok(s) if s.raw.is_some() || s.uncommitted_type.is_some() => s,
-                _ => spec,
-            };
-
             let diff_spec = git::DiffSpec {
                 raw: spec.raw,
                 uncommitted_type: spec.uncommitted_type,
@@ -65,7 +60,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn resolve_repo_path(command: &cli::Command) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let path_arg = match command {
         cli::Command::Log => env::args().nth(1),
-        cli::Command::Diff(_) => env::args().nth(2),
+        cli::Command::Diff(_) => None,
     };
 
     match path_arg {
