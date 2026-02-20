@@ -115,7 +115,12 @@ impl LogView {
         let end = self.commits.get(min)?.clone();
         let start = self.commits.get(max)?.clone();
         let count = max - min + 1;
-        Some(CommitRange { start, end, count })
+        Some(CommitRange {
+            start,
+            end,
+            count,
+            include_start: true,
+        })
     }
 }
 

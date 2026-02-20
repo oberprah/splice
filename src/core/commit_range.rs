@@ -5,6 +5,7 @@ pub struct CommitRange {
     pub start: Commit,
     pub end: Commit,
     pub count: usize,
+    pub include_start: bool,
 }
 
 impl CommitRange {
@@ -12,12 +13,18 @@ impl CommitRange {
         self.count == 1
     }
 
-    pub fn to_diff_spec(&self) -> String {
+    pub fn diff_base_spec(&self) -> String {
         if self.is_single_commit() {
-            format!("{}^..{}", self.end.hash, self.end.hash)
+            format!("{}^", self.end.hash)
+        } else if self.include_start {
+            format!("{}^", self.start.hash)
         } else {
-            format!("{}^..{}", self.start.hash, self.end.hash)
+            self.start.hash.clone()
         }
+    }
+
+    pub fn to_diff_spec(&self) -> String {
+        format!("{}..{}", self.diff_base_spec(), self.end.hash)
     }
 }
 
@@ -44,6 +51,7 @@ mod tests {
             start: commit.clone(),
             end: commit,
             count: 1,
+            include_start: true,
         };
         assert!(range.is_single_commit());
     }
@@ -54,6 +62,7 @@ mod tests {
             start: test_commit("abc123"),
             end: test_commit("def456"),
             count: 3,
+            include_start: true,
         };
         assert!(!range.is_single_commit());
     }
@@ -65,6 +74,7 @@ mod tests {
             start: commit.clone(),
             end: commit,
             count: 1,
+            include_start: true,
         };
         assert_eq!(range.to_diff_spec(), "abc123def456^..abc123def456");
     }
@@ -75,6 +85,7 @@ mod tests {
             start: test_commit("ghi789"),
             end: test_commit("abc123"),
             count: 3,
+            include_start: true,
         };
         assert_eq!(range.to_diff_spec(), "ghi789^..abc123");
     }

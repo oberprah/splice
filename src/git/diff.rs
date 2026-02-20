@@ -59,7 +59,7 @@ pub fn fetch_full_file_diff(
     range: &CommitRange,
     path: &str,
 ) -> Result<FullFileDiff, String> {
-    let old_content = fetch_file_content(repo_path, &format!("{}^", range.start.hash), path)?;
+    let old_content = fetch_file_content(repo_path, &range.diff_base_spec(), path)?;
     let new_content = fetch_file_content(repo_path, &range.end.hash, path)?;
     let diff_output = fetch_file_diff_range(repo_path, range, path)?;
 

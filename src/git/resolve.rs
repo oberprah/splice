@@ -6,6 +6,7 @@ use super::git_command;
 
 pub fn resolve_commit_range(repo_path: &Path, spec: &str) -> Result<CommitRange, String> {
     let is_single_commit = !spec.contains("..");
+    let include_start = !spec.contains("...");
 
     let (start_ref, end_ref) = parse_range_spec(spec)?;
 
@@ -41,6 +42,7 @@ pub fn resolve_commit_range(repo_path: &Path, spec: &str) -> Result<CommitRange,
         start: start_commit,
         end: end_commit,
         count,
+        include_start,
     })
 }
 

@@ -61,6 +61,7 @@ mod tests {
             start: commit.clone(),
             end: commit,
             count: 1,
+            include_start: true,
         };
         let source = DiffSource::CommitRange(range);
         assert_eq!(source.header_text(), "abc123d Initial commit");
@@ -72,6 +73,7 @@ mod tests {
             start: test_commit("start123", "Start commit"),
             end: test_commit("end45678", "End commit"),
             count: 3,
+            include_start: true,
         };
         let source = DiffSource::CommitRange(range);
         assert_eq!(source.header_text(), "start12..end4567 (3 commits)");

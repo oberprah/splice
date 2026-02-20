@@ -60,7 +60,7 @@ pub fn fetch_file_changes(
     if range.is_single_commit() {
         fetch_file_changes_single(repo_path, &range.end.hash)
     } else {
-        fetch_file_changes_range(repo_path, &range.start.hash, &range.end.hash)
+        fetch_file_changes_range(repo_path, range)
     }
 }
 
@@ -114,10 +114,9 @@ fn fetch_file_changes_single(
 
 fn fetch_file_changes_range(
     repo_path: &Path,
-    start_hash: &str,
-    end_hash: &str,
+    range: &CommitRange,
 ) -> Result<Vec<FileChange>, String> {
-    let range_spec = format!("{}^..{}", start_hash, end_hash);
+    let range_spec = range.to_diff_spec();
 
     let numstat_output = git_command(repo_path)
         .args(["diff", "--numstat", &range_spec])
@@ -181,6 +180,7 @@ mod tests {
             start: commit.clone(),
             end: commit,
             count: 1,
+            include_start: true,
         };
         let source = DiffSource::CommitRange(range);
         let result = fetch_file_changes_for_source(repo_path, &source);
