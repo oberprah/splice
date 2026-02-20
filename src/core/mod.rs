@@ -1,8 +1,10 @@
 mod commit_range;
 mod cursor;
+mod diff_source;
 
 pub use commit_range::CommitRange;
 pub use cursor::{is_in_selection, selection_range, CursorState};
+pub use diff_source::{DiffSource, UncommittedType};
 
 use chrono::{DateTime, Utc};
 
