@@ -68,9 +68,23 @@ impl App {
 
     pub fn update(&mut self, action: Action) -> bool {
         match action {
-            Action::Quit => return true,
+            Action::Quit => {
+                if let View::Log(log) = &mut self.view {
+                    if log.is_visual_mode() {
+                        log.exit_visual_mode();
+                        return false;
+                    }
+                }
+                return true;
+            }
             Action::Back => {
-                if self.go_back() {
+                if let View::Log(log) = &mut self.view {
+                    if log.is_visual_mode() {
+                        log.exit_visual_mode();
+                    } else if self.go_back() {
+                        return true;
+                    }
+                } else if self.go_back() {
                     return true;
                 }
             }

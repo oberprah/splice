@@ -26,7 +26,7 @@ impl LineDisplayState {
     fn is_highlighted(&self) -> bool {
         matches!(
             self,
-            LineDisplayState::Selected | LineDisplayState::VisualCursor
+            LineDisplayState::Cursor | LineDisplayState::Selected | LineDisplayState::VisualCursor
         )
     }
 }

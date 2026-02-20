@@ -16,18 +16,16 @@ pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect) {
     f.render_widget(empty, Rect::new(area.x, y, area.width, 1));
     y += 1;
 
-    let message = if files.range.is_single_commit() {
-        files.range.end.message.as_str()
-    } else {
-        ""
-    };
-    let subject = Paragraph::new(message).style(Style::default().fg(Color::White));
-    f.render_widget(subject, Rect::new(area.x, y, area.width, 1));
-    y += 1;
+    if files.range.is_single_commit() {
+        let subject = Paragraph::new(files.range.end.message.as_str())
+            .style(Style::default().fg(Color::White));
+        f.render_widget(subject, Rect::new(area.x, y, area.width, 1));
+        y += 1;
 
-    let empty = Paragraph::new("");
-    f.render_widget(empty, Rect::new(area.x, y, area.width, 1));
-    y += 1;
+        let empty = Paragraph::new("");
+        f.render_widget(empty, Rect::new(area.x, y, area.width, 1));
+        y += 1;
+    }
 
     let total_additions = files.total_additions();
     let total_deletions = files.total_deletions();
