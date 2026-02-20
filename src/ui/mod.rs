@@ -45,6 +45,7 @@ pub fn render(f: &mut Frame, app: &mut App) {
                 log.selected,
                 log.scroll_offset,
                 area,
+                &theme,
             );
         }
         View::Files(files) => {

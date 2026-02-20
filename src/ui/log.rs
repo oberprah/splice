@@ -1,6 +1,6 @@
 use crate::core::{Commit, RefInfo, RefType};
 use crate::domain::graph::{render_row, Layout};
-use crate::ui::theme;
+use crate::ui::theme::Theme;
 use ratatui::{
     prelude::*,
     widgets::{List, ListItem, Paragraph},
@@ -13,6 +13,7 @@ pub fn render_log_view(
     selected: usize,
     scroll_offset: usize,
     area: Rect,
+    theme: &Theme,
 ) {
     if commits.is_empty() {
         let msg = Paragraph::new("No commits found")
@@ -35,15 +36,15 @@ pub fn render_log_view(
             let prefix = if is_selected { "→ " } else { "  " };
 
             let hash_style = if is_selected {
-                theme::SELECTED_HASH
+                theme.hash_selected
             } else {
-                theme::HASH
+                theme.hash
             };
 
             let message_style = if is_selected {
-                theme::SELECTED_MESSAGE
+                theme.message_selected
             } else {
-                theme::MESSAGE
+                theme.message
             };
 
             let mut spans = vec![Span::styled(prefix, message_style)];
@@ -60,7 +61,7 @@ pub fn render_log_view(
             if !commit.refs.is_empty() {
                 let refs_str = format_refs(&commit.refs);
                 spans.push(Span::raw(" "));
-                spans.push(Span::styled(refs_str, theme::REFS));
+                spans.push(Span::styled(refs_str, theme.refs));
             }
 
             spans.push(Span::raw(" "));
