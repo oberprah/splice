@@ -151,3 +151,33 @@ fn diff_command_quits_to_exit() {
     h.press(KeyCode::Char('q'));
     assert!(h.should_exit());
 }
+
+#[test]
+#[serial]
+fn diff_command_unstaged_opens_diff_view() {
+    reset_counter();
+
+    let repo = TestRepo::new();
+    repo.add_file("src/app.rs", "fn main() {\n    println!(\"old\");\n}\n");
+    repo.commit("Initial commit");
+
+    std::fs::write(
+        repo.path().join("src/app.rs"),
+        "fn main() {\n    println!(\"new\");\n    println!(\"more\");\n}\n",
+    )
+    .unwrap();
+
+    let source = DiffSource::Uncommitted(UncommittedType::Unstaged);
+    let mut h = Harness::with_diff_source(&repo, source).unwrap();
+
+    h.press(KeyCode::Char('j'));
+    h.press(KeyCode::Enter);
+
+    let snapshot = h.snapshot();
+    assert!(!snapshot.contains("Error:"));
+    assert!(snapshot.contains("Unstaged changes · src/app.rs · +2 -1"));
+    assert!(snapshot.contains("println!(\"old\")"));
+    assert!(snapshot.contains("println!(\"new\")"));
+    assert!(snapshot.contains("println!(\"more\")"));
+    assert!(snapshot.contains("j/k: scroll"));
+}
