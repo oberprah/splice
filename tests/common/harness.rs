@@ -37,7 +37,7 @@ impl Harness {
         }
     }
 
-    fn snapshot(&mut self) -> String {
+    pub fn snapshot(&mut self) -> String {
         self.terminal.draw(|f| render(f, &mut self.app)).unwrap();
         let buffer = self.terminal.backend().buffer();
         let mut lines = Vec::new();
