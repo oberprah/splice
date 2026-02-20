@@ -1,5 +1,7 @@
+mod commit_range;
 mod cursor;
 
+pub use commit_range::CommitRange;
 pub use cursor::{is_in_selection, selection_range, CursorState};
 
 use chrono::{DateTime, Utc};
