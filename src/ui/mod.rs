@@ -1,3 +1,4 @@
+mod diff;
 mod files;
 mod log;
 mod theme;
@@ -46,6 +47,9 @@ pub fn render(f: &mut Frame, app: &mut App) {
         }
         View::Files(files) => {
             files::render_files_view(f, files, area);
+        }
+        View::Diff(diff) => {
+            diff::render_diff_view(f, diff, area);
         }
     }
 }

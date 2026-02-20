@@ -1,6 +1,8 @@
+mod diff;
 mod file_changes;
 mod log;
 
+pub use diff::fetch_file_diff;
 pub use file_changes::parse_file_changes;
 pub use log::parse_log_output;
 
