@@ -10,7 +10,7 @@ pub fn render_log_view(
     f: &mut Frame,
     commits: &[Commit],
     graph_layout: &Layout,
-    selected: usize,
+    cursor_position: usize,
     scroll_offset: usize,
     area: Rect,
     theme: &Theme,
@@ -32,7 +32,7 @@ pub fn render_log_view(
         .skip(scroll_offset)
         .take(end - scroll_offset)
         .map(|(i, commit)| {
-            let is_selected = i == selected;
+            let is_selected = i == cursor_position;
             let prefix = if is_selected { "→ " } else { "  " };
 
             let hash_style = if is_selected {
