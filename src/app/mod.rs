@@ -1,6 +1,8 @@
+mod diff_view;
 mod files_view;
 mod log_view;
 
+pub use diff_view::DiffView;
 pub use files_view::FilesView;
 pub use log_view::LogView;
 
@@ -12,6 +14,7 @@ use crate::input::Action;
 pub enum View {
     Log(LogView),
     Files(FilesView),
+    Diff(DiffView),
 }
 
 pub struct App {
@@ -59,6 +62,7 @@ impl App {
         match &mut self.view {
             View::Log(log) => log.set_viewport_height(height),
             View::Files(files) => files.set_viewport_height(height),
+            View::Diff(diff) => diff.set_viewport_height(height),
         }
     }
 
@@ -91,6 +95,7 @@ impl App {
         match &self.view {
             View::Log(log) => log.page_step(),
             View::Files(files) => files.page_step(),
+            View::Diff(diff) => diff.page_step(),
         }
     }
 
@@ -98,6 +103,7 @@ impl App {
         match &mut self.view {
             View::Log(log) => log.move_down(amount),
             View::Files(files) => files.move_down(amount),
+            View::Diff(diff) => diff.move_down(amount),
         }
     }
 
@@ -105,6 +111,7 @@ impl App {
         match &mut self.view {
             View::Log(log) => log.move_up(amount),
             View::Files(files) => files.move_up(amount),
+            View::Diff(diff) => diff.move_up(amount),
         }
     }
 
@@ -134,6 +141,39 @@ impl App {
                     Err(e) => {
                         self.error = Some(e);
                     }
+                }
+            }
+        } else if let View::Files(files) = &self.view {
+            let file = match files.selected_file() {
+                Some(file) => file.clone(),
+                None => return,
+            };
+
+            let repo_path = match &self.repo_path {
+                Some(p) => p.clone(),
+                None => return,
+            };
+
+            match git::fetch_file_diff(&repo_path, &files.commit.hash, &file.path) {
+                Ok(diff_output) => {
+                    let meta = crate::domain::diff::DiffMeta {
+                        path: file.path.clone(),
+                        additions: file.additions,
+                        deletions: file.deletions,
+                    };
+                    match crate::domain::diff::build_file_diff(meta, &diff_output) {
+                        Ok(diff) => {
+                            let diff_view = DiffView::new(files.commit.clone(), file, diff);
+                            let old_view = std::mem::replace(&mut self.view, View::Diff(diff_view));
+                            self.view_stack.push(old_view);
+                        }
+                        Err(e) => {
+                            self.error = Some(e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    self.error = Some(e);
                 }
             }
         }

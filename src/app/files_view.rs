@@ -60,6 +60,10 @@ impl FilesView {
         (self.viewport_height / 2).max(1)
     }
 
+    pub fn selected_file(&self) -> Option<&FileChange> {
+        self.files.get(self.selected)
+    }
+
     pub fn total_additions(&self) -> u32 {
         self.files.iter().map(|f| f.additions).sum()
     }
