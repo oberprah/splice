@@ -1,15 +1,31 @@
 use crate::app::FilesView;
+use crate::core::FileStatus;
 use crate::domain::filetree::{FolderNode, TreeNode};
+use crate::ui::theme::Theme;
 use ratatui::{
     prelude::*,
     widgets::{List, ListItem, Paragraph},
 };
 
-pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect) {
+trait StyleExt {
+    fn bold_if(self, condition: bool) -> Self;
+}
+
+impl StyleExt for Style {
+    fn bold_if(self, condition: bool) -> Self {
+        if condition {
+            self.bold()
+        } else {
+            self
+        }
+    }
+}
+
+pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect, theme: &Theme) {
     let mut y = area.y;
     let width = area.width as usize;
 
-    render_range_header(f, &files.range, area.x, y, width);
+    render_range_header(f, &files.range, area.x, y, width, theme);
     y += 1;
 
     let empty = Paragraph::new("");
@@ -17,8 +33,7 @@ pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect) {
     y += 1;
 
     if files.range.is_single_commit() {
-        let subject = Paragraph::new(files.range.end.message.as_str())
-            .style(Style::default().fg(Color::White));
+        let subject = Paragraph::new(files.range.end.message.as_str()).style(theme.message);
         f.render_widget(subject, Rect::new(area.x, y, area.width, 1));
         y += 1;
 
@@ -30,11 +45,10 @@ pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect) {
     let total_additions = files.total_additions();
     let total_deletions = files.total_deletions();
     let file_count = files.files.len();
-    let stats_line = format!(
-        "{} files · +{} -{}",
-        file_count, total_additions, total_deletions
-    );
-    let stats = Paragraph::new(stats_line).style(Style::default().fg(Color::Gray));
+    let stats_line = Span::styled(format!("{} files · ", file_count), theme.text_muted);
+    let additions = Span::styled(format!("+{}", total_additions), theme.additions);
+    let deletions = Span::styled(format!(" -{}", total_deletions), theme.deletions);
+    let stats = Paragraph::new(Line::from(vec![stats_line, additions, deletions]));
     f.render_widget(stats, Rect::new(area.x, y, area.width, 1));
     y += 1;
 
@@ -50,11 +64,12 @@ pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect) {
         files.selected,
         files.scroll_offset,
         list_area,
+        theme,
     );
 
     let help =
         Paragraph::new("j/k: navigate  Enter/space: toggle/open  ←/→: collapse/expand  q: back")
-            .style(Style::default().fg(Color::DarkGray))
+            .style(theme.text_muted)
             .alignment(Alignment::Left);
     let help_area = Rect::new(
         area.x,
@@ -70,28 +85,35 @@ fn render_range_header(
     range: &crate::core::CommitRange,
     x: u16,
     y: u16,
-    width: usize,
+    _width: usize,
+    theme: &Theme,
 ) {
-    let header = if range.is_single_commit() {
-        let time_ago = format_time_ago(&range.end.date);
-        format!(
-            "{} · {} committed {}",
-            range.end.short_hash(),
-            range.end.author,
-            time_ago
-        )
-    } else {
-        format!(
-            "{}..{} ({} commits)",
-            range.start.short_hash(),
-            range.end.short_hash(),
-            range.count
-        )
-    };
+    let hash_span = Span::styled(
+        if range.is_single_commit() {
+            range.end.short_hash().to_string()
+        } else {
+            format!(
+                "{}..{} ({} commits)",
+                range.start.short_hash(),
+                range.end.short_hash(),
+                range.count
+            )
+        },
+        theme.hash,
+    );
 
-    let truncated: String = header.chars().take(width).collect();
-    let para = Paragraph::new(truncated).style(Style::default().fg(Color::Gray));
-    f.render_widget(para, Rect::new(x, y, width as u16, 1));
+    let mut spans = vec![hash_span];
+
+    if range.is_single_commit() {
+        let time_ago = format_time_ago(&range.end.date);
+        spans.push(Span::styled(
+            format!(" · {} committed {}", range.end.author, time_ago),
+            theme.text_muted,
+        ));
+    }
+
+    let para = Paragraph::new(Line::from(spans));
+    f.render_widget(para, Rect::new(x, y, _width as u16, 1));
 }
 
 fn format_time_ago(date: &chrono::DateTime<chrono::Utc>) -> String {
@@ -119,10 +141,11 @@ fn render_tree_list(
     selected: usize,
     scroll_offset: usize,
     area: Rect,
+    theme: &Theme,
 ) {
     if visible_items.is_empty() {
         let msg = Paragraph::new("No files changed")
-            .style(Style::default().fg(Color::Gray))
+            .style(theme.text_muted)
             .alignment(Alignment::Center);
         f.render_widget(msg, area);
         return;
@@ -138,8 +161,8 @@ fn render_tree_list(
         .take(end - scroll_offset)
         .map(|(i, item)| {
             let is_selected = i == selected;
-            let line = format_tree_line(item, is_selected);
-            ListItem::new(Line::from(line))
+            let line = format_tree_line(item, is_selected, theme);
+            ListItem::new(line)
         })
         .collect();
 
@@ -147,43 +170,55 @@ fn render_tree_list(
     f.render_widget(list, area);
 }
 
-fn format_tree_line(item: &crate::domain::filetree::VisibleTreeItem, is_selected: bool) -> String {
-    let mut line = String::new();
+fn format_tree_line(
+    item: &crate::domain::filetree::VisibleTreeItem,
+    is_selected: bool,
+    theme: &Theme,
+) -> Line<'static> {
+    let mut spans = Vec::new();
 
-    if is_selected {
-        line.push('→');
+    let prefix = if is_selected { "→" } else { " " };
+    let prefix_style = if is_selected {
+        theme.selection
     } else {
-        line.push(' ');
-    }
+        Style::default()
+    };
+    spans.push(Span::styled(prefix, prefix_style));
 
+    let tree_style = Style::default().fg(Color::DarkGray).bold_if(is_selected);
     for &has_more_siblings in &item.parent_lines {
         if has_more_siblings {
-            line.push_str("│   ");
+            spans.push(Span::styled("│   ", tree_style));
         } else {
-            line.push_str("    ");
+            spans.push(Span::raw("    "));
         }
     }
 
-    if item.is_last_child {
-        line.push_str("└── ");
+    let connector = if item.is_last_child {
+        "└── "
     } else {
-        line.push_str("├── ");
-    }
+        "├── "
+    };
+    spans.push(Span::styled(connector, tree_style));
 
     match &item.node {
         TreeNode::Folder(folder) => {
-            line.push_str(&format_folder_node(folder, is_selected));
+            spans.extend(format_folder_spans(folder, is_selected, theme));
         }
         TreeNode::File(file_node) => {
-            line.push_str(&format_file_node(file_node, is_selected));
+            spans.extend(format_file_spans(file_node, is_selected, theme));
         }
     }
 
-    line
+    Line::from(spans)
 }
 
-fn format_folder_node(folder: &FolderNode, _is_selected: bool) -> String {
-    let mut content = String::new();
+fn format_folder_spans(
+    folder: &FolderNode,
+    is_selected: bool,
+    theme: &Theme,
+) -> Vec<Span<'static>> {
+    let mut spans = Vec::new();
 
     let folder_name = if folder.name.ends_with('/') {
         folder.name.clone()
@@ -191,7 +226,8 @@ fn format_folder_node(folder: &FolderNode, _is_selected: bool) -> String {
         format!("{}/", folder.name)
     };
 
-    content.push_str(&folder_name);
+    let name_style = Style::default().fg(Color::Black).bold_if(is_selected);
+    spans.push(Span::styled(folder_name, name_style));
 
     if !folder.is_expanded {
         let stats = folder.stats;
@@ -200,29 +236,63 @@ fn format_folder_node(folder: &FolderNode, _is_selected: bool) -> String {
         } else {
             "files"
         };
-        content.push_str(&format!(
-            " +{} -{} ({} {})",
-            stats.additions, stats.deletions, stats.file_count, file_word
+
+        let muted_style = theme.text_muted.bold_if(is_selected);
+        let additions_style = theme.additions.bold_if(is_selected);
+        let deletions_style = theme.deletions.bold_if(is_selected);
+
+        spans.push(Span::styled(" +", muted_style));
+        spans.push(Span::styled(stats.additions.to_string(), additions_style));
+        spans.push(Span::styled(" -", muted_style));
+        spans.push(Span::styled(stats.deletions.to_string(), deletions_style));
+        spans.push(Span::styled(
+            format!(" ({} {})", stats.file_count, file_word),
+            muted_style,
         ));
     }
 
-    content
+    spans
 }
 
-fn format_file_node(file_node: &crate::domain::filetree::FileNode, _is_selected: bool) -> String {
+fn format_file_spans(
+    file_node: &crate::domain::filetree::FileNode,
+    is_selected: bool,
+    theme: &Theme,
+) -> Vec<Span<'static>> {
+    let mut spans = Vec::new();
     let file = &file_node.file;
-    let mut content = String::new();
 
-    let status_char = file.status.status_char();
-    content.push(status_char);
+    let status_style = match file.status {
+        FileStatus::Added => theme.file_status_added,
+        FileStatus::Modified => theme.file_status_modified,
+        FileStatus::Deleted => theme.file_status_deleted,
+        FileStatus::Renamed => theme.file_status_renamed,
+    }
+    .bold_if(is_selected);
+
+    spans.push(Span::styled(
+        file.status.status_char().to_string(),
+        status_style,
+    ));
+
+    let muted_style = theme.text_muted.bold_if(is_selected);
+    let additions_style = theme.additions.bold_if(is_selected);
+    let deletions_style = theme.deletions.bold_if(is_selected);
 
     if file.is_binary {
-        content.push_str(" (binary)  ");
+        spans.push(Span::styled(" (binary)  ", muted_style));
     } else {
-        content.push_str(&format!(" +{} -{}  ", file.additions, file.deletions));
+        spans.push(Span::styled(" +", muted_style));
+        spans.push(Span::styled(file.additions.to_string(), additions_style));
+        spans.push(Span::styled(" -", muted_style));
+        spans.push(Span::styled(
+            format!("{}  ", file.deletions),
+            deletions_style,
+        ));
     }
 
-    content.push_str(&file_node.name);
+    let name_style = theme.text.bold_if(is_selected);
+    spans.push(Span::styled(file_node.name.clone(), name_style));
 
-    content
+    spans
 }
