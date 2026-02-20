@@ -1,8 +1,8 @@
-use crate::core::{Commit, FileChange};
+use crate::core::{CommitRange, FileChange};
 use crate::domain::filetree::{self, TreeNode, VisibleTreeItem};
 
 pub struct FilesView {
-    pub commit: Commit,
+    pub range: CommitRange,
     pub files: Vec<FileChange>,
     pub root: TreeNode,
     pub visible_items: Vec<VisibleTreeItem>,
@@ -12,11 +12,11 @@ pub struct FilesView {
 }
 
 impl FilesView {
-    pub fn new(commit: Commit, files: Vec<FileChange>) -> Self {
+    pub fn new(range: CommitRange, files: Vec<FileChange>) -> Self {
         let (root, visible_items) = filetree::build_visible_tree(&files);
 
         Self {
-            commit,
+            range,
             files,
             root,
             visible_items,

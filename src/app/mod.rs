@@ -68,9 +68,23 @@ impl App {
 
     pub fn update(&mut self, action: Action) -> bool {
         match action {
-            Action::Quit => return true,
+            Action::Quit => {
+                if let View::Log(log) = &mut self.view {
+                    if log.is_visual_mode() {
+                        log.exit_visual_mode();
+                        return false;
+                    }
+                }
+                return true;
+            }
             Action::Back => {
-                if self.go_back() {
+                if let View::Log(log) = &mut self.view {
+                    if log.is_visual_mode() {
+                        log.exit_visual_mode();
+                    } else if self.go_back() {
+                        return true;
+                    }
+                } else if self.go_back() {
                     return true;
                 }
             }
@@ -88,6 +102,15 @@ impl App {
             Action::ToggleFolder => self.toggle_folder(false, false),
             Action::ExpandFolder => self.toggle_folder(true, false),
             Action::CollapseFolder => self.toggle_folder(false, true),
+            Action::ToggleVisualMode => {
+                if let View::Log(log) = &mut self.view {
+                    if log.is_visual_mode() {
+                        log.exit_visual_mode();
+                    } else {
+                        log.enter_visual_mode();
+                    }
+                }
+            }
             Action::Resize { .. } | Action::None => {}
         }
 
@@ -129,15 +152,15 @@ impl App {
 
     fn open_selected(&mut self) {
         if let View::Log(log) = &self.view {
-            if let Some(commit) = log.selected_commit() {
+            if let Some(range) = log.get_selected_range() {
                 let repo_path = match &self.repo_path {
                     Some(p) => p.clone(),
                     None => return,
                 };
 
-                match git::fetch_file_changes(&repo_path, &commit.hash) {
+                match git::fetch_file_changes(&repo_path, &range) {
                     Ok(files) => {
-                        let files_view = FilesView::new(commit.clone(), files);
+                        let files_view = FilesView::new(range.clone(), files);
                         let old_view = std::mem::replace(&mut self.view, View::Files(files_view));
                         self.view_stack.push(old_view);
                     }
@@ -156,7 +179,7 @@ impl App {
                     None => return,
                 };
 
-                match git::fetch_full_file_diff(&repo_path, &files.commit.hash, &file.path) {
+                match git::fetch_full_file_diff(&repo_path, &files.range, &file.path) {
                     Ok(full_diff) => {
                         let meta = crate::domain::diff::DiffMeta {
                             path: file.path.clone(),
@@ -170,7 +193,7 @@ impl App {
                             &full_diff.diff_output,
                         ) {
                             Ok(diff) => {
-                                let diff_view = DiffView::new(files.commit.clone(), file, diff);
+                                let diff_view = DiffView::new(files.range.clone(), file, diff);
                                 let old_view =
                                     std::mem::replace(&mut self.view, View::Diff(diff_view));
                                 self.view_stack.push(old_view);

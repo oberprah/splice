@@ -11,10 +11,14 @@ pub struct Harness {
 
 impl Harness {
     pub fn with_repo(repo: &TestRepo) -> Self {
-        let backend = TestBackend::new(80, 24);
+        Self::with_repo_and_screen_size(repo, 80, 24)
+    }
+
+    pub fn with_repo_and_screen_size(repo: &TestRepo, width: u16, height: u16) -> Self {
+        let backend = TestBackend::new(width, height);
         let terminal = Terminal::new(backend).unwrap();
         let mut app = App::with_repo_path(repo.path());
-        app.set_viewport_height(23);
+        app.set_viewport_height(height.saturating_sub(1) as usize);
         Self { terminal, app }
     }
 
@@ -37,7 +41,7 @@ impl Harness {
         }
     }
 
-    fn snapshot(&mut self) -> String {
+    pub fn snapshot(&mut self) -> String {
         self.terminal.draw(|f| render(f, &mut self.app)).unwrap();
         let buffer = self.terminal.backend().buffer();
         let mut lines = Vec::new();

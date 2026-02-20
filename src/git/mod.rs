@@ -9,7 +9,7 @@ pub use log::parse_log_output;
 use std::path::Path;
 use std::process::Command;
 
-use crate::core::{Commit, FileChange};
+use crate::core::{Commit, CommitRange, FileChange};
 
 const MAX_COMMITS: usize = 100;
 
@@ -49,7 +49,21 @@ pub fn fetch_commits(repo_path: &Path) -> Result<Vec<Commit>, String> {
     parse_log_output(&stdout)
 }
 
-pub fn fetch_file_changes(repo_path: &Path, commit_hash: &str) -> Result<Vec<FileChange>, String> {
+pub fn fetch_file_changes(
+    repo_path: &Path,
+    range: &CommitRange,
+) -> Result<Vec<FileChange>, String> {
+    if range.is_single_commit() {
+        fetch_file_changes_single(repo_path, &range.end.hash)
+    } else {
+        fetch_file_changes_range(repo_path, &range.start.hash, &range.end.hash)
+    }
+}
+
+fn fetch_file_changes_single(
+    repo_path: &Path,
+    commit_hash: &str,
+) -> Result<Vec<FileChange>, String> {
     let numstat_output = git_command(repo_path)
         .args([
             "diff-tree",
@@ -84,6 +98,43 @@ pub fn fetch_file_changes(repo_path: &Path, commit_hash: &str) -> Result<Vec<Fil
     if !name_status_output.status.success() {
         return Err(format!(
             "git diff-tree --name-status failed: {}",
+            String::from_utf8_lossy(&name_status_output.stderr)
+        ));
+    }
+
+    let numstat = String::from_utf8_lossy(&numstat_output.stdout);
+    let name_status = String::from_utf8_lossy(&name_status_output.stdout);
+
+    parse_file_changes(&numstat, &name_status)
+}
+
+fn fetch_file_changes_range(
+    repo_path: &Path,
+    start_hash: &str,
+    end_hash: &str,
+) -> Result<Vec<FileChange>, String> {
+    let range_spec = format!("{}^..{}", start_hash, end_hash);
+
+    let numstat_output = git_command(repo_path)
+        .args(["diff", "--numstat", &range_spec])
+        .output()
+        .map_err(|e| format!("Failed to run git diff: {}", e))?;
+
+    if !numstat_output.status.success() {
+        return Err(format!(
+            "git diff --numstat failed: {}",
+            String::from_utf8_lossy(&numstat_output.stderr)
+        ));
+    }
+
+    let name_status_output = git_command(repo_path)
+        .args(["diff", "--name-status", &range_spec])
+        .output()
+        .map_err(|e| format!("Failed to run git diff: {}", e))?;
+
+    if !name_status_output.status.success() {
+        return Err(format!(
+            "git diff --name-status failed: {}",
             String::from_utf8_lossy(&name_status_output.stderr)
         ));
     }

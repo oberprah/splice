@@ -1,4 +1,4 @@
-use crate::core::{Commit, RefInfo, RefType};
+use crate::core::{is_in_selection, Commit, CursorState, RefInfo, RefType};
 use crate::domain::graph::{render_row, Layout};
 use crate::ui::theme::Theme;
 use ratatui::{
@@ -6,11 +6,46 @@ use ratatui::{
     widgets::{List, ListItem, Paragraph},
 };
 
+enum LineDisplayState {
+    None,
+    Cursor,
+    Selected,
+    VisualCursor,
+}
+
+impl LineDisplayState {
+    fn prefix(&self) -> &'static str {
+        match self {
+            LineDisplayState::None => "  ",
+            LineDisplayState::Cursor => "→ ",
+            LineDisplayState::Selected => "▌ ",
+            LineDisplayState::VisualCursor => "█ ",
+        }
+    }
+
+    fn is_highlighted(&self) -> bool {
+        matches!(
+            self,
+            LineDisplayState::Cursor | LineDisplayState::Selected | LineDisplayState::VisualCursor
+        )
+    }
+}
+
+fn get_line_display_state(cursor: &CursorState, index: usize) -> LineDisplayState {
+    match cursor {
+        CursorState::Normal { pos } if *pos == index => LineDisplayState::Cursor,
+        CursorState::Normal { .. } => LineDisplayState::None,
+        CursorState::Visual { pos, .. } if *pos == index => LineDisplayState::VisualCursor,
+        CursorState::Visual { .. } if is_in_selection(cursor, index) => LineDisplayState::Selected,
+        CursorState::Visual { .. } => LineDisplayState::None,
+    }
+}
+
 pub fn render_log_view(
     f: &mut Frame,
     commits: &[Commit],
     graph_layout: &Layout,
-    selected: usize,
+    cursor: &CursorState,
     scroll_offset: usize,
     area: Rect,
     theme: &Theme,
@@ -32,16 +67,16 @@ pub fn render_log_view(
         .skip(scroll_offset)
         .take(end - scroll_offset)
         .map(|(i, commit)| {
-            let is_selected = i == selected;
-            let prefix = if is_selected { "→ " } else { "  " };
+            let display_state = get_line_display_state(cursor, i);
+            let prefix = display_state.prefix();
 
-            let hash_style = if is_selected {
+            let hash_style = if display_state.is_highlighted() {
                 theme.hash_selected
             } else {
                 theme.hash
             };
 
-            let message_style = if is_selected {
+            let message_style = if display_state.is_highlighted() {
                 theme.message_selected
             } else {
                 theme.message

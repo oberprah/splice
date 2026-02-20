@@ -12,6 +12,7 @@ pub enum Action {
     ExpandFolder,
     CollapseFolder,
     ToggleFolder,
+    ToggleVisualMode,
     Resize { width: u16, height: u16 },
     None,
 }
@@ -37,6 +38,19 @@ fn action_from_key(key: KeyEvent) -> Action {
         KeyCode::Char(' ') => Action::ToggleFolder,
         KeyCode::Right => Action::ExpandFolder,
         KeyCode::Left => Action::CollapseFolder,
+        KeyCode::Char('v') => Action::ToggleVisualMode,
         _ => Action::None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crossterm::event::KeyEvent;
+
+    #[test]
+    fn test_v_key_maps_to_toggle_visual_mode() {
+        let event = Event::Key(KeyEvent::from(KeyCode::Char('v')));
+        assert_eq!(action_from_event(event), Action::ToggleVisualMode);
     }
 }
