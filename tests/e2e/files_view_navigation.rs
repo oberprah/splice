@@ -54,9 +54,10 @@ fn files_view_navigation_with_modifications() {
     "  Modify and add files                                                          "
     "                                                                                "
     "  3 files · +5 -1                                                               "
-    "  → A +1 -0  file_1.txt                                                         "
-    "    M +3 -1  src/main.rs                                                        "
-    "    A +1 -0  src/new.rs                                                         "
+    "  →├── src/                                                                     "
+    "   │   ├── M +3 -1  main.rs                                                     "
+    "   │   └── A +1 -0  new.rs                                                      "
+    "   └── A +1 -0  file_1.txt                                                      "
     "                                                                                "
     "                                                                                "
     "                                                                                "
@@ -71,8 +72,7 @@ fn files_view_navigation_with_modifications() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "                                                                                "
-    "  j/k: navigate  Enter: open diff  q: back                                      "
+    "  j/k: navigate  Enter/space: toggle/open  ←/→: collapse/expand  q: back        "
     "#,
     );
 
@@ -84,9 +84,10 @@ fn files_view_navigation_with_modifications() {
     "  Modify and add files                                                          "
     "                                                                                "
     "  3 files · +5 -1                                                               "
-    "    A +1 -0  file_1.txt                                                         "
-    "  → M +3 -1  src/main.rs                                                        "
-    "    A +1 -0  src/new.rs                                                         "
+    "   ├── src/                                                                     "
+    "  →│   ├── M +3 -1  main.rs                                                     "
+    "   │   └── A +1 -0  new.rs                                                      "
+    "   └── A +1 -0  file_1.txt                                                      "
     "                                                                                "
     "                                                                                "
     "                                                                                "
@@ -101,8 +102,7 @@ fn files_view_navigation_with_modifications() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "                                                                                "
-    "  j/k: navigate  Enter: open diff  q: back                                      "
+    "  j/k: navigate  Enter/space: toggle/open  ←/→: collapse/expand  q: back        "
     "#,
     );
 
@@ -133,6 +133,110 @@ fn files_view_navigation_with_modifications() {
     "                                                                                "
     "                                                                                "
     "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "#,
+    );
+}
+
+#[test]
+#[serial]
+fn files_view_folder_collapse_expand() {
+    reset_counter();
+
+    let repo = TestRepo::new();
+    repo.add_file("src/components/Button.tsx", "export {}\n");
+    repo.add_file("src/components/Input.tsx", "export {}\n");
+    repo.add_file("src/utils/helper.ts", "export {}\n");
+    repo.commit("Add nested files");
+
+    let mut h = Harness::with_repo(&repo);
+
+    h.press(KeyCode::Enter);
+    h.assert_snapshot(
+        r#"
+    "  01e0c9d · Test committed 6 years ago                                          "
+    "                                                                                "
+    "  Add nested files                                                              "
+    "                                                                                "
+    "  4 files · +4 -0                                                               "
+    "  →├── src/                                                                     "
+    "   │   ├── components/                                                          "
+    "   │   │   ├── A +1 -0  Button.tsx                                              "
+    "   │   │   └── A +1 -0  Input.tsx                                               "
+    "   │   └── utils/                                                               "
+    "   │       └── A +1 -0  helper.ts                                               "
+    "   └── A +1 -0  file_0.txt                                                      "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "  j/k: navigate  Enter/space: toggle/open  ←/→: collapse/expand  q: back        "
+    "#,
+    );
+
+    h.press(KeyCode::Left);
+    h.assert_snapshot(
+        r#"
+    "  01e0c9d · Test committed 6 years ago                                          "
+    "                                                                                "
+    "  Add nested files                                                              "
+    "                                                                                "
+    "  4 files · +4 -0                                                               "
+    "  →├── src/ +3 -0 (3 files)                                                     "
+    "   └── A +1 -0  file_0.txt                                                      "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "  j/k: navigate  Enter/space: toggle/open  ←/→: collapse/expand  q: back        "
+    "#,
+    );
+
+    h.press(KeyCode::Right);
+    h.assert_snapshot(
+        r#"
+    "  01e0c9d · Test committed 6 years ago                                          "
+    "                                                                                "
+    "  Add nested files                                                              "
+    "                                                                                "
+    "  4 files · +4 -0                                                               "
+    "  →├── src/                                                                     "
+    "   │   ├── components/                                                          "
+    "   │   │   ├── A +1 -0  Button.tsx                                              "
+    "   │   │   └── A +1 -0  Input.tsx                                               "
+    "   │   └── utils/                                                               "
+    "   │       └── A +1 -0  helper.ts                                               "
+    "   └── A +1 -0  file_0.txt                                                      "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "  j/k: navigate  Enter/space: toggle/open  ←/→: collapse/expand  q: back        "
     "#,
     );
 }

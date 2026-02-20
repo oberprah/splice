@@ -9,6 +9,9 @@ pub enum Action {
     PageUp,
     Open,
     Back,
+    ExpandFolder,
+    CollapseFolder,
+    ToggleFolder,
     Resize { width: u16, height: u16 },
     None,
 }
@@ -31,6 +34,9 @@ fn action_from_key(key: KeyEvent) -> Action {
         KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => Action::PageDown,
         KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => Action::PageUp,
         KeyCode::Enter => Action::Open,
+        KeyCode::Char(' ') => Action::ToggleFolder,
+        KeyCode::Right => Action::ExpandFolder,
+        KeyCode::Left => Action::CollapseFolder,
         _ => Action::None,
     }
 }

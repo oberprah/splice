@@ -85,6 +85,9 @@ impl App {
                 let step = self.page_step();
                 self.move_up(step);
             }
+            Action::ToggleFolder => self.toggle_folder(false, false),
+            Action::ExpandFolder => self.toggle_folder(true, false),
+            Action::CollapseFolder => self.toggle_folder(false, true),
             Action::Resize { .. } | Action::None => {}
         }
 
@@ -143,44 +146,51 @@ impl App {
                     }
                 }
             }
-        } else if let View::Files(files) = &self.view {
-            let file = match files.selected_file() {
-                Some(file) => file.clone(),
-                None => return,
-            };
+        } else if let View::Files(files) = &mut self.view {
+            if files.selected_is_folder() {
+                files.toggle_folder(false, false);
+            } else if let Some(file) = files.selected_file() {
+                let file = file.clone();
+                let repo_path = match &self.repo_path {
+                    Some(p) => p.clone(),
+                    None => return,
+                };
 
-            let repo_path = match &self.repo_path {
-                Some(p) => p.clone(),
-                None => return,
-            };
-
-            match git::fetch_full_file_diff(&repo_path, &files.commit.hash, &file.path) {
-                Ok(full_diff) => {
-                    let meta = crate::domain::diff::DiffMeta {
-                        path: file.path.clone(),
-                        additions: file.additions,
-                        deletions: file.deletions,
-                    };
-                    match crate::domain::diff::build_file_diff_full(
-                        meta,
-                        &full_diff.old_content,
-                        &full_diff.new_content,
-                        &full_diff.diff_output,
-                    ) {
-                        Ok(diff) => {
-                            let diff_view = DiffView::new(files.commit.clone(), file, diff);
-                            let old_view = std::mem::replace(&mut self.view, View::Diff(diff_view));
-                            self.view_stack.push(old_view);
-                        }
-                        Err(e) => {
-                            self.error = Some(e);
+                match git::fetch_full_file_diff(&repo_path, &files.commit.hash, &file.path) {
+                    Ok(full_diff) => {
+                        let meta = crate::domain::diff::DiffMeta {
+                            path: file.path.clone(),
+                            additions: file.additions,
+                            deletions: file.deletions,
+                        };
+                        match crate::domain::diff::build_file_diff_full(
+                            meta,
+                            &full_diff.old_content,
+                            &full_diff.new_content,
+                            &full_diff.diff_output,
+                        ) {
+                            Ok(diff) => {
+                                let diff_view = DiffView::new(files.commit.clone(), file, diff);
+                                let old_view =
+                                    std::mem::replace(&mut self.view, View::Diff(diff_view));
+                                self.view_stack.push(old_view);
+                            }
+                            Err(e) => {
+                                self.error = Some(e);
+                            }
                         }
                     }
-                }
-                Err(e) => {
-                    self.error = Some(e);
+                    Err(e) => {
+                        self.error = Some(e);
+                    }
                 }
             }
+        }
+    }
+
+    fn toggle_folder(&mut self, expand_only: bool, collapse_only: bool) {
+        if let View::Files(files) = &mut self.view {
+            files.toggle_folder(expand_only, collapse_only);
         }
     }
 }
