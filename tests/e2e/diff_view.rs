@@ -4,7 +4,7 @@ use serial_test::serial;
 
 #[test]
 #[serial]
-fn diff_view_mvp_side_by_side() {
+fn diff_view_side_by_side() {
     reset_counter();
 
     let repo = TestRepo::new();
@@ -94,6 +94,37 @@ impl Calculator {
         r#"
 "  0fdee5c · src/calculator.rs · +7 -11                                          "
 "                                                                                "
+"    1   pub struct Calculator;        │   1   pub struct Calculator;            "
+"    2                                 │   2                                     "
+"    3   impl Calculator {             │   3   impl Calculator {                 "
+"    4       pub fn new() -> Self {    │   4       pub fn new() -> Self {        "
+"    5           Self                  │   5           Self                      "
+"    6       }                         │   6       }                             "
+"    7                                 │   7                                     "
+"    8       pub fn add(&self, a: i32, │   8       pub fn add(&self, a: i32,     "
+"    9           a + b                 │   9           a + b                     "
+"   10       }                         │  10       }                             "
+"   11                                 │  11                                     "
+"   12       pub fn sub(&self, a: i32, │  12       pub fn sub(&self, a: i32,     "
+"   13           a - b                 │  13           a - b                     "
+"   14       }                         │  14       }                             "
+"   15                                 │  15                                     "
+"   16 -     pub fn multiply(&self, a: │  16 +     pub fn mul(&self, a: i32,     "
+"   17 -         a * b                 │  17 +         a.checked_mul(b).unwra    "
+"   18 -     }                         │                                         "
+"   19 -                               │                                         "
+"   20 -     pub fn divide(&self, a: i │                                         "
+"   21 -         if b == 0 {           │                                         "
+"  j/k: scroll  q: back                                                          "
+"#,
+    );
+
+    h.press_ctrl(KeyCode::Char('d'));
+    h.assert_snapshot(
+        r#"
+"  0fdee5c · src/calculator.rs · +7 -11                                          "
+"                                                                                "
+"   12       pub fn sub(&self, a: i32, │  12       pub fn sub(&self, a: i32,     "
 "   13           a - b                 │  13           a - b                     "
 "   14       }                         │  14       }                             "
 "   15                                 │  15                                     "
@@ -114,7 +145,6 @@ impl Calculator {
 "   30       }                         │  22       }                             "
 "   31                                 │  23                                     "
 "                                      │  24 +     pub fn pow(&self, base: i3    "
-"                                      │  25 +         (0..exp).fold(1, |acc,    "
 "  j/k: scroll  q: back                                                          "
 "#,
     );
@@ -155,6 +185,13 @@ impl Calculator {
         r#"
 "  0fdee5c · src/calculator.rs · +7 -11                                          "
 "                                                                                "
+"    7                                 │   7                                     "
+"    8       pub fn add(&self, a: i32, │   8       pub fn add(&self, a: i32,     "
+"    9           a + b                 │   9           a + b                     "
+"   10       }                         │  10       }                             "
+"   11                                 │  11                                     "
+"   12       pub fn sub(&self, a: i32, │  12       pub fn sub(&self, a: i32,     "
+"   13           a - b                 │  13           a - b                     "
 "   14       }                         │  14       }                             "
 "   15                                 │  15                                     "
 "   16 -     pub fn multiply(&self, a: │  16 +     pub fn mul(&self, a: i32,     "
@@ -169,13 +206,6 @@ impl Calculator {
 "   25 -         }                     │                                         "
 "   26       }                         │  18       }                             "
 "   27                                 │  19                                     "
-"   28       pub fn sum(&self, values: │  20       pub fn sum(&self, values:     "
-"   29           values.iter().sum()   │  21           values.iter().sum()       "
-"   30       }                         │  22       }                             "
-"   31                                 │  23                                     "
-"                                      │  24 +     pub fn pow(&self, base: i3    "
-"                                      │  25 +         (0..exp).fold(1, |acc,    "
-"                                      │  26 +     }                             "
 "  j/k: scroll  q: back                                                          "
 "#,
     );

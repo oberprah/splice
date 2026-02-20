@@ -154,14 +154,19 @@ impl App {
                 None => return,
             };
 
-            match git::fetch_file_diff(&repo_path, &files.commit.hash, &file.path) {
-                Ok(diff_output) => {
+            match git::fetch_full_file_diff(&repo_path, &files.commit.hash, &file.path) {
+                Ok(full_diff) => {
                     let meta = crate::domain::diff::DiffMeta {
                         path: file.path.clone(),
                         additions: file.additions,
                         deletions: file.deletions,
                     };
-                    match crate::domain::diff::build_file_diff(meta, &diff_output) {
+                    match crate::domain::diff::build_file_diff_full(
+                        meta,
+                        &full_diff.old_content,
+                        &full_diff.new_content,
+                        &full_diff.diff_output,
+                    ) {
                         Ok(diff) => {
                             let diff_view = DiffView::new(files.commit.clone(), file, diff);
                             let old_view = std::mem::replace(&mut self.view, View::Diff(diff_view));
