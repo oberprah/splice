@@ -1,8 +1,166 @@
 use ratatui::style::{Color, Modifier, Style};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ThemeVariant {
+    #[default]
+    Dark,
+    Light,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Theme {
+    pub variant: ThemeVariant,
+    pub text: Style,
+    pub text_muted: Style,
+    pub selection: Style,
+    pub hash: Style,
+    pub hash_selected: Style,
+    pub message: Style,
+    pub message_selected: Style,
+    pub refs: Style,
+    pub author: Style,
+    pub time: Style,
+    pub diff_added: DiffColors,
+    pub diff_removed: DiffColors,
+    pub diff_changed: DiffColors,
+    pub additions: Style,
+    pub deletions: Style,
+    pub file_status_added: Style,
+    pub file_status_modified: Style,
+    pub file_status_deleted: Style,
+    pub file_status_renamed: Style,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct DiffColors {
+    pub bg: Color,
+    pub bg_bright: Color,
+    pub fg: Color,
+}
+
+impl Theme {
+    pub fn dark() -> Self {
+        Self {
+            variant: ThemeVariant::Dark,
+            text: Style::default().fg(Color::Rgb(252, 252, 252)),
+            text_muted: Style::default().fg(Color::Rgb(128, 128, 128)),
+            selection: Style::default().add_modifier(Modifier::BOLD),
+            hash: Style::default().fg(Color::Rgb(255, 175, 0)),
+            hash_selected: Style::default()
+                .fg(Color::Rgb(255, 215, 0))
+                .add_modifier(Modifier::BOLD),
+            message: Style::default().fg(Color::Rgb(210, 210, 210)),
+            message_selected: Style::default()
+                .fg(Color::Rgb(255, 255, 255))
+                .add_modifier(Modifier::BOLD),
+            refs: Style::default().fg(Color::Blue),
+            author: Style::default().fg(Color::Rgb(95, 215, 175)),
+            time: Style::default().fg(Color::Rgb(128, 128, 128)),
+            diff_added: DiffColors {
+                bg: Color::Rgb(0x1e, 0x3a, 0x1e),
+                bg_bright: Color::Rgb(0x26, 0x4d, 0x26),
+                fg: Color::Rgb(0x52, 0xff, 0x52),
+            },
+            diff_removed: DiffColors {
+                bg: Color::Rgb(0x3a, 0x1e, 0x1e),
+                bg_bright: Color::Rgb(0x4d, 0x26, 0x26),
+                fg: Color::Rgb(0xff, 0x52, 0x52),
+            },
+            diff_changed: DiffColors {
+                bg: Color::Rgb(0x1e, 0x2a, 0x3a),
+                bg_bright: Color::Rgb(0x26, 0x36, 0x4d),
+                fg: Color::Rgb(0x52, 0x9c, 0xff),
+            },
+            additions: Style::default().fg(Color::Rgb(0, 255, 0)),
+            deletions: Style::default().fg(Color::Rgb(255, 0, 0)),
+            file_status_added: Style::default().fg(Color::Green),
+            file_status_modified: Style::default().fg(Color::Yellow),
+            file_status_deleted: Style::default().fg(Color::Red),
+            file_status_renamed: Style::default().fg(Color::Cyan),
+        }
+    }
+
+    pub fn light() -> Self {
+        Self {
+            variant: ThemeVariant::Light,
+            text: Style::default().fg(Color::Rgb(58, 58, 58)),
+            text_muted: Style::default().fg(Color::Rgb(108, 108, 108)),
+            selection: Style::default().add_modifier(Modifier::BOLD),
+            hash: Style::default().fg(Color::Rgb(215, 135, 0)),
+            hash_selected: Style::default()
+                .fg(Color::Rgb(255, 135, 0))
+                .add_modifier(Modifier::BOLD),
+            message: Style::default().fg(Color::Rgb(58, 58, 58)),
+            message_selected: Style::default()
+                .fg(Color::Rgb(0, 0, 0))
+                .add_modifier(Modifier::BOLD),
+            refs: Style::default().fg(Color::Blue),
+            author: Style::default().fg(Color::Rgb(0, 175, 135)),
+            time: Style::default().fg(Color::Rgb(108, 108, 108)),
+            diff_added: DiffColors {
+                bg: Color::Rgb(0xe8, 0xf5, 0xe9),
+                bg_bright: Color::Rgb(0xc8, 0xe6, 0xc9),
+                fg: Color::Rgb(0x1b, 0x5e, 0x20),
+            },
+            diff_removed: DiffColors {
+                bg: Color::Rgb(0xff, 0xeb, 0xee),
+                bg_bright: Color::Rgb(0xff, 0xcd, 0xd2),
+                fg: Color::Rgb(0xb7, 0x1c, 0x1c),
+            },
+            diff_changed: DiffColors {
+                bg: Color::Rgb(0xe3, 0xf2, 0xfd),
+                bg_bright: Color::Rgb(0xbb, 0xde, 0xfb),
+                fg: Color::Rgb(0x0d, 0x47, 0xa1),
+            },
+            additions: Style::default().fg(Color::Rgb(0, 128, 0)),
+            deletions: Style::default().fg(Color::Rgb(178, 34, 34)),
+            file_status_added: Style::default().fg(Color::Green),
+            file_status_modified: Style::default().fg(Color::Yellow),
+            file_status_deleted: Style::default().fg(Color::Red),
+            file_status_renamed: Style::default().fg(Color::Cyan),
+        }
+    }
+
+    pub fn default_variant(variant: ThemeVariant) -> Self {
+        match variant {
+            ThemeVariant::Dark => Self::dark(),
+            ThemeVariant::Light => Self::light(),
+        }
+    }
+}
+
+impl Default for Theme {
+    fn default() -> Self {
+        Self::dark()
+    }
+}
+
+#[deprecated(
+    since = "0.1.0",
+    note = "Use Theme::dark().hash or Theme::light().hash instead"
+)]
 pub const HASH: Style = Style::new().fg(Color::Yellow);
+
+#[deprecated(
+    since = "0.1.0",
+    note = "Use Theme::dark().message or Theme::light().message instead"
+)]
 pub const MESSAGE: Style = Style::new().fg(Color::White);
+
+#[deprecated(
+    since = "0.1.0",
+    note = "Use Theme::dark().refs or Theme::light().refs instead"
+)]
 pub const REFS: Style = Style::new().fg(Color::Blue);
 
+#[deprecated(
+    since = "0.1.0",
+    note = "Use Theme::dark().hash_selected or Theme::light().hash_selected instead"
+)]
 pub const SELECTED_HASH: Style = Style::new().fg(Color::Yellow).add_modifier(Modifier::BOLD);
+
+#[deprecated(
+    since = "0.1.0",
+    note = "Use Theme::dark().message_selected or Theme::light().message_selected instead"
+)]
 pub const SELECTED_MESSAGE: Style = Style::new().fg(Color::White).add_modifier(Modifier::BOLD);

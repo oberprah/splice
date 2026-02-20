@@ -34,6 +34,8 @@ pub fn render(f: &mut Frame, app: &mut App) {
     let viewport_height = area.height.saturating_sub(1) as usize;
     app.set_viewport_height(viewport_height);
 
+    let theme = Theme::default();
+
     match &app.view {
         View::Log(log) => {
             log::render_log_view(
@@ -49,7 +51,7 @@ pub fn render(f: &mut Frame, app: &mut App) {
             files::render_files_view(f, files, area);
         }
         View::Diff(diff) => {
-            diff::render_diff_view(f, diff, area);
+            diff::render_diff_view(f, diff, area, &theme);
         }
     }
 }

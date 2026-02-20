@@ -1,8 +1,9 @@
 use crate::app::DiffView;
 use crate::domain::diff::{ChangeBlock, DiffBlock, UnchangedBlock};
+use crate::ui::theme::{DiffColors, Theme};
 use ratatui::{prelude::*, widgets::Paragraph};
 
-pub fn render_diff_view(f: &mut Frame, diff: &DiffView, area: Rect) {
+pub fn render_diff_view(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Theme) {
     let mut y = area.y;
     let width = area.width as usize;
 
@@ -25,7 +26,7 @@ pub fn render_diff_view(f: &mut Frame, diff: &DiffView, area: Rect) {
     let content_height = area.height.saturating_sub(y - area.y).saturating_sub(1) as usize;
     let content_area = Rect::new(area.x, y, area.width, content_height as u16);
 
-    render_diff_lines(f, diff, content_area);
+    render_diff_lines(f, diff, content_area, theme);
 
     let help = Paragraph::new("j/k: scroll  q: back")
         .style(Style::default().fg(Color::DarkGray))
@@ -39,7 +40,7 @@ pub fn render_diff_view(f: &mut Frame, diff: &DiffView, area: Rect) {
     f.render_widget(help, help_area);
 }
 
-fn render_diff_lines(f: &mut Frame, diff: &DiffView, area: Rect) {
+fn render_diff_lines(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Theme) {
     if diff.diff.blocks.is_empty() {
         let msg = Paragraph::new("No changes")
             .style(Style::default().fg(Color::Gray))
@@ -91,6 +92,7 @@ fn render_diff_lines(f: &mut Frame, diff: &DiffView, area: Rect) {
                     right_width,
                     area.x,
                     area.width,
+                    theme,
                 ) {
                     return;
                 }
@@ -147,6 +149,7 @@ fn render_change_block(
     right_width: usize,
     x: u16,
     width: u16,
+    theme: &Theme,
 ) -> bool {
     let max_len = block.old_lines.len().max(block.new_lines.len());
 
@@ -159,20 +162,33 @@ fn render_change_block(
             return false;
         }
 
-        let left = block.old_lines.get(i).map(|text| {
+        let left_spans = block.old_lines.get(i).map(|text| {
             let line_num = block.old_start + i as u32;
-            format_cell(line_num, '-', text, left_width)
-        });
-        let right = block.new_lines.get(i).map(|text| {
-            let line_num = block.new_start + i as u32;
-            format_cell(line_num, '+', text, right_width)
+            let has_new_line = block.new_lines.get(i).is_some();
+            let colors = if has_new_line {
+                &theme.diff_changed
+            } else {
+                &theme.diff_removed
+            };
+            format_cell_styled(line_num, '-', text, left_width, colors)
         });
 
-        render_row(
+        let right_spans = block.new_lines.get(i).map(|text| {
+            let line_num = block.new_start + i as u32;
+            let has_old_line = block.old_lines.get(i).is_some();
+            let colors = if has_old_line {
+                &theme.diff_changed
+            } else {
+                &theme.diff_added
+            };
+            format_cell_styled(line_num, '+', text, right_width, colors)
+        });
+
+        render_styled_row(
             f,
             *y,
-            left.unwrap_or_else(|| blank_cell(left_width)),
-            right.unwrap_or_else(|| blank_cell(right_width)),
+            left_spans.unwrap_or_else(|| vec![Span::raw(blank_cell(left_width))]),
+            right_spans.unwrap_or_else(|| vec![Span::raw(blank_cell(right_width))]),
             x,
             width,
         );
@@ -216,4 +232,54 @@ fn pad_or_trim(input: &str, width: usize) -> String {
 
 fn truncate_to_width(input: &str, width: usize) -> String {
     pad_or_trim(input, width)
+}
+
+fn format_cell_styled(
+    line_num: u32,
+    sign: char,
+    text: &str,
+    width: usize,
+    colors: &DiffColors,
+) -> Vec<Span<'static>> {
+    let line_num_str = format!("{:>3} ", line_num);
+    let sign_str = sign.to_string();
+    let text_str = format!(" {}", text);
+
+    let total_len = line_num_str.len() + sign_str.len() + text_str.len();
+    let padded_text = if total_len < width {
+        format!("{}{}", text_str, " ".repeat(width - total_len))
+    } else if total_len > width {
+        text_str
+            .chars()
+            .take(width - line_num_str.len() - sign_str.len())
+            .collect()
+    } else {
+        text_str
+    };
+
+    let style = Style::new().bg(colors.bg).fg(colors.fg);
+
+    vec![
+        Span::raw(line_num_str),
+        Span::styled(sign_str, style),
+        Span::styled(padded_text, style),
+    ]
+}
+
+fn render_styled_row(
+    f: &mut Frame,
+    y: u16,
+    left: Vec<Span<'_>>,
+    right: Vec<Span<'_>>,
+    x: u16,
+    width: u16,
+) {
+    let mut spans: Vec<Span<'_>> = left;
+    spans.push(Span::raw(" │ "));
+    spans.extend(right);
+
+    let line = Line::from(spans);
+    let para = Paragraph::new(line);
+    let area = Rect::new(x, y, width, 1);
+    f.render_widget(para, area);
 }
