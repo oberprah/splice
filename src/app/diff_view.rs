@@ -47,10 +47,6 @@ impl DiffView {
 
     fn max_scroll_offset(&self) -> usize {
         let total = self.diff.total_line_count();
-        if total <= self.viewport_height {
-            0
-        } else {
-            total - self.viewport_height
-        }
+        total.saturating_sub(self.viewport_height)
     }
 }
