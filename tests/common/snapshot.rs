@@ -1,5 +1,6 @@
 pub fn assert_snapshot(actual: &str, expected: &str) {
     let expected = normalize_snapshot(expected);
+    let actual = normalize_actual(actual);
 
     if actual == expected {
         return;
@@ -10,6 +11,13 @@ pub fn assert_snapshot(actual: &str, expected: &str) {
         expected,
         actual
     );
+}
+
+fn normalize_actual(raw: &str) -> String {
+    raw.lines()
+        .map(|line| line.trim_end())
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 fn normalize_snapshot(raw: &str) -> String {
@@ -40,11 +48,12 @@ fn normalize_snapshot(raw: &str) -> String {
     trimmed
         .iter()
         .map(|line| {
-            if line.len() >= indent {
+            let line = if line.len() >= indent {
                 &line[indent..]
             } else {
                 *line
-            }
+            };
+            line.trim_end()
         })
         .collect::<Vec<_>>()
         .join("\n")

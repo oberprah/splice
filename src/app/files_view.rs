@@ -1,8 +1,11 @@
 use crate::core::{Commit, FileChange};
+use crate::domain::filetree::{self, TreeNode, VisibleTreeItem};
 
 pub struct FilesView {
     pub commit: Commit,
     pub files: Vec<FileChange>,
+    pub root: TreeNode,
+    pub visible_items: Vec<VisibleTreeItem>,
     pub selected: usize,
     pub scroll_offset: usize,
     pub viewport_height: usize,
@@ -10,9 +13,13 @@ pub struct FilesView {
 
 impl FilesView {
     pub fn new(commit: Commit, files: Vec<FileChange>) -> Self {
+        let (root, visible_items) = filetree::build_visible_tree(&files);
+
         Self {
             commit,
             files,
+            root,
+            visible_items,
             selected: 0,
             scroll_offset: 0,
             viewport_height: 0,
@@ -25,7 +32,7 @@ impl FilesView {
     }
 
     fn clamp_scroll_offset(&mut self) {
-        if self.files.is_empty() {
+        if self.visible_items.is_empty() {
             self.selected = 0;
             self.scroll_offset = 0;
             return;
@@ -40,16 +47,16 @@ impl FilesView {
     }
 
     pub fn move_down(&mut self, amount: usize) {
-        if self.files.is_empty() {
+        if self.visible_items.is_empty() {
             return;
         }
-        let last = self.files.len().saturating_sub(1);
+        let last = self.visible_items.len().saturating_sub(1);
         self.selected = self.selected.saturating_add(amount).min(last);
         self.clamp_scroll_offset();
     }
 
     pub fn move_up(&mut self, amount: usize) {
-        if self.files.is_empty() {
+        if self.visible_items.is_empty() {
             return;
         }
         self.selected = self.selected.saturating_sub(amount);
@@ -61,7 +68,35 @@ impl FilesView {
     }
 
     pub fn selected_file(&self) -> Option<&FileChange> {
-        self.files.get(self.selected)
+        let item = self.visible_items.get(self.selected)?;
+        if let TreeNode::File(file_node) = &item.node {
+            Some(&file_node.file)
+        } else {
+            None
+        }
+    }
+
+    pub fn selected_is_folder(&self) -> bool {
+        let Some(item) = self.visible_items.get(self.selected) else {
+            return false;
+        };
+        matches!(item.node, TreeNode::Folder(_))
+    }
+
+    pub fn toggle_folder(&mut self, expand_only: bool, collapse_only: bool) -> bool {
+        let Some((new_visible, new_cursor)) = filetree::toggle_folder_at_cursor(
+            &self.visible_items,
+            self.selected,
+            expand_only,
+            collapse_only,
+        ) else {
+            return false;
+        };
+
+        self.visible_items = new_visible;
+        self.selected = new_cursor;
+        self.clamp_scroll_offset();
+        true
     }
 
     pub fn total_additions(&self) -> u32 {
