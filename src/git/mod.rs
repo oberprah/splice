@@ -1,10 +1,14 @@
 mod diff;
 mod file_changes;
 mod log;
+mod resolve;
+mod uncommitted;
 
 pub use diff::{fetch_file_content, fetch_file_diff, fetch_full_file_diff, FullFileDiff};
 pub use file_changes::parse_file_changes;
 pub use log::parse_log_output;
+pub use resolve::{resolve_commit_range, resolve_diff_source, DiffSpec};
+pub use uncommitted::fetch_uncommitted_file_changes;
 
 use std::path::Path;
 use std::process::Command;
