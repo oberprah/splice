@@ -42,7 +42,7 @@ pub fn render(f: &mut Frame, app: &mut App) {
                 f,
                 &log.commits,
                 &log.graph_layout,
-                log.cursor_position(),
+                &log.cursor,
                 log.scroll_offset,
                 area,
                 &theme,
