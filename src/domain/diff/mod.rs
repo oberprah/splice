@@ -77,7 +77,7 @@ fn parse_blocks(diff_output: &str) -> Result<Vec<DiffBlock>, String> {
             continue;
         }
 
-        if line.starts_with('\\') || line.is_empty() {
+        if line.starts_with('\\') {
             continue;
         }
 
@@ -219,4 +219,102 @@ fn parse_range(range: &str) -> Option<u32> {
     let mut parts = range.split(',');
     let start = parts.next()?;
     start.parse().ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_unchanged_and_change_blocks() {
+        let diff = "@@ -1,3 +1,3 @@\n line1\n-line2\n+line two\n line3\n";
+        let meta = DiffMeta {
+            path: "file.txt".to_string(),
+            additions: 1,
+            deletions: 1,
+        };
+
+        let file_diff = build_file_diff(meta, diff).expect("diff parse should succeed");
+
+        assert_eq!(file_diff.blocks.len(), 3);
+        assert_eq!(
+            file_diff.blocks[0],
+            DiffBlock::Unchanged(UnchangedBlock {
+                old_start: 1,
+                new_start: 1,
+                lines: vec!["line1".to_string()],
+            })
+        );
+        assert_eq!(
+            file_diff.blocks[1],
+            DiffBlock::Change(ChangeBlock {
+                old_start: 2,
+                new_start: 2,
+                old_lines: vec!["line2".to_string()],
+                new_lines: vec!["line two".to_string()],
+            })
+        );
+        assert_eq!(
+            file_diff.blocks[2],
+            DiffBlock::Unchanged(UnchangedBlock {
+                old_start: 3,
+                new_start: 3,
+                lines: vec!["line3".to_string()],
+            })
+        );
+    }
+
+    #[test]
+    fn preserves_blank_lines_in_unchanged_blocks() {
+        let diff = "@@ -1,3 +1,3 @@\n line1\n \n line3\n";
+        let meta = DiffMeta {
+            path: "file.txt".to_string(),
+            additions: 0,
+            deletions: 0,
+        };
+
+        let file_diff = build_file_diff(meta, diff).expect("diff parse should succeed");
+
+        assert_eq!(file_diff.blocks.len(), 1);
+        assert_eq!(
+            file_diff.blocks[0],
+            DiffBlock::Unchanged(UnchangedBlock {
+                old_start: 1,
+                new_start: 1,
+                lines: vec!["line1".to_string(), "".to_string(), "line3".to_string()],
+            })
+        );
+    }
+
+    #[test]
+    fn parses_add_only_and_remove_only_hunks() {
+        let diff = "@@ -1,2 +1,1 @@\n-removed a\n-removed b\n@@ -5,0 +4,2 @@\n+added a\n+added b\n";
+        let meta = DiffMeta {
+            path: "file.txt".to_string(),
+            additions: 2,
+            deletions: 2,
+        };
+
+        let file_diff = build_file_diff(meta, diff).expect("diff parse should succeed");
+
+        assert_eq!(file_diff.blocks.len(), 2);
+        assert_eq!(
+            file_diff.blocks[0],
+            DiffBlock::Change(ChangeBlock {
+                old_start: 1,
+                new_start: 1,
+                old_lines: vec!["removed a".to_string(), "removed b".to_string()],
+                new_lines: Vec::new(),
+            })
+        );
+        assert_eq!(
+            file_diff.blocks[1],
+            DiffBlock::Change(ChangeBlock {
+                old_start: 5,
+                new_start: 4,
+                old_lines: Vec::new(),
+                new_lines: vec!["added a".to_string(), "added b".to_string()],
+            })
+        );
+    }
 }
