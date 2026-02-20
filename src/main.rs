@@ -1,7 +1,7 @@
 use crossterm::event;
 use crossterm::execute;
 use crossterm::terminal::{self, EnterAlternateScreen, LeaveAlternateScreen};
-use ratatui::{backend::CrosstermBackend, prelude::Backend, Terminal};
+use ratatui::{backend::CrosstermBackend, Terminal};
 use splice_rust::{action_from_event, render, Action, App};
 use std::env;
 use std::io;
@@ -58,8 +58,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn run_app<B: Backend>(
-    terminal: &mut Terminal<B>,
+fn run_app(
+    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     repo_path: std::path::PathBuf,
 ) -> io::Result<()> {
     let mut app = App::with_repo_path(repo_path);
