@@ -1,3 +1,4 @@
+mod diff_colors;
 mod errors;
 mod fetch_commits;
 mod fetch_file_diff;
