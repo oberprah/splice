@@ -7,6 +7,7 @@ edition = "2021"
 ratatui = "0.30"
 crossterm = "0.29"
 chrono = "0.4"
+terminal-colorsaurus = "0.4"
 
 [dev-dependencies]
 tempfile = "3"
