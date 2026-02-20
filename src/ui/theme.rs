@@ -144,36 +144,6 @@ impl Default for Theme {
     }
 }
 
-#[deprecated(
-    since = "0.1.0",
-    note = "Use Theme::dark().hash or Theme::light().hash instead"
-)]
-pub const HASH: Style = Style::new().fg(Color::Yellow);
-
-#[deprecated(
-    since = "0.1.0",
-    note = "Use Theme::dark().message or Theme::light().message instead"
-)]
-pub const MESSAGE: Style = Style::new().fg(Color::White);
-
-#[deprecated(
-    since = "0.1.0",
-    note = "Use Theme::dark().refs or Theme::light().refs instead"
-)]
-pub const REFS: Style = Style::new().fg(Color::Blue);
-
-#[deprecated(
-    since = "0.1.0",
-    note = "Use Theme::dark().hash_selected or Theme::light().hash_selected instead"
-)]
-pub const SELECTED_HASH: Style = Style::new().fg(Color::Yellow).add_modifier(Modifier::BOLD);
-
-#[deprecated(
-    since = "0.1.0",
-    note = "Use Theme::dark().message_selected or Theme::light().message_selected instead"
-)]
-pub const SELECTED_MESSAGE: Style = Style::new().fg(Color::White).add_modifier(Modifier::BOLD);
-
 #[cfg(test)]
 mod tests {
     use super::*;
