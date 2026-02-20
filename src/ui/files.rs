@@ -9,15 +9,19 @@ pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect) {
     let mut y = area.y;
     let width = area.width as usize;
 
-    render_commit_header(f, &files.commit, area.x, y, width);
+    render_range_header(f, &files.range, area.x, y, width);
     y += 1;
 
     let empty = Paragraph::new("");
     f.render_widget(empty, Rect::new(area.x, y, area.width, 1));
     y += 1;
 
-    let subject =
-        Paragraph::new(files.commit.message.as_str()).style(Style::default().fg(Color::White));
+    let message = if files.range.is_single_commit() {
+        files.range.end.message.as_str()
+    } else {
+        ""
+    };
+    let subject = Paragraph::new(message).style(Style::default().fg(Color::White));
     f.render_widget(subject, Rect::new(area.x, y, area.width, 1));
     y += 1;
 
@@ -63,14 +67,29 @@ pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect) {
     f.render_widget(help, help_area);
 }
 
-fn render_commit_header(f: &mut Frame, commit: &crate::core::Commit, x: u16, y: u16, width: usize) {
-    let time_ago = format_time_ago(&commit.date);
-    let header = format!(
-        "{} · {} committed {}",
-        commit.short_hash(),
-        commit.author,
-        time_ago
-    );
+fn render_range_header(
+    f: &mut Frame,
+    range: &crate::core::CommitRange,
+    x: u16,
+    y: u16,
+    width: usize,
+) {
+    let header = if range.is_single_commit() {
+        let time_ago = format_time_ago(&range.end.date);
+        format!(
+            "{} · {} committed {}",
+            range.end.short_hash(),
+            range.end.author,
+            time_ago
+        )
+    } else {
+        format!(
+            "{}..{} ({} commits)",
+            range.start.short_hash(),
+            range.end.short_hash(),
+            range.count
+        )
+    };
 
     let truncated: String = header.chars().take(width).collect();
     let para = Paragraph::new(truncated).style(Style::default().fg(Color::Gray));

@@ -1,5 +1,6 @@
 use crate::core::Commit;
 
+#[derive(Clone)]
 pub struct CommitRange {
     pub start: Commit,
     pub end: Commit,
