@@ -8,6 +8,7 @@ pub use log_view::LogView;
 
 use std::path::PathBuf;
 
+use crate::core::DiffSource;
 use crate::git;
 use crate::input::Action;
 
@@ -160,7 +161,7 @@ impl App {
 
                 match git::fetch_file_changes(&repo_path, &range) {
                     Ok(files) => {
-                        let files_view = FilesView::new(range.clone(), files);
+                        let files_view = FilesView::new(DiffSource::CommitRange(range), files);
                         let old_view = std::mem::replace(&mut self.view, View::Files(files_view));
                         self.view_stack.push(old_view);
                     }
@@ -179,7 +180,16 @@ impl App {
                     None => return,
                 };
 
-                match git::fetch_full_file_diff(&repo_path, &files.range, &file.path) {
+                let range = match &files.source {
+                    DiffSource::CommitRange(range) => range.clone(),
+                    DiffSource::Uncommitted(_) => {
+                        self.error =
+                            Some("Diff for uncommitted changes not yet supported".to_string());
+                        return;
+                    }
+                };
+
+                match git::fetch_full_file_diff(&repo_path, &range, &file.path) {
                     Ok(full_diff) => {
                         let meta = crate::domain::diff::DiffMeta {
                             path: file.path.clone(),
@@ -193,7 +203,7 @@ impl App {
                             &full_diff.diff_output,
                         ) {
                             Ok(diff) => {
-                                let diff_view = DiffView::new(files.range.clone(), file, diff);
+                                let diff_view = DiffView::new(range, file, diff);
                                 let old_view =
                                     std::mem::replace(&mut self.view, View::Diff(diff_view));
                                 self.view_stack.push(old_view);

@@ -49,15 +49,15 @@ fn files_view_navigation_with_modifications() {
     h.press(KeyCode::Enter);
     h.assert_snapshot(
         r#"
-    "  e2af8ce · Test committed 6 years ago                                          "
-    "                                                                                "
-    "  Modify and add files                                                          "
+    "  e2af8ce Modify and add files                                                  "
     "                                                                                "
     "  3 files · +5 -1                                                               "
     "  →├── src/                                                                     "
     "   │   ├── M +3 -1  main.rs                                                     "
     "   │   └── A +1 -0  new.rs                                                      "
     "   └── A +1 -0  file_1.txt                                                      "
+    "                                                                                "
+    "                                                                                "
     "                                                                                "
     "                                                                                "
     "                                                                                "
@@ -79,15 +79,15 @@ fn files_view_navigation_with_modifications() {
     h.press(KeyCode::Char('j'));
     h.assert_snapshot(
         r#"
-    "  e2af8ce · Test committed 6 years ago                                          "
-    "                                                                                "
-    "  Modify and add files                                                          "
+    "  e2af8ce Modify and add files                                                  "
     "                                                                                "
     "  3 files · +5 -1                                                               "
     "   ├── src/                                                                     "
     "  →│   ├── M +3 -1  main.rs                                                     "
     "   │   └── A +1 -0  new.rs                                                      "
     "   └── A +1 -0  file_1.txt                                                      "
+    "                                                                                "
+    "                                                                                "
     "                                                                                "
     "                                                                                "
     "                                                                                "
@@ -153,9 +153,7 @@ fn files_view_folder_collapse_expand() {
     h.press(KeyCode::Enter);
     h.assert_snapshot(
         r#"
-    "  01e0c9d · Test committed 6 years ago                                          "
-    "                                                                                "
-    "  Add nested files                                                              "
+    "  01e0c9d Add nested files                                                      "
     "                                                                                "
     "  4 files · +4 -0                                                               "
     "  →├── src/                                                                     "
@@ -176,6 +174,8 @@ fn files_view_folder_collapse_expand() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
+    "                                                                                "
+    "                                                                                "
     "  j/k: navigate  Enter/space: toggle/open  ←/→: collapse/expand  q: back        "
     "#,
     );
@@ -183,13 +183,13 @@ fn files_view_folder_collapse_expand() {
     h.press(KeyCode::Left);
     h.assert_snapshot(
         r#"
-    "  01e0c9d · Test committed 6 years ago                                          "
-    "                                                                                "
-    "  Add nested files                                                              "
+    "  01e0c9d Add nested files                                                      "
     "                                                                                "
     "  4 files · +4 -0                                                               "
     "  →├── src/ +3 -0 (3 files)                                                     "
     "   └── A +1 -0  file_0.txt                                                      "
+    "                                                                                "
+    "                                                                                "
     "                                                                                "
     "                                                                                "
     "                                                                                "
@@ -213,9 +213,7 @@ fn files_view_folder_collapse_expand() {
     h.press(KeyCode::Right);
     h.assert_snapshot(
         r#"
-    "  01e0c9d · Test committed 6 years ago                                          "
-    "                                                                                "
-    "  Add nested files                                                              "
+    "  01e0c9d Add nested files                                                      "
     "                                                                                "
     "  4 files · +4 -0                                                               "
     "  →├── src/                                                                     "
@@ -225,6 +223,8 @@ fn files_view_folder_collapse_expand() {
     "   │   └── utils/                                                               "
     "   │       └── A +1 -0  helper.ts                                               "
     "   └── A +1 -0  file_0.txt                                                      "
+    "                                                                                "
+    "                                                                                "
     "                                                                                "
     "                                                                                "
     "                                                                                "
