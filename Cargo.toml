@@ -1,0 +1,13 @@
+[package]
+name = "splice-rust"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ratatui = "0.29"
+crossterm = "0.28"
+chrono = "0.4"
+
+[dev-dependencies]
+tempfile = "3"
+serial_test = "3"

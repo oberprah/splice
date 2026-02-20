@@ -1,0 +1,5 @@
+unstaged · internal/auth/handler.go · +8 -3
+────────────────────────────────────────────────────────────────────────────────
+  1   package auth                     │   1   package auth                    
+  2 - func Old() {                     │                                       
+                                       │   2 + func New() {                    

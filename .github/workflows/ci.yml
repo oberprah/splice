@@ -9,32 +9,27 @@ permissions:
   contents: read
 
 jobs:
-  lint:
+  fmt:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          go-version-file: 'go.mod'
-      - uses: golangci/golangci-lint-action@v7
+          components: rustfmt
+      - run: cargo fmt -- --check
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          # Keep version in sync with go.mod tool directive
-          version: v2.7.2
+          components: clippy
+      - run: cargo clippy
 
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: 'go.mod'
-      - run: go test ./...
-
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: 'go.mod'
-      - run: go build ./...
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test

@@ -1,0 +1,8 @@
+abc123d · John Doe committed 2 months ago
+
+Add automatic light/dark theme support
+
+3 files · +60 -35
+→├── A +50 -0  added.go
+ ├── D +0 -30  deleted.go
+ └── M +10 -5  modified.go

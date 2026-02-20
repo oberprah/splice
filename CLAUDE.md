@@ -1,91 +1,78 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-## Project Overview
-
 Splice is a terminal-native git log/diff viewer. Lean interface, intuitive navigation, fast keyboard-driven workflow.
+
+## Status
+
+**Transitioning from Go to Rust.** The Go implementation (`go/`) is stable. The Rust implementation lives at the repo root and will eventually replace Go.
+
+## Guidance
+
+- `go/CLAUDE.md` - Go implementation guidance
+- `ARCHITECTURE.md` - Rust architecture and patterns
+
+## Rust Implementation Guidance
+
+This file provides guidance for the Rust implementation of Splice.
+
+## Overview
+
+This is a port of the Go implementation (`go/`). The Go codebase is the source of truth for behavior. See `ARCHITECTURE.md` for architectural decisions and patterns.
+
+**Important:** Read `ARCHITECTURE.md` before working on the Rust implementation.
 
 ## Development Commands
 
 ```bash
-go run .                        # Run application
-go build -o splice .            # Build binary
-go tool golangci-lint run       # Lint
-go test ./...                   # Run all tests
-go test ./internal/ui/states/log/...  # Run tests for a specific package
-go test ./... -update           # Update golden files
+cargo run                  # Run application (uses current directory)
+cargo run -- /path/to/repo # Run with specific repo path
+cargo test                 # Run all tests
+cargo clippy               # Lint
 ```
-
-Setup git hooks (runs lint, tests, build on commit):
-```bash
-git config core.hooksPath .githooks
-```
-
-## Testing the Compiled Binary (For AI Agents)
-
-DO NOT run `./splice` directly - it requires a real terminal and will fail.
-
-Instead, use the tape-runner tool. **Run `./run-tape --help` first to view the complete documentation.**
-
-## Package Architecture
-
-The project follows a layered architecture with strict import rules:
-
-```
-internal/
-├── core/       # Interfaces and messages (no dependencies on other internal packages)
-├── domain/     # Pure business logic (diff parsing, graph layout, syntax highlighting)
-├── git/        # Git command execution
-├── ui/         # UI layer
-│   ├── states/     # Screen states (loading, log, files, diff, error)
-│   ├── components/ # Reusable view components
-│   ├── styles/     # Lip Gloss styling
-│   ├── format/     # Formatting utilities
-│   └── testutils/  # Test helpers and mocks
-└── app/        # Application model and Bubbletea integration
-```
-
-**Import direction**: `app` → `ui/states` → `ui/components` → `domain` → `git` (`core/` is shared by all layers)
-
-## State Machine Architecture
-
-The app is a navigation stack where each screen is a separate state implementing `core.State`:
-
-```
-LoadingState → LogState ⇄ FilesState ⇄ DiffState
-```
-
-Navigation uses typed messages (`core.Push*ScreenMsg`, `core.PopScreenMsg`) handled by `app.Model`.
-
-**State file organization** (`internal/ui/states/<name>/`):
-- `state.go` - State struct and constructor
-- `view.go` - Rendering logic (View method)
-- `update.go` - Event handling (Update method)
-
-**Async data loading pattern**:
-1. User action triggers `tea.Cmd` (e.g., `loadDiff()`)
-2. Cmd executes async, returns a message (e.g., `DiffLoadedMsg`)
-3. Message routed to current state's `Update()` method
-4. Update returns `Push*ScreenMsg` to navigate or new state + command
-
-## Coding Principles
-
-- **Deep functions**: Prefer fewer, more capable functions over many shallow ones
-- **Pure functions**: Favor pure functions; isolate side effects at boundaries
-- **Minimal comments**: Code should be self-explanatory; comment only for non-obvious "why"
-- **Make illegal states unrepresentable**: Use sum types and type design to prevent invalid states
-- **Enums over multiple booleans**: When multiple booleans represent related states, use an enum instead. Multiple booleans create 2^n possible states, most of which are usually invalid.
-- **TDD**: Write tests first when implementing new functionality
 
 ## Testing
 
-**Read `docs/guidelines/testing-guidelines.md` before implementing tests.**
+- **Unit tests**: In source files via `#[cfg(test)] mod tests`
+- **Integration tests**: In `tests/integration_tests/` with `TestRepo`
+- **E2E tests**: One file per test under `tests/e2e/` with inline snapshots
+- **Test entrypoint**: `tests/tests.rs`
+- **Snapshot updates**: Update inline snapshots manually; E2E tests use a small custom snapshot helper
 
-- **Unit tests**: Most functionality
-- **Golden file tests**: TUI rendering (run with `-update` to regenerate)
-- **E2E tests**: Full user workflows (`test/e2e/`)
+## Project Structure
 
-All external dependencies (git commands, time) are mocked via functional options on `app.Model`. Test helpers are in `internal/ui/testutils/`.
+```
+src/
+├── core/           # Shared types (Commit, FileChange, FileStatus)
+├── app/            # App state, views (LogView, FilesView)
+│   ├── mod.rs      # App struct, View enum, update logic
+│   ├── log_view.rs # Log view state
+│   └── files_view.rs # Files view state
+├── git/            # Git operations
+│   ├── mod.rs      # fetch_commits, fetch_file_changes
+│   ├── log.rs      # Log output parsing
+│   └── file_changes.rs # File changes parsing
+├── input.rs        # Event -> Action mapping
+└── ui/             # UI layer (pure rendering)
+    ├── mod.rs      # render dispatcher
+    ├── log.rs      # Log view rendering
+    ├── files.rs    # Files view rendering
+    └── theme.rs    # Styles/colors
+```
 
-**Golden file updates**: After running `go test ./... -update`, always review the git diff of `.golden` files to verify changes are intentional before committing.
+## Key Principles
+
+- **Port from Go**: Reference `go/` for behavior
+- **Use enums**: Rust enums replace Go's sealed interfaces
+- **Test behavior, not code**: Prefer assertions on visible behavior/output
+- **Never mutate the current repo in tests/manual testing**: Always use `TestRepo` temp repos
+- **Real git for tests**: `tempfile` creates isolated repos
+- **Deterministic test data**: `TestRepo` uses fixed git env vars for predictable hashes
+- **Serial + reset counter**: Tests using `TestRepo` should use `serial_test` and call `reset_counter()`
+
+## Ratatui Best Practices (for this repo)
+
+- **Pure rendering**: `ui::render` should be read-only and deterministic
+- **Action mapping**: map keys/events -> `Action`, then apply `App::update`
+- **Controlled redraw**: render on state change or resize, not every loop
+- **Safe terminal cleanup**: guard + panic hook to restore raw mode/screen
+- **Layout clarity**: compute list height from area minus footer rows
