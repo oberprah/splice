@@ -165,7 +165,7 @@ impl App {
                     None => return,
                 };
 
-                match git::fetch_full_file_diff(&repo_path, &files.range.end.hash, &file.path) {
+                match git::fetch_full_file_diff(&repo_path, &files.range, &file.path) {
                     Ok(full_diff) => {
                         let meta = crate::domain::diff::DiffMeta {
                             path: file.path.clone(),
@@ -179,7 +179,7 @@ impl App {
                             &full_diff.diff_output,
                         ) {
                             Ok(diff) => {
-                                let diff_view = DiffView::new(files.range.end.clone(), file, diff);
+                                let diff_view = DiffView::new(files.range.clone(), file, diff);
                                 let old_view =
                                     std::mem::replace(&mut self.view, View::Diff(diff_view));
                                 self.view_stack.push(old_view);

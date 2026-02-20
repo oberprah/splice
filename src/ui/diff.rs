@@ -31,12 +31,19 @@ pub fn render_diff_view(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Them
     let mut y = area.y;
     let width = area.width as usize;
 
+    let range_display = if diff.range.is_single_commit() {
+        diff.range.end.short_hash().to_string()
+    } else {
+        format!(
+            "{}..{}",
+            diff.range.end.short_hash(),
+            diff.range.start.short_hash()
+        )
+    };
+
     let header = format!(
         "{} · {} · +{} -{}",
-        diff.commit.short_hash(),
-        diff.file.path,
-        diff.file.additions,
-        diff.file.deletions
+        range_display, diff.file.path, diff.file.additions, diff.file.deletions
     );
     let header = truncate_to_width(&header, width);
     let header_widget = Paragraph::new(header).style(Style::default().fg(Color::Gray));

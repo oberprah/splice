@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use super::git_command;
+use crate::core::CommitRange;
 
 pub fn fetch_file_diff(repo_path: &Path, commit_hash: &str, path: &str) -> Result<String, String> {
     let output = git_command(repo_path)
@@ -55,16 +56,37 @@ pub struct FullFileDiff {
 
 pub fn fetch_full_file_diff(
     repo_path: &Path,
-    commit_hash: &str,
+    range: &CommitRange,
     path: &str,
 ) -> Result<FullFileDiff, String> {
-    let old_content = fetch_file_content(repo_path, &format!("{}^", commit_hash), path)?;
-    let new_content = fetch_file_content(repo_path, commit_hash, path)?;
-    let diff_output = fetch_file_diff(repo_path, commit_hash, path)?;
+    let old_content = fetch_file_content(repo_path, &format!("{}^", range.start.hash), path)?;
+    let new_content = fetch_file_content(repo_path, &range.end.hash, path)?;
+    let diff_output = fetch_file_diff_range(repo_path, range, path)?;
 
     Ok(FullFileDiff {
         old_content,
         new_content,
         diff_output,
     })
+}
+
+fn fetch_file_diff_range(
+    repo_path: &Path,
+    range: &CommitRange,
+    path: &str,
+) -> Result<String, String> {
+    let diff_spec = range.to_diff_spec();
+    let output = git_command(repo_path)
+        .args(["diff", &diff_spec, "--", path])
+        .output()
+        .map_err(|e| format!("Failed to run git diff: {}", e))?;
+
+    if !output.status.success() {
+        return Err(format!(
+            "git diff failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
