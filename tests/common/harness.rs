@@ -1,6 +1,6 @@
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{backend::TestBackend, Terminal};
-use splice_rust::{action_from_event, render, Action, App};
+use splice_rust::{action_from_event, git, render, Action, App, DiffSource};
 
 use super::{snapshot::assert_snapshot, TestRepo};
 
@@ -22,6 +22,24 @@ impl Harness {
         Self { terminal, app }
     }
 
+    pub fn with_diff_source(repo: &TestRepo, source: DiffSource) -> Result<Self, String> {
+        Self::with_diff_source_and_screen_size(repo, source, 80, 24)
+    }
+
+    pub fn with_diff_source_and_screen_size(
+        repo: &TestRepo,
+        source: DiffSource,
+        width: u16,
+        height: u16,
+    ) -> Result<Self, String> {
+        let files = git::fetch_file_changes_for_source(repo.path(), &source)?;
+        let backend = TestBackend::new(width, height);
+        let terminal = Terminal::new(backend).unwrap();
+        let mut app = App::with_diff_source(repo.path().to_path_buf(), source, files);
+        app.set_viewport_height(height.saturating_sub(1) as usize);
+        Ok(Self { terminal, app })
+    }
+
     pub fn press(&mut self, key: KeyCode) -> &mut Self {
         let event = Event::Key(KeyEvent::new(key, KeyModifiers::NONE));
         self.apply_event(event);
@@ -34,11 +52,17 @@ impl Harness {
         self
     }
 
-    fn apply_event(&mut self, event: Event) {
+    fn apply_event(&mut self, event: Event) -> bool {
         let action = action_from_event(event);
         if action != Action::None {
-            self.app.update(action);
+            self.app.update(action)
+        } else {
+            false
         }
+    }
+
+    pub fn should_exit(&mut self) -> bool {
+        self.app.update(Action::Quit)
     }
 
     pub fn snapshot(&mut self) -> String {
