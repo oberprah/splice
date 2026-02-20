@@ -17,38 +17,148 @@ fn visual_mode() {
     repo.add_file("src/d.txt", "d\n");
     repo.commit("Fourth");
 
-    let mut h = Harness::with_repo(&repo);
+    let mut h = Harness::with_repo_and_screen_size(&repo, 80, 18);
 
-    let log = h.snapshot();
-    assert!(log.contains("→"), "should show normal cursor");
+    h.assert_snapshot(
+        r#"
+    "  → ├ 2ff7a36 (main) Fourth                                                     "
+    "    ├ 57e06a3 Third                                                             "
+    "    ├ 8341314 Second                                                            "
+    "    ├ e253ff5 First                                                             "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "#,
+    );
 
     h.press(KeyCode::Char('v'));
-    let visual = h.snapshot();
-    assert!(
-        visual.contains("█"),
-        "should show visual cursor after pressing v"
+    h.assert_snapshot(
+        r#"
+    "  █ ├ 2ff7a36 (main) Fourth                                                     "
+    "    ├ 57e06a3 Third                                                             "
+    "    ├ 8341314 Second                                                            "
+    "    ├ e253ff5 First                                                             "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "#,
     );
 
     h.press(KeyCode::Char('j'));
-    let selected = h.snapshot();
-    assert!(selected.contains("▌"), "should show selected marker");
-    assert!(selected.contains("█"), "should still show visual cursor");
+    h.assert_snapshot(
+        r#"
+    "  ▌ ├ 2ff7a36 (main) Fourth                                                     "
+    "  █ ├ 57e06a3 Third                                                             "
+    "    ├ 8341314 Second                                                            "
+    "    ├ e253ff5 First                                                             "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "#,
+    );
+
+    h.press(KeyCode::Enter);
+    h.assert_snapshot(
+        r#"
+    "  57e06a3..2ff7a36 (2 commits)                                                  "
+    "                                                                                "
+    "  4 files · +4 -0                                                               "
+    "  →├── src/                                                                     "
+    "   │   ├── A +1 -0  c.txt                                                       "
+    "   │   └── A +1 -0  d.txt                                                       "
+    "   ├── A +1 -0  file_2.txt                                                      "
+    "   └── A +1 -0  file_3.txt                                                      "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "  j/k: navigate  Enter/space: toggle/open  ←/→: collapse/expand  q: back        "
+    "#,
+    );
 
     h.press(KeyCode::Char('q'));
-    let exited = h.snapshot();
-    assert!(exited.contains("→"), "should show normal cursor after exit");
-    assert!(
-        !exited.contains("█"),
-        "should not show visual cursor after exit"
+    h.assert_snapshot(
+        r#"
+    "  ▌ ├ 2ff7a36 (main) Fourth                                                     "
+    "  █ ├ 57e06a3 Third                                                             "
+    "    ├ 8341314 Second                                                            "
+    "    ├ e253ff5 First                                                             "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "#,
     );
 
-    h.press(KeyCode::Char('v'));
-    h.press(KeyCode::Char('j'));
-    h.press(KeyCode::Enter);
-    let files = h.snapshot();
-    assert!(
-        files.contains("(2 commits)"),
-        "should show commit range: {}",
-        files
+    h.press(KeyCode::Char('q'));
+    h.assert_snapshot(
+        r#"
+    "    ├ 2ff7a36 (main) Fourth                                                     "
+    "  → ├ 57e06a3 Third                                                             "
+    "    ├ 8341314 Second                                                            "
+    "    ├ e253ff5 First                                                             "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "#,
     );
 }
