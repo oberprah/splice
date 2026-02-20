@@ -1,8 +1,8 @@
-use crate::core::{CommitRange, FileChange};
+use crate::core::{DiffSource, FileChange};
 use crate::domain::diff::FileDiff;
 
 pub struct DiffView {
-    pub range: CommitRange,
+    pub source: DiffSource,
     pub file: FileChange,
     pub diff: FileDiff,
     pub scroll_offset: usize,
@@ -10,9 +10,9 @@ pub struct DiffView {
 }
 
 impl DiffView {
-    pub fn new(range: CommitRange, file: FileChange, diff: FileDiff) -> Self {
+    pub fn new(source: DiffSource, file: FileChange, diff: FileDiff) -> Self {
         Self {
-            range,
+            source,
             file,
             diff,
             scroll_offset: 0,

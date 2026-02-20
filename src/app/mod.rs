@@ -194,16 +194,9 @@ impl App {
                     None => return,
                 };
 
-                let range = match &files.source {
-                    DiffSource::CommitRange(range) => range.clone(),
-                    DiffSource::Uncommitted(_) => {
-                        self.error =
-                            Some("Diff for uncommitted changes not yet supported".to_string());
-                        return;
-                    }
-                };
+                let source = files.source.clone();
 
-                match git::fetch_full_file_diff(&repo_path, &range, &file.path) {
+                match git::fetch_full_file_diff_for_source(&repo_path, &source, &file.path) {
                     Ok(full_diff) => {
                         let meta = crate::domain::diff::DiffMeta {
                             path: file.path.clone(),
@@ -217,7 +210,7 @@ impl App {
                             &full_diff.diff_output,
                         ) {
                             Ok(diff) => {
-                                let diff_view = DiffView::new(range, file, diff);
+                                let diff_view = DiffView::new(source, file, diff);
                                 let old_view =
                                     std::mem::replace(&mut self.view, View::Diff(diff_view));
                                 self.view_stack.push(old_view);

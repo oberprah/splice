@@ -1,4 +1,5 @@
 use crate::app::DiffView;
+use crate::core::{DiffSource, UncommittedType};
 use crate::domain::diff::{ChangeBlock, DiffBlock, UnchangedBlock};
 use crate::ui::theme::{DiffColors, Theme};
 use ratatui::{prelude::*, widgets::Paragraph};
@@ -31,15 +32,7 @@ pub fn render_diff_view(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Them
     let mut y = area.y;
     let width = area.width as usize;
 
-    let range_display = if diff.range.is_single_commit() {
-        diff.range.end.short_hash().to_string()
-    } else {
-        format!(
-            "{}..{}",
-            diff.range.end.short_hash(),
-            diff.range.start.short_hash()
-        )
-    };
+    let range_display = diff_header_prefix(&diff.source);
 
     let header = format!(
         "{} · {} · +{} -{}",
@@ -69,6 +62,23 @@ pub fn render_diff_view(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Them
         1,
     );
     f.render_widget(help, help_area);
+}
+
+fn diff_header_prefix(source: &DiffSource) -> String {
+    match source {
+        DiffSource::CommitRange(range) => {
+            if range.is_single_commit() {
+                range.end.short_hash().to_string()
+            } else {
+                format!("{}..{}", range.end.short_hash(), range.start.short_hash())
+            }
+        }
+        DiffSource::Uncommitted(uncommitted_type) => match uncommitted_type {
+            UncommittedType::Unstaged => "Unstaged changes".to_string(),
+            UncommittedType::Staged => "Staged changes".to_string(),
+            UncommittedType::All => "Uncommitted changes".to_string(),
+        },
+    }
 }
 
 fn render_diff_lines(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Theme) {

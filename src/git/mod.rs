@@ -4,7 +4,10 @@ mod log;
 mod resolve;
 mod uncommitted;
 
-pub use diff::{fetch_file_content, fetch_file_diff, fetch_full_file_diff, FullFileDiff};
+pub use diff::{
+    fetch_file_content, fetch_file_diff, fetch_full_file_diff, fetch_full_uncommitted_file_diff,
+    FullFileDiff,
+};
 pub use file_changes::parse_file_changes;
 pub use log::parse_log_output;
 pub use resolve::{resolve_commit_range, resolve_diff_source, DiffSpec};
@@ -156,6 +159,19 @@ pub fn fetch_file_changes_for_source(
         DiffSource::CommitRange(range) => fetch_file_changes(repo_path, range),
         DiffSource::Uncommitted(uncommitted_type) => {
             fetch_uncommitted_file_changes(repo_path, *uncommitted_type)
+        }
+    }
+}
+
+pub fn fetch_full_file_diff_for_source(
+    repo_path: &Path,
+    source: &DiffSource,
+    path: &str,
+) -> Result<FullFileDiff, String> {
+    match source {
+        DiffSource::CommitRange(range) => fetch_full_file_diff(repo_path, range, path),
+        DiffSource::Uncommitted(uncommitted_type) => {
+            fetch_full_uncommitted_file_diff(repo_path, *uncommitted_type, path)
         }
     }
 }
