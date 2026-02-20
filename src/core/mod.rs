@@ -1,3 +1,7 @@
+mod cursor;
+
+pub use cursor::{is_in_selection, selection_range, CursorState};
+
 use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
