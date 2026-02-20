@@ -6,6 +6,20 @@ use ratatui::{
     widgets::{List, ListItem, Paragraph},
 };
 
+trait StyleExt {
+    fn bold_if(self, condition: bool) -> Self;
+}
+
+impl StyleExt for Style {
+    fn bold_if(self, condition: bool) -> Self {
+        if condition {
+            self.bold()
+        } else {
+            self
+        }
+    }
+}
+
 enum LineDisplayState {
     None,
     Cursor,
@@ -69,14 +83,15 @@ pub fn render_log_view(
         .map(|(i, commit)| {
             let display_state = get_line_display_state(cursor, i);
             let prefix = display_state.prefix();
+            let is_highlighted = display_state.is_highlighted();
 
-            let hash_style = if display_state.is_highlighted() {
+            let hash_style = if is_highlighted {
                 theme.hash_selected
             } else {
                 theme.hash
             };
 
-            let message_style = if display_state.is_highlighted() {
+            let message_style = if is_highlighted {
                 theme.message_selected
             } else {
                 theme.message
@@ -89,17 +104,20 @@ pub fn render_log_view(
             } else {
                 String::new()
             };
-            spans.push(Span::styled(graph_str, Style::default().fg(Color::Blue)));
+            spans.push(Span::styled(
+                graph_str,
+                Style::default().fg(Color::Blue).bold_if(is_highlighted),
+            ));
 
             spans.push(Span::styled(commit.short_hash(), hash_style));
 
             if !commit.refs.is_empty() {
                 let refs_str = format_refs(&commit.refs);
-                spans.push(Span::raw(" "));
-                spans.push(Span::styled(refs_str, theme.refs));
+                spans.push(Span::styled(" ", message_style));
+                spans.push(Span::styled(refs_str, theme.refs.bold_if(is_highlighted)));
             }
 
-            spans.push(Span::raw(" "));
+            spans.push(Span::styled(" ", message_style));
             spans.push(Span::styled(&commit.message, message_style));
 
             ListItem::new(Line::from(spans))
@@ -110,7 +128,7 @@ pub fn render_log_view(
     f.render_widget(list, area);
 
     let help = Paragraph::new("j/k: navigate  Ctrl+d/u: half-page  q: quit")
-        .style(Style::default().fg(Color::DarkGray))
+        .style(theme.text_muted)
         .alignment(Alignment::Left);
     let help_area = Rect::new(
         area.x,
