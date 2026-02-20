@@ -8,7 +8,7 @@ pub use log_view::LogView;
 
 use std::path::PathBuf;
 
-use crate::core::DiffSource;
+use crate::core::{DiffSource, FileChange};
 use crate::git;
 use crate::input::Action;
 
@@ -56,6 +56,20 @@ impl App {
                 view_stack: Vec::new(),
                 error: Some(e),
             },
+        }
+    }
+
+    pub fn with_diff_source(
+        repo_path: PathBuf,
+        source: DiffSource,
+        files: Vec<FileChange>,
+    ) -> Self {
+        let files_view = FilesView::new(source, files);
+        Self {
+            repo_path: Some(repo_path),
+            view: View::Files(files_view),
+            view_stack: vec![],
+            error: None,
         }
     }
 
