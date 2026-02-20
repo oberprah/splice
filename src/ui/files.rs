@@ -1,5 +1,5 @@
 use crate::app::FilesView;
-use crate::core::FileStatus;
+use crate::core::{DiffSource, FileStatus};
 use crate::domain::filetree::{FolderNode, TreeNode};
 use crate::ui::theme::Theme;
 use ratatui::{
@@ -25,22 +25,12 @@ pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect, theme: &T
     let mut y = area.y;
     let width = area.width as usize;
 
-    render_range_header(f, &files.range, area.x, y, width, theme);
+    render_source_header(f, &files.source, area.x, y, width);
     y += 1;
 
     let empty = Paragraph::new("");
     f.render_widget(empty, Rect::new(area.x, y, area.width, 1));
     y += 1;
-
-    if files.range.is_single_commit() {
-        let subject = Paragraph::new(files.range.end.message.as_str()).style(theme.message);
-        f.render_widget(subject, Rect::new(area.x, y, area.width, 1));
-        y += 1;
-
-        let empty = Paragraph::new("");
-        f.render_widget(empty, Rect::new(area.x, y, area.width, 1));
-        y += 1;
-    }
 
     let total_additions = files.total_additions();
     let total_deletions = files.total_deletions();
@@ -80,59 +70,11 @@ pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect, theme: &T
     f.render_widget(help, help_area);
 }
 
-fn render_range_header(
-    f: &mut Frame,
-    range: &crate::core::CommitRange,
-    x: u16,
-    y: u16,
-    _width: usize,
-    theme: &Theme,
-) {
-    let hash_span = Span::styled(
-        if range.is_single_commit() {
-            range.end.short_hash().to_string()
-        } else {
-            format!(
-                "{}..{} ({} commits)",
-                range.start.short_hash(),
-                range.end.short_hash(),
-                range.count
-            )
-        },
-        theme.hash,
-    );
-
-    let mut spans = vec![hash_span];
-
-    if range.is_single_commit() {
-        let time_ago = format_time_ago(&range.end.date);
-        spans.push(Span::styled(
-            format!(" · {} committed {}", range.end.author, time_ago),
-            theme.text_muted,
-        ));
-    }
-
-    let para = Paragraph::new(Line::from(spans));
-    f.render_widget(para, Rect::new(x, y, _width as u16, 1));
-}
-
-fn format_time_ago(date: &chrono::DateTime<chrono::Utc>) -> String {
-    let now = chrono::Utc::now();
-    let duration = now.signed_duration_since(*date);
-
-    if duration.num_seconds() < 60 {
-        "just now".to_string()
-    } else if duration.num_minutes() < 60 {
-        format!("{} minutes ago", duration.num_minutes())
-    } else if duration.num_hours() < 24 {
-        format!("{} hours ago", duration.num_hours())
-    } else if duration.num_days() < 30 {
-        format!("{} days ago", duration.num_days())
-    } else if duration.num_weeks() < 52 {
-        format!("{} months ago", duration.num_weeks() / 4)
-    } else {
-        format!("{} years ago", duration.num_weeks() / 52)
-    }
+fn render_source_header(f: &mut Frame, source: &DiffSource, x: u16, y: u16, width: usize) {
+    let header = source.header_text();
+    let truncated: String = header.chars().take(width).collect();
+    let para = Paragraph::new(truncated).style(Style::default().fg(Color::Gray));
+    f.render_widget(para, Rect::new(x, y, width as u16, 1));
 }
 
 fn render_tree_list(

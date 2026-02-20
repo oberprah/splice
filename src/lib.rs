@@ -1,3 +1,4 @@
+pub mod cli;
 pub mod core;
 pub mod domain;
 pub mod git;
@@ -8,5 +9,6 @@ pub mod app;
 
 pub use app::View;
 pub use app::*;
+pub use core::{DiffSource, UncommittedType};
 pub use input::*;
 pub use ui::render;

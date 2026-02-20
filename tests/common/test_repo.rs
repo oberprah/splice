@@ -139,6 +139,10 @@ impl TestRepo {
         Self::run_git(&self.path, &["tag", name]);
     }
 
+    pub fn stage_file(&self, path: &str) {
+        Self::run_git(&self.path, &["add", path]);
+    }
+
     fn run_git(path: &std::path::Path, args: &[&str]) {
         let output = Self::git_command(path)
             .args(args)

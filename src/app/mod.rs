@@ -8,6 +8,7 @@ pub use log_view::LogView;
 
 use std::path::PathBuf;
 
+use crate::core::{DiffSource, FileChange};
 use crate::git;
 use crate::input::Action;
 
@@ -55,6 +56,20 @@ impl App {
                 view_stack: Vec::new(),
                 error: Some(e),
             },
+        }
+    }
+
+    pub fn with_diff_source(
+        repo_path: PathBuf,
+        source: DiffSource,
+        files: Vec<FileChange>,
+    ) -> Self {
+        let files_view = FilesView::new(source, files);
+        Self {
+            repo_path: Some(repo_path),
+            view: View::Files(files_view),
+            view_stack: vec![],
+            error: None,
         }
     }
 
@@ -160,7 +175,7 @@ impl App {
 
                 match git::fetch_file_changes(&repo_path, &range) {
                     Ok(files) => {
-                        let files_view = FilesView::new(range.clone(), files);
+                        let files_view = FilesView::new(DiffSource::CommitRange(range), files);
                         let old_view = std::mem::replace(&mut self.view, View::Files(files_view));
                         self.view_stack.push(old_view);
                     }
@@ -179,7 +194,9 @@ impl App {
                     None => return,
                 };
 
-                match git::fetch_full_file_diff(&repo_path, &files.range, &file.path) {
+                let source = files.source.clone();
+
+                match git::fetch_full_file_diff_for_source(&repo_path, &source, &file.path) {
                     Ok(full_diff) => {
                         let meta = crate::domain::diff::DiffMeta {
                             path: file.path.clone(),
@@ -193,7 +210,7 @@ impl App {
                             &full_diff.diff_output,
                         ) {
                             Ok(diff) => {
-                                let diff_view = DiffView::new(files.range.clone(), file, diff);
+                                let diff_view = DiffView::new(source, file, diff);
                                 let old_view =
                                     std::mem::replace(&mut self.view, View::Diff(diff_view));
                                 self.view_stack.push(old_view);
