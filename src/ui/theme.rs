@@ -12,7 +12,9 @@ pub enum ThemeVariant {
 pub struct Theme {
     pub variant: ThemeVariant,
     pub text: Style,
+    pub text_selected: Style,
     pub text_muted: Style,
+    pub text_muted_selected: Style,
     pub selection: Style,
     pub hash: Style,
     pub hash_selected: Style,
@@ -25,11 +27,17 @@ pub struct Theme {
     pub diff_removed: DiffColors,
     pub diff_changed: DiffColors,
     pub additions: Style,
+    pub additions_selected: Style,
     pub deletions: Style,
+    pub deletions_selected: Style,
     pub file_status_added: Style,
+    pub file_status_added_selected: Style,
     pub file_status_modified: Style,
+    pub file_status_modified_selected: Style,
     pub file_status_deleted: Style,
+    pub file_status_deleted_selected: Style,
     pub file_status_renamed: Style,
+    pub file_status_renamed_selected: Style,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -52,7 +60,13 @@ impl Theme {
         Self {
             variant: ThemeVariant::Dark,
             text: Style::default().fg(Color::Rgb(252, 252, 252)),
+            text_selected: Style::default()
+                .fg(Color::Rgb(255, 255, 255))
+                .add_modifier(Modifier::BOLD),
             text_muted: Style::default().fg(Color::Rgb(128, 128, 128)),
+            text_muted_selected: Style::default()
+                .fg(Color::Rgb(200, 200, 200))
+                .add_modifier(Modifier::BOLD),
             selection: Style::default().add_modifier(Modifier::BOLD),
             hash: Style::default().fg(Color::Rgb(255, 175, 0)),
             hash_selected: Style::default()
@@ -81,11 +95,17 @@ impl Theme {
                 fg: Color::Rgb(0x52, 0x9c, 0xff),
             },
             additions: Style::default().fg(Color::Rgb(0, 255, 0)),
+            additions_selected: Style::default().fg(Color::Rgb(64, 255, 64)),
             deletions: Style::default().fg(Color::Rgb(255, 0, 0)),
+            deletions_selected: Style::default().fg(Color::Rgb(255, 96, 96)),
             file_status_added: Style::default().fg(Color::Green),
+            file_status_added_selected: Style::default().fg(Color::Rgb(120, 255, 120)),
             file_status_modified: Style::default().fg(Color::Yellow),
+            file_status_modified_selected: Style::default().fg(Color::Rgb(255, 235, 120)),
             file_status_deleted: Style::default().fg(Color::Red),
+            file_status_deleted_selected: Style::default().fg(Color::Rgb(255, 120, 120)),
             file_status_renamed: Style::default().fg(Color::Cyan),
+            file_status_renamed_selected: Style::default().fg(Color::Rgb(120, 255, 255)),
         }
     }
 
@@ -93,7 +113,13 @@ impl Theme {
         Self {
             variant: ThemeVariant::Light,
             text: Style::default().fg(Color::Rgb(58, 58, 58)),
+            text_selected: Style::default()
+                .fg(Color::Rgb(0, 0, 0))
+                .add_modifier(Modifier::BOLD),
             text_muted: Style::default().fg(Color::Rgb(108, 108, 108)),
+            text_muted_selected: Style::default()
+                .fg(Color::Rgb(58, 58, 58))
+                .add_modifier(Modifier::BOLD),
             selection: Style::default().add_modifier(Modifier::BOLD),
             hash: Style::default().fg(Color::Rgb(215, 135, 0)),
             hash_selected: Style::default()
@@ -122,11 +148,17 @@ impl Theme {
                 fg: Color::Rgb(0x0d, 0x47, 0xa1),
             },
             additions: Style::default().fg(Color::Rgb(0, 128, 0)),
+            additions_selected: Style::default().fg(Color::Rgb(0, 110, 0)),
             deletions: Style::default().fg(Color::Rgb(178, 34, 34)),
+            deletions_selected: Style::default().fg(Color::Rgb(150, 20, 20)),
             file_status_added: Style::default().fg(Color::Green),
+            file_status_added_selected: Style::default().fg(Color::Rgb(0, 120, 0)),
             file_status_modified: Style::default().fg(Color::Yellow),
+            file_status_modified_selected: Style::default().fg(Color::Rgb(180, 140, 0)),
             file_status_deleted: Style::default().fg(Color::Red),
+            file_status_deleted_selected: Style::default().fg(Color::Rgb(160, 20, 20)),
             file_status_renamed: Style::default().fg(Color::Cyan),
+            file_status_renamed_selected: Style::default().fg(Color::Rgb(0, 150, 150)),
         }
     }
 

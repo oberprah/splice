@@ -4,22 +4,9 @@ use crate::domain::filetree::{FolderNode, TreeNode};
 use crate::ui::theme::Theme;
 use ratatui::{
     prelude::*,
+    style::Modifier,
     widgets::{List, ListItem, Paragraph},
 };
-
-trait StyleExt {
-    fn bold_if(self, condition: bool) -> Self;
-}
-
-impl StyleExt for Style {
-    fn bold_if(self, condition: bool) -> Self {
-        if condition {
-            self.bold()
-        } else {
-            self
-        }
-    }
-}
 
 pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect, theme: &Theme) {
     let mut y = area.y;
@@ -121,13 +108,13 @@ fn format_tree_line(
 
     let prefix = if is_selected { "→" } else { " " };
     let prefix_style = if is_selected {
-        theme.selection
+        theme.text_selected
     } else {
-        Style::default()
+        theme.text_muted
     };
     spans.push(Span::styled(prefix, prefix_style));
 
-    let tree_style = Style::default().fg(Color::DarkGray).bold_if(is_selected);
+    let tree_style = Style::default().fg(Color::DarkGray);
     for &has_more_siblings in &item.parent_lines {
         if has_more_siblings {
             spans.push(Span::styled("│   ", tree_style));
@@ -152,6 +139,12 @@ fn format_tree_line(
         }
     }
 
+    if is_selected {
+        for span in &mut spans {
+            span.style = span.style.add_modifier(Modifier::BOLD);
+        }
+    }
+
     Line::from(spans)
 }
 
@@ -168,7 +161,11 @@ fn format_folder_spans(
         format!("{}/", folder.name)
     };
 
-    let name_style = Style::default().fg(Color::Black).bold_if(is_selected);
+    let name_style = if is_selected {
+        theme.text_selected
+    } else {
+        theme.text
+    };
     spans.push(Span::styled(folder_name, name_style));
 
     if !folder.is_expanded {
@@ -179,9 +176,21 @@ fn format_folder_spans(
             "files"
         };
 
-        let muted_style = theme.text_muted.bold_if(is_selected);
-        let additions_style = theme.additions.bold_if(is_selected);
-        let deletions_style = theme.deletions.bold_if(is_selected);
+        let muted_style = if is_selected {
+            theme.text_muted_selected
+        } else {
+            theme.text_muted
+        };
+        let additions_style = if is_selected {
+            theme.additions_selected
+        } else {
+            theme.additions
+        };
+        let deletions_style = if is_selected {
+            theme.deletions_selected
+        } else {
+            theme.deletions
+        };
 
         spans.push(Span::styled(" +", muted_style));
         spans.push(Span::styled(stats.additions.to_string(), additions_style));
@@ -204,22 +213,42 @@ fn format_file_spans(
     let mut spans = Vec::new();
     let file = &file_node.file;
 
-    let status_style = match file.status {
-        FileStatus::Added => theme.file_status_added,
-        FileStatus::Modified => theme.file_status_modified,
-        FileStatus::Deleted => theme.file_status_deleted,
-        FileStatus::Renamed => theme.file_status_renamed,
-    }
-    .bold_if(is_selected);
+    let status_style = if is_selected {
+        match file.status {
+            FileStatus::Added => theme.file_status_added_selected,
+            FileStatus::Modified => theme.file_status_modified_selected,
+            FileStatus::Deleted => theme.file_status_deleted_selected,
+            FileStatus::Renamed => theme.file_status_renamed_selected,
+        }
+    } else {
+        match file.status {
+            FileStatus::Added => theme.file_status_added,
+            FileStatus::Modified => theme.file_status_modified,
+            FileStatus::Deleted => theme.file_status_deleted,
+            FileStatus::Renamed => theme.file_status_renamed,
+        }
+    };
 
     spans.push(Span::styled(
         file.status.status_char().to_string(),
         status_style,
     ));
 
-    let muted_style = theme.text_muted.bold_if(is_selected);
-    let additions_style = theme.additions.bold_if(is_selected);
-    let deletions_style = theme.deletions.bold_if(is_selected);
+    let muted_style = if is_selected {
+        theme.text_muted_selected
+    } else {
+        theme.text_muted
+    };
+    let additions_style = if is_selected {
+        theme.additions_selected
+    } else {
+        theme.additions
+    };
+    let deletions_style = if is_selected {
+        theme.deletions_selected
+    } else {
+        theme.deletions
+    };
 
     if file.is_binary {
         spans.push(Span::styled(" (binary)  ", muted_style));
@@ -233,7 +262,11 @@ fn format_file_spans(
         ));
     }
 
-    let name_style = theme.text.bold_if(is_selected);
+    let name_style = if is_selected {
+        theme.text_selected
+    } else {
+        theme.text
+    };
     spans.push(Span::styled(file_node.name.clone(), name_style));
 
     spans
