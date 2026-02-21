@@ -19,11 +19,35 @@ fn log_view_all_branches_includes_unmerged_branch() {
     repo.commit("D");
 
     let mut head_harness = Harness::with_repo_and_screen_size(&repo, 80, 10);
-    let head_snapshot = head_harness.snapshot();
-    assert!(!head_snapshot.contains("(feature)"));
+    head_harness.assert_snapshot(
+        r#"
+"  → ├ b53b778 (main) D                                                          "
+"    ├ cc4032c B                                                                 "
+"    ├ fe76018 A                                                                 "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+"#,
+    );
 
     let mut all_harness =
         Harness::with_repo_and_log_spec_and_screen_size(&repo, LogSpec::All, 80, 10);
-    let all_snapshot = all_harness.snapshot();
-    assert!(all_snapshot.contains("(feature)"));
+    all_harness.assert_snapshot(
+        r#"
+"  → ├ e8faeba (feature) C                                                       "
+"    │ ├ b53b778 (main) D                                                        "
+"    ├─╯ cc4032c B                                                               "
+"    ├ fe76018 A                                                                 "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+"#,
+    );
 }
