@@ -1,6 +1,6 @@
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{backend::TestBackend, Terminal};
-use splice_rust::{action_from_event, git, render, Action, App, DiffSource};
+use splice_rust::{action_from_event, git, render, Action, App, DiffSource, LogSpec};
 
 use super::{snapshot::assert_snapshot, TestRepo};
 
@@ -11,13 +11,26 @@ pub struct Harness {
 
 impl Harness {
     pub fn with_repo(repo: &TestRepo) -> Self {
-        Self::with_repo_and_screen_size(repo, 80, 24)
+        Self::with_repo_and_log_spec_and_screen_size(repo, LogSpec::Head, 80, 24)
     }
 
     pub fn with_repo_and_screen_size(repo: &TestRepo, width: u16, height: u16) -> Self {
+        Self::with_repo_and_log_spec_and_screen_size(repo, LogSpec::Head, width, height)
+    }
+
+    pub fn with_repo_and_log_spec(repo: &TestRepo, spec: LogSpec) -> Self {
+        Self::with_repo_and_log_spec_and_screen_size(repo, spec, 80, 24)
+    }
+
+    pub fn with_repo_and_log_spec_and_screen_size(
+        repo: &TestRepo,
+        spec: LogSpec,
+        width: u16,
+        height: u16,
+    ) -> Self {
         let backend = TestBackend::new(width, height);
         let terminal = Terminal::new(backend).unwrap();
-        let mut app = App::with_repo_path(repo.path());
+        let mut app = App::with_repo_path_and_log_spec(repo.path(), spec);
         app.set_viewport_height(height.saturating_sub(1) as usize);
         Self { terminal, app }
     }

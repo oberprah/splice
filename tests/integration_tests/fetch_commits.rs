@@ -1,5 +1,6 @@
 use crate::common::{reset_counter, TestRepo};
 use serial_test::serial;
+use splice_rust::core::LogSpec;
 use splice_rust::git::fetch_commits;
 
 #[test]
@@ -8,7 +9,7 @@ fn fetch_commits_returns_single_commit() {
     reset_counter();
     let repo = TestRepo::new();
     repo.commit("Initial commit");
-    let commits = fetch_commits(repo.path()).unwrap();
+    let commits = fetch_commits(repo.path(), LogSpec::Head).unwrap();
 
     assert_eq!(commits.len(), 1);
     assert_eq!(commits[0].message, "Initial commit");
@@ -25,7 +26,7 @@ fn fetch_commits_returns_commits_in_reverse_chronological_order() {
     repo.commit("Second commit");
     repo.commit("Third commit");
 
-    let commits = fetch_commits(repo.path()).unwrap();
+    let commits = fetch_commits(repo.path(), LogSpec::Head).unwrap();
 
     assert_eq!(commits.len(), 3);
     assert_eq!(commits[0].message, "Third commit");
@@ -41,7 +42,7 @@ fn fetch_commits_includes_parent_hashes() {
     repo.commit("First");
     repo.commit("Second");
 
-    let commits = fetch_commits(repo.path()).unwrap();
+    let commits = fetch_commits(repo.path(), LogSpec::Head).unwrap();
 
     assert_eq!(commits.len(), 2);
     assert!(!commits[0].parent_hashes.is_empty());
@@ -54,7 +55,7 @@ fn fetch_commits_includes_author_info() {
     reset_counter();
     let repo = TestRepo::new();
     repo.commit("Test commit");
-    let commits = fetch_commits(repo.path()).unwrap();
+    let commits = fetch_commits(repo.path(), LogSpec::Head).unwrap();
 
     assert_eq!(commits.len(), 1);
     assert!(!commits[0].author.is_empty());
@@ -66,7 +67,7 @@ fn fetch_commits_returns_full_40_char_hash() {
     reset_counter();
     let repo = TestRepo::new();
     repo.commit("Test commit");
-    let commits = fetch_commits(repo.path()).unwrap();
+    let commits = fetch_commits(repo.path(), LogSpec::Head).unwrap();
 
     assert_eq!(commits.len(), 1);
     assert_eq!(commits[0].hash.len(), 40);

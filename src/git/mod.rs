@@ -16,7 +16,7 @@ pub use uncommitted::fetch_uncommitted_file_changes;
 use std::path::Path;
 use std::process::Command;
 
-use crate::core::{Commit, CommitRange, DiffSource, FileChange};
+use crate::core::{Commit, CommitRange, DiffSource, FileChange, LogSpec};
 
 const MAX_COMMITS: usize = 100;
 
@@ -32,16 +32,25 @@ fn git_command(repo_path: &Path) -> Command {
     cmd
 }
 
-pub fn fetch_commits(repo_path: &Path) -> Result<Vec<Commit>, String> {
+pub fn fetch_commits(repo_path: &Path, spec: LogSpec) -> Result<Vec<Commit>, String> {
+    let mut args = vec![
+        "log".to_string(),
+        "--topo-order".to_string(),
+        "--pretty=format:%H%x00%P%x00%d%x00%an%x00%ad%x00%s%x1e".to_string(),
+        "--date=iso-strict".to_string(),
+    ];
+
+    match spec {
+        LogSpec::Head => {}
+        LogSpec::All => args.push("--all".to_string()),
+        LogSpec::Rev(rev) => args.push(rev),
+    }
+
+    args.push("-n".to_string());
+    args.push(MAX_COMMITS.to_string());
+
     let output = git_command(repo_path)
-        .args([
-            "log",
-            "--topo-order",
-            "--pretty=format:%H%x00%P%x00%d%x00%an%x00%ad%x00%s%x1e",
-            "--date=iso-strict",
-            "-n",
-            &MAX_COMMITS.to_string(),
-        ])
+        .args(&args)
         .output()
         .map_err(|e| format!("Failed to run git: {}", e))?;
 
