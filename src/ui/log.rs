@@ -91,12 +91,16 @@ pub fn render_log_view(
     } else {
         summary_base_style
     };
-    let file_word = if summary.file_count == 1 {
-        "file"
+    let summary_text = if summary.is_selectable() {
+        let file_word = if summary.file_count == 1 {
+            "file"
+        } else {
+            "files"
+        };
+        format!("{} · {} {}", summary.label(), summary.file_count, file_word)
     } else {
-        "files"
+        summary.label().to_string()
     };
-    let summary_text = format!("{} · {} {}", summary.label(), summary.file_count, file_word);
     let summary_line = Line::from(vec![
         Span::styled(summary_prefix, summary_style),
         Span::styled(graph_padding.clone(), summary_style),
