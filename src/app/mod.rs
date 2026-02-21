@@ -8,7 +8,7 @@ pub use log_view::LogView;
 
 use std::path::PathBuf;
 
-use crate::core::{DiffSource, FileChange};
+use crate::core::{DiffSource, FileChange, LogSpec};
 use crate::git;
 use crate::input::Action;
 
@@ -42,8 +42,12 @@ impl App {
     }
 
     pub fn with_repo_path(path: impl Into<PathBuf>) -> Self {
+        Self::with_repo_path_and_log_spec(path, LogSpec::Head)
+    }
+
+    pub fn with_repo_path_and_log_spec(path: impl Into<PathBuf>, spec: LogSpec) -> Self {
         let repo_path = path.into();
-        match git::fetch_commits(&repo_path) {
+        match git::fetch_commits(&repo_path, spec) {
             Ok(commits) => Self {
                 repo_path: Some(repo_path),
                 view: View::Log(LogView::new(commits)),

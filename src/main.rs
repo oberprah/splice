@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let repo_path = resolve_repo_path(&command)?;
 
     match command {
-        cli::Command::Log => run_log_app(repo_path),
+        cli::Command::Log(log_args) => run_log_app(repo_path, log_args.spec),
         cli::Command::Diff(spec) => {
             let diff_spec = git::DiffSpec {
                 raw: spec.raw,
@@ -59,7 +59,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 fn resolve_repo_path(command: &cli::Command) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let path_arg = match command {
-        cli::Command::Log => env::args().nth(1),
+        cli::Command::Log(log_args) => log_args.path.clone(),
         cli::Command::Diff(_) => None,
     };
 
@@ -80,7 +80,10 @@ fn resolve_repo_path(command: &cli::Command) -> Result<PathBuf, Box<dyn std::err
     }
 }
 
-fn run_log_app(repo_path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+fn run_log_app(
+    repo_path: PathBuf,
+    log_spec: splice_rust::core::LogSpec,
+) -> Result<(), Box<dyn std::error::Error>> {
     terminal::enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen)?;
@@ -96,7 +99,10 @@ fn run_log_app(repo_path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let res = run_app(&mut terminal, App::with_repo_path(repo_path));
+    let res = run_app(
+        &mut terminal,
+        App::with_repo_path_and_log_spec(repo_path, log_spec),
+    );
 
     if let Err(err) = res {
         eprintln!("Error: {err}");
