@@ -59,6 +59,7 @@ fn log_view_complex_graph_navigation() {
 
     h.assert_snapshot(
         r###"
+    "      Working tree clean                                                        "
     "  → ├ d91fc04 (main) Linear 11                                                  "
     "    ├ 32e3e44 Linear 10                                                         "
     "    ├ a561433 Linear 9                                                          "
@@ -81,7 +82,6 @@ fn log_view_complex_graph_navigation() {
     "    ├─│─┤ 16b8252 Merge hotfix                                                  "
     "    │ │ ├ e5790ed (hotfix) E                                                    "
     "    ├─┼─╯ 3c1ac31 Merge feature-1                                               "
-    "    │ ├ e8faeba (feature-1) C                                                   "
     "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
     "###,
     );
@@ -89,6 +89,7 @@ fn log_view_complex_graph_navigation() {
     h.press_ctrl(KeyCode::Char('d'));
     h.assert_snapshot(
         r###"
+    "      Working tree clean                                                        "
     "    ├ d91fc04 (main) Linear 11                                                  "
     "    ├ 32e3e44 Linear 10                                                         "
     "    ├ a561433 Linear 9                                                          "
@@ -111,7 +112,6 @@ fn log_view_complex_graph_navigation() {
     "    ├─│─┤ 16b8252 Merge hotfix                                                  "
     "    │ │ ├ e5790ed (hotfix) E                                                    "
     "    ├─┼─╯ 3c1ac31 Merge feature-1                                               "
-    "    │ ├ e8faeba (feature-1) C                                                   "
     "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
     "###,
     );
@@ -119,7 +119,7 @@ fn log_view_complex_graph_navigation() {
     h.press_ctrl(KeyCode::Char('d'));
     h.assert_snapshot(
         r###"
-    "    ├ d91fc04 (main) Linear 11                                                  "
+    "      Working tree clean                                                        "
     "    ├ 32e3e44 Linear 10                                                         "
     "    ├ a561433 Linear 9                                                          "
     "    ├ b670e03 Linear 8                                                          "
@@ -149,7 +149,7 @@ fn log_view_complex_graph_navigation() {
     h.press(KeyCode::Char('j'));
     h.assert_snapshot(
         r###"
-    "    ├ 32e3e44 Linear 10                                                         "
+    "      Working tree clean                                                        "
     "    ├ a561433 Linear 9                                                          "
     "    ├ b670e03 Linear 8                                                          "
     "    ├ b091d37 Linear 7                                                          "
@@ -179,7 +179,7 @@ fn log_view_complex_graph_navigation() {
     h.press_ctrl(KeyCode::Char('u'));
     h.assert_snapshot(
         r###"
-    "    ├ 32e3e44 Linear 10                                                         "
+    "      Working tree clean                                                        "
     "    ├ a561433 Linear 9                                                          "
     "    ├ b670e03 Linear 8                                                          "
     "    ├ b091d37 Linear 7                                                          "
@@ -209,7 +209,7 @@ fn log_view_complex_graph_navigation() {
     h.press(KeyCode::Char('k'));
     h.assert_snapshot(
         r###"
-    "    ├ 32e3e44 Linear 10                                                         "
+    "      Working tree clean                                                        "
     "    ├ a561433 Linear 9                                                          "
     "    ├ b670e03 Linear 8                                                          "
     "    ├ b091d37 Linear 7                                                          "

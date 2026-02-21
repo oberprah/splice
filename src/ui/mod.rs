@@ -31,7 +31,10 @@ pub fn render(f: &mut Frame, app: &mut App) {
         size.height.saturating_sub(LOG_AREA_BOTTOM_MARGIN),
     );
 
-    let viewport_height = area.height.saturating_sub(1) as usize;
+    let viewport_height = match &app.view {
+        View::Log(_) => area.height.saturating_sub(2) as usize,
+        _ => area.height.saturating_sub(1) as usize,
+    };
     app.set_viewport_height(viewport_height);
 
     let theme = Theme::detect_theme();
@@ -42,6 +45,7 @@ pub fn render(f: &mut Frame, app: &mut App) {
                 f,
                 &log.commits,
                 &log.graph_layout,
+                &log.summary,
                 &log.cursor,
                 log.scroll_offset,
                 area,

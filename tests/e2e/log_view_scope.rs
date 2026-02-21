@@ -21,10 +21,10 @@ fn log_view_all_branches_includes_unmerged_branch() {
     let mut head_harness = Harness::with_repo_and_screen_size(&repo, 80, 10);
     head_harness.assert_snapshot(
         r#"
+"      Working tree clean                                                        "
 "  → ├ b53b778 (main) D                                                          "
 "    ├ cc4032c B                                                                 "
 "    ├ fe76018 A                                                                 "
-"                                                                                "
 "                                                                                "
 "                                                                                "
 "                                                                                "
@@ -38,11 +38,11 @@ fn log_view_all_branches_includes_unmerged_branch() {
         Harness::with_repo_and_log_spec_and_screen_size(&repo, LogSpec::All, 80, 10);
     all_harness.assert_snapshot(
         r#"
+"      Working tree clean                                                        "
 "  → ├ e8faeba (feature) C                                                       "
 "    │ ├ b53b778 (main) D                                                        "
 "    ├─╯ cc4032c B                                                               "
 "    ├ fe76018 A                                                                 "
-"                                                                                "
 "                                                                                "
 "                                                                                "
 "                                                                                "

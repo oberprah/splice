@@ -11,7 +11,7 @@ pub use diff::{
 pub use file_changes::parse_file_changes;
 pub use log::parse_log_output;
 pub use resolve::{resolve_commit_range, resolve_diff_source, DiffSpec};
-pub use uncommitted::fetch_uncommitted_file_changes;
+pub use uncommitted::{fetch_uncommitted_file_changes, fetch_uncommitted_summary};
 
 use std::path::Path;
 use std::process::Command;

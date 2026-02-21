@@ -19,9 +19,9 @@ fn files_view_navigation_with_modifications() {
 
     h.assert_snapshot(
         r#"
+    "      Working tree clean                                                        "
     "  → ├ e2af8ce (main) Modify and add files                                       "
     "    ├ c500da6 Initial commit                                                    "
-    "                                                                                "
     "                                                                                "
     "                                                                                "
     "                                                                                "
@@ -109,9 +109,9 @@ fn files_view_navigation_with_modifications() {
     h.press(KeyCode::Char('q'));
     h.assert_snapshot(
         r#"
+    "      Working tree clean                                                        "
     "  → ├ e2af8ce (main) Modify and add files                                       "
     "    ├ c500da6 Initial commit                                                    "
-    "                                                                                "
     "                                                                                "
     "                                                                                "
     "                                                                                "

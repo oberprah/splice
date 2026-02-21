@@ -45,3 +45,39 @@ pub fn fetch_uncommitted_file_changes(
 
     parse_file_changes(&numstat, &name_status)
 }
+
+fn diff_has_changes(repo_path: &Path, args: &[&str]) -> Result<bool, String> {
+    let output = git_command(repo_path)
+        .args(args)
+        .arg("--quiet")
+        .output()
+        .map_err(|e| format!("Failed to run git diff: {}", e))?;
+
+    if output.status.success() {
+        Ok(false)
+    } else if output.status.code() == Some(1) {
+        Ok(true)
+    } else {
+        Err(format!(
+            "git diff --quiet failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        ))
+    }
+}
+
+pub fn fetch_uncommitted_summary(
+    repo_path: &Path,
+) -> Result<(Option<UncommittedType>, usize), String> {
+    let has_unstaged = diff_has_changes(repo_path, &["diff"])?;
+    let has_staged = diff_has_changes(repo_path, &["diff", "--staged"])?;
+
+    let uncommitted_type = match (has_unstaged, has_staged) {
+        (false, false) => return Ok((None, 0)),
+        (true, false) => UncommittedType::Unstaged,
+        (false, true) => UncommittedType::Staged,
+        (true, true) => UncommittedType::All,
+    };
+
+    let files = fetch_uncommitted_file_changes(repo_path, uncommitted_type)?;
+    Ok((Some(uncommitted_type), files.len()))
+}
