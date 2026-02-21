@@ -21,11 +21,11 @@ fn visual_mode() {
 
     h.assert_snapshot(
         r#"
+    "      Working tree clean · 0 files                                              "
     "  → ├ 2ff7a36 (main) Fourth                                                     "
     "    ├ 57e06a3 Third                                                             "
     "    ├ 8341314 Second                                                            "
     "    ├ e253ff5 First                                                             "
-    "                                                                                "
     "                                                                                "
     "                                                                                "
     "                                                                                "
@@ -45,11 +45,11 @@ fn visual_mode() {
     h.press(KeyCode::Char('v'));
     h.assert_snapshot(
         r#"
+    "      Working tree clean · 0 files                                              "
     "  █ ├ 2ff7a36 (main) Fourth                                                     "
     "    ├ 57e06a3 Third                                                             "
     "    ├ 8341314 Second                                                            "
     "    ├ e253ff5 First                                                             "
-    "                                                                                "
     "                                                                                "
     "                                                                                "
     "                                                                                "
@@ -69,11 +69,11 @@ fn visual_mode() {
     h.press(KeyCode::Char('j'));
     h.assert_snapshot(
         r#"
+    "      Working tree clean · 0 files                                              "
     "  ▌ ├ 2ff7a36 (main) Fourth                                                     "
     "  █ ├ 57e06a3 Third                                                             "
     "    ├ 8341314 Second                                                            "
     "    ├ e253ff5 First                                                             "
-    "                                                                                "
     "                                                                                "
     "                                                                                "
     "                                                                                "
@@ -117,11 +117,11 @@ fn visual_mode() {
     h.press(KeyCode::Char('q'));
     h.assert_snapshot(
         r#"
+    "      Working tree clean · 0 files                                              "
     "  ▌ ├ 2ff7a36 (main) Fourth                                                     "
     "  █ ├ 57e06a3 Third                                                             "
     "    ├ 8341314 Second                                                            "
     "    ├ e253ff5 First                                                             "
-    "                                                                                "
     "                                                                                "
     "                                                                                "
     "                                                                                "
@@ -141,11 +141,11 @@ fn visual_mode() {
     h.press(KeyCode::Char('q'));
     h.assert_snapshot(
         r#"
+    "      Working tree clean · 0 files                                              "
     "    ├ 2ff7a36 (main) Fourth                                                     "
     "  → ├ 57e06a3 Third                                                             "
     "    ├ 8341314 Second                                                            "
     "    ├ e253ff5 First                                                             "
-    "                                                                                "
     "                                                                                "
     "                                                                                "
     "                                                                                "

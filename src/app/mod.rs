@@ -4,7 +4,7 @@ mod log_view;
 
 pub use diff_view::DiffView;
 pub use files_view::FilesView;
-pub use log_view::LogView;
+pub use log_view::{LogSummary, LogView};
 
 use std::path::PathBuf;
 
@@ -49,8 +49,19 @@ impl App {
         let repo_path = path.into();
         match git::fetch_commits(&repo_path, spec) {
             Ok(commits) => Self {
+                view: {
+                    let mut log = LogView::new(commits);
+                    if let Ok((uncommitted_type, file_count)) =
+                        git::fetch_uncommitted_summary(&repo_path)
+                    {
+                        log.set_summary(LogSummary {
+                            uncommitted_type,
+                            file_count,
+                        });
+                    }
+                    View::Log(log)
+                },
                 repo_path: Some(repo_path),
-                view: View::Log(LogView::new(commits)),
                 view_stack: Vec::new(),
                 error: None,
             },
@@ -171,7 +182,24 @@ impl App {
 
     fn open_selected(&mut self) {
         if let View::Log(log) = &self.view {
-            if let Some(range) = log.get_selected_range() {
+            if let Some(uncommitted_type) = log.selected_uncommitted_type() {
+                let repo_path = match &self.repo_path {
+                    Some(p) => p.clone(),
+                    None => return,
+                };
+
+                let source = DiffSource::Uncommitted(uncommitted_type);
+                match git::fetch_file_changes_for_source(&repo_path, &source) {
+                    Ok(files) => {
+                        let files_view = FilesView::new(source, files);
+                        let old_view = std::mem::replace(&mut self.view, View::Files(files_view));
+                        self.view_stack.push(old_view);
+                    }
+                    Err(e) => {
+                        self.error = Some(e);
+                    }
+                }
+            } else if let Some(range) = log.get_selected_range() {
                 let repo_path = match &self.repo_path {
                     Some(p) => p.clone(),
                     None => return,

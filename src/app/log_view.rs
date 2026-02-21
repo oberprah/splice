@@ -1,5 +1,33 @@
-use crate::core::{selection_range, Commit, CommitRange, CursorState};
+use crate::core::{selection_range, Commit, CommitRange, CursorState, UncommittedType};
 use crate::domain::graph::{compute_layout, GraphCommit, Layout};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LogSummary {
+    pub uncommitted_type: Option<UncommittedType>,
+    pub file_count: usize,
+}
+
+impl LogSummary {
+    pub fn clean() -> Self {
+        Self {
+            uncommitted_type: None,
+            file_count: 0,
+        }
+    }
+
+    pub fn is_selectable(&self) -> bool {
+        self.uncommitted_type.is_some()
+    }
+
+    pub fn label(&self) -> &'static str {
+        match self.uncommitted_type {
+            Some(UncommittedType::Staged) => "Staged changes",
+            Some(UncommittedType::Unstaged) => "Unstaged changes",
+            Some(UncommittedType::All) => "Uncommitted changes",
+            None => "Working tree clean",
+        }
+    }
+}
 
 pub struct LogView {
     pub commits: Vec<Commit>,
@@ -7,6 +35,7 @@ pub struct LogView {
     pub cursor: CursorState,
     pub scroll_offset: usize,
     pub viewport_height: usize,
+    pub summary: LogSummary,
 }
 
 impl LogView {
@@ -19,13 +48,30 @@ impl LogView {
             })
             .collect();
         let graph_layout = compute_layout(&graph_commits);
+        let summary = LogSummary::clean();
+        let cursor = if commits.is_empty() {
+            CursorState::Normal { pos: 0 }
+        } else {
+            CursorState::Normal { pos: 1 }
+        };
         Self {
             commits,
             graph_layout,
-            cursor: CursorState::Normal { pos: 0 },
+            cursor,
             scroll_offset: 0,
             viewport_height: 0,
+            summary,
         }
+    }
+
+    pub fn set_summary(&mut self, summary: LogSummary) {
+        self.summary = summary;
+        if self.summary.is_selectable() {
+            self.cursor = CursorState::Normal { pos: 0 };
+        } else if !self.commits.is_empty() && self.cursor.position() == 0 {
+            self.cursor = CursorState::Normal { pos: 1 };
+        }
+        self.clamp_scroll_offset();
     }
 
     pub fn set_viewport_height(&mut self, height: usize) {
@@ -34,24 +80,49 @@ impl LogView {
     }
 
     fn clamp_scroll_offset(&mut self) {
-        if self.commits.is_empty() {
+        let total = self.entry_count();
+        if total == 0 {
             self.cursor = CursorState::Normal { pos: 0 };
             self.scroll_offset = 0;
             return;
         }
-        let pos = self.cursor.position();
-        if pos < self.scroll_offset {
-            self.scroll_offset = pos;
-        } else if self.viewport_height > 0 && pos >= self.scroll_offset + self.viewport_height {
-            self.scroll_offset = pos - self.viewport_height + 1;
+
+        if self.commits.is_empty() {
+            let pos = if self.summary.is_selectable() { 0 } else { 0 };
+            self.cursor = CursorState::Normal { pos };
+            self.scroll_offset = 0;
+            return;
+        }
+
+        let min_pos = self.min_selectable_index();
+        let max_pos = total.saturating_sub(1);
+        let pos = self.cursor.position().clamp(min_pos, max_pos);
+
+        self.cursor = match self.cursor {
+            CursorState::Normal { .. } => CursorState::Normal { pos },
+            CursorState::Visual { anchor, .. } => CursorState::Visual {
+                pos,
+                anchor: anchor.clamp(min_pos, max_pos),
+            },
+        };
+
+        if let Some(commit_index) = self.selected_commit_index() {
+            if commit_index < self.scroll_offset {
+                self.scroll_offset = commit_index;
+            } else if self.viewport_height > 0
+                && commit_index >= self.scroll_offset + self.viewport_height
+            {
+                self.scroll_offset = commit_index - self.viewport_height + 1;
+            }
         }
     }
 
     pub fn move_down(&mut self, amount: usize) {
-        if self.commits.is_empty() {
+        let total = self.entry_count();
+        if total == 0 {
             return;
         }
-        let last = self.commits.len().saturating_sub(1);
+        let last = total.saturating_sub(1);
         let new_pos = self.cursor.position().saturating_add(amount).min(last);
         self.cursor = match self.cursor {
             CursorState::Normal { .. } => CursorState::Normal { pos: new_pos },
@@ -64,7 +135,8 @@ impl LogView {
     }
 
     pub fn move_up(&mut self, amount: usize) {
-        if self.commits.is_empty() {
+        let total = self.entry_count();
+        if total == 0 {
             return;
         }
         let new_pos = self.cursor.position().saturating_sub(amount);
@@ -87,7 +159,16 @@ impl LogView {
     }
 
     pub fn selected_commit(&self) -> Option<&Commit> {
-        self.commits.get(self.cursor.position())
+        let index = self.selected_commit_index()?;
+        self.commits.get(index)
+    }
+
+    pub fn selected_uncommitted_type(&self) -> Option<UncommittedType> {
+        if self.cursor.position() == 0 {
+            self.summary.uncommitted_type
+        } else {
+            None
+        }
     }
 
     pub fn is_visual_mode(&self) -> bool {
@@ -95,7 +176,7 @@ impl LogView {
     }
 
     pub fn enter_visual_mode(&mut self) {
-        if self.commits.is_empty() {
+        if self.selected_commit().is_none() {
             return;
         }
         let pos = self.cursor.position();
@@ -108,12 +189,12 @@ impl LogView {
     }
 
     pub fn get_selected_range(&self) -> Option<CommitRange> {
-        if self.commits.is_empty() {
+        let (min, max) = selection_range(&self.cursor);
+        if min == 0 || max == 0 {
             return None;
         }
-        let (min, max) = selection_range(&self.cursor);
-        let end = self.commits.get(min)?.clone();
-        let start = self.commits.get(max)?.clone();
+        let end = self.commits.get(min - 1)?.clone();
+        let start = self.commits.get(max - 1)?.clone();
         let count = max - min + 1;
         Some(CommitRange {
             start,
@@ -121,6 +202,27 @@ impl LogView {
             count,
             include_start: true,
         })
+    }
+
+    fn entry_count(&self) -> usize {
+        1 + self.commits.len()
+    }
+
+    fn min_selectable_index(&self) -> usize {
+        if self.summary.is_selectable() || self.commits.is_empty() {
+            0
+        } else {
+            1
+        }
+    }
+
+    fn selected_commit_index(&self) -> Option<usize> {
+        let pos = self.cursor.position();
+        if pos == 0 {
+            None
+        } else {
+            Some(pos - 1)
+        }
     }
 }
 
@@ -145,9 +247,9 @@ mod tests {
     }
 
     #[test]
-    fn new_initializes_cursor_to_normal_pos_0() {
+    fn new_initializes_cursor_to_first_commit() {
         let view = LogView::new(make_commits(3));
-        assert_eq!(view.cursor_position(), 0);
+        assert_eq!(view.cursor_position(), 1);
         assert!(!view.is_visual_mode());
     }
 
@@ -279,7 +381,7 @@ mod tests {
     #[test]
     fn get_selected_range_visual_mode_returns_correct_range() {
         let mut view = LogView::new(make_commits(5));
-        view.cursor = CursorState::Visual { pos: 0, anchor: 2 };
+        view.cursor = CursorState::Visual { pos: 1, anchor: 3 };
         let range = view.get_selected_range().unwrap();
         assert_eq!(range.count, 3);
         assert_eq!(range.start.hash, "hash2");
@@ -289,7 +391,7 @@ mod tests {
     #[test]
     fn get_selected_range_visual_mode_with_reversed_pos_anchor() {
         let mut view = LogView::new(make_commits(5));
-        view.cursor = CursorState::Visual { pos: 4, anchor: 2 };
+        view.cursor = CursorState::Visual { pos: 5, anchor: 3 };
         let range = view.get_selected_range().unwrap();
         assert_eq!(range.count, 3);
         assert_eq!(range.start.hash, "hash4");
