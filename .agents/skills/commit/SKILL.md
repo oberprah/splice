@@ -19,5 +19,5 @@ description: Always use this skill when committing in this repository. Never use
 - **Include rationale**: Briefly explain why the change was necessary
 - **High information density**: Avoid obvious details
 - **Verified facts only**: No unverified performance claims
-- **Line length**: Aim for ≤50 chars in subject, ≤72 chars per line in body
+- **Line length**: Aim for <=50 chars in subject, <=72 chars per line in body
 - **No attribution**: Omit Claude Code co-author tags

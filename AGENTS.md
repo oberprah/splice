@@ -1,4 +1,4 @@
-# CLAUDE.md
+# AGENTS.md
 
 **This is a living document**. Update it often, but keep it lean. Update it when you learn something that would have helped you move faster, when the UI changes, or when guidance becomes outdated.
 
