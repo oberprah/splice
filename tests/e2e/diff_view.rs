@@ -210,3 +210,56 @@ impl Calculator {
 "#,
     );
 }
+
+#[test]
+#[serial]
+fn diff_view_separator_with_wide_glyphs() {
+    reset_counter();
+
+    let repo = TestRepo::new();
+    let original = r#"impl LineDisplayState {
+    fn prefix(&self) -> &'static str {
+        match self {
+            LineDisplayState::Cursor => "→ ",
+            LineDisplayState::Selected => "▌ ",
+        }
+    }
+}
+"#;
+    let updated = r#"impl LineDisplayState {
+    fn prefix(&self) -> &'static str {
+        match self {
+            LineDisplayState::None => "  ",
+            LineDisplayState::Cursor => "→ ",
+            LineDisplayState::Selected => "▌ ",
+        }
+    }
+}
+"#;
+
+    repo.add_file("src/ui/log.rs", original);
+    repo.commit("Add line display state");
+    repo.modify_file("src/ui/log.rs", updated);
+    repo.commit("Add none state");
+
+    let mut h = Harness::with_repo_and_screen_size(&repo, 120, 10);
+    h.press(KeyCode::Enter);
+    h.press(KeyCode::Right);
+    h.press(KeyCode::Char('j'));
+    h.press(KeyCode::Enter);
+
+    h.assert_snapshot(
+        r#"
+"  b0799a4 · src/ui/log.rs · +1 -0                                                                                       "
+"                                                                                                                        "
+"    1   impl LineDisplayState {                           │   1   impl LineDisplayState {                               "
+"    2       fn prefix(&self) -> &'static str {            │   2       fn prefix(&self) -> &'static str {                "
+"    3           match self {                              │   3           match self {                                  "
+"                                                          │   4 +             LineDisplayState::None => "  ",           "
+"    4               LineDisplayState::Cursor => "→ ",     │   5               LineDisplayState::Cursor => "→ ",         "
+"    5               LineDisplayState::Selected => "▌ ",   │   6               LineDisplayState::Selected => "▌ ",       "
+"    6           }                                         │   7           }                                             "
+"  j/k: scroll  q: back                                                                                                  "
+"#,
+    );
+}

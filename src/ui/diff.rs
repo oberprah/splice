@@ -234,8 +234,9 @@ fn pad_or_trim(input: &str, width: usize) -> String {
         return chars.into_iter().collect();
     }
     let mut result: String = chars.into_iter().collect();
-    if result.len() < width {
-        result.push_str(&" ".repeat(width - result.len()));
+    let result_len = result.chars().count();
+    if result_len < width {
+        result.push_str(&" ".repeat(width - result_len));
     }
     result
 }
@@ -255,14 +256,14 @@ fn format_cell_styled(
     let sign_str = sign.to_string();
     let text_str = format!(" {}", text);
 
-    let total_len = line_num_str.len() + sign_str.len() + text_str.len();
+    let line_num_len = line_num_str.chars().count();
+    let sign_len = sign_str.chars().count();
+    let total_len = line_num_len + sign_len + text_str.chars().count();
     let padded_text = if total_len < width {
         format!("{}{}", text_str, " ".repeat(width - total_len))
     } else if total_len > width {
-        text_str
-            .chars()
-            .take(width - line_num_str.len() - sign_str.len())
-            .collect()
+        let available_text_width = width.saturating_sub(line_num_len + sign_len);
+        text_str.chars().take(available_text_width).collect()
     } else {
         text_str
     };
