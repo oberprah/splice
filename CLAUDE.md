@@ -38,7 +38,7 @@ Quick snapshots show how users navigate log, files, and diff views.
 "    2                                 │   2                                     "
 "   16 -     pub fn multiply(&self, a: │  16 +     pub fn mul(&self, a: i32,     "
 "   17 -         a * b                 │  17 +         a.checked_mul(b).unwra    "
-"  j/k: scroll  q: back                                                          "
+"  j/k: scroll  n/p: next/prev diff  q: back                                     "
 ```
 
 More expressive snapshots live inline in E2E tests under `tests/e2e/`. Treat these snapshots as system documentation for expected UI behavior, and check them when changing UI.
