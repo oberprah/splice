@@ -59,20 +59,15 @@ impl DiffView {
         let current_range = ranges[current_idx];
 
         if focus < current_range.start {
-            return self.set_content_start_offset(
-                self.aligned_content_start_for_hunk_start(current_range.start),
-            );
+            return self.set_focus_line(current_range.start);
         }
 
         if self.should_advance_within_range(current_range) {
-            return self
-                .set_content_start_offset(self.next_content_offset_within_range(current_range));
+            return self.set_focus_line(self.next_focus_line_within_range(current_range));
         }
 
         if let Some(next_range) = ranges.get(current_idx + 1) {
-            return self.set_content_start_offset(
-                self.aligned_content_start_for_hunk_start(next_range.start),
-            );
+            return self.set_focus_line(next_range.start);
         }
 
         false
@@ -91,8 +86,7 @@ impl DiffView {
 
         let current_range = ranges[current_idx];
         if focus < current_range.end && self.should_rewind_within_range(current_range) {
-            return self
-                .set_content_start_offset(self.prev_content_offset_within_range(current_range));
+            return self.set_focus_line(self.prev_focus_line_within_range(current_range));
         }
 
         if current_idx == 0 {
@@ -101,16 +95,14 @@ impl DiffView {
 
         let previous_range = ranges[current_idx - 1];
 
-        self.set_content_start_offset(
-            self.aligned_content_start_for_hunk_start(previous_range.start),
-        )
+        self.set_focus_line(previous_range.start)
     }
 
     pub fn jump_to_first_diff(&mut self) -> bool {
         let Some(first_range) = self.change_ranges().first().copied() else {
             return false;
         };
-        self.set_content_start_offset(self.aligned_content_start_for_hunk_start(first_range.start))
+        self.set_focus_line(first_range.start)
     }
 
     pub fn jump_to_last_diff(&mut self) -> bool {
@@ -119,12 +111,12 @@ impl DiffView {
         };
 
         let target = if self.viewport_height > 0 && last_range.len() > self.viewport_height {
-            last_range.end.saturating_sub(self.viewport_height)
+            last_range.end
         } else {
-            self.aligned_content_start_for_hunk_start(last_range.start)
+            last_range.start
         };
 
-        self.set_content_start_offset(target)
+        self.set_focus_line(target)
     }
 
     fn clamp_scroll_offset(&mut self) {
@@ -135,33 +127,29 @@ impl DiffView {
     }
 
     fn max_scroll_offset(&self) -> usize {
-        let total = self.diff.total_line_count();
-        total
-            .saturating_sub(self.viewport_height)
-            .saturating_add(self.focus_offset())
+        self.diff.total_line_count()
     }
 
     fn should_advance_within_range(&self, range: ChangeRange) -> bool {
         self.viewport_height > 0
             && range.len() > self.viewport_height
-            && self.content_start_offset() < range.end.saturating_sub(self.viewport_height)
+            && self.focus_line() < range.end
     }
 
-    fn next_content_offset_within_range(&self, range: ChangeRange) -> usize {
-        let max_offset = range.end.saturating_sub(self.viewport_height);
-        self.content_start_offset()
+    fn next_focus_line_within_range(&self, range: ChangeRange) -> usize {
+        self.focus_line()
             .saturating_add(self.page_step())
-            .min(max_offset)
+            .min(range.end)
     }
 
     fn should_rewind_within_range(&self, range: ChangeRange) -> bool {
         self.viewport_height > 0
             && range.len() > self.viewport_height
-            && self.content_start_offset() > range.start
+            && self.focus_line() > range.start
     }
 
-    fn prev_content_offset_within_range(&self, range: ChangeRange) -> usize {
-        self.content_start_offset()
+    fn prev_focus_line_within_range(&self, range: ChangeRange) -> usize {
+        self.focus_line()
             .saturating_sub(self.page_step())
             .max(range.start)
     }
@@ -188,28 +176,12 @@ impl DiffView {
         ranges
     }
 
-    fn aligned_content_start_for_hunk_start(&self, hunk_start: usize) -> usize {
-        hunk_start.saturating_sub(self.focus_offset())
-    }
-
-    fn focus_offset(&self) -> usize {
-        self.viewport_height / 4
-    }
-
-    fn content_start_offset(&self) -> usize {
-        self.scroll_offset.saturating_sub(self.focus_offset())
-    }
-
     fn focus_line(&self) -> usize {
         self.scroll_offset
     }
 
-    fn set_content_start_offset(&mut self, content_offset: usize) -> bool {
-        self.set_scroll_offset(
-            content_offset
-                .saturating_add(self.focus_offset())
-                .min(self.max_scroll_offset()),
-        )
+    fn set_focus_line(&mut self, line: usize) -> bool {
+        self.set_scroll_offset(line.min(self.max_scroll_offset()))
     }
 
     fn set_scroll_offset(&mut self, target: usize) -> bool {
@@ -267,9 +239,13 @@ mod tests {
         );
 
         assert!(view.navigate_next_diff());
-        assert_eq!(view.scroll_offset, 4);
+        assert_eq!(view.scroll_offset, 3);
         assert!(view.navigate_next_diff());
-        assert_eq!(view.scroll_offset, 5);
+        assert_eq!(view.scroll_offset, 6);
+        assert!(view.navigate_next_diff());
+        assert_eq!(view.scroll_offset, 9);
+        assert!(view.navigate_next_diff());
+        assert_eq!(view.scroll_offset, 10);
         assert!(!view.navigate_next_diff());
     }
 
@@ -296,9 +272,9 @@ mod tests {
         assert!(view.navigate_prev_diff());
         assert_eq!(view.scroll_offset, 6);
         assert!(view.navigate_prev_diff());
-        assert_eq!(view.scroll_offset, 5);
+        assert_eq!(view.scroll_offset, 4);
         assert!(!view.navigate_prev_diff());
-        assert_eq!(view.scroll_offset, 5);
+        assert_eq!(view.scroll_offset, 4);
     }
 
     #[test]
@@ -314,7 +290,7 @@ mod tests {
         );
 
         assert!(view.jump_to_last_diff());
-        assert_eq!(view.scroll_offset, 10);
+        assert_eq!(view.scroll_offset, 20);
     }
 
     #[test]
@@ -338,7 +314,7 @@ mod tests {
 
         view.scroll_offset = 8;
         assert!(view.navigate_next_diff());
-        assert_eq!(view.scroll_offset, 11);
+        assert_eq!(view.scroll_offset, 20);
     }
 
     #[test]

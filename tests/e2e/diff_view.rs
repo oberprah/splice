@@ -154,7 +154,6 @@ impl Calculator {
         r#"
 "  0fdee5c · src/calculator.rs · +7 -11                                          "
 "                                                                                "
-"   17 -         a * b                 │  17 +         a.checked_mul(b).unwra    "
 "   18 -     }                         │                                         "
 "   19 -                               │                                         "
 "   20 -     pub fn divide(&self, a: i │                                         "
@@ -175,6 +174,7 @@ impl Calculator {
 "                                      │  27 +                                   "
 "   32       pub fn format_result(&sel │  28       pub fn format_result(&self    "
 "   33 -         format!("Result: {}", │  29 +         format!("Result: {valu    "
+"   34       }                         │  30       }                             "
 "  j/k: scroll  n/p: next/prev diff  q: back                                     "
 "#,
     );
@@ -185,7 +185,6 @@ impl Calculator {
         r#"
 "  0fdee5c · src/calculator.rs · +7 -11                                          "
 "                                                                                "
-"    7                                 │   7                                     "
 "    8       pub fn add(&self, a: i32, │   8       pub fn add(&self, a: i32,     "
 "    9           a + b                 │   9           a + b                     "
 "   10       }                         │  10       }                             "
@@ -206,6 +205,7 @@ impl Calculator {
 "   25 -         }                     │                                         "
 "   26       }                         │  18       }                             "
 "   27                                 │  19                                     "
+"   28       pub fn sum(&self, values: │  20       pub fn sum(&self, values:     "
 "  j/k: scroll  n/p: next/prev diff  q: back                                     "
 "#,
     );
@@ -318,6 +318,9 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
         r#"
 "  331f884 · src/large.txt · +20 -20                                             "
 "                                                                                "
+"    4 - old line 4                    │   4 + new line 4                        "
+"    5 - old line 5                    │   5 + new line 5                        "
+"    6 - old line 6                    │   6 + new line 6                        "
 "    7 - old line 7                    │   7 + new line 7                        "
 "    8 - old line 8                    │   8 + new line 8                        "
 "    9 - old line 9                    │   9 + new line 9                        "
@@ -326,9 +329,6 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
 "   12 - old line 12                   │  12 + new line 12                       "
 "   13 - old line 13                   │  13 + new line 13                       "
 "   14 - old line 14                   │  14 + new line 14                       "
-"   15 - old line 15                   │  15 + new line 15                       "
-"   16 - old line 16                   │  16 + new line 16                       "
-"   17 - old line 17                   │  17 + new line 17                       "
 "  j/k: scroll  n/p: next/prev diff  q: back                                     "
 "#,
     );
@@ -338,8 +338,6 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
         r#"
 "  331f884 · src/large.txt · +20 -20                                             "
 "                                                                                "
-"    8 - old line 8                    │   8 + new line 8                        "
-"    9 - old line 9                    │   9 + new line 9                        "
 "   10 - old line 10                   │  10 + new line 10                       "
 "   11 - old line 11                   │  11 + new line 11                       "
 "   12 - old line 12                   │  12 + new line 12                       "
@@ -349,6 +347,48 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
 "   16 - old line 16                   │  16 + new line 16                       "
 "   17 - old line 17                   │  17 + new line 17                       "
 "   18 - old line 18                   │  18 + new line 18                       "
+"   19 - old line 19                   │  19 + new line 19                       "
+"   20 - old line 20                   │  20 + new line 20                       "
+"  j/k: scroll  n/p: next/prev diff  q: back                                     "
+"#,
+    );
+
+    h.press(KeyCode::Char('n'));
+    h.assert_snapshot(
+        r#"
+"  331f884 · src/large.txt · +20 -20                                             "
+"                                                                                "
+"   16 - old line 16                   │  16 + new line 16                       "
+"   17 - old line 17                   │  17 + new line 17                       "
+"   18 - old line 18                   │  18 + new line 18                       "
+"   19 - old line 19                   │  19 + new line 19                       "
+"   20 - old line 20                   │  20 + new line 20                       "
+"                                      │                                         "
+"                                      │                                         "
+"                                      │                                         "
+"                                      │                                         "
+"                                      │                                         "
+"                                      │                                         "
+"  j/k: scroll  n/p: next/prev diff  q: back                                     "
+"#,
+    );
+
+    h.press(KeyCode::Char('n'));
+    h.assert_snapshot(
+        r#"
+"  331f884 · src/large.txt · +20 -20                                             "
+"                                                                                "
+"   18 - old line 18                   │  18 + new line 18                       "
+"   19 - old line 19                   │  19 + new line 19                       "
+"   20 - old line 20                   │  20 + new line 20                       "
+"                                      │                                         "
+"                                      │                                         "
+"                                      │                                         "
+"                                      │                                         "
+"                                      │                                         "
+"                                      │                                         "
+"                                      │                                         "
+"                                      │                                         "
 "  j/k: scroll  n/p: next/prev diff  q: back                                     "
 "#,
     );
@@ -358,10 +398,10 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
         r#"
 "  331f884 · file_1.txt · +1 -0                                                  "
 "                                                                                "
+"                                      │                                         "
+"                                      │                                         "
+"                                      │                                         "
 "                                      │   1 + content_1                         "
-"                                      │                                         "
-"                                      │                                         "
-"                                      │                                         "
 "                                      │                                         "
 "                                      │                                         "
 "                                      │                                         "
@@ -378,17 +418,17 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
         r#"
 "  331f884 · src/large.txt · +20 -20                                             "
 "                                                                                "
-"    8 - old line 8                    │   8 + new line 8                        "
-"    9 - old line 9                    │   9 + new line 9                        "
-"   10 - old line 10                   │  10 + new line 10                       "
-"   11 - old line 11                   │  11 + new line 11                       "
-"   12 - old line 12                   │  12 + new line 12                       "
-"   13 - old line 13                   │  13 + new line 13                       "
-"   14 - old line 14                   │  14 + new line 14                       "
-"   15 - old line 15                   │  15 + new line 15                       "
-"   16 - old line 16                   │  16 + new line 16                       "
-"   17 - old line 17                   │  17 + new line 17                       "
 "   18 - old line 18                   │  18 + new line 18                       "
+"   19 - old line 19                   │  19 + new line 19                       "
+"   20 - old line 20                   │  20 + new line 20                       "
+"                                      │                                         "
+"                                      │                                         "
+"                                      │                                         "
+"                                      │                                         "
+"                                      │                                         "
+"                                      │                                         "
+"                                      │                                         "
+"                                      │                                         "
 "  j/k: scroll  n/p: next/prev diff  q: back                                     "
 "#,
     );
