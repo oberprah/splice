@@ -115,6 +115,32 @@ impl DiffView {
         true
     }
 
+    pub fn jump_to_first_diff(&mut self) -> bool {
+        let Some(first_range) = self.change_ranges().first().copied() else {
+            return false;
+        };
+        self.scroll_offset = first_range.start.min(self.max_scroll_offset());
+        true
+    }
+
+    pub fn jump_to_last_diff(&mut self) -> bool {
+        let Some(last_range) = self.change_ranges().last().copied() else {
+            return false;
+        };
+
+        self.scroll_offset = if self.viewport_height > 0 && last_range.len() > self.viewport_height
+        {
+            last_range
+                .end
+                .saturating_sub(self.viewport_height)
+                .min(self.max_scroll_offset())
+        } else {
+            last_range.start.min(self.max_scroll_offset())
+        };
+
+        true
+    }
+
     fn clamp_scroll_offset(&mut self) {
         let max_scroll = self.max_scroll_offset();
         if self.scroll_offset > max_scroll {
@@ -253,5 +279,21 @@ mod tests {
         assert_eq!(view.scroll_offset, 4);
         assert!(!view.navigate_prev_diff());
         assert_eq!(view.scroll_offset, 4);
+    }
+
+    #[test]
+    fn jump_to_last_diff_lands_on_trailing_page_of_large_hunk() {
+        let mut view = view_with_blocks(
+            vec![DiffBlock::Change(ChangeBlock {
+                old_start: 1,
+                new_start: 1,
+                old_lines: vec!["a".to_string(); 20],
+                new_lines: vec!["b".to_string(); 20],
+            })],
+            13,
+        );
+
+        assert!(view.jump_to_last_diff());
+        assert_eq!(view.scroll_offset, 7);
     }
 }

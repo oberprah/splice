@@ -18,6 +18,13 @@ pub enum View {
     Diff(DiffView),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DiffEntryPoint {
+    Top,
+    FirstDiff,
+    LastDiff,
+}
+
 pub struct App {
     pub repo_path: Option<PathBuf>,
     pub view: View,
@@ -157,6 +164,14 @@ impl App {
         }
     }
 
+    fn viewport_height(&self) -> usize {
+        match &self.view {
+            View::Log(log) => log.viewport_height,
+            View::Files(files) => files.viewport_height,
+            View::Diff(diff) => diff.viewport_height,
+        }
+    }
+
     fn move_down(&mut self, amount: usize) {
         match &mut self.view {
             View::Log(log) => log.move_down(amount),
@@ -224,7 +239,7 @@ impl App {
             } else if let Some(file) = files.selected_file() {
                 let file = file.clone();
                 let source = files.source.clone();
-                self.open_file_diff(source, file, true);
+                self.open_file_diff(source, file, true, DiffEntryPoint::Top);
             }
         }
     }
@@ -262,7 +277,13 @@ impl App {
             return;
         };
 
-        if self.open_file_diff(source, file.clone(), false) {
+        let entry = if direction > 0 {
+            DiffEntryPoint::FirstDiff
+        } else {
+            DiffEntryPoint::LastDiff
+        };
+
+        if self.open_file_diff(source, file.clone(), false, entry) {
             self.sync_files_selection(&file.path);
         }
     }
@@ -290,6 +311,7 @@ impl App {
         source: DiffSource,
         file: FileChange,
         push_previous: bool,
+        entry_point: DiffEntryPoint,
     ) -> bool {
         let repo_path = match &self.repo_path {
             Some(path) => path.clone(),
@@ -324,11 +346,26 @@ impl App {
             }
         };
 
-        let diff_view = DiffView::new(source, file, diff);
+        let viewport_height = self.viewport_height();
+        let mut diff_view = DiffView::new(source, file, diff);
+        diff_view.set_viewport_height(viewport_height);
         let old_view = std::mem::replace(&mut self.view, View::Diff(diff_view));
         if push_previous {
             self.view_stack.push(old_view);
         }
+
+        if let View::Diff(diff) = &mut self.view {
+            match entry_point {
+                DiffEntryPoint::Top => {}
+                DiffEntryPoint::FirstDiff => {
+                    diff.jump_to_first_diff();
+                }
+                DiffEntryPoint::LastDiff => {
+                    diff.jump_to_last_diff();
+                }
+            }
+        }
+
         true
     }
 }
