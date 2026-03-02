@@ -60,7 +60,7 @@ impl DiffView {
             }
 
             if current < range.start {
-                if self.set_scroll_offset(range.start.min(self.max_scroll_offset())) {
+                if self.set_scroll_offset(self.aligned_offset_for_hunk_start(range.start)) {
                     return true;
                 }
             }
@@ -72,7 +72,7 @@ impl DiffView {
             }
 
             if let Some(next_range) = ranges.get(idx + 1) {
-                if self.set_scroll_offset(next_range.start.min(self.max_scroll_offset())) {
+                if self.set_scroll_offset(self.aligned_offset_for_hunk_start(next_range.start)) {
                     return true;
                 }
             }
@@ -106,14 +106,14 @@ impl DiffView {
             return false;
         };
 
-        self.set_scroll_offset(previous_range.start.min(self.max_scroll_offset()))
+        self.set_scroll_offset(self.aligned_offset_for_hunk_start(previous_range.start))
     }
 
     pub fn jump_to_first_diff(&mut self) -> bool {
         let Some(first_range) = self.change_ranges().first().copied() else {
             return false;
         };
-        self.set_scroll_offset(first_range.start.min(self.max_scroll_offset()))
+        self.set_scroll_offset(self.aligned_offset_for_hunk_start(first_range.start))
     }
 
     pub fn jump_to_last_diff(&mut self) -> bool {
@@ -190,6 +190,16 @@ impl DiffView {
         }
 
         ranges
+    }
+
+    fn aligned_offset_for_hunk_start(&self, hunk_start: usize) -> usize {
+        hunk_start
+            .saturating_sub(self.focus_offset())
+            .min(self.max_scroll_offset())
+    }
+
+    fn focus_offset(&self) -> usize {
+        self.viewport_height / 4
     }
 
     fn set_scroll_offset(&mut self, target: usize) -> bool {
@@ -319,5 +329,33 @@ mod tests {
         view.scroll_offset = 8;
         assert!(!view.navigate_next_diff());
         assert_eq!(view.scroll_offset, 8);
+    }
+
+    #[test]
+    fn next_diff_aligns_hunk_near_quarter_screen() {
+        let mut view = view_with_blocks(
+            vec![
+                DiffBlock::Unchanged(UnchangedBlock {
+                    old_start: 1,
+                    new_start: 1,
+                    lines: vec!["ctx".to_string(); 20],
+                }),
+                DiffBlock::Change(ChangeBlock {
+                    old_start: 21,
+                    new_start: 21,
+                    old_lines: vec!["old".to_string()],
+                    new_lines: vec!["new".to_string()],
+                }),
+                DiffBlock::Unchanged(UnchangedBlock {
+                    old_start: 22,
+                    new_start: 22,
+                    lines: vec!["tail".to_string(); 20],
+                }),
+            ],
+            12,
+        );
+
+        assert!(view.navigate_next_diff());
+        assert_eq!(view.scroll_offset, 17);
     }
 }
