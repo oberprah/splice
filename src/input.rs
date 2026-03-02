@@ -13,6 +13,8 @@ pub enum Action {
     CollapseFolder,
     ToggleFolder,
     ToggleVisualMode,
+    NextDiff,
+    PrevDiff,
     Resize { width: u16, height: u16 },
     None,
 }
@@ -39,6 +41,8 @@ fn action_from_key(key: KeyEvent) -> Action {
         KeyCode::Right => Action::ExpandFolder,
         KeyCode::Left => Action::CollapseFolder,
         KeyCode::Char('v') => Action::ToggleVisualMode,
+        KeyCode::Char('n') => Action::NextDiff,
+        KeyCode::Char('p') => Action::PrevDiff,
         _ => Action::None,
     }
 }
@@ -52,5 +56,17 @@ mod tests {
     fn test_v_key_maps_to_toggle_visual_mode() {
         let event = Event::Key(KeyEvent::from(KeyCode::Char('v')));
         assert_eq!(action_from_event(event), Action::ToggleVisualMode);
+    }
+
+    #[test]
+    fn test_n_key_maps_to_next_diff() {
+        let event = Event::Key(KeyEvent::from(KeyCode::Char('n')));
+        assert_eq!(action_from_event(event), Action::NextDiff);
+    }
+
+    #[test]
+    fn test_p_key_maps_to_prev_diff() {
+        let event = Event::Key(KeyEvent::from(KeyCode::Char('p')));
+        assert_eq!(action_from_event(event), Action::PrevDiff);
     }
 }

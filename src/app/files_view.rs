@@ -99,6 +99,46 @@ impl FilesView {
         true
     }
 
+    pub fn select_file_path(&mut self, path: &str) -> bool {
+        let Some(idx) = self.visible_items.iter().position(|item| match &item.node {
+            TreeNode::File(file_node) => file_node.file.path == path,
+            TreeNode::Folder(_) => false,
+        }) else {
+            return false;
+        };
+
+        self.selected = idx;
+        self.clamp_scroll_offset();
+        true
+    }
+
+    pub fn adjacent_visible_file(
+        &self,
+        current_path: &str,
+        direction: isize,
+    ) -> Option<FileChange> {
+        let visible_files: Vec<&FileChange> = self
+            .visible_items
+            .iter()
+            .filter_map(|item| match &item.node {
+                TreeNode::File(file_node) => Some(&file_node.file),
+                TreeNode::Folder(_) => None,
+            })
+            .collect();
+
+        let current_idx = visible_files
+            .iter()
+            .position(|file| file.path == current_path)? as isize;
+        let target_idx = current_idx + direction;
+        if target_idx < 0 {
+            return None;
+        }
+
+        visible_files
+            .get(target_idx as usize)
+            .map(|file| (*file).clone())
+    }
+
     pub fn total_additions(&self) -> u32 {
         self.files.iter().map(|f| f.additions).sum()
     }

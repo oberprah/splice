@@ -141,6 +141,8 @@ impl App {
                     }
                 }
             }
+            Action::NextDiff => self.navigate_diff(1),
+            Action::PrevDiff => self.navigate_diff(-1),
             Action::Resize { .. } | Action::None => {}
         }
 
@@ -221,41 +223,8 @@ impl App {
                 files.toggle_folder(false, false);
             } else if let Some(file) = files.selected_file() {
                 let file = file.clone();
-                let repo_path = match &self.repo_path {
-                    Some(p) => p.clone(),
-                    None => return,
-                };
-
                 let source = files.source.clone();
-
-                match git::fetch_full_file_diff_for_source(&repo_path, &source, &file.path) {
-                    Ok(full_diff) => {
-                        let meta = crate::domain::diff::DiffMeta {
-                            path: file.path.clone(),
-                            additions: file.additions,
-                            deletions: file.deletions,
-                        };
-                        match crate::domain::diff::build_file_diff_full(
-                            meta,
-                            &full_diff.old_content,
-                            &full_diff.new_content,
-                            &full_diff.diff_output,
-                        ) {
-                            Ok(diff) => {
-                                let diff_view = DiffView::new(source, file, diff);
-                                let old_view =
-                                    std::mem::replace(&mut self.view, View::Diff(diff_view));
-                                self.view_stack.push(old_view);
-                            }
-                            Err(e) => {
-                                self.error = Some(e);
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        self.error = Some(e);
-                    }
-                }
+                self.open_file_diff(source, file, true);
             }
         }
     }
@@ -264,5 +233,102 @@ impl App {
         if let View::Files(files) = &mut self.view {
             files.toggle_folder(expand_only, collapse_only);
         }
+    }
+
+    fn navigate_diff(&mut self, direction: isize) {
+        let moved_in_file = match &mut self.view {
+            View::Diff(diff) => {
+                if direction > 0 {
+                    diff.navigate_next_diff()
+                } else {
+                    diff.navigate_prev_diff()
+                }
+            }
+            _ => false,
+        };
+
+        if !moved_in_file {
+            self.open_adjacent_diff_file(direction);
+        }
+    }
+
+    fn open_adjacent_diff_file(&mut self, direction: isize) {
+        let (source, current_path) = match &self.view {
+            View::Diff(diff) => (diff.source.clone(), diff.file.path.clone()),
+            _ => return,
+        };
+
+        let Some(file) = self.adjacent_file(&current_path, direction) else {
+            return;
+        };
+
+        if self.open_file_diff(source, file.clone(), false) {
+            self.sync_files_selection(&file.path);
+        }
+    }
+
+    fn adjacent_file(&self, current_path: &str, direction: isize) -> Option<FileChange> {
+        let files = self.view_stack.iter().rev().find_map(|view| match view {
+            View::Files(files) => Some(files),
+            _ => None,
+        })?;
+
+        files.adjacent_visible_file(current_path, direction)
+    }
+
+    fn sync_files_selection(&mut self, path: &str) {
+        for view in self.view_stack.iter_mut().rev() {
+            if let View::Files(files) = view {
+                files.select_file_path(path);
+                return;
+            }
+        }
+    }
+
+    fn open_file_diff(
+        &mut self,
+        source: DiffSource,
+        file: FileChange,
+        push_previous: bool,
+    ) -> bool {
+        let repo_path = match &self.repo_path {
+            Some(path) => path.clone(),
+            None => return false,
+        };
+
+        let full_diff = match git::fetch_full_file_diff_for_source(&repo_path, &source, &file.path)
+        {
+            Ok(diff) => diff,
+            Err(e) => {
+                self.error = Some(e);
+                return false;
+            }
+        };
+
+        let meta = crate::domain::diff::DiffMeta {
+            path: file.path.clone(),
+            additions: file.additions,
+            deletions: file.deletions,
+        };
+
+        let diff = match crate::domain::diff::build_file_diff_full(
+            meta,
+            &full_diff.old_content,
+            &full_diff.new_content,
+            &full_diff.diff_output,
+        ) {
+            Ok(diff) => diff,
+            Err(e) => {
+                self.error = Some(e);
+                return false;
+            }
+        };
+
+        let diff_view = DiffView::new(source, file, diff);
+        let old_view = std::mem::replace(&mut self.view, View::Diff(diff_view));
+        if push_previous {
+            self.view_stack.push(old_view);
+        }
+        true
     }
 }
