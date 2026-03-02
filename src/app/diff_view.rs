@@ -52,7 +52,7 @@ impl DiffView {
 
     pub fn navigate_next_diff(&mut self) -> bool {
         let ranges = self.change_ranges();
-        let current = self.scroll_offset;
+        let current = self.content_start_offset();
 
         for (idx, range) in ranges.iter().enumerate() {
             if current >= range.end {
@@ -60,19 +60,23 @@ impl DiffView {
             }
 
             if current < range.start {
-                if self.set_scroll_offset(self.aligned_offset_for_hunk_start(range.start)) {
+                if self.set_content_start_offset(
+                    self.aligned_content_start_for_hunk_start(range.start),
+                ) {
                     return true;
                 }
             }
 
             if self.should_advance_within_range(*range) {
-                if self.set_scroll_offset(self.next_offset_within_range(*range)) {
+                if self.set_content_start_offset(self.next_content_offset_within_range(*range)) {
                     return true;
                 }
             }
 
             if let Some(next_range) = ranges.get(idx + 1) {
-                if self.set_scroll_offset(self.aligned_offset_for_hunk_start(next_range.start)) {
+                if self.set_content_start_offset(
+                    self.aligned_content_start_for_hunk_start(next_range.start),
+                ) {
                     return true;
                 }
             }
@@ -89,7 +93,7 @@ impl DiffView {
             return false;
         }
 
-        let current = self.scroll_offset;
+        let current = self.content_start_offset();
 
         if let Some((_, range)) = ranges
             .iter()
@@ -97,8 +101,8 @@ impl DiffView {
             .find(|(_, range)| current >= range.start && current < range.end)
         {
             if self.should_rewind_within_range(*range) {
-                self.scroll_offset = self.prev_offset_within_range(*range);
-                return true;
+                return self
+                    .set_content_start_offset(self.prev_content_offset_within_range(*range));
             }
         }
 
@@ -106,14 +110,16 @@ impl DiffView {
             return false;
         };
 
-        self.set_scroll_offset(self.aligned_offset_for_hunk_start(previous_range.start))
+        self.set_content_start_offset(
+            self.aligned_content_start_for_hunk_start(previous_range.start),
+        )
     }
 
     pub fn jump_to_first_diff(&mut self) -> bool {
         let Some(first_range) = self.change_ranges().first().copied() else {
             return false;
         };
-        self.set_scroll_offset(self.aligned_offset_for_hunk_start(first_range.start))
+        self.set_content_start_offset(self.aligned_content_start_for_hunk_start(first_range.start))
     }
 
     pub fn jump_to_last_diff(&mut self) -> bool {
@@ -122,15 +128,12 @@ impl DiffView {
         };
 
         let target = if self.viewport_height > 0 && last_range.len() > self.viewport_height {
-            last_range
-                .end
-                .saturating_sub(self.viewport_height)
-                .min(self.max_scroll_offset())
+            last_range.end.saturating_sub(self.viewport_height)
         } else {
-            last_range.start.min(self.max_scroll_offset())
+            self.aligned_content_start_for_hunk_start(last_range.start)
         };
 
-        self.set_scroll_offset(target)
+        self.set_content_start_offset(target)
     }
 
     fn clamp_scroll_offset(&mut self) {
@@ -142,18 +145,20 @@ impl DiffView {
 
     fn max_scroll_offset(&self) -> usize {
         let total = self.diff.total_line_count();
-        total.saturating_sub(self.viewport_height)
+        total
+            .saturating_sub(self.viewport_height)
+            .saturating_add(self.focus_offset())
     }
 
     fn should_advance_within_range(&self, range: ChangeRange) -> bool {
         self.viewport_height > 0
             && range.len() > self.viewport_height
-            && self.scroll_offset < range.end.saturating_sub(self.viewport_height)
+            && self.content_start_offset() < range.end.saturating_sub(self.viewport_height)
     }
 
-    fn next_offset_within_range(&self, range: ChangeRange) -> usize {
+    fn next_content_offset_within_range(&self, range: ChangeRange) -> usize {
         let max_offset = range.end.saturating_sub(self.viewport_height);
-        self.scroll_offset
+        self.content_start_offset()
             .saturating_add(self.page_step())
             .min(max_offset)
     }
@@ -161,11 +166,11 @@ impl DiffView {
     fn should_rewind_within_range(&self, range: ChangeRange) -> bool {
         self.viewport_height > 0
             && range.len() > self.viewport_height
-            && self.scroll_offset > range.start
+            && self.content_start_offset() > range.start
     }
 
-    fn prev_offset_within_range(&self, range: ChangeRange) -> usize {
-        self.scroll_offset
+    fn prev_content_offset_within_range(&self, range: ChangeRange) -> usize {
+        self.content_start_offset()
             .saturating_sub(self.page_step())
             .max(range.start)
     }
@@ -192,14 +197,24 @@ impl DiffView {
         ranges
     }
 
-    fn aligned_offset_for_hunk_start(&self, hunk_start: usize) -> usize {
-        hunk_start
-            .saturating_sub(self.focus_offset())
-            .min(self.max_scroll_offset())
+    fn aligned_content_start_for_hunk_start(&self, hunk_start: usize) -> usize {
+        hunk_start.saturating_sub(self.focus_offset())
     }
 
     fn focus_offset(&self) -> usize {
         self.viewport_height / 4
+    }
+
+    fn content_start_offset(&self) -> usize {
+        self.scroll_offset.saturating_sub(self.focus_offset())
+    }
+
+    fn set_content_start_offset(&mut self, content_offset: usize) -> bool {
+        self.set_scroll_offset(
+            content_offset
+                .saturating_add(self.focus_offset())
+                .min(self.max_scroll_offset()),
+        )
     }
 
     fn set_scroll_offset(&mut self, target: usize) -> bool {
@@ -257,9 +272,9 @@ mod tests {
         );
 
         assert!(view.navigate_next_diff());
-        assert_eq!(view.scroll_offset, 3);
-        assert!(view.navigate_next_diff());
         assert_eq!(view.scroll_offset, 4);
+        assert!(view.navigate_next_diff());
+        assert_eq!(view.scroll_offset, 5);
         assert!(!view.navigate_next_diff());
     }
 
@@ -281,14 +296,14 @@ mod tests {
             ],
             6,
         );
-        view.scroll_offset = 8;
+        view.scroll_offset = 9;
 
         assert!(view.navigate_prev_diff());
-        assert_eq!(view.scroll_offset, 5);
+        assert_eq!(view.scroll_offset, 6);
         assert!(view.navigate_prev_diff());
-        assert_eq!(view.scroll_offset, 4);
+        assert_eq!(view.scroll_offset, 5);
         assert!(!view.navigate_prev_diff());
-        assert_eq!(view.scroll_offset, 4);
+        assert_eq!(view.scroll_offset, 5);
     }
 
     #[test]
@@ -304,11 +319,11 @@ mod tests {
         );
 
         assert!(view.jump_to_last_diff());
-        assert_eq!(view.scroll_offset, 7);
+        assert_eq!(view.scroll_offset, 10);
     }
 
     #[test]
-    fn next_diff_returns_false_when_hunk_is_only_bottom_visible() {
+    fn next_diff_can_still_align_bottom_visible_hunk_with_padding() {
         let mut view = view_with_blocks(
             vec![
                 DiffBlock::Unchanged(UnchangedBlock {
@@ -327,8 +342,8 @@ mod tests {
         );
 
         view.scroll_offset = 8;
-        assert!(!view.navigate_next_diff());
-        assert_eq!(view.scroll_offset, 8);
+        assert!(view.navigate_next_diff());
+        assert_eq!(view.scroll_offset, 11);
     }
 
     #[test]
@@ -356,6 +371,6 @@ mod tests {
         );
 
         assert!(view.navigate_next_diff());
-        assert_eq!(view.scroll_offset, 17);
+        assert_eq!(view.scroll_offset, 20);
     }
 }

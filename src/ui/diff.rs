@@ -13,7 +13,7 @@ struct Layout {
 
 struct Viewport {
     height: usize,
-    scroll_offset: usize,
+    content_start: usize,
 }
 
 struct RenderState {
@@ -106,7 +106,7 @@ fn render_diff_lines(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Theme) 
         },
         viewport: Viewport {
             height: area.height as usize,
-            scroll_offset: diff.scroll_offset,
+            content_start: diff.scroll_offset.saturating_sub(diff.viewport_height / 4),
         },
         state: RenderState {
             y: area.y,
@@ -114,6 +114,21 @@ fn render_diff_lines(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Theme) 
             row_index: 0,
         },
     };
+
+    let focus_offset = diff.viewport_height / 4;
+    let top_padding = focus_offset.saturating_sub(diff.scroll_offset);
+    while ctx.state.rendered < ctx.viewport.height && ctx.state.rendered < top_padding {
+        render_row(
+            f,
+            ctx.state.y,
+            blank_cell(ctx.layout.left_width),
+            blank_cell(ctx.layout.right_width),
+            ctx.layout.x,
+            ctx.layout.width,
+        );
+        ctx.state.y = ctx.state.y.saturating_add(1);
+        ctx.state.rendered += 1;
+    }
 
     for block in &diff.diff.blocks {
         match block {
@@ -129,11 +144,24 @@ fn render_diff_lines(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Theme) 
             }
         }
     }
+
+    while ctx.state.rendered < ctx.viewport.height {
+        render_row(
+            f,
+            ctx.state.y,
+            blank_cell(ctx.layout.left_width),
+            blank_cell(ctx.layout.right_width),
+            ctx.layout.x,
+            ctx.layout.width,
+        );
+        ctx.state.y = ctx.state.y.saturating_add(1);
+        ctx.state.rendered += 1;
+    }
 }
 
 fn render_unchanged_block(f: &mut Frame, block: &UnchangedBlock, ctx: &mut RenderContext) -> bool {
     for (i, line) in block.lines.iter().enumerate() {
-        if ctx.state.row_index < ctx.viewport.scroll_offset {
+        if ctx.state.row_index < ctx.viewport.content_start {
             ctx.state.row_index += 1;
             continue;
         }
@@ -164,7 +192,7 @@ fn render_change_block(
     let max_len = block.old_lines.len().max(block.new_lines.len());
 
     for i in 0..max_len {
-        if ctx.state.row_index < ctx.viewport.scroll_offset {
+        if ctx.state.row_index < ctx.viewport.content_start {
             ctx.state.row_index += 1;
             continue;
         }
