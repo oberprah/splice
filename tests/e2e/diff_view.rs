@@ -541,3 +541,76 @@ fn diff_view_handles_close_hunks_and_bottom_additions() {
 "#,
     );
 }
+
+#[test]
+#[serial]
+fn diff_view_prev_from_below_last_hunk_stays_in_file() {
+    reset_counter();
+
+    let repo = TestRepo::new();
+    let old = (1..=20)
+        .map(|n| format!("line {n}"))
+        .collect::<Vec<_>>()
+        .join("\n")
+        + "\n";
+    let new = vec![
+        "line 1",
+        "line 2",
+        "line 3 changed",
+        "line 4",
+        "line 5",
+        "line 6",
+        "line 7",
+        "line 8",
+        "line 9",
+        "line 10 changed",
+        "line 11",
+        "line 12",
+        "line 13",
+        "line 14",
+        "line 15",
+        "line 16",
+        "line 17",
+        "line 18",
+        "line 19",
+        "line 20",
+    ]
+    .join("\n")
+        + "\n";
+
+    repo.add_file("a.txt", &old);
+    repo.add_file("b.txt", "one\ntwo\n");
+    repo.commit("Add p-navigation fixtures");
+
+    repo.modify_file("a.txt", &new);
+    repo.modify_file("b.txt", "one\nchanged\n");
+    repo.commit("Update p-navigation fixtures");
+
+    let mut h = Harness::with_repo_and_screen_size(&repo, 80, 14);
+    h.press(KeyCode::Enter);
+    h.press(KeyCode::Enter);
+
+    for _ in 0..16 {
+        h.press(KeyCode::Char('j'));
+    }
+    h.press(KeyCode::Char('p'));
+
+    h.assert_snapshot(
+        r#"
+"  7dd25c4 · a.txt · +2 -2                                                       "
+"                                                                                "
+"    7   line 7                        │   7   line 7                            "
+"    8   line 8                        │   8   line 8                            "
+"    9   line 9                        │   9   line 9                            "
+"   10 - line 10                       │  10 + line 10 changed                   "
+"   11   line 11                       │  11   line 11                           "
+"   12   line 12                       │  12   line 12                           "
+"   13   line 13                       │  13   line 13                           "
+"   14   line 14                       │  14   line 14                           "
+"   15   line 15                       │  15   line 15                           "
+"   16   line 16                       │  16   line 16                           "
+"   17   line 17                       │  17   line 17                           "
+"  j/k: scroll  n/p: next/prev diff  q: back                                     "
+"#,
+    );
+}
