@@ -52,36 +52,27 @@ impl DiffView {
 
     pub fn navigate_next_diff(&mut self) -> bool {
         let ranges = self.change_ranges();
-        let current = self.content_start_offset();
-
-        for (idx, range) in ranges.iter().enumerate() {
-            if current >= range.end {
-                continue;
-            }
-
-            if current < range.start {
-                if self.set_content_start_offset(
-                    self.aligned_content_start_for_hunk_start(range.start),
-                ) {
-                    return true;
-                }
-            }
-
-            if self.should_advance_within_range(*range) {
-                if self.set_content_start_offset(self.next_content_offset_within_range(*range)) {
-                    return true;
-                }
-            }
-
-            if let Some(next_range) = ranges.get(idx + 1) {
-                if self.set_content_start_offset(
-                    self.aligned_content_start_for_hunk_start(next_range.start),
-                ) {
-                    return true;
-                }
-            }
-
+        let focus = self.focus_line();
+        let Some(current_idx) = ranges.iter().position(|range| focus < range.end) else {
             return false;
+        };
+        let current_range = ranges[current_idx];
+
+        if focus < current_range.start {
+            return self.set_content_start_offset(
+                self.aligned_content_start_for_hunk_start(current_range.start),
+            );
+        }
+
+        if self.should_advance_within_range(current_range) {
+            return self
+                .set_content_start_offset(self.next_content_offset_within_range(current_range));
+        }
+
+        if let Some(next_range) = ranges.get(current_idx + 1) {
+            return self.set_content_start_offset(
+                self.aligned_content_start_for_hunk_start(next_range.start),
+            );
         }
 
         false
@@ -93,22 +84,22 @@ impl DiffView {
             return false;
         }
 
-        let current = self.content_start_offset();
-
-        if let Some((_, range)) = ranges
-            .iter()
-            .enumerate()
-            .find(|(_, range)| current >= range.start && current < range.end)
-        {
-            if self.should_rewind_within_range(*range) {
-                return self
-                    .set_content_start_offset(self.prev_content_offset_within_range(*range));
-            }
-        }
-
-        let Some(previous_range) = ranges.iter().rfind(|range| range.start < current) else {
+        let focus = self.focus_line();
+        let Some(current_idx) = ranges.iter().rposition(|range| range.start <= focus) else {
             return false;
         };
+
+        let current_range = ranges[current_idx];
+        if focus < current_range.end && self.should_rewind_within_range(current_range) {
+            return self
+                .set_content_start_offset(self.prev_content_offset_within_range(current_range));
+        }
+
+        if current_idx == 0 {
+            return false;
+        }
+
+        let previous_range = ranges[current_idx - 1];
 
         self.set_content_start_offset(
             self.aligned_content_start_for_hunk_start(previous_range.start),
@@ -207,6 +198,10 @@ impl DiffView {
 
     fn content_start_offset(&self) -> usize {
         self.scroll_offset.saturating_sub(self.focus_offset())
+    }
+
+    fn focus_line(&self) -> usize {
+        self.scroll_offset
     }
 
     fn set_content_start_offset(&mut self, content_offset: usize) -> bool {
@@ -372,5 +367,49 @@ mod tests {
 
         assert!(view.navigate_next_diff());
         assert_eq!(view.scroll_offset, 20);
+    }
+
+    #[test]
+    fn next_diff_does_not_jump_back_when_hunks_are_close() {
+        let mut view = view_with_blocks(
+            vec![
+                DiffBlock::Unchanged(UnchangedBlock {
+                    old_start: 1,
+                    new_start: 1,
+                    lines: vec!["ctx".to_string(); 2],
+                }),
+                DiffBlock::Change(ChangeBlock {
+                    old_start: 3,
+                    new_start: 3,
+                    old_lines: vec!["a".to_string()],
+                    new_lines: vec!["b".to_string()],
+                }),
+                DiffBlock::Unchanged(UnchangedBlock {
+                    old_start: 4,
+                    new_start: 4,
+                    lines: vec!["ctx".to_string(); 1],
+                }),
+                DiffBlock::Change(ChangeBlock {
+                    old_start: 5,
+                    new_start: 5,
+                    old_lines: vec!["c".to_string()],
+                    new_lines: vec!["d".to_string()],
+                }),
+                DiffBlock::Unchanged(UnchangedBlock {
+                    old_start: 6,
+                    new_start: 6,
+                    lines: vec!["tail".to_string(); 20],
+                }),
+            ],
+            12,
+        );
+
+        assert!(view.navigate_next_diff());
+        let first = view.scroll_offset;
+        assert!(view.navigate_next_diff());
+        let second = view.scroll_offset;
+
+        assert!(second > first);
+        assert!(!view.navigate_next_diff());
     }
 }
