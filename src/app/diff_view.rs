@@ -52,34 +52,29 @@ impl DiffView {
 
     pub fn navigate_next_diff(&mut self) -> bool {
         let ranges = self.change_ranges();
-        let Some(first_range) = ranges.first() else {
-            return false;
-        };
-
         let current = self.scroll_offset;
-        if current < first_range.start {
-            self.scroll_offset = first_range.start.min(self.max_scroll_offset());
-            return true;
-        }
 
         for (idx, range) in ranges.iter().enumerate() {
-            if current < range.start {
-                self.scroll_offset = range.start.min(self.max_scroll_offset());
-                return true;
-            }
-
             if current >= range.end {
                 continue;
             }
 
+            if current < range.start {
+                if self.set_scroll_offset(range.start.min(self.max_scroll_offset())) {
+                    return true;
+                }
+            }
+
             if self.should_advance_within_range(*range) {
-                self.scroll_offset = self.next_offset_within_range(*range);
-                return true;
+                if self.set_scroll_offset(self.next_offset_within_range(*range)) {
+                    return true;
+                }
             }
 
             if let Some(next_range) = ranges.get(idx + 1) {
-                self.scroll_offset = next_range.start.min(self.max_scroll_offset());
-                return true;
+                if self.set_scroll_offset(next_range.start.min(self.max_scroll_offset())) {
+                    return true;
+                }
             }
 
             return false;
@@ -111,16 +106,14 @@ impl DiffView {
             return false;
         };
 
-        self.scroll_offset = previous_range.start.min(self.max_scroll_offset());
-        true
+        self.set_scroll_offset(previous_range.start.min(self.max_scroll_offset()))
     }
 
     pub fn jump_to_first_diff(&mut self) -> bool {
         let Some(first_range) = self.change_ranges().first().copied() else {
             return false;
         };
-        self.scroll_offset = first_range.start.min(self.max_scroll_offset());
-        true
+        self.set_scroll_offset(first_range.start.min(self.max_scroll_offset()))
     }
 
     pub fn jump_to_last_diff(&mut self) -> bool {
@@ -128,8 +121,7 @@ impl DiffView {
             return false;
         };
 
-        self.scroll_offset = if self.viewport_height > 0 && last_range.len() > self.viewport_height
-        {
+        let target = if self.viewport_height > 0 && last_range.len() > self.viewport_height {
             last_range
                 .end
                 .saturating_sub(self.viewport_height)
@@ -138,7 +130,7 @@ impl DiffView {
             last_range.start.min(self.max_scroll_offset())
         };
 
-        true
+        self.set_scroll_offset(target)
     }
 
     fn clamp_scroll_offset(&mut self) {
@@ -198,6 +190,14 @@ impl DiffView {
         }
 
         ranges
+    }
+
+    fn set_scroll_offset(&mut self, target: usize) -> bool {
+        if self.scroll_offset == target {
+            return false;
+        }
+        self.scroll_offset = target;
+        true
     }
 }
 
@@ -295,5 +295,29 @@ mod tests {
 
         assert!(view.jump_to_last_diff());
         assert_eq!(view.scroll_offset, 7);
+    }
+
+    #[test]
+    fn next_diff_returns_false_when_hunk_is_only_bottom_visible() {
+        let mut view = view_with_blocks(
+            vec![
+                DiffBlock::Unchanged(UnchangedBlock {
+                    old_start: 1,
+                    new_start: 1,
+                    lines: vec!["ctx".to_string(); 20],
+                }),
+                DiffBlock::Change(ChangeBlock {
+                    old_start: 21,
+                    new_start: 21,
+                    old_lines: Vec::new(),
+                    new_lines: vec!["added".to_string()],
+                }),
+            ],
+            13,
+        );
+
+        view.scroll_offset = 8;
+        assert!(!view.navigate_next_diff());
+        assert_eq!(view.scroll_offset, 8);
     }
 }
