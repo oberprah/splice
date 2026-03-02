@@ -5,6 +5,7 @@ use crate::domain::diff::{DiffBlock, FileDiff};
 struct ChangeRange {
     start: usize,
     end: usize,
+    add_only: bool,
 }
 
 impl ChangeRange {
@@ -59,7 +60,7 @@ impl DiffView {
         let current_range = ranges[current_idx];
 
         if focus < current_range.start {
-            return self.set_focus_line(current_range.start);
+            return self.set_focus_line(self.focus_line_for_range_start(current_range));
         }
 
         if self.should_advance_within_range(current_range) {
@@ -67,7 +68,7 @@ impl DiffView {
         }
 
         if let Some(next_range) = ranges.get(current_idx + 1) {
-            return self.set_focus_line(next_range.start);
+            return self.set_focus_line(self.focus_line_for_range_start(*next_range));
         }
 
         false
@@ -95,14 +96,14 @@ impl DiffView {
 
         let previous_range = ranges[current_idx - 1];
 
-        self.set_focus_line(previous_range.start)
+        self.set_focus_line(self.focus_line_for_range_start(previous_range))
     }
 
     pub fn jump_to_first_diff(&mut self) -> bool {
         let Some(first_range) = self.change_ranges().first().copied() else {
             return false;
         };
-        self.set_focus_line(first_range.start)
+        self.set_focus_line(self.focus_line_for_range_start(first_range))
     }
 
     pub fn jump_to_last_diff(&mut self) -> bool {
@@ -113,7 +114,7 @@ impl DiffView {
         let target = if self.viewport_height > 0 && last_range.len() > self.viewport_height {
             last_range.end
         } else {
-            last_range.start
+            self.focus_line_for_range_start(last_range)
         };
 
         self.set_focus_line(target)
@@ -166,6 +167,7 @@ impl DiffView {
                     ranges.push(ChangeRange {
                         start: row,
                         end: row + block_len,
+                        add_only: change.old_lines.is_empty() && !change.new_lines.is_empty(),
                     });
                     block_len
                 }
@@ -174,6 +176,21 @@ impl DiffView {
         }
 
         ranges
+    }
+
+    fn focus_line_for_range_start(&self, range: ChangeRange) -> usize {
+        if range.add_only && range.end == self.diff.total_line_count() {
+            return range.start.saturating_sub(
+                self.viewport_height
+                    .saturating_sub(self.bottom_anchor_offset()),
+            );
+        }
+
+        range.start
+    }
+
+    fn bottom_anchor_offset(&self) -> usize {
+        self.viewport_height / 2
     }
 
     fn focus_line(&self) -> usize {
@@ -314,7 +331,7 @@ mod tests {
 
         view.scroll_offset = 8;
         assert!(view.navigate_next_diff());
-        assert_eq!(view.scroll_offset, 20);
+        assert_eq!(view.scroll_offset, 13);
     }
 
     #[test]
