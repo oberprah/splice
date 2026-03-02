@@ -1,5 +1,5 @@
 use ratatui::style::{Color, Modifier, Style};
-use terminal_colorsaurus::{color_scheme, ColorScheme, QueryOptions};
+use terminal_colorsaurus::{theme_mode, QueryOptions, ThemeMode};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ThemeVariant {
@@ -49,9 +49,9 @@ pub struct DiffColors {
 
 impl Theme {
     pub fn detect_theme() -> Self {
-        match color_scheme(QueryOptions::default()) {
-            Ok(ColorScheme::Dark) => Self::dark(),
-            Ok(ColorScheme::Light) => Self::light(),
+        match theme_mode(QueryOptions::default()) {
+            Ok(ThemeMode::Dark) => Self::dark(),
+            Ok(ThemeMode::Light) => Self::light(),
             Err(_) => Self::dark(),
         }
     }
