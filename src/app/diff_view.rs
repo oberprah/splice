@@ -5,7 +5,6 @@ use crate::domain::diff::{DiffBlock, FileDiff};
 struct ChangeRange {
     start: usize,
     end: usize,
-    add_only: bool,
 }
 
 impl ChangeRange {
@@ -112,7 +111,7 @@ impl DiffView {
         };
 
         let target = if self.viewport_height > 0 && last_range.len() > self.viewport_height {
-            last_range.end
+            self.max_focus_line_for_large_range(last_range)
         } else {
             self.focus_line_for_range_start(last_range)
         };
@@ -134,13 +133,13 @@ impl DiffView {
     fn should_advance_within_range(&self, range: ChangeRange) -> bool {
         self.viewport_height > 0
             && range.len() > self.viewport_height
-            && self.focus_line() < range.end
+            && self.focus_line() < self.max_focus_line_for_large_range(range)
     }
 
     fn next_focus_line_within_range(&self, range: ChangeRange) -> usize {
         self.focus_line()
             .saturating_add(self.page_step())
-            .min(range.end)
+            .min(self.max_focus_line_for_large_range(range))
     }
 
     fn should_rewind_within_range(&self, range: ChangeRange) -> bool {
@@ -167,7 +166,6 @@ impl DiffView {
                     ranges.push(ChangeRange {
                         start: row,
                         end: row + block_len,
-                        add_only: change.old_lines.is_empty() && !change.new_lines.is_empty(),
                     });
                     block_len
                 }
@@ -179,18 +177,11 @@ impl DiffView {
     }
 
     fn focus_line_for_range_start(&self, range: ChangeRange) -> usize {
-        if range.add_only && range.end == self.diff.total_line_count() {
-            return range.start.saturating_sub(
-                self.viewport_height
-                    .saturating_sub(self.bottom_anchor_offset()),
-            );
-        }
-
         range.start
     }
 
-    fn bottom_anchor_offset(&self) -> usize {
-        self.viewport_height / 2
+    fn max_focus_line_for_large_range(&self, range: ChangeRange) -> usize {
+        range.end.saturating_sub(self.viewport_height / 2)
     }
 
     fn focus_line(&self) -> usize {
@@ -260,9 +251,7 @@ mod tests {
         assert!(view.navigate_next_diff());
         assert_eq!(view.scroll_offset, 6);
         assert!(view.navigate_next_diff());
-        assert_eq!(view.scroll_offset, 9);
-        assert!(view.navigate_next_diff());
-        assert_eq!(view.scroll_offset, 10);
+        assert_eq!(view.scroll_offset, 7);
         assert!(!view.navigate_next_diff());
     }
 
@@ -307,7 +296,7 @@ mod tests {
         );
 
         assert!(view.jump_to_last_diff());
-        assert_eq!(view.scroll_offset, 20);
+        assert_eq!(view.scroll_offset, 14);
     }
 
     #[test]
@@ -331,7 +320,7 @@ mod tests {
 
         view.scroll_offset = 8;
         assert!(view.navigate_next_diff());
-        assert_eq!(view.scroll_offset, 13);
+        assert_eq!(view.scroll_offset, 20);
     }
 
     #[test]
