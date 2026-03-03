@@ -53,7 +53,7 @@ pub fn render_diff_view(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Them
 
     render_diff_lines(f, diff, content_area, theme);
 
-    let help = Paragraph::new("j/k: scroll  n/p: next/prev diff  q: back")
+    let help = Paragraph::new("j/k: scroll  n/p: next/prev diff  o: open  q: back")
         .style(Style::default().fg(Color::DarkGray))
         .alignment(Alignment::Left);
     let help_area = Rect::new(

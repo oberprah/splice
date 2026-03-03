@@ -7,6 +7,7 @@ pub use files_view::FilesView;
 pub use log_view::{LogSummary, LogView};
 
 use std::path::PathBuf;
+use std::process::Command;
 
 use crate::core::{DiffSource, FileChange, LogSpec};
 use crate::git;
@@ -167,6 +168,7 @@ impl App {
             }
             Action::NextDiff => self.navigate_diff(1),
             Action::PrevDiff => self.navigate_diff(-1),
+            Action::OpenInEditor => {}
             Action::Resize { .. } | Action::None => {}
         }
 
@@ -391,4 +393,59 @@ impl App {
 
         true
     }
+
+    pub fn open_current_diff_in_editor(&self) -> Result<(), String> {
+        let View::Diff(diff) = &self.view else {
+            return Ok(());
+        };
+
+        if diff.file.is_binary {
+            return Err("cannot open binary file in editor".to_string());
+        }
+
+        if diff.file.status == crate::core::FileStatus::Deleted {
+            return Err("cannot open: file has been deleted".to_string());
+        }
+
+        let editor = configured_editor()
+            .ok_or_else(|| "no editor configured (set $EDITOR or $VISUAL)".to_string())?;
+        let line = diff
+            .current_file_line_number()
+            .map_err(|err| format!("failed to determine line number: {err}"))?;
+
+        let repo_path = self
+            .repo_path
+            .as_ref()
+            .ok_or_else(|| "missing repository path".to_string())?;
+        let repo_root = git::repository_root(repo_path)
+            .map_err(|err| format!("failed to determine repository root: {err}"))?;
+        let absolute_path = repo_root.join(&diff.file.path);
+
+        if !absolute_path.exists() {
+            return Err("cannot open: file not found".to_string());
+        }
+
+        let status = Command::new(editor)
+            .arg(format!("+{line}"))
+            .arg(&absolute_path)
+            .status()
+            .map_err(|err| format!("failed to launch editor: {err}"))?;
+
+        if status.success() {
+            Ok(())
+        } else {
+            Err(format!("editor exited with status: {status}"))
+        }
+    }
+}
+
+fn configured_editor() -> Option<String> {
+    std::env::var("EDITOR")
+        .ok()
+        .filter(|value| !value.is_empty())
+        .or_else(|| {
+            std::env::var("VISUAL")
+                .ok()
+                .filter(|value| !value.is_empty())
+        })
 }

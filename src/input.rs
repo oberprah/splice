@@ -15,6 +15,7 @@ pub enum Action {
     ToggleVisualMode,
     NextDiff,
     PrevDiff,
+    OpenInEditor,
     Resize { width: u16, height: u16 },
     None,
 }
@@ -43,6 +44,7 @@ fn action_from_key(key: KeyEvent) -> Action {
         KeyCode::Char('v') => Action::ToggleVisualMode,
         KeyCode::Char('n') => Action::NextDiff,
         KeyCode::Char('p') => Action::PrevDiff,
+        KeyCode::Char('o') => Action::OpenInEditor,
         _ => Action::None,
     }
 }
@@ -68,5 +70,11 @@ mod tests {
     fn test_p_key_maps_to_prev_diff() {
         let event = Event::Key(KeyEvent::from(KeyCode::Char('p')));
         assert_eq!(action_from_event(event), Action::PrevDiff);
+    }
+
+    #[test]
+    fn test_o_key_maps_to_open_in_editor() {
+        let event = Event::Key(KeyEvent::from(KeyCode::Char('o')));
+        assert_eq!(action_from_event(event), Action::OpenInEditor);
     }
 }

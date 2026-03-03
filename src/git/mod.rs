@@ -13,7 +13,7 @@ pub use log::parse_log_output;
 pub use resolve::{resolve_commit_range, resolve_diff_source, DiffSpec};
 pub use uncommitted::{fetch_uncommitted_file_changes, fetch_uncommitted_summary};
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::core::{Commit, CommitRange, DiffSource, FileChange, LogSpec};
@@ -172,6 +172,23 @@ pub fn fetch_file_changes_for_source(
     }
 }
 
+pub fn repository_root(repo_path: &Path) -> Result<PathBuf, String> {
+    let output = git_command(repo_path)
+        .args(["rev-parse", "--show-toplevel"])
+        .output()
+        .map_err(|e| format!("Failed to run git rev-parse: {}", e))?;
+
+    if !output.status.success() {
+        return Err(format!(
+            "git rev-parse --show-toplevel failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    Ok(PathBuf::from(stdout.trim()))
+}
+
 pub fn fetch_full_file_diff_for_source(
     repo_path: &Path,
     source: &DiffSource,
@@ -220,5 +237,13 @@ mod tests {
         let result = fetch_file_changes_for_source(repo_path, &source);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("git diff"));
+    }
+
+    #[test]
+    fn repository_root_reports_rev_parse_error() {
+        let repo_path = Path::new("/nonexistent");
+        let result = repository_root(repo_path);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("git rev-parse"));
     }
 }
