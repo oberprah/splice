@@ -1,6 +1,7 @@
 use crate::app::DiffView;
 use crate::core::{DiffSource, UncommittedType};
 use crate::domain::diff::{ChangeBlock, DiffBlock, UnchangedBlock};
+use crate::domain::highlight::TokenSpan;
 use crate::ui::theme::{DiffColors, Theme};
 use ratatui::{prelude::*, widgets::Paragraph};
 
@@ -133,12 +134,12 @@ fn render_diff_lines(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Theme) 
     for block in &diff.diff.blocks {
         match block {
             DiffBlock::Unchanged(unchanged) => {
-                if !render_unchanged_block(f, unchanged, ctx) {
+                if !render_unchanged_block(f, unchanged, ctx, diff, theme) {
                     return;
                 }
             }
             DiffBlock::Change(change) => {
-                if !render_change_block(f, change, ctx, theme) {
+                if !render_change_block(f, change, ctx, diff, theme) {
                     return;
                 }
             }
@@ -159,7 +160,13 @@ fn render_diff_lines(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Theme) 
     }
 }
 
-fn render_unchanged_block(f: &mut Frame, block: &UnchangedBlock, ctx: &mut RenderContext) -> bool {
+fn render_unchanged_block(
+    f: &mut Frame,
+    block: &UnchangedBlock,
+    ctx: &mut RenderContext,
+    diff: &DiffView,
+    theme: &Theme,
+) -> bool {
     for (i, line) in block.lines.iter().enumerate() {
         if ctx.state.row_index < ctx.viewport.content_start {
             ctx.state.row_index += 1;
@@ -171,9 +178,27 @@ fn render_unchanged_block(f: &mut Frame, block: &UnchangedBlock, ctx: &mut Rende
 
         let old_num = block.old_start + i as u32;
         let new_num = block.new_start + i as u32;
-        let left = format_cell(old_num, ' ', line, ctx.layout.left_width);
-        let right = format_cell(new_num, ' ', line, ctx.layout.right_width);
-        render_row(f, ctx.state.y, left, right, ctx.layout.x, ctx.layout.width);
+        let left_tokens = diff.highlights.old.line_tokens(old_num);
+        let right_tokens = diff.highlights.new.line_tokens(new_num);
+        let left = format_cell_with_tokens(
+            old_num,
+            ' ',
+            line,
+            ctx.layout.left_width,
+            Style::default(),
+            left_tokens,
+            theme,
+        );
+        let right = format_cell_with_tokens(
+            new_num,
+            ' ',
+            line,
+            ctx.layout.right_width,
+            Style::default(),
+            right_tokens,
+            theme,
+        );
+        render_styled_row(f, ctx.state.y, left, right, ctx.layout.x, ctx.layout.width);
 
         ctx.state.y = ctx.state.y.saturating_add(1);
         ctx.state.rendered += 1;
@@ -187,6 +212,7 @@ fn render_change_block(
     f: &mut Frame,
     block: &ChangeBlock,
     ctx: &mut RenderContext,
+    diff: &DiffView,
     theme: &Theme,
 ) -> bool {
     let max_len = block.old_lines.len().max(block.new_lines.len());
@@ -208,7 +234,16 @@ fn render_change_block(
             } else {
                 &theme.diff_removed
             };
-            format_cell_styled(line_num, '-', text, ctx.layout.left_width, colors)
+            let tokens = diff.highlights.old.line_tokens(line_num);
+            format_cell_styled(
+                line_num,
+                '-',
+                text,
+                ctx.layout.left_width,
+                colors,
+                tokens,
+                theme,
+            )
         });
 
         let right_spans = block.new_lines.get(i).map(|text| {
@@ -219,7 +254,16 @@ fn render_change_block(
             } else {
                 &theme.diff_added
             };
-            format_cell_styled(line_num, '+', text, ctx.layout.right_width, colors)
+            let tokens = diff.highlights.new.line_tokens(line_num);
+            format_cell_styled(
+                line_num,
+                '+',
+                text,
+                ctx.layout.right_width,
+                colors,
+                tokens,
+                theme,
+            )
         });
 
         render_styled_row(
@@ -244,11 +288,6 @@ fn render_row(f: &mut Frame, y: u16, left: String, right: String, x: u16, width:
     let para = Paragraph::new(line);
     let area = Rect::new(x, y, width, 1);
     f.render_widget(para, area);
-}
-
-fn format_cell(line_num: u32, sign: char, text: &str, width: usize) -> String {
-    let cell = format!("{:>3} {} {}", line_num, sign, text);
-    pad_or_trim(&cell, width)
 }
 
 fn blank_cell(width: usize) -> String {
@@ -279,30 +318,110 @@ fn format_cell_styled(
     text: &str,
     width: usize,
     colors: &DiffColors,
+    tokens: Option<&[TokenSpan]>,
+    theme: &Theme,
 ) -> Vec<Span<'static>> {
     let line_num_str = format!("{:>3} ", line_num);
     let sign_str = sign.to_string();
-    let text_str = format!(" {}", text);
-
-    let line_num_len = line_num_str.chars().count();
-    let sign_len = sign_str.chars().count();
-    let total_len = line_num_len + sign_len + text_str.chars().count();
-    let padded_text = if total_len < width {
-        format!("{}{}", text_str, " ".repeat(width - total_len))
-    } else if total_len > width {
-        let available_text_width = width.saturating_sub(line_num_len + sign_len);
-        text_str.chars().take(available_text_width).collect()
-    } else {
-        text_str
-    };
-
     let style = Style::new().bg(colors.bg).fg(colors.fg);
+    let prefix_width = line_num_str.chars().count() + sign_str.chars().count();
+    let mut spans = vec![Span::raw(line_num_str), Span::styled(sign_str, style)];
+    spans.extend(render_text_with_tokens(
+        text,
+        tokens,
+        width.saturating_sub(prefix_width),
+        style,
+        theme,
+    ));
+    spans
+}
 
-    vec![
-        Span::raw(line_num_str),
-        Span::styled(sign_str, style),
-        Span::styled(padded_text, style),
-    ]
+fn format_cell_with_tokens(
+    line_num: u32,
+    sign: char,
+    text: &str,
+    width: usize,
+    base_style: Style,
+    tokens: Option<&[TokenSpan]>,
+    theme: &Theme,
+) -> Vec<Span<'static>> {
+    let line_num_str = format!("{:>3} ", line_num);
+    let sign_str = sign.to_string();
+    let prefix_width = line_num_str.chars().count() + sign_str.chars().count();
+    let mut spans = vec![Span::raw(line_num_str), Span::styled(sign_str, base_style)];
+    spans.extend(render_text_with_tokens(
+        text,
+        tokens,
+        width.saturating_sub(prefix_width),
+        base_style,
+        theme,
+    ));
+    spans
+}
+
+fn render_text_with_tokens(
+    text: &str,
+    tokens: Option<&[TokenSpan]>,
+    text_area_width: usize,
+    base_style: Style,
+    theme: &Theme,
+) -> Vec<Span<'static>> {
+    if text_area_width == 0 {
+        return Vec::new();
+    }
+
+    let chars: Vec<char> = text.chars().collect();
+    let max_visible_text = text_area_width.saturating_sub(1);
+    let visible = chars.len().min(max_visible_text);
+    let mut char_kinds = vec![None; visible];
+
+    if let Some(line_tokens) = tokens {
+        for token in line_tokens {
+            let start = token.start_col.min(visible);
+            let end = token.end_col.min(visible);
+            for kind in char_kinds.iter_mut().take(end).skip(start) {
+                *kind = Some(token.kind);
+            }
+        }
+    }
+
+    let mut spans = vec![Span::styled(" ", base_style)];
+    if visible > 0 {
+        let mut run = String::new();
+        let mut run_style = char_style(base_style, char_kinds[0], theme);
+        for idx in 0..visible {
+            let current_style = char_style(base_style, char_kinds[idx], theme);
+            if current_style != run_style && !run.is_empty() {
+                spans.push(Span::styled(std::mem::take(&mut run), run_style));
+                run_style = current_style;
+            }
+            run.push(chars[idx]);
+        }
+        if !run.is_empty() {
+            spans.push(Span::styled(run, run_style));
+        }
+    }
+
+    let used_width = 1 + visible;
+    if used_width < text_area_width {
+        spans.push(Span::styled(
+            " ".repeat(text_area_width - used_width),
+            base_style,
+        ));
+    }
+
+    spans
+}
+
+fn char_style(
+    base_style: Style,
+    token_kind: Option<crate::domain::highlight::HighlightKind>,
+    theme: &Theme,
+) -> Style {
+    match token_kind {
+        Some(kind) => base_style.fg(theme.syntax_color(kind)),
+        None => base_style,
+    }
 }
 
 fn render_styled_row(
@@ -321,4 +440,29 @@ fn render_styled_row(
     let para = Paragraph::new(line);
     let area = Rect::new(x, y, width, 1);
     f.render_widget(para, area);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::highlight::HighlightKind;
+
+    #[test]
+    fn render_text_with_tokens_applies_syntax_foreground() {
+        let theme = Theme::dark();
+        let tokens = vec![TokenSpan {
+            start_col: 0,
+            end_col: 2,
+            kind: HighlightKind::Keyword,
+        }];
+
+        let spans = render_text_with_tokens("fn main", Some(&tokens), 10, Style::default(), &theme);
+
+        assert!(
+            spans.iter().any(|span| {
+                span.style.fg == Some(theme.syntax.keyword) && span.content.contains("fn")
+            }),
+            "Expected a keyword-colored span for `fn`"
+        );
+    }
 }

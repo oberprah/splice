@@ -7,11 +7,13 @@ pub use theme::*;
 
 use crate::app::{App, ThemeMode, View};
 use ratatui::{prelude::*, widgets::Paragraph};
+use std::sync::OnceLock;
 
 const LOG_AREA_X: u16 = 2;
 const LOG_AREA_Y: u16 = 0;
 const LOG_AREA_RIGHT_MARGIN: u16 = 4;
 const LOG_AREA_BOTTOM_MARGIN: u16 = 0;
+static CACHED_THEME: OnceLock<Theme> = OnceLock::new();
 
 pub fn render(f: &mut Frame, app: &mut App) {
     let size = f.area();
@@ -38,9 +40,9 @@ pub fn render(f: &mut Frame, app: &mut App) {
     app.set_viewport_height(viewport_height);
 
     let theme = match app.theme_mode {
-        ThemeMode::Auto => Theme::detect_theme(),
-        ThemeMode::Dark => Theme::dark(),
-        ThemeMode::Light => Theme::light(),
+        ThemeMode::Auto => CACHED_THEME.get_or_init(Theme::detect_theme),
+        ThemeMode::Dark => &Theme::dark(),
+        ThemeMode::Light => &Theme::light(),
     };
 
     match &app.view {
@@ -53,14 +55,14 @@ pub fn render(f: &mut Frame, app: &mut App) {
                 &log.cursor,
                 log.scroll_offset,
                 area,
-                &theme,
+                theme,
             );
         }
         View::Files(files) => {
-            files::render_files_view(f, files, area, &theme);
+            files::render_files_view(f, files, area, theme);
         }
         View::Diff(diff) => {
-            diff::render_diff_view(f, diff, area, &theme);
+            diff::render_diff_view(f, diff, area, theme);
         }
     }
 }

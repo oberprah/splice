@@ -1,5 +1,6 @@
 use crate::core::{DiffSource, FileChange};
 use crate::domain::diff::{DiffBlock, FileDiff};
+use crate::domain::highlight::DiffHighlights;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct ChangeRange {
@@ -17,16 +18,23 @@ pub struct DiffView {
     pub source: DiffSource,
     pub file: FileChange,
     pub diff: FileDiff,
+    pub highlights: DiffHighlights,
     pub scroll_offset: usize,
     pub viewport_height: usize,
 }
 
 impl DiffView {
-    pub fn new(source: DiffSource, file: FileChange, diff: FileDiff) -> Self {
+    pub fn new(
+        source: DiffSource,
+        file: FileChange,
+        diff: FileDiff,
+        highlights: DiffHighlights,
+    ) -> Self {
         Self {
             source,
             file,
             diff,
+            highlights,
             scroll_offset: 0,
             viewport_height: 0,
         }
@@ -233,6 +241,7 @@ mod tests {
                 },
                 blocks,
             },
+            DiffHighlights::default(),
         );
         view.set_viewport_height(viewport_height);
         view
