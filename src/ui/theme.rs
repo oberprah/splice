@@ -28,6 +28,8 @@ pub struct Theme {
     pub diff_added: DiffColors,
     pub diff_removed: DiffColors,
     pub diff_changed: DiffColors,
+    pub diff_line_number: Style,
+    pub diff_divider: Style,
     pub syntax: SyntaxColors,
     pub additions: Style,
     pub additions_selected: Style,
@@ -112,6 +114,8 @@ impl Theme {
                 bg_bright: Color::Rgb(0x26, 0x36, 0x4d),
                 fg: Color::Rgb(0x52, 0x9c, 0xff),
             },
+            diff_line_number: Style::default().fg(Color::Rgb(0x60, 0x60, 0x60)),
+            diff_divider: Style::default().fg(Color::Rgb(0x40, 0x40, 0x40)),
             syntax: SyntaxColors {
                 keyword: Color::Rgb(0xc6, 0x92, 0xff),
                 string: Color::Rgb(0xa5, 0xe0, 0x75),
@@ -178,6 +182,8 @@ impl Theme {
                 bg_bright: Color::Rgb(0xbb, 0xde, 0xfb),
                 fg: Color::Rgb(0x0d, 0x47, 0xa1),
             },
+            diff_line_number: Style::default().fg(Color::Rgb(0xa0, 0xa0, 0xa0)),
+            diff_divider: Style::default().fg(Color::Rgb(0xc0, 0xc0, 0xc0)),
             syntax: SyntaxColors {
                 keyword: Color::Rgb(0x6a, 0x1b, 0x9a),
                 string: Color::Rgb(0x2e, 0x7d, 0x32),
