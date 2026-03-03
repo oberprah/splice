@@ -1,6 +1,8 @@
 use ratatui::style::{Color, Modifier, Style};
 use terminal_colorsaurus::{theme_mode, QueryOptions, ThemeMode};
 
+use crate::domain::highlight::HighlightKind;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ThemeVariant {
     #[default]
@@ -26,6 +28,7 @@ pub struct Theme {
     pub diff_added: DiffColors,
     pub diff_removed: DiffColors,
     pub diff_changed: DiffColors,
+    pub syntax: SyntaxColors,
     pub additions: Style,
     pub additions_selected: Style,
     pub deletions: Style,
@@ -45,6 +48,21 @@ pub struct DiffColors {
     pub bg: Color,
     pub bg_bright: Color,
     pub fg: Color,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct SyntaxColors {
+    pub keyword: Color,
+    pub string: Color,
+    pub comment: Color,
+    pub r#type: Color,
+    pub function: Color,
+    pub constant: Color,
+    pub variable: Color,
+    pub number: Color,
+    pub operator: Color,
+    pub property: Color,
+    pub punctuation: Color,
 }
 
 impl Theme {
@@ -93,6 +111,19 @@ impl Theme {
                 bg: Color::Rgb(0x1e, 0x2a, 0x3a),
                 bg_bright: Color::Rgb(0x26, 0x36, 0x4d),
                 fg: Color::Rgb(0x52, 0x9c, 0xff),
+            },
+            syntax: SyntaxColors {
+                keyword: Color::Rgb(0xc6, 0x92, 0xff),
+                string: Color::Rgb(0xa5, 0xe0, 0x75),
+                comment: Color::Rgb(0x7f, 0x84, 0x90),
+                r#type: Color::Rgb(0x66, 0xd9, 0xef),
+                function: Color::Rgb(0x82, 0xaa, 0xff),
+                constant: Color::Rgb(0xff, 0xcb, 0x6b),
+                variable: Color::Rgb(0xe6, 0xe6, 0xe6),
+                number: Color::Rgb(0xff, 0x9e, 0x64),
+                operator: Color::Rgb(0x89, 0xdd, 0xff),
+                property: Color::Rgb(0xc3, 0xe8, 0xff),
+                punctuation: Color::Rgb(0xb0, 0xb8, 0xc0),
             },
             additions: Style::default().fg(Color::Rgb(0, 255, 0)),
             additions_selected: Style::default().fg(Color::Rgb(64, 255, 64)),
@@ -147,6 +178,19 @@ impl Theme {
                 bg_bright: Color::Rgb(0xbb, 0xde, 0xfb),
                 fg: Color::Rgb(0x0d, 0x47, 0xa1),
             },
+            syntax: SyntaxColors {
+                keyword: Color::Rgb(0x6a, 0x1b, 0x9a),
+                string: Color::Rgb(0x2e, 0x7d, 0x32),
+                comment: Color::Rgb(0x78, 0x7d, 0x86),
+                r#type: Color::Rgb(0x00, 0x79, 0x96),
+                function: Color::Rgb(0x15, 0x65, 0xc0),
+                constant: Color::Rgb(0xb2, 0x87, 0x04),
+                variable: Color::Rgb(0x42, 0x42, 0x42),
+                number: Color::Rgb(0xd8, 0x43, 0x15),
+                operator: Color::Rgb(0x00, 0x83, 0xa3),
+                property: Color::Rgb(0x00, 0x61, 0x6b),
+                punctuation: Color::Rgb(0x8a, 0x8f, 0x98),
+            },
             additions: Style::default().fg(Color::Rgb(0, 128, 0)),
             additions_selected: Style::default().fg(Color::Rgb(0, 110, 0)),
             deletions: Style::default().fg(Color::Rgb(178, 34, 34)),
@@ -166,6 +210,22 @@ impl Theme {
         match variant {
             ThemeVariant::Dark => Self::dark(),
             ThemeVariant::Light => Self::light(),
+        }
+    }
+
+    pub fn syntax_color(&self, kind: HighlightKind) -> Color {
+        match kind {
+            HighlightKind::Keyword => self.syntax.keyword,
+            HighlightKind::String => self.syntax.string,
+            HighlightKind::Comment => self.syntax.comment,
+            HighlightKind::Type => self.syntax.r#type,
+            HighlightKind::Function => self.syntax.function,
+            HighlightKind::Constant => self.syntax.constant,
+            HighlightKind::Variable => self.syntax.variable,
+            HighlightKind::Number => self.syntax.number,
+            HighlightKind::Operator => self.syntax.operator,
+            HighlightKind::Property => self.syntax.property,
+            HighlightKind::Punctuation => self.syntax.punctuation,
         }
     }
 }

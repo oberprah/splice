@@ -363,8 +363,14 @@ impl App {
             }
         };
 
+        let highlights = crate::domain::highlight::highlight_diff_sides(
+            &file.path,
+            &full_diff.old_content,
+            &full_diff.new_content,
+        );
+
         let viewport_height = self.viewport_height();
-        let mut diff_view = DiffView::new(source, file, diff);
+        let mut diff_view = DiffView::new(source, file, diff, highlights);
         diff_view.set_viewport_height(viewport_height);
         let old_view = std::mem::replace(&mut self.view, View::Diff(diff_view));
         if push_previous {
