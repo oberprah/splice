@@ -131,6 +131,49 @@ impl DiffView {
         self.set_focus_line(target)
     }
 
+    pub fn current_file_line_number(&self) -> Result<u32, String> {
+        if self.diff.blocks.is_empty() {
+            return Err("diff has no blocks".to_string());
+        }
+
+        let total_lines = self.diff.total_line_count();
+        if total_lines == 0 {
+            return Err("diff has no lines".to_string());
+        }
+
+        if self.scroll_offset >= total_lines {
+            return Err("scroll position out of range".to_string());
+        }
+
+        let mut row = 0;
+        for block in &self.diff.blocks {
+            match block {
+                DiffBlock::Unchanged(unchanged) => {
+                    for i in 0..unchanged.lines.len() {
+                        if row == self.scroll_offset {
+                            return Ok(unchanged.new_start + i as u32);
+                        }
+                        row += 1;
+                    }
+                }
+                DiffBlock::Change(change) => {
+                    let len = change.old_lines.len().max(change.new_lines.len());
+                    for i in 0..len {
+                        if row == self.scroll_offset {
+                            if i < change.new_lines.len() {
+                                return Ok(change.new_start + i as u32);
+                            }
+                            return self.find_next_new_line_number(row + 1);
+                        }
+                        row += 1;
+                    }
+                }
+            }
+        }
+
+        Err("scroll position out of range".to_string())
+    }
+
     fn clamp_scroll_offset(&mut self) {
         let max_scroll = self.max_scroll_offset();
         if self.scroll_offset > max_scroll {
@@ -210,6 +253,33 @@ impl DiffView {
         }
         self.scroll_offset = target;
         true
+    }
+
+    fn find_next_new_line_number(&self, start_row: usize) -> Result<u32, String> {
+        let mut row = 0;
+        for block in &self.diff.blocks {
+            match block {
+                DiffBlock::Unchanged(unchanged) => {
+                    for i in 0..unchanged.lines.len() {
+                        if row >= start_row {
+                            return Ok(unchanged.new_start + i as u32);
+                        }
+                        row += 1;
+                    }
+                }
+                DiffBlock::Change(change) => {
+                    let len = change.old_lines.len().max(change.new_lines.len());
+                    for i in 0..len {
+                        if row >= start_row && i < change.new_lines.len() {
+                            return Ok(change.new_start + i as u32);
+                        }
+                        row += 1;
+                    }
+                }
+            }
+        }
+
+        Ok(1)
     }
 }
 
@@ -446,5 +516,54 @@ mod tests {
         view.scroll_offset = 20;
         assert!(view.navigate_prev_diff());
         assert_eq!(view.scroll_offset, 9);
+    }
+
+    #[test]
+    fn current_file_line_number_uses_new_side_for_unchanged_and_added_rows() {
+        let mut view = view_with_blocks(
+            vec![
+                DiffBlock::Unchanged(UnchangedBlock {
+                    old_start: 10,
+                    new_start: 20,
+                    lines: vec!["a".to_string(), "b".to_string()],
+                }),
+                DiffBlock::Change(ChangeBlock {
+                    old_start: 12,
+                    new_start: 22,
+                    old_lines: vec!["old".to_string()],
+                    new_lines: vec!["new".to_string(), "newer".to_string()],
+                }),
+            ],
+            8,
+        );
+
+        view.scroll_offset = 1;
+        assert_eq!(view.current_file_line_number().unwrap(), 21);
+
+        view.scroll_offset = 3;
+        assert_eq!(view.current_file_line_number().unwrap(), 23);
+    }
+
+    #[test]
+    fn current_file_line_number_for_removed_row_falls_forward() {
+        let mut view = view_with_blocks(
+            vec![
+                DiffBlock::Change(ChangeBlock {
+                    old_start: 1,
+                    new_start: 1,
+                    old_lines: vec!["removed".to_string()],
+                    new_lines: Vec::new(),
+                }),
+                DiffBlock::Unchanged(UnchangedBlock {
+                    old_start: 2,
+                    new_start: 1,
+                    lines: vec!["kept".to_string()],
+                }),
+            ],
+            8,
+        );
+
+        view.scroll_offset = 0;
+        assert_eq!(view.current_file_line_number().unwrap(), 1);
     }
 }

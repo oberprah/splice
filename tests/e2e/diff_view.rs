@@ -115,7 +115,7 @@ impl Calculator {
 "   14       }                         │  14       }                             "
 "   15                                 │  15                                     "
 "   16 -     pub fn multiply(&self, a: │  16 +     pub fn mul(&self, a: i32,     "
-"  j/k: scroll  n/p: next/prev diff  q: back                                     "
+"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
 
@@ -145,7 +145,7 @@ impl Calculator {
 "   25 -         }                     │                                         "
 "   26       }                         │  18       }                             "
 "   27                                 │  19                                     "
-"  j/k: scroll  n/p: next/prev diff  q: back                                     "
+"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
 
@@ -175,7 +175,7 @@ impl Calculator {
 "   32       pub fn format_result(&sel │  28       pub fn format_result(&self    "
 "   33 -         format!("Result: {}", │  29 +         format!("Result: {valu    "
 "   34       }                         │  30       }                             "
-"  j/k: scroll  n/p: next/prev diff  q: back                                     "
+"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
 
@@ -206,7 +206,7 @@ impl Calculator {
 "   26       }                         │  18       }                             "
 "   27                                 │  19                                     "
 "   28       pub fn sum(&self, values: │  20       pub fn sum(&self, values:     "
-"  j/k: scroll  n/p: next/prev diff  q: back                                     "
+"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
 }
@@ -259,7 +259,7 @@ fn diff_view_separator_with_wide_glyphs() {
 "    3           match self {                              │   3           match self {                                  "
 "                                                          │   4 +             LineDisplayState::None => "  ",           "
 "    4               LineDisplayState::Cursor => "→ ",     │   5               LineDisplayState::Cursor => "→ ",         "
-"  j/k: scroll  n/p: next/prev diff  q: back                                                                             "
+"  j/k: scroll  n/p: next/prev diff  o: open  q: back                                                                    "
 "#,
     );
 }
@@ -309,7 +309,7 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
 "    6 - old line 6                    │   6 + new line 6                        "
 "    7 - old line 7                    │   7 + new line 7                        "
 "    8 - old line 8                    │   8 + new line 8                        "
-"  j/k: scroll  n/p: next/prev diff  q: back                                     "
+"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
 
@@ -329,7 +329,7 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
 "   12 - old line 12                   │  12 + new line 12                       "
 "   13 - old line 13                   │  13 + new line 13                       "
 "   14 - old line 14                   │  14 + new line 14                       "
-"  j/k: scroll  n/p: next/prev diff  q: back                                     "
+"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
 
@@ -349,7 +349,7 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
 "   18 - old line 18                   │  18 + new line 18                       "
 "   19 - old line 19                   │  19 + new line 19                       "
 "   20 - old line 20                   │  20 + new line 20                       "
-"  j/k: scroll  n/p: next/prev diff  q: back                                     "
+"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
 
@@ -369,7 +369,7 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
 "   20 - old line 20                   │  20 + new line 20                       "
 "                                      │                                         "
 "                                      │                                         "
-"  j/k: scroll  n/p: next/prev diff  q: back                                     "
+"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
 
@@ -389,7 +389,7 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
 "                                      │                                         "
 "                                      │                                         "
 "                                      │                                         "
-"  j/k: scroll  n/p: next/prev diff  q: back                                     "
+"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
 
@@ -409,7 +409,7 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
 "   20 - old line 20                   │  20 + new line 20                       "
 "                                      │                                         "
 "                                      │                                         "
-"  j/k: scroll  n/p: next/prev diff  q: back                                     "
+"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
 }
@@ -477,7 +477,7 @@ fn diff_view_handles_close_hunks_and_bottom_additions() {
 "    8   line 8                        │   8   line 8                            "
 "    9   line 9                        │   9   line 9                            "
 "   10   line 10                       │  10   line 10                           "
-"  j/k: scroll  n/p: next/prev diff  q: back                                     "
+"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
 
@@ -497,7 +497,7 @@ fn diff_view_handles_close_hunks_and_bottom_additions() {
 "   10   line 10                       │  10   line 10                           "
 "   11   line 11                       │  11   line 11                           "
 "   12   line 12                       │  12   line 12                           "
-"  j/k: scroll  n/p: next/prev diff  q: back                                     "
+"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
 
@@ -517,7 +517,7 @@ fn diff_view_handles_close_hunks_and_bottom_additions() {
 "                                      │                                         "
 "                                      │                                         "
 "                                      │                                         "
-"  j/k: scroll  n/p: next/prev diff  q: back                                     "
+"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
 
@@ -537,7 +537,7 @@ fn diff_view_handles_close_hunks_and_bottom_additions() {
 "                                      │                                         "
 "                                      │                                         "
 "                                      │                                         "
-"  j/k: scroll  n/p: next/prev diff  q: back                                     "
+"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
 }
@@ -610,7 +610,7 @@ fn diff_view_prev_from_below_last_hunk_stays_in_file() {
 "   15   line 15                       │  15   line 15                           "
 "   16   line 16                       │  16   line 16                           "
 "   17   line 17                       │  17   line 17                           "
-"  j/k: scroll  n/p: next/prev diff  q: back                                     "
+"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
 }

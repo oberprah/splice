@@ -107,7 +107,7 @@ fn diff_command_uncommitted_views() {
 "                                      │                                         "
 "                                      │                                         "
 "                                      │                                         "
-"  j/k: scroll  n/p: next/prev diff  q: back                                     "
+"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
 

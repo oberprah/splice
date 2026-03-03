@@ -159,6 +159,13 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, mut app: App) 
             let action = action_from_event(event::read()?);
             if action != Action::None {
                 should_render = true;
+                if action == Action::OpenInEditor {
+                    if let Some(err) = open_diff_in_editor(terminal, &mut app)? {
+                        app.error = Some(err);
+                    }
+                    continue;
+                }
+
                 if app.update(action) {
                     return Ok(());
                 }
@@ -169,4 +176,20 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, mut app: App) 
             last_tick = Instant::now();
         }
     }
+}
+
+fn open_diff_in_editor(
+    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    app: &mut App,
+) -> io::Result<Option<String>> {
+    terminal::disable_raw_mode()?;
+    execute!(io::stdout(), LeaveAlternateScreen)?;
+
+    let editor_result = app.open_current_diff_in_editor();
+
+    execute!(io::stdout(), EnterAlternateScreen)?;
+    terminal::enable_raw_mode()?;
+    terminal.clear()?;
+
+    Ok(editor_result.err())
 }
