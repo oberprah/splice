@@ -40,12 +40,8 @@ pub fn render_diff_view(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Them
         range_display, diff.file.path, diff.file.additions, diff.file.deletions
     );
     let header = truncate_to_width(&header, width);
-    let header_widget = Paragraph::new(header).style(Style::default().fg(Color::Gray));
+    let header_widget = Paragraph::new(header).style(theme.text_muted);
     f.render_widget(header_widget, Rect::new(area.x, y, area.width, 1));
-    y = y.saturating_add(1);
-
-    let empty = Paragraph::new("");
-    f.render_widget(empty, Rect::new(area.x, y, area.width, 1));
     y = y.saturating_add(1);
 
     let content_height = area.height.saturating_sub(y - area.y).saturating_sub(1) as usize;
@@ -54,7 +50,7 @@ pub fn render_diff_view(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Them
     render_diff_lines(f, diff, content_area, theme);
 
     let help = Paragraph::new("j/k: scroll  n/p: next/prev diff  o: open  q: back")
-        .style(Style::default().fg(Color::DarkGray))
+        .style(theme.text_muted)
         .alignment(Alignment::Left);
     let help_area = Rect::new(
         area.x,
@@ -126,6 +122,7 @@ fn render_diff_lines(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Theme) 
             blank_cell(ctx.layout.right_width),
             ctx.layout.x,
             ctx.layout.width,
+            theme,
         );
         ctx.state.y = ctx.state.y.saturating_add(1);
         ctx.state.rendered += 1;
@@ -154,6 +151,7 @@ fn render_diff_lines(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Theme) 
             blank_cell(ctx.layout.right_width),
             ctx.layout.x,
             ctx.layout.width,
+            theme,
         );
         ctx.state.y = ctx.state.y.saturating_add(1);
         ctx.state.rendered += 1;
@@ -198,7 +196,15 @@ fn render_unchanged_block(
             right_tokens,
             theme,
         );
-        render_styled_row(f, ctx.state.y, left, right, ctx.layout.x, ctx.layout.width);
+        render_styled_row(
+            f,
+            ctx.state.y,
+            left,
+            right,
+            ctx.layout.x,
+            ctx.layout.width,
+            theme,
+        );
 
         ctx.state.y = ctx.state.y.saturating_add(1);
         ctx.state.rendered += 1;
@@ -273,6 +279,7 @@ fn render_change_block(
             right_spans.unwrap_or_else(|| vec![Span::raw(blank_cell(ctx.layout.right_width))]),
             ctx.layout.x,
             ctx.layout.width,
+            theme,
         );
 
         ctx.state.y = ctx.state.y.saturating_add(1);
@@ -283,8 +290,19 @@ fn render_change_block(
     true
 }
 
-fn render_row(f: &mut Frame, y: u16, left: String, right: String, x: u16, width: u16) {
-    let line = format!("{} │ {}", left, right);
+fn render_row(
+    f: &mut Frame,
+    y: u16,
+    left: String,
+    right: String,
+    x: u16,
+    width: u16,
+    theme: &Theme,
+) {
+    let left_span = Span::raw(left);
+    let divider = Span::styled(" │ ", theme.diff_divider);
+    let right_span = Span::raw(right);
+    let line = Line::from(vec![left_span, divider, right_span]);
     let para = Paragraph::new(line);
     let area = Rect::new(x, y, width, 1);
     f.render_widget(para, area);
@@ -325,7 +343,10 @@ fn format_cell_styled(
     let sign_str = sign.to_string();
     let style = Style::new().bg(colors.bg).fg(colors.fg);
     let prefix_width = line_num_str.chars().count() + sign_str.chars().count();
-    let mut spans = vec![Span::raw(line_num_str), Span::styled(sign_str, style)];
+    let mut spans = vec![
+        Span::styled(line_num_str, theme.diff_line_number),
+        Span::styled(sign_str, style),
+    ];
     spans.extend(render_text_with_tokens(
         text,
         tokens,
@@ -348,7 +369,10 @@ fn format_cell_with_tokens(
     let line_num_str = format!("{:>3} ", line_num);
     let sign_str = sign.to_string();
     let prefix_width = line_num_str.chars().count() + sign_str.chars().count();
-    let mut spans = vec![Span::raw(line_num_str), Span::styled(sign_str, base_style)];
+    let mut spans = vec![
+        Span::styled(line_num_str, theme.diff_line_number),
+        Span::styled(sign_str, base_style),
+    ];
     spans.extend(render_text_with_tokens(
         text,
         tokens,
@@ -431,9 +455,10 @@ fn render_styled_row(
     right: Vec<Span<'_>>,
     x: u16,
     width: u16,
+    theme: &Theme,
 ) {
     let mut spans: Vec<Span<'_>> = left;
-    spans.push(Span::raw(" │ "));
+    spans.push(Span::styled(" │ ", theme.diff_divider));
     spans.extend(right);
 
     let line = Line::from(spans);

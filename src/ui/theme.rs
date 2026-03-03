@@ -28,6 +28,8 @@ pub struct Theme {
     pub diff_added: DiffColors,
     pub diff_removed: DiffColors,
     pub diff_changed: DiffColors,
+    pub diff_line_number: Style,
+    pub diff_divider: Style,
     pub syntax: SyntaxColors,
     pub additions: Style,
     pub additions_selected: Style,
@@ -81,9 +83,9 @@ impl Theme {
             text_selected: Style::default()
                 .fg(Color::Rgb(255, 255, 255))
                 .add_modifier(Modifier::BOLD),
-            text_muted: Style::default().fg(Color::Rgb(128, 128, 128)),
+            text_muted: Style::default().fg(Color::Gray),
             text_muted_selected: Style::default()
-                .fg(Color::Rgb(200, 200, 200))
+                .fg(Color::Gray)
                 .add_modifier(Modifier::BOLD),
             selection: Style::default().add_modifier(Modifier::BOLD),
             hash: Style::default().fg(Color::Rgb(255, 175, 0)),
@@ -112,6 +114,8 @@ impl Theme {
                 bg_bright: Color::Rgb(0x26, 0x36, 0x4d),
                 fg: Color::Rgb(0x52, 0x9c, 0xff),
             },
+            diff_line_number: Style::default().fg(Color::Gray),
+            diff_divider: Style::default().fg(Color::Gray),
             syntax: SyntaxColors {
                 keyword: Color::Rgb(0xc6, 0x92, 0xff),
                 string: Color::Rgb(0xa5, 0xe0, 0x75),
@@ -147,9 +151,9 @@ impl Theme {
             text_selected: Style::default()
                 .fg(Color::Rgb(0, 0, 0))
                 .add_modifier(Modifier::BOLD),
-            text_muted: Style::default().fg(Color::Rgb(108, 108, 108)),
+            text_muted: Style::default().fg(Color::Gray),
             text_muted_selected: Style::default()
-                .fg(Color::Rgb(58, 58, 58))
+                .fg(Color::Gray)
                 .add_modifier(Modifier::BOLD),
             selection: Style::default().add_modifier(Modifier::BOLD),
             hash: Style::default().fg(Color::Rgb(215, 135, 0)),
@@ -178,6 +182,8 @@ impl Theme {
                 bg_bright: Color::Rgb(0xbb, 0xde, 0xfb),
                 fg: Color::Rgb(0x0d, 0x47, 0xa1),
             },
+            diff_line_number: Style::default().fg(Color::Gray),
+            diff_divider: Style::default().fg(Color::Gray),
             syntax: SyntaxColors {
                 keyword: Color::Rgb(0x6a, 0x1b, 0x9a),
                 string: Color::Rgb(0x2e, 0x7d, 0x32),
