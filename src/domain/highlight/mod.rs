@@ -66,15 +66,59 @@ enum SupportedLanguage {
     Json,
     Yaml,
     Toml,
+    C,
+    Cpp,
+    CSharp,
+    Java,
+    Kotlin,
+    Swift,
+    Php,
+    Ruby,
+    Lua,
+    Bash,
+    Html,
+    Css,
+    Scss,
+    Vue,
+    Svelte,
+    Hcl,
+    Makefile,
+    Markdown,
 }
 
 fn detect_language(path: &str) -> Option<SupportedLanguage> {
+    let file_name = path.rsplit('/').next().unwrap_or(path);
+    if file_name.eq_ignore_ascii_case("dockerfile") {
+        return Some(SupportedLanguage::Bash);
+    }
+    if file_name.eq_ignore_ascii_case("makefile") {
+        return Some(SupportedLanguage::Makefile);
+    }
+
     let ext = path.rsplit('.').next()?.to_ascii_lowercase();
     match ext.as_str() {
         "rs" => Some(SupportedLanguage::Rust),
+        "c" | "h" => Some(SupportedLanguage::C),
+        "cc" | "cpp" | "cxx" | "hpp" | "hh" | "hxx" => Some(SupportedLanguage::Cpp),
+        "cs" => Some(SupportedLanguage::CSharp),
+        "java" => Some(SupportedLanguage::Java),
+        "kt" | "kts" => Some(SupportedLanguage::Kotlin),
+        "swift" => Some(SupportedLanguage::Swift),
         "js" | "mjs" | "cjs" => Some(SupportedLanguage::JavaScript),
         "ts" => Some(SupportedLanguage::TypeScript),
         "tsx" => Some(SupportedLanguage::Tsx),
+        "php" => Some(SupportedLanguage::Php),
+        "rb" => Some(SupportedLanguage::Ruby),
+        "lua" => Some(SupportedLanguage::Lua),
+        "sh" | "bash" | "zsh" => Some(SupportedLanguage::Bash),
+        "html" | "htm" => Some(SupportedLanguage::Html),
+        "css" => Some(SupportedLanguage::Css),
+        "scss" => Some(SupportedLanguage::Scss),
+        "vue" => Some(SupportedLanguage::Vue),
+        "svelte" => Some(SupportedLanguage::Svelte),
+        "hcl" | "tf" | "tfvars" => Some(SupportedLanguage::Hcl),
+        "mk" | "mak" => Some(SupportedLanguage::Makefile),
+        "md" | "markdown" => Some(SupportedLanguage::Markdown),
         "py" => Some(SupportedLanguage::Python),
         "go" => Some(SupportedLanguage::Go),
         "json" => Some(SupportedLanguage::Json),
@@ -307,6 +351,138 @@ impl SupportedLanguage {
                 "",
             )
             .map_err(|e| format!("Failed to create toml highlight config: {e}")),
+            SupportedLanguage::C => HighlightConfiguration::new(
+                tree_sitter_c::LANGUAGE.into(),
+                "c",
+                tree_sitter_c::HIGHLIGHT_QUERY,
+                "",
+                "",
+            )
+            .map_err(|e| format!("Failed to create c highlight config: {e}")),
+            SupportedLanguage::Cpp => HighlightConfiguration::new(
+                tree_sitter_cpp::LANGUAGE.into(),
+                "cpp",
+                tree_sitter_cpp::HIGHLIGHT_QUERY,
+                "",
+                "",
+            )
+            .map_err(|e| format!("Failed to create cpp highlight config: {e}")),
+            SupportedLanguage::CSharp => HighlightConfiguration::new(
+                tree_sitter_c_sharp::LANGUAGE.into(),
+                "c_sharp",
+                "",
+                "",
+                "",
+            )
+            .map_err(|e| format!("Failed to create csharp highlight config: {e}")),
+            SupportedLanguage::Java => HighlightConfiguration::new(
+                tree_sitter_java::LANGUAGE.into(),
+                "java",
+                tree_sitter_java::HIGHLIGHTS_QUERY,
+                "",
+                "",
+            )
+            .map_err(|e| format!("Failed to create java highlight config: {e}")),
+            SupportedLanguage::Kotlin => HighlightConfiguration::new(
+                tree_sitter_kotlin_sg::LANGUAGE.into(),
+                "kotlin",
+                tree_sitter_kotlin_sg::HIGHLIGHTS_QUERY,
+                "",
+                "",
+            )
+            .map_err(|e| format!("Failed to create kotlin highlight config: {e}")),
+            SupportedLanguage::Swift => HighlightConfiguration::new(
+                tree_sitter_swift::LANGUAGE.into(),
+                "swift",
+                tree_sitter_swift::HIGHLIGHTS_QUERY,
+                tree_sitter_swift::INJECTIONS_QUERY,
+                tree_sitter_swift::LOCALS_QUERY,
+            )
+            .map_err(|e| format!("Failed to create swift highlight config: {e}")),
+            SupportedLanguage::Php => HighlightConfiguration::new(
+                tree_sitter_php::LANGUAGE_PHP.into(),
+                "php",
+                tree_sitter_php::HIGHLIGHTS_QUERY,
+                tree_sitter_php::INJECTIONS_QUERY,
+                "",
+            )
+            .map_err(|e| format!("Failed to create php highlight config: {e}")),
+            SupportedLanguage::Ruby => HighlightConfiguration::new(
+                tree_sitter_ruby::LANGUAGE.into(),
+                "ruby",
+                tree_sitter_ruby::HIGHLIGHTS_QUERY,
+                "",
+                tree_sitter_ruby::LOCALS_QUERY,
+            )
+            .map_err(|e| format!("Failed to create ruby highlight config: {e}")),
+            SupportedLanguage::Lua => HighlightConfiguration::new(
+                tree_sitter_lua::LANGUAGE.into(),
+                "lua",
+                tree_sitter_lua::HIGHLIGHTS_QUERY,
+                tree_sitter_lua::INJECTIONS_QUERY,
+                tree_sitter_lua::LOCALS_QUERY,
+            )
+            .map_err(|e| format!("Failed to create lua highlight config: {e}")),
+            SupportedLanguage::Bash => HighlightConfiguration::new(
+                tree_sitter_bash::LANGUAGE.into(),
+                "bash",
+                tree_sitter_bash::HIGHLIGHT_QUERY,
+                "",
+                "",
+            )
+            .map_err(|e| format!("Failed to create bash highlight config: {e}")),
+            SupportedLanguage::Html => HighlightConfiguration::new(
+                tree_sitter_html::LANGUAGE.into(),
+                "html",
+                tree_sitter_html::HIGHLIGHTS_QUERY,
+                tree_sitter_html::INJECTIONS_QUERY,
+                "",
+            )
+            .map_err(|e| format!("Failed to create html highlight config: {e}")),
+            SupportedLanguage::Css | SupportedLanguage::Scss => HighlightConfiguration::new(
+                tree_sitter_css::LANGUAGE.into(),
+                "css",
+                tree_sitter_css::HIGHLIGHTS_QUERY,
+                "",
+                "",
+            )
+            .map_err(|e| format!("Failed to create css highlight config: {e}")),
+            SupportedLanguage::Vue => HighlightConfiguration::new(
+                tree_sitter_vue3::LANGUAGE.into(),
+                "vue",
+                tree_sitter_vue3::HIGHLIGHTS_QUERY,
+                tree_sitter_vue3::INJECTIONS_QUERY,
+                "",
+            )
+            .map_err(|e| format!("Failed to create vue highlight config: {e}")),
+            SupportedLanguage::Svelte => HighlightConfiguration::new(
+                tree_sitter_svelte_next::LANGUAGE.into(),
+                "svelte",
+                tree_sitter_svelte_next::HIGHLIGHTS_QUERY,
+                tree_sitter_svelte_next::INJECTIONS_QUERY,
+                tree_sitter_svelte_next::LOCALS_QUERY,
+            )
+            .map_err(|e| format!("Failed to create svelte highlight config: {e}")),
+            SupportedLanguage::Hcl => {
+                HighlightConfiguration::new(tree_sitter_hcl::LANGUAGE.into(), "hcl", "", "", "")
+                    .map_err(|e| format!("Failed to create hcl highlight config: {e}"))
+            }
+            SupportedLanguage::Makefile => HighlightConfiguration::new(
+                tree_sitter_make::LANGUAGE.into(),
+                "make",
+                tree_sitter_make::HIGHLIGHTS_QUERY,
+                "",
+                "",
+            )
+            .map_err(|e| format!("Failed to create make highlight config: {e}")),
+            SupportedLanguage::Markdown => HighlightConfiguration::new(
+                tree_sitter_md::LANGUAGE.into(),
+                "markdown",
+                tree_sitter_md::HIGHLIGHT_QUERY_BLOCK,
+                tree_sitter_md::INJECTION_QUERY_BLOCK,
+                "",
+            )
+            .map_err(|e| format!("Failed to create markdown highlight config: {e}")),
         }
     }
 }
