@@ -5,7 +5,7 @@ mod theme;
 
 pub use theme::*;
 
-use crate::app::{App, View};
+use crate::app::{App, ThemeMode, View};
 use ratatui::{prelude::*, widgets::Paragraph};
 
 const LOG_AREA_X: u16 = 2;
@@ -37,7 +37,11 @@ pub fn render(f: &mut Frame, app: &mut App) {
     };
     app.set_viewport_height(viewport_height);
 
-    let theme = Theme::detect_theme();
+    let theme = match app.theme_mode {
+        ThemeMode::Auto => Theme::detect_theme(),
+        ThemeMode::Dark => Theme::dark(),
+        ThemeMode::Light => Theme::light(),
+    };
 
     match &app.view {
         View::Log(log) => {
