@@ -44,10 +44,6 @@ pub fn render_diff_view(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Them
     f.render_widget(header_widget, Rect::new(area.x, y, area.width, 1));
     y = y.saturating_add(1);
 
-    let empty = Paragraph::new("");
-    f.render_widget(empty, Rect::new(area.x, y, area.width, 1));
-    y = y.saturating_add(1);
-
     let content_height = area.height.saturating_sub(y - area.y).saturating_sub(1) as usize;
     let content_area = Rect::new(area.x, y, area.width, content_height as u16);
 
