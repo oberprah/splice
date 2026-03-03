@@ -1,7 +1,7 @@
 use crate::common::{reset_counter, TestRepo};
 use ratatui::{backend::TestBackend, style::Color, Terminal};
 use serial_test::serial;
-use splice_rust::{render, Action, App};
+use splice_rust::{render, Action, App, ThemeMode};
 
 fn navigate_to_diff_view(app: &mut App) {
     app.update(Action::Open);
@@ -37,6 +37,7 @@ fn diff_view_shows_removed_lines_with_red_background() {
     let mut terminal = Terminal::new(backend).unwrap();
     let mut app = App::with_repo_path(repo.path());
     app.set_viewport_height(23);
+    app.set_theme_mode(ThemeMode::Dark);
 
     navigate_to_diff_view(&mut app);
 
@@ -69,6 +70,7 @@ fn diff_view_shows_added_lines_with_green_background() {
     let mut terminal = Terminal::new(backend).unwrap();
     let mut app = App::with_repo_path(repo.path());
     app.set_viewport_height(23);
+    app.set_theme_mode(ThemeMode::Dark);
 
     navigate_to_diff_view(&mut app);
 
@@ -101,6 +103,7 @@ fn diff_view_shows_changed_lines_with_blue_background() {
     let mut terminal = Terminal::new(backend).unwrap();
     let mut app = App::with_repo_path(repo.path());
     app.set_viewport_height(23);
+    app.set_theme_mode(ThemeMode::Dark);
 
     navigate_to_diff_view(&mut app);
 
@@ -133,6 +136,7 @@ fn diff_view_has_removed_and_added_colors_for_pure_changes() {
     let mut terminal = Terminal::new(backend).unwrap();
     let mut app = App::with_repo_path(repo.path());
     app.set_viewport_height(23);
+    app.set_theme_mode(ThemeMode::Dark);
 
     navigate_to_diff_view(&mut app);
 
@@ -170,6 +174,7 @@ fn diff_view_uses_changed_color_for_line_modification() {
     let mut terminal = Terminal::new(backend).unwrap();
     let mut app = App::with_repo_path(repo.path());
     app.set_viewport_height(23);
+    app.set_theme_mode(ThemeMode::Dark);
 
     navigate_to_diff_view(&mut app);
 

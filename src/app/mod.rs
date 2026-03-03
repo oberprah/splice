@@ -12,6 +12,14 @@ use crate::core::{DiffSource, FileChange, LogSpec};
 use crate::git;
 use crate::input::Action;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ThemeMode {
+    #[default]
+    Auto,
+    Dark,
+    Light,
+}
+
 pub enum View {
     Log(LogView),
     Files(FilesView),
@@ -30,6 +38,7 @@ pub struct App {
     pub view: View,
     pub view_stack: Vec<View>,
     pub error: Option<String>,
+    pub theme_mode: ThemeMode,
 }
 
 impl Default for App {
@@ -45,6 +54,7 @@ impl App {
             view: View::Log(LogView::new(Vec::new())),
             view_stack: Vec::new(),
             error: None,
+            theme_mode: ThemeMode::Auto,
         }
     }
 
@@ -71,12 +81,14 @@ impl App {
                 repo_path: Some(repo_path),
                 view_stack: Vec::new(),
                 error: None,
+                theme_mode: ThemeMode::Auto,
             },
             Err(e) => Self {
                 repo_path: Some(repo_path),
                 view: View::Log(LogView::new(Vec::new())),
                 view_stack: Vec::new(),
                 error: Some(e),
+                theme_mode: ThemeMode::Auto,
             },
         }
     }
@@ -92,7 +104,12 @@ impl App {
             view: View::Files(files_view),
             view_stack: vec![],
             error: None,
+            theme_mode: ThemeMode::Auto,
         }
+    }
+
+    pub fn set_theme_mode(&mut self, theme_mode: ThemeMode) {
+        self.theme_mode = theme_mode;
     }
 
     pub fn set_viewport_height(&mut self, height: usize) {
