@@ -12,7 +12,7 @@ pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect, theme: &T
     let mut y = area.y;
     let width = area.width as usize;
 
-    render_source_header(f, &files.source, area.x, y, width);
+    render_source_header(f, &files.source, area.x, y, width, theme);
     y += 1;
 
     let empty = Paragraph::new("");
@@ -57,10 +57,17 @@ pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect, theme: &T
     f.render_widget(help, help_area);
 }
 
-fn render_source_header(f: &mut Frame, source: &DiffSource, x: u16, y: u16, width: usize) {
+fn render_source_header(
+    f: &mut Frame,
+    source: &DiffSource,
+    x: u16,
+    y: u16,
+    width: usize,
+    theme: &Theme,
+) {
     let header = source.header_text();
     let truncated: String = header.chars().take(width).collect();
-    let para = Paragraph::new(truncated).style(Style::default().fg(Color::Gray));
+    let para = Paragraph::new(truncated).style(theme.text_muted);
     f.render_widget(para, Rect::new(x, y, width as u16, 1));
 }
 

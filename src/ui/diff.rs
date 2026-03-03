@@ -40,7 +40,7 @@ pub fn render_diff_view(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Them
         range_display, diff.file.path, diff.file.additions, diff.file.deletions
     );
     let header = truncate_to_width(&header, width);
-    let header_widget = Paragraph::new(header).style(Style::default().fg(Color::Gray));
+    let header_widget = Paragraph::new(header).style(theme.text_muted);
     f.render_widget(header_widget, Rect::new(area.x, y, area.width, 1));
     y = y.saturating_add(1);
 
