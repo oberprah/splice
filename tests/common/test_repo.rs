@@ -143,6 +143,14 @@ impl TestRepo {
         Self::run_git(&self.path, &["add", path]);
     }
 
+    pub fn rename_file(&self, old_path: &str, new_path: &str) {
+        Self::run_git(&self.path, &["mv", old_path, new_path]);
+    }
+
+    pub fn move_folder(&self, old_path: &str, new_path: &str) {
+        Self::run_git(&self.path, &["mv", old_path, new_path]);
+    }
+
     fn run_git(path: &std::path::Path, args: &[&str]) {
         let output = Self::git_command(path)
             .args(args)

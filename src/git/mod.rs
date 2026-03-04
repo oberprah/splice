@@ -86,6 +86,7 @@ fn fetch_file_changes_single(
             "--no-commit-id",
             "--numstat",
             "-r",
+            "-M",
             "--root",
             commit_hash,
         ])
@@ -105,6 +106,7 @@ fn fetch_file_changes_single(
             "--no-commit-id",
             "--name-status",
             "-r",
+            "-M",
             "--root",
             commit_hash,
         ])
@@ -131,7 +133,7 @@ fn fetch_file_changes_range(
     let range_spec = range.to_diff_spec();
 
     let numstat_output = git_command(repo_path)
-        .args(["diff", "--numstat", &range_spec])
+        .args(["diff", "--numstat", "-M", &range_spec])
         .output()
         .map_err(|e| format!("Failed to run git diff: {}", e))?;
 
@@ -143,7 +145,7 @@ fn fetch_file_changes_range(
     }
 
     let name_status_output = git_command(repo_path)
-        .args(["diff", "--name-status", &range_spec])
+        .args(["diff", "--name-status", "-M", &range_spec])
         .output()
         .map_err(|e| format!("Failed to run git diff: {}", e))?;
 

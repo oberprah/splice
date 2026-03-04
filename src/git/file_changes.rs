@@ -19,6 +19,13 @@ pub fn parse_file_changes(numstat: &str, name_status: &str) -> Result<Vec<FileCh
         let deletions_str = parts[1];
         let path = parts[2].to_string();
 
+        let (path, _old_path) = if let Some((old, new)) = parse_rename_path(&path) {
+            stats.insert(old.clone(), (Some(0), Some(0), false));
+            (new, Some(old))
+        } else {
+            (path, None)
+        };
+
         let is_binary = additions_str == "-" && deletions_str == "-";
         let additions = if is_binary {
             0
@@ -42,20 +49,29 @@ pub fn parse_file_changes(numstat: &str, name_status: &str) -> Result<Vec<FileCh
             continue;
         }
 
-        let parts: Vec<&str> = line.splitn(2, '\t').collect();
-        if parts.len() != 2 {
+        let parts: Vec<&str> = line.splitn(3, '\t').collect();
+        if parts.len() < 2 {
             continue;
         }
 
         let status_char = parts[0].trim();
-        let path = parts[1].to_string();
-
-        let status = match status_char {
-            "M" => FileStatus::Modified,
-            "A" => FileStatus::Added,
-            "D" => FileStatus::Deleted,
-            "R" => FileStatus::Renamed,
-            _ => continue,
+        let (status, path, old_path) = if status_char.starts_with('R') {
+            if parts.len() < 3 {
+                continue;
+            }
+            (
+                FileStatus::Renamed,
+                parts[2].to_string(),
+                Some(parts[1].to_string()),
+            )
+        } else {
+            let status = match status_char {
+                "M" => FileStatus::Modified,
+                "A" => FileStatus::Added,
+                "D" => FileStatus::Deleted,
+                _ => continue,
+            };
+            (status, parts[1].to_string(), None)
         };
 
         let (additions, deletions, is_binary) = stats
@@ -65,6 +81,7 @@ pub fn parse_file_changes(numstat: &str, name_status: &str) -> Result<Vec<FileCh
 
         changes.push(FileChange {
             path,
+            old_path,
             status,
             additions,
             deletions,
@@ -73,6 +90,17 @@ pub fn parse_file_changes(numstat: &str, name_status: &str) -> Result<Vec<FileCh
     }
 
     Ok(changes)
+}
+
+fn parse_rename_path(path: &str) -> Option<(String, String)> {
+    if !path.contains(" => ") {
+        return None;
+    }
+    let parts: Vec<&str> = path.split(" => ").collect();
+    if parts.len() != 2 {
+        return None;
+    }
+    Some((parts[0].to_string(), parts[1].to_string()))
 }
 
 #[cfg(test)]
@@ -145,5 +173,19 @@ mod tests {
         assert_eq!(changes[0].status, FileStatus::Modified);
         assert_eq!(changes[1].status, FileStatus::Added);
         assert_eq!(changes[2].status, FileStatus::Deleted);
+    }
+
+    #[test]
+    fn test_parse_file_changes_renamed() {
+        let numstat = "0\t0\told_name.txt => new_name.txt";
+        let name_status = "R100\told_name.txt\tnew_name.txt";
+        let changes = parse_file_changes(numstat, name_status).unwrap();
+
+        assert_eq!(changes.len(), 1);
+        assert_eq!(changes[0].status, FileStatus::Renamed);
+        assert_eq!(changes[0].path, "new_name.txt");
+        assert_eq!(changes[0].old_path, Some("old_name.txt".to_string()));
+        assert_eq!(changes[0].additions, 0);
+        assert_eq!(changes[0].deletions, 0);
     }
 }

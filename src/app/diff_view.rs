@@ -292,6 +292,7 @@ mod tests {
     fn file_change(path: &str) -> FileChange {
         FileChange {
             path: path.to_string(),
+            old_path: None,
             status: FileStatus::Modified,
             additions: 1,
             deletions: 1,
