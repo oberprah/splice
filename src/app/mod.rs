@@ -40,6 +40,7 @@ pub struct App {
     pub view_stack: Vec<View>,
     pub error: Option<String>,
     pub theme_mode: ThemeMode,
+    viewport_width: usize,
 }
 
 impl Default for App {
@@ -56,6 +57,7 @@ impl App {
             view_stack: Vec::new(),
             error: None,
             theme_mode: ThemeMode::Auto,
+            viewport_width: 0,
         }
     }
 
@@ -83,6 +85,7 @@ impl App {
                 view_stack: Vec::new(),
                 error: None,
                 theme_mode: ThemeMode::Auto,
+                viewport_width: 0,
             },
             Err(e) => Self {
                 repo_path: Some(repo_path),
@@ -90,6 +93,7 @@ impl App {
                 view_stack: Vec::new(),
                 error: Some(e),
                 theme_mode: ThemeMode::Auto,
+                viewport_width: 0,
             },
         }
     }
@@ -106,6 +110,7 @@ impl App {
             view_stack: vec![],
             error: None,
             theme_mode: ThemeMode::Auto,
+            viewport_width: 0,
         }
     }
 
@@ -117,7 +122,16 @@ impl App {
         match &mut self.view {
             View::Log(log) => log.set_viewport_height(height),
             View::Files(files) => files.set_viewport_height(height),
-            View::Diff(diff) => diff.set_viewport_height(height),
+            View::Diff(diff) => diff.set_viewport_dimensions(height, self.viewport_width),
+        }
+    }
+
+    pub fn set_viewport_size(&mut self, height: usize, width: usize) {
+        self.viewport_width = width;
+        match &mut self.view {
+            View::Log(log) => log.set_viewport_height(height),
+            View::Files(files) => files.set_viewport_height(height),
+            View::Diff(diff) => diff.set_viewport_dimensions(height, width),
         }
     }
 
@@ -371,9 +385,8 @@ impl App {
             &full_diff.new_content,
         );
 
-        let viewport_height = self.viewport_height();
         let mut diff_view = DiffView::new(source, file, diff, highlights);
-        diff_view.set_viewport_height(viewport_height);
+        diff_view.set_viewport_dimensions(self.viewport_height(), self.viewport_width);
         let old_view = std::mem::replace(&mut self.view, View::Diff(diff_view));
         if push_previous {
             self.view_stack.push(old_view);

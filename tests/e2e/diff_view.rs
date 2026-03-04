@@ -106,15 +106,15 @@ impl Calculator {
 "    6       }                         │   6       }                             "
 "    7                                 │   7                                     "
 "    8       pub fn add(&self, a: i32, │   8       pub fn add(&self, a: i32,     "
+"    ↪   b: i32) -> i32 {              │   ↪   b: i32) -> i32 {                  "
 "    9           a + b                 │   9           a + b                     "
 "   10       }                         │  10       }                             "
 "   11                                 │  11                                     "
 "   12       pub fn sub(&self, a: i32, │  12       pub fn sub(&self, a: i32,     "
+"    ↪   b: i32) -> i32 {              │   ↪   b: i32) -> i32 {                  "
 "   13           a - b                 │  13           a - b                     "
 "   14       }                         │  14       }                             "
 "   15                                 │  15                                     "
-"   16 -     pub fn multiply(&self, a: │  16 +     pub fn mul(&self, a: i32,     "
-"   17 -         a * b                 │  17 +         a.checked_mul(b).unwra    "
 "  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
@@ -125,26 +125,26 @@ impl Calculator {
 "  0fdee5c · src/calculator.rs · +7 -11                                          "
 "    7                                 │   7                                     "
 "    8       pub fn add(&self, a: i32, │   8       pub fn add(&self, a: i32,     "
+"    ↪   b: i32) -> i32 {              │   ↪   b: i32) -> i32 {                  "
 "    9           a + b                 │   9           a + b                     "
 "   10       }                         │  10       }                             "
 "   11                                 │  11                                     "
 "   12       pub fn sub(&self, a: i32, │  12       pub fn sub(&self, a: i32,     "
+"    ↪   b: i32) -> i32 {              │   ↪   b: i32) -> i32 {                  "
 "   13           a - b                 │  13           a - b                     "
 "   14       }                         │  14       }                             "
 "   15                                 │  15                                     "
 "   16 -     pub fn multiply(&self, a: │  16 +     pub fn mul(&self, a: i32,     "
-"   17 -         a * b                 │  17 +         a.checked_mul(b).unwra    "
+"    ↪ - i32, b: i32) -> i32 {         │   ↪ + b: i32) -> i32 {                  "
+"   17 -         a * b                 │  17 +                                   "
+"                                      │   ↪ + a.checked_mul(b).unwrap_or(0)     "
 "   18 -     }                         │                                         "
 "   19 -                               │                                         "
-"   20 -     pub fn divide(&self, a: i │                                         "
+"   20 -     pub fn divide(&self, a:   │                                         "
+"    ↪ - i32, b: i32) -> Option<i32> { │                                         "
 "   21 -         if b == 0 {           │                                         "
 "   22 -             None              │                                         "
 "   23 -         } else {              │                                         "
-"   24 -             Some(a / b)       │                                         "
-"   25 -         }                     │                                         "
-"   26       }                         │  18       }                             "
-"   27                                 │  19                                     "
-"   28       pub fn sum(&self, values: │  20       pub fn sum(&self, values:     "
 "  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
@@ -153,9 +153,14 @@ impl Calculator {
     h.assert_snapshot(
         r#"
 "  0fdee5c · src/calculator.rs · +7 -11                                          "
+"   16 -     pub fn multiply(&self, a: │  16 +     pub fn mul(&self, a: i32,     "
+"    ↪ - i32, b: i32) -> i32 {         │   ↪ + b: i32) -> i32 {                  "
+"   17 -         a * b                 │  17 +                                   "
+"                                      │   ↪ + a.checked_mul(b).unwrap_or(0)     "
 "   18 -     }                         │                                         "
 "   19 -                               │                                         "
-"   20 -     pub fn divide(&self, a: i │                                         "
+"   20 -     pub fn divide(&self, a:   │                                         "
+"    ↪ - i32, b: i32) -> Option<i32> { │                                         "
 "   21 -         if b == 0 {           │                                         "
 "   22 -             None              │                                         "
 "   23 -         } else {              │                                         "
@@ -164,17 +169,12 @@ impl Calculator {
 "   26       }                         │  18       }                             "
 "   27                                 │  19                                     "
 "   28       pub fn sum(&self, values: │  20       pub fn sum(&self, values:     "
+"    ↪   &[i32]) -> i32 {              │   ↪   &[i32]) -> i32 {                  "
 "   29           values.iter().sum()   │  21           values.iter().sum()       "
 "   30       }                         │  22       }                             "
 "   31                                 │  23                                     "
-"                                      │  24 +     pub fn pow(&self, base: i3    "
-"                                      │  25 +         (0..exp).fold(1, |acc,    "
-"                                      │  26 +     }                             "
-"                                      │  27 +                                   "
-"   32       pub fn format_result(&sel │  28       pub fn format_result(&self    "
-"   33 -         format!("Result: {}", │  29 +         format!("Result: {valu    "
-"   34       }                         │  30       }                             "
-"   35   }                             │  31   }                                 "
+"                                      │  24 +     pub fn pow(&self, base:       "
+"                                      │   ↪ + i32, exp: u32) -> i32 {           "
 "  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
@@ -185,27 +185,27 @@ impl Calculator {
         r#"
 "  0fdee5c · src/calculator.rs · +7 -11                                          "
 "    8       pub fn add(&self, a: i32, │   8       pub fn add(&self, a: i32,     "
+"    ↪   b: i32) -> i32 {              │   ↪   b: i32) -> i32 {                  "
 "    9           a + b                 │   9           a + b                     "
 "   10       }                         │  10       }                             "
 "   11                                 │  11                                     "
 "   12       pub fn sub(&self, a: i32, │  12       pub fn sub(&self, a: i32,     "
+"    ↪   b: i32) -> i32 {              │   ↪   b: i32) -> i32 {                  "
 "   13           a - b                 │  13           a - b                     "
 "   14       }                         │  14       }                             "
 "   15                                 │  15                                     "
 "   16 -     pub fn multiply(&self, a: │  16 +     pub fn mul(&self, a: i32,     "
-"   17 -         a * b                 │  17 +         a.checked_mul(b).unwra    "
+"    ↪ - i32, b: i32) -> i32 {         │   ↪ + b: i32) -> i32 {                  "
+"   17 -         a * b                 │  17 +                                   "
+"                                      │   ↪ + a.checked_mul(b).unwrap_or(0)     "
 "   18 -     }                         │                                         "
 "   19 -                               │                                         "
-"   20 -     pub fn divide(&self, a: i │                                         "
+"   20 -     pub fn divide(&self, a:   │                                         "
+"    ↪ - i32, b: i32) -> Option<i32> { │                                         "
 "   21 -         if b == 0 {           │                                         "
 "   22 -             None              │                                         "
 "   23 -         } else {              │                                         "
 "   24 -             Some(a / b)       │                                         "
-"   25 -         }                     │                                         "
-"   26       }                         │  18       }                             "
-"   27                                 │  19                                     "
-"   28       pub fn sum(&self, values: │  20       pub fn sum(&self, values:     "
-"   29           values.iter().sum()   │  21           values.iter().sum()       "
 "  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
@@ -337,6 +337,11 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
     h.assert_snapshot(
         r#"
 "  331f884 · src/large.txt · +20 -20                                             "
+"    5 - old line 5                    │   5 + new line 5                        "
+"    6 - old line 6                    │   6 + new line 6                        "
+"    7 - old line 7                    │   7 + new line 7                        "
+"    8 - old line 8                    │   8 + new line 8                        "
+"    9 - old line 9                    │   9 + new line 9                        "
 "   10 - old line 10                   │  10 + new line 10                       "
 "   11 - old line 11                   │  11 + new line 11                       "
 "   12 - old line 12                   │  12 + new line 12                       "
@@ -344,31 +349,6 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
 "   14 - old line 14                   │  14 + new line 14                       "
 "   15 - old line 15                   │  15 + new line 15                       "
 "   16 - old line 16                   │  16 + new line 16                       "
-"   17 - old line 17                   │  17 + new line 17                       "
-"   18 - old line 18                   │  18 + new line 18                       "
-"   19 - old line 19                   │  19 + new line 19                       "
-"   20 - old line 20                   │  20 + new line 20                       "
-"                                      │                                         "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
-"#,
-    );
-
-    h.press(KeyCode::Char('n'));
-    h.assert_snapshot(
-        r#"
-"  331f884 · src/large.txt · +20 -20                                             "
-"   12 - old line 12                   │  12 + new line 12                       "
-"   13 - old line 13                   │  13 + new line 13                       "
-"   14 - old line 14                   │  14 + new line 14                       "
-"   15 - old line 15                   │  15 + new line 15                       "
-"   16 - old line 16                   │  16 + new line 16                       "
-"   17 - old line 17                   │  17 + new line 17                       "
-"   18 - old line 18                   │  18 + new line 18                       "
-"   19 - old line 19                   │  19 + new line 19                       "
-"   20 - old line 20                   │  20 + new line 20                       "
-"                                      │                                         "
-"                                      │                                         "
-"                                      │                                         "
 "  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
@@ -397,18 +377,18 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
     h.assert_snapshot(
         r#"
 "  331f884 · src/large.txt · +20 -20                                             "
+"    5 - old line 5                    │   5 + new line 5                        "
+"    6 - old line 6                    │   6 + new line 6                        "
+"    7 - old line 7                    │   7 + new line 7                        "
+"    8 - old line 8                    │   8 + new line 8                        "
+"    9 - old line 9                    │   9 + new line 9                        "
+"   10 - old line 10                   │  10 + new line 10                       "
+"   11 - old line 11                   │  11 + new line 11                       "
 "   12 - old line 12                   │  12 + new line 12                       "
 "   13 - old line 13                   │  13 + new line 13                       "
 "   14 - old line 14                   │  14 + new line 14                       "
 "   15 - old line 15                   │  15 + new line 15                       "
 "   16 - old line 16                   │  16 + new line 16                       "
-"   17 - old line 17                   │  17 + new line 17                       "
-"   18 - old line 18                   │  18 + new line 18                       "
-"   19 - old line 19                   │  19 + new line 19                       "
-"   20 - old line 20                   │  20 + new line 20                       "
-"                                      │                                         "
-"                                      │                                         "
-"                                      │                                         "
 "  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
@@ -505,18 +485,18 @@ fn diff_view_handles_close_hunks_and_bottom_additions() {
     h.assert_snapshot(
         r#"
 "  bb76eb0 · a.txt · +3 -2                                                       "
-"   16   line 16                       │  16   line 16                           "
-"   17   line 17                       │  17   line 17                           "
-"   18   line 18                       │  18   line 18                           "
-"                                      │  19 + line 19 added                     "
-"                                      │                                         "
-"                                      │                                         "
-"                                      │                                         "
-"                                      │                                         "
-"                                      │                                         "
-"                                      │                                         "
-"                                      │                                         "
-"                                      │                                         "
+"    4   line 4                        │   4   line 4                            "
+"    5 - line 5                        │   5 + line 5 changed                    "
+"    6   line 6                        │   6   line 6                            "
+"    7   line 7                        │   7   line 7                            "
+"    8   line 8                        │   8   line 8                            "
+"    9   line 9                        │   9   line 9                            "
+"   10   line 10                       │  10   line 10                           "
+"   11   line 11                       │  11   line 11                           "
+"   12   line 12                       │  12   line 12                           "
+"   13   line 13                       │  13   line 13                           "
+"   14   line 14                       │  14   line 14                           "
+"   15   line 15                       │  15   line 15                           "
 "  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
@@ -525,6 +505,7 @@ fn diff_view_handles_close_hunks_and_bottom_additions() {
     h.assert_snapshot(
         r#"
 "  bb76eb0 · b.txt · +1 -1                                                       "
+"                                      │                                         "
 "                                      │                                         "
 "                                      │                                         "
 "    1   one                           │   1   one                               "
@@ -536,8 +517,96 @@ fn diff_view_handles_close_hunks_and_bottom_additions() {
 "                                      │                                         "
 "                                      │                                         "
 "                                      │                                         "
-"                                      │                                         "
 "  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"#,
+    );
+}
+
+#[test]
+#[serial]
+fn diff_view_soft_wrap_long_lines() {
+    reset_counter();
+
+    let repo = TestRepo::new();
+    let original = r#"fn main() {
+    let very_long_variable_name_that_definitely_exceeds_screen_width = "this is an extremely long string value that should wrap across multiple lines when displayed in the diff view";
+    println!("{}", very_long_variable_name_that_definitely_exceeds_screen_width);
+}
+"#;
+    let updated = r#"fn main() {
+    let very_long_variable_name_that_definitely_exceeds_screen_width = "this is an updated extremely long string value that should wrap across multiple lines when displayed in the diff view";
+    let another_long_variable_name_for_testing = "another very long string to test soft wrapping behavior with multiple wrapped segments in the diff view";
+    println!("{}", very_long_variable_name_that_definitely_exceeds_screen_width);
+    println!("{}", another_long_variable_name_for_testing);
+}
+"#;
+
+    repo.add_file("src/main.rs", original);
+    repo.commit("Initial commit");
+    repo.modify_file("src/main.rs", updated);
+    repo.commit("Update with long lines");
+
+    let mut h = Harness::with_repo_and_screen_size(&repo, 60, 14);
+    h.press(KeyCode::Enter);
+    h.press(KeyCode::Char('j'));
+    h.press(KeyCode::Enter);
+
+    h.assert_snapshot(
+        r#"
+"  e65f008 · src/main.rs · +3 -1                             "
+"                            │                               "
+"                            │                               "
+"                            │                               "
+"    1   fn main() {         │   1   fn main() {             "
+"    2 -     let             │   2 +     let                 "
+"    ↪ - very_long_variable_ │   ↪ + very_long_variable_n    "
+"    ↪ - ame_that_definitely │   ↪ + me_that_definitely_e    "
+"    ↪ - exceeds_screen_widt │   ↪ + ceeds_screen_width =    "
+"    ↪ - = "this is an       │   ↪ + "this is an updated     "
+"    ↪ - extremely long      │   ↪ + extremely long strin    "
+"    ↪ - string value that   │   ↪ + value that should       "
+"    ↪ - should wrap across  │   ↪ + wrap across multiple    "
+"  j/k: scroll  n/p: next/prev diff  o: open  q: back        "
+"#,
+    );
+
+    h.press(KeyCode::Char('j'));
+    h.assert_snapshot(
+        r#"
+"  e65f008 · src/main.rs · +3 -1                             "
+"                            │                               "
+"                            │                               "
+"    1   fn main() {         │   1   fn main() {             "
+"    2 -     let             │   2 +     let                 "
+"    ↪ - very_long_variable_ │   ↪ + very_long_variable_n    "
+"    ↪ - ame_that_definitely │   ↪ + me_that_definitely_e    "
+"    ↪ - exceeds_screen_widt │   ↪ + ceeds_screen_width =    "
+"    ↪ - = "this is an       │   ↪ + "this is an updated     "
+"    ↪ - extremely long      │   ↪ + extremely long strin    "
+"    ↪ - string value that   │   ↪ + value that should       "
+"    ↪ - should wrap across  │   ↪ + wrap across multiple    "
+"    ↪ - multiple lines when │   ↪ + lines when displayed    "
+"  j/k: scroll  n/p: next/prev diff  o: open  q: back        "
+"#,
+    );
+
+    h.press(KeyCode::Char('k'));
+    h.assert_snapshot(
+        r#"
+"  e65f008 · src/main.rs · +3 -1                             "
+"                            │                               "
+"                            │                               "
+"                            │                               "
+"    1   fn main() {         │   1   fn main() {             "
+"    2 -     let             │   2 +     let                 "
+"    ↪ - very_long_variable_ │   ↪ + very_long_variable_n    "
+"    ↪ - ame_that_definitely │   ↪ + me_that_definitely_e    "
+"    ↪ - exceeds_screen_widt │   ↪ + ceeds_screen_width =    "
+"    ↪ - = "this is an       │   ↪ + "this is an updated     "
+"    ↪ - extremely long      │   ↪ + extremely long strin    "
+"    ↪ - string value that   │   ↪ + value that should       "
+"    ↪ - should wrap across  │   ↪ + wrap across multiple    "
+"  j/k: scroll  n/p: next/prev diff  o: open  q: back        "
 "#,
     );
 }
@@ -598,6 +667,8 @@ fn diff_view_prev_from_below_last_hunk_stays_in_file() {
     h.assert_snapshot(
         r#"
 "  7dd25c4 · a.txt · +2 -2                                                       "
+"    5   line 5                        │   5   line 5                            "
+"    6   line 6                        │   6   line 6                            "
 "    7   line 7                        │   7   line 7                            "
 "    8   line 8                        │   8   line 8                            "
 "    9   line 9                        │   9   line 9                            "
@@ -608,8 +679,6 @@ fn diff_view_prev_from_below_last_hunk_stays_in_file() {
 "   14   line 14                       │  14   line 14                           "
 "   15   line 15                       │  15   line 15                           "
 "   16   line 16                       │  16   line 16                           "
-"   17   line 17                       │  17   line 17                           "
-"   18   line 18                       │  18   line 18                           "
 "  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );

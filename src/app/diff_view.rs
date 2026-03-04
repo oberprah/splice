@@ -1,6 +1,7 @@
 use crate::core::{DiffSource, FileChange};
 use crate::domain::diff::{DiffBlock, FileDiff};
 use crate::domain::highlight::DiffHighlights;
+use crate::ui::diff::wrap_line;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct ChangeRange {
@@ -21,6 +22,8 @@ pub struct DiffView {
     pub highlights: DiffHighlights,
     pub scroll_offset: usize,
     pub viewport_height: usize,
+    pub viewport_width: usize,
+    cumulative_screen_rows: Vec<usize>,
 }
 
 impl DiffView {
@@ -37,12 +40,89 @@ impl DiffView {
             highlights,
             scroll_offset: 0,
             viewport_height: 0,
+            viewport_width: 0,
+            cumulative_screen_rows: Vec::new(),
         }
     }
 
-    pub fn set_viewport_height(&mut self, height: usize) {
+    pub fn set_viewport_dimensions(&mut self, height: usize, width: usize) {
+        let width_changed = self.viewport_width != width;
         self.viewport_height = height;
+        self.viewport_width = width;
+        if width_changed {
+            self.recompute_screen_rows();
+        }
         self.clamp_scroll_offset();
+    }
+
+    fn recompute_screen_rows(&mut self) {
+        if self.viewport_width == 0 {
+            self.cumulative_screen_rows.clear();
+            return;
+        }
+
+        let separator_width = 3;
+        let available = self.viewport_width.saturating_sub(separator_width);
+        let cell_width = available / 2;
+        let prefix_width = 5;
+        let content_width = cell_width.saturating_sub(prefix_width);
+
+        let mut cumulative = Vec::new();
+        let mut total = 0usize;
+
+        for block in &self.diff.blocks {
+            let line_count = match block {
+                DiffBlock::Unchanged(unchanged) => unchanged.lines.len(),
+                DiffBlock::Change(change) => change.old_lines.len().max(change.new_lines.len()),
+            };
+
+            for i in 0..line_count {
+                let line = self.get_line_text(block, i);
+                let rows = if content_width == 0 {
+                    1
+                } else {
+                    let segments = wrap_line(line, &[], content_width);
+                    segments.len().max(1)
+                };
+                total += rows;
+                cumulative.push(total);
+            }
+        }
+
+        self.cumulative_screen_rows = cumulative;
+    }
+
+    fn get_line_text<'a>(&self, block: &'a DiffBlock, index: usize) -> &'a str {
+        match block {
+            DiffBlock::Unchanged(unchanged) => {
+                unchanged.lines.get(index).map(|s| s.as_str()).unwrap_or("")
+            }
+            DiffBlock::Change(change) => change
+                .new_lines
+                .get(index)
+                .map(|s| s.as_str())
+                .or_else(|| change.old_lines.get(index).map(|s| s.as_str()))
+                .unwrap_or(""),
+        }
+    }
+
+    fn logical_line_to_screen_row(&self, logical_line: usize) -> usize {
+        if logical_line == 0 {
+            return 0;
+        }
+        self.cumulative_screen_rows
+            .get(logical_line.saturating_sub(1))
+            .copied()
+            .unwrap_or(0)
+    }
+
+    fn screen_row_to_logical_line(&self, screen_row: usize) -> usize {
+        self.cumulative_screen_rows
+            .partition_point(|&cum| cum <= screen_row)
+    }
+
+    fn total_screen_rows(&self) -> usize {
+        self.cumulative_screen_rows.last().copied().unwrap_or(0)
     }
 
     pub fn move_down(&mut self, amount: usize) {
@@ -141,7 +221,8 @@ impl DiffView {
             return Err("diff has no lines".to_string());
         }
 
-        if self.scroll_offset >= total_lines {
+        let logical_line = self.screen_row_to_logical_line(self.scroll_offset);
+        if logical_line >= total_lines {
             return Err("scroll position out of range".to_string());
         }
 
@@ -150,7 +231,7 @@ impl DiffView {
             match block {
                 DiffBlock::Unchanged(unchanged) => {
                     for i in 0..unchanged.lines.len() {
-                        if row == self.scroll_offset {
+                        if row == logical_line {
                             return Ok(unchanged.new_start + i as u32);
                         }
                         row += 1;
@@ -159,7 +240,7 @@ impl DiffView {
                 DiffBlock::Change(change) => {
                     let len = change.old_lines.len().max(change.new_lines.len());
                     for i in 0..len {
-                        if row == self.scroll_offset {
+                        if row == logical_line {
                             if i < change.new_lines.len() {
                                 return Ok(change.new_start + i as u32);
                             }
@@ -182,7 +263,8 @@ impl DiffView {
     }
 
     fn max_scroll_offset(&self) -> usize {
-        self.diff.total_line_count()
+        self.total_screen_rows()
+            .saturating_sub(self.viewport_height)
     }
 
     fn should_advance_within_range(&self, range: ChangeRange) -> bool {
@@ -210,22 +292,28 @@ impl DiffView {
     }
 
     fn change_ranges(&self) -> Vec<ChangeRange> {
+        if self.cumulative_screen_rows.is_empty() {
+            return Vec::new();
+        }
+
         let mut ranges = Vec::new();
-        let mut row = 0;
+        let mut logical_row = 0;
 
         for block in &self.diff.blocks {
             let len = match block {
                 DiffBlock::Unchanged(unchanged) => unchanged.lines.len(),
                 DiffBlock::Change(change) => {
                     let block_len = change.old_lines.len().max(change.new_lines.len());
+                    let start_screen = self.logical_line_to_screen_row(logical_row);
+                    let end_screen = self.logical_line_to_screen_row(logical_row + block_len);
                     ranges.push(ChangeRange {
-                        start: row,
-                        end: row + block_len,
+                        start: start_screen,
+                        end: end_screen,
                     });
                     block_len
                 }
             };
-            row += len;
+            logical_row += len;
         }
 
         ranges
@@ -255,13 +343,13 @@ impl DiffView {
         true
     }
 
-    fn find_next_new_line_number(&self, start_row: usize) -> Result<u32, String> {
+    fn find_next_new_line_number(&self, start_logical_row: usize) -> Result<u32, String> {
         let mut row = 0;
         for block in &self.diff.blocks {
             match block {
                 DiffBlock::Unchanged(unchanged) => {
                     for i in 0..unchanged.lines.len() {
-                        if row >= start_row {
+                        if row >= start_logical_row {
                             return Ok(unchanged.new_start + i as u32);
                         }
                         row += 1;
@@ -270,7 +358,7 @@ impl DiffView {
                 DiffBlock::Change(change) => {
                     let len = change.old_lines.len().max(change.new_lines.len());
                     for i in 0..len {
-                        if row >= start_row && i < change.new_lines.len() {
+                        if row >= start_logical_row && i < change.new_lines.len() {
                             return Ok(change.new_start + i as u32);
                         }
                         row += 1;
@@ -313,7 +401,7 @@ mod tests {
             },
             DiffHighlights::default(),
         );
-        view.set_viewport_height(viewport_height);
+        view.set_viewport_dimensions(viewport_height, 80);
         view
     }
 
@@ -332,9 +420,7 @@ mod tests {
         assert!(view.navigate_next_diff());
         assert_eq!(view.scroll_offset, 3);
         assert!(view.navigate_next_diff());
-        assert_eq!(view.scroll_offset, 6);
-        assert!(view.navigate_next_diff());
-        assert_eq!(view.scroll_offset, 7);
+        assert_eq!(view.scroll_offset, 4);
         assert!(!view.navigate_next_diff());
     }
 
@@ -356,10 +442,10 @@ mod tests {
             ],
             6,
         );
-        view.scroll_offset = 9;
+        view.scroll_offset = 8;
 
         assert!(view.navigate_prev_diff());
-        assert_eq!(view.scroll_offset, 6);
+        assert_eq!(view.scroll_offset, 5);
         assert!(view.navigate_prev_diff());
         assert_eq!(view.scroll_offset, 4);
         assert!(!view.navigate_prev_diff());
@@ -379,7 +465,7 @@ mod tests {
         );
 
         assert!(view.jump_to_last_diff());
-        assert_eq!(view.scroll_offset, 14);
+        assert_eq!(view.scroll_offset, 7);
     }
 
     #[test]
@@ -402,8 +488,7 @@ mod tests {
         );
 
         view.scroll_offset = 8;
-        assert!(view.navigate_next_diff());
-        assert_eq!(view.scroll_offset, 20);
+        assert!(!view.navigate_next_diff());
     }
 
     #[test]
@@ -513,9 +598,9 @@ mod tests {
             12,
         );
 
-        view.scroll_offset = 20;
+        view.scroll_offset = 8;
         assert!(view.navigate_prev_diff());
-        assert_eq!(view.scroll_offset, 9);
+        assert_eq!(view.scroll_offset, 4);
     }
 
     #[test]

@@ -2,6 +2,7 @@ use crate::app::DiffView;
 use crate::core::{DiffSource, UncommittedType};
 use crate::domain::diff::{ChangeBlock, DiffBlock, UnchangedBlock};
 use crate::domain::highlight::TokenSpan;
+use crate::ui::diff::{wrap_line, WrappedSegment};
 use crate::ui::theme::{DiffColors, Theme};
 use ratatui::{prelude::*, widgets::Paragraph};
 
@@ -94,6 +95,7 @@ fn render_diff_lines(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Theme) 
         .saturating_sub(separator.len())
         .saturating_sub(left_width);
 
+    let focus_offset = diff.viewport_height / 4;
     let ctx = &mut RenderContext {
         layout: Layout {
             x: area.x,
@@ -103,7 +105,7 @@ fn render_diff_lines(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Theme) 
         },
         viewport: Viewport {
             height: area.height as usize,
-            content_start: diff.scroll_offset.saturating_sub(diff.viewport_height / 4),
+            content_start: diff.scroll_offset.saturating_sub(focus_offset),
         },
         state: RenderState {
             y: area.y,
@@ -112,7 +114,6 @@ fn render_diff_lines(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Theme) 
         },
     };
 
-    let focus_offset = diff.viewport_height / 4;
     let top_padding = focus_offset.saturating_sub(diff.scroll_offset);
     while ctx.state.rendered < ctx.viewport.height && ctx.state.rendered < top_padding {
         render_row(
@@ -166,19 +167,12 @@ fn render_unchanged_block(
     theme: &Theme,
 ) -> bool {
     for (i, line) in block.lines.iter().enumerate() {
-        if ctx.state.row_index < ctx.viewport.content_start {
-            ctx.state.row_index += 1;
-            continue;
-        }
-        if ctx.state.rendered >= ctx.viewport.height {
-            return false;
-        }
-
         let old_num = block.old_start + i as u32;
         let new_num = block.new_start + i as u32;
         let left_tokens = diff.highlights.old.line_tokens(old_num);
         let right_tokens = diff.highlights.new.line_tokens(new_num);
-        let left = format_cell_with_tokens(
+
+        let left_rows = format_cell_with_tokens(
             old_num,
             ' ',
             line,
@@ -187,7 +181,7 @@ fn render_unchanged_block(
             left_tokens,
             theme,
         );
-        let right = format_cell_with_tokens(
+        let right_rows = format_cell_with_tokens(
             new_num,
             ' ',
             line,
@@ -196,19 +190,41 @@ fn render_unchanged_block(
             right_tokens,
             theme,
         );
-        render_styled_row(
-            f,
-            ctx.state.y,
-            left,
-            right,
-            ctx.layout.x,
-            ctx.layout.width,
-            theme,
-        );
 
-        ctx.state.y = ctx.state.y.saturating_add(1);
-        ctx.state.rendered += 1;
-        ctx.state.row_index += 1;
+        let max_rows = left_rows.len().max(right_rows.len());
+
+        for row_idx in 0..max_rows {
+            if ctx.state.row_index < ctx.viewport.content_start {
+                ctx.state.row_index += 1;
+                continue;
+            }
+            if ctx.state.rendered >= ctx.viewport.height {
+                return false;
+            }
+
+            let left = left_rows
+                .get(row_idx)
+                .cloned()
+                .unwrap_or_else(|| vec![Span::raw(blank_cell(ctx.layout.left_width))]);
+            let right = right_rows
+                .get(row_idx)
+                .cloned()
+                .unwrap_or_else(|| vec![Span::raw(blank_cell(ctx.layout.right_width))]);
+
+            render_styled_row(
+                f,
+                ctx.state.y,
+                left,
+                right,
+                ctx.layout.x,
+                ctx.layout.width,
+                theme,
+            );
+
+            ctx.state.y = ctx.state.y.saturating_add(1);
+            ctx.state.rendered += 1;
+            ctx.state.row_index += 1;
+        }
     }
 
     true
@@ -224,15 +240,7 @@ fn render_change_block(
     let max_len = block.old_lines.len().max(block.new_lines.len());
 
     for i in 0..max_len {
-        if ctx.state.row_index < ctx.viewport.content_start {
-            ctx.state.row_index += 1;
-            continue;
-        }
-        if ctx.state.rendered >= ctx.viewport.height {
-            return false;
-        }
-
-        let left_spans = block.old_lines.get(i).map(|text| {
+        let left_rows = block.old_lines.get(i).map(|text| {
             let line_num = block.old_start + i as u32;
             let has_new_line = block.new_lines.get(i).is_some();
             let colors = if has_new_line {
@@ -252,7 +260,7 @@ fn render_change_block(
             )
         });
 
-        let right_spans = block.new_lines.get(i).map(|text| {
+        let right_rows = block.new_lines.get(i).map(|text| {
             let line_num = block.new_start + i as u32;
             let has_old_line = block.old_lines.get(i).is_some();
             let colors = if has_old_line {
@@ -272,19 +280,42 @@ fn render_change_block(
             )
         });
 
-        render_styled_row(
-            f,
-            ctx.state.y,
-            left_spans.unwrap_or_else(|| vec![Span::raw(blank_cell(ctx.layout.left_width))]),
-            right_spans.unwrap_or_else(|| vec![Span::raw(blank_cell(ctx.layout.right_width))]),
-            ctx.layout.x,
-            ctx.layout.width,
-            theme,
-        );
+        let left_rows = left_rows.unwrap_or_default();
+        let right_rows = right_rows.unwrap_or_default();
+        let max_rows = left_rows.len().max(right_rows.len());
 
-        ctx.state.y = ctx.state.y.saturating_add(1);
-        ctx.state.rendered += 1;
-        ctx.state.row_index += 1;
+        for row_idx in 0..max_rows {
+            if ctx.state.row_index < ctx.viewport.content_start {
+                ctx.state.row_index += 1;
+                continue;
+            }
+            if ctx.state.rendered >= ctx.viewport.height {
+                return false;
+            }
+
+            let left = left_rows
+                .get(row_idx)
+                .cloned()
+                .unwrap_or_else(|| vec![Span::raw(blank_cell(ctx.layout.left_width))]);
+            let right = right_rows
+                .get(row_idx)
+                .cloned()
+                .unwrap_or_else(|| vec![Span::raw(blank_cell(ctx.layout.right_width))]);
+
+            render_styled_row(
+                f,
+                ctx.state.y,
+                left,
+                right,
+                ctx.layout.x,
+                ctx.layout.width,
+                theme,
+            );
+
+            ctx.state.y = ctx.state.y.saturating_add(1);
+            ctx.state.rendered += 1;
+            ctx.state.row_index += 1;
+        }
     }
 
     true
@@ -338,23 +369,36 @@ fn format_cell_styled(
     colors: &DiffColors,
     tokens: Option<&[TokenSpan]>,
     theme: &Theme,
-) -> Vec<Span<'static>> {
+) -> Vec<Vec<Span<'static>>> {
     let line_num_str = format!("{:>3} ", line_num);
     let sign_str = sign.to_string();
     let style = Style::new().bg(colors.bg).fg(colors.fg);
     let prefix_width = line_num_str.chars().count() + sign_str.chars().count();
-    let mut spans = vec![
-        Span::styled(line_num_str, theme.diff_line_number),
-        Span::styled(sign_str, style),
-    ];
-    spans.extend(render_text_with_tokens(
-        text,
-        tokens,
-        width.saturating_sub(prefix_width),
-        style,
-        theme,
-    ));
-    spans
+    let content_width = width.saturating_sub(prefix_width);
+
+    let segments = wrap_line(text, tokens.unwrap_or(&[]), content_width);
+
+    let mut rows = Vec::new();
+    for (i, segment) in segments.into_iter().enumerate() {
+        let mut spans = Vec::new();
+
+        if i == 0 {
+            spans.push(Span::styled(line_num_str.clone(), theme.diff_line_number));
+        } else {
+            spans.push(Span::styled("  ↪ ", theme.diff_line_number));
+        }
+        spans.push(Span::styled(sign_str.clone(), style));
+        spans.extend(render_wrapped_segment(
+            &segment,
+            content_width,
+            style,
+            theme,
+        ));
+
+        rows.push(spans);
+    }
+
+    rows
 }
 
 fn format_cell_with_tokens(
@@ -365,47 +409,56 @@ fn format_cell_with_tokens(
     base_style: Style,
     tokens: Option<&[TokenSpan]>,
     theme: &Theme,
-) -> Vec<Span<'static>> {
+) -> Vec<Vec<Span<'static>>> {
     let line_num_str = format!("{:>3} ", line_num);
     let sign_str = sign.to_string();
     let prefix_width = line_num_str.chars().count() + sign_str.chars().count();
-    let mut spans = vec![
-        Span::styled(line_num_str, theme.diff_line_number),
-        Span::styled(sign_str, base_style),
-    ];
-    spans.extend(render_text_with_tokens(
-        text,
-        tokens,
-        width.saturating_sub(prefix_width),
-        base_style,
-        theme,
-    ));
-    spans
+    let content_width = width.saturating_sub(prefix_width);
+
+    let segments = wrap_line(text, tokens.unwrap_or(&[]), content_width);
+
+    let mut rows = Vec::new();
+    for (i, segment) in segments.into_iter().enumerate() {
+        let mut spans = Vec::new();
+
+        if i == 0 {
+            spans.push(Span::styled(line_num_str.clone(), theme.diff_line_number));
+        } else {
+            spans.push(Span::styled("  ↪ ", theme.diff_line_number));
+        }
+        spans.push(Span::styled(sign_str.clone(), base_style));
+        spans.extend(render_wrapped_segment(
+            &segment,
+            content_width,
+            base_style,
+            theme,
+        ));
+
+        rows.push(spans);
+    }
+
+    rows
 }
 
-fn render_text_with_tokens(
-    text: &str,
-    tokens: Option<&[TokenSpan]>,
-    text_area_width: usize,
+fn render_wrapped_segment(
+    segment: &WrappedSegment,
+    content_width: usize,
     base_style: Style,
     theme: &Theme,
 ) -> Vec<Span<'static>> {
-    if text_area_width == 0 {
+    if content_width == 0 {
         return Vec::new();
     }
 
-    let chars: Vec<char> = text.chars().collect();
-    let max_visible_text = text_area_width.saturating_sub(1);
-    let visible = chars.len().min(max_visible_text);
+    let chars: Vec<char> = segment.text.chars().collect();
+    let visible = chars.len().min(content_width.saturating_sub(1));
     let mut char_kinds = vec![None; visible];
 
-    if let Some(line_tokens) = tokens {
-        for token in line_tokens {
-            let start = token.start_col.min(visible);
-            let end = token.end_col.min(visible);
-            for kind in char_kinds.iter_mut().take(end).skip(start) {
-                *kind = Some(token.kind);
-            }
+    for token in &segment.tokens {
+        let start = token.start_col.min(visible);
+        let end = token.end_col.min(visible);
+        for kind in char_kinds.iter_mut().take(end).skip(start) {
+            *kind = Some(token.kind);
         }
     }
 
@@ -427,9 +480,9 @@ fn render_text_with_tokens(
     }
 
     let used_width = 1 + visible;
-    if used_width < text_area_width {
+    if used_width < content_width {
         spans.push(Span::styled(
-            " ".repeat(text_area_width - used_width),
+            " ".repeat(content_width - used_width),
             base_style,
         ));
     }
@@ -473,7 +526,7 @@ mod tests {
     use crate::domain::highlight::HighlightKind;
 
     #[test]
-    fn render_text_with_tokens_applies_syntax_foreground() {
+    fn render_wrapped_segment_applies_syntax_foreground() {
         let theme = Theme::dark();
         let tokens = vec![TokenSpan {
             start_col: 0,
@@ -481,7 +534,13 @@ mod tests {
             kind: HighlightKind::Keyword,
         }];
 
-        let spans = render_text_with_tokens("fn main", Some(&tokens), 10, Style::default(), &theme);
+        let segment = WrappedSegment {
+            text: "fn main".to_string(),
+            char_offset: 0,
+            tokens,
+        };
+
+        let spans = render_wrapped_segment(&segment, 10, Style::default(), &theme);
 
         assert!(
             spans.iter().any(|span| {
