@@ -19,11 +19,10 @@ pub fn parse_file_changes(numstat: &str, name_status: &str) -> Result<Vec<FileCh
         let deletions_str = parts[1];
         let path = parts[2].to_string();
 
-        let (path, _old_path) = if let Some((old, new)) = parse_rename_path(&path) {
-            stats.insert(old.clone(), (Some(0), Some(0), false));
-            (new, Some(old))
+        let path = if let Some((_old, new)) = parse_rename_path(&path) {
+            new
         } else {
-            (path, None)
+            path
         };
 
         let is_binary = additions_str == "-" && deletions_str == "-";
@@ -93,14 +92,27 @@ pub fn parse_file_changes(numstat: &str, name_status: &str) -> Result<Vec<FileCh
 }
 
 fn parse_rename_path(path: &str) -> Option<(String, String)> {
-    if !path.contains(" => ") {
-        return None;
+    if let Some(open) = path.find('{') {
+        if let Some(close_rel) = path[open..].find('}') {
+            let close = open + close_rel;
+            let prefix = &path[..open];
+            let middle = &path[open + 1..close];
+            let suffix = &path[close + 1..];
+
+            if let Some((old_middle, new_middle)) = middle.split_once(" => ") {
+                return Some((
+                    format!("{}{}{}", prefix, old_middle, suffix),
+                    format!("{}{}{}", prefix, new_middle, suffix),
+                ));
+            }
+        }
     }
-    let parts: Vec<&str> = path.split(" => ").collect();
-    if parts.len() != 2 {
-        return None;
+
+    if let Some((old, new)) = path.split_once(" => ") {
+        return Some((old.to_string(), new.to_string()));
     }
-    Some((parts[0].to_string(), parts[1].to_string()))
+
+    None
 }
 
 #[cfg(test)]
@@ -187,5 +199,22 @@ mod tests {
         assert_eq!(changes[0].old_path, Some("old_name.txt".to_string()));
         assert_eq!(changes[0].additions, 0);
         assert_eq!(changes[0].deletions, 0);
+    }
+
+    #[test]
+    fn test_parse_file_changes_renamed_with_brace_path_and_edits() {
+        let numstat = "5\t2\t{src => ui}/components/Button.tsx";
+        let name_status = "R087\tsrc/components/Button.tsx\tui/components/Button.tsx";
+        let changes = parse_file_changes(numstat, name_status).unwrap();
+
+        assert_eq!(changes.len(), 1);
+        assert_eq!(changes[0].status, FileStatus::Renamed);
+        assert_eq!(changes[0].path, "ui/components/Button.tsx");
+        assert_eq!(
+            changes[0].old_path,
+            Some("src/components/Button.tsx".to_string())
+        );
+        assert_eq!(changes[0].additions, 5);
+        assert_eq!(changes[0].deletions, 2);
     }
 }
