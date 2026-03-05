@@ -104,3 +104,21 @@ fn fetch_uncommitted_unstaged_excludes_staged_changes() {
     assert_eq!(unstaged_changes.len(), 1);
     assert_eq!(staged_changes.len(), 1);
 }
+
+#[test]
+#[serial]
+fn fetch_uncommitted_unstaged_file_name_with_arrow_keeps_stats() {
+    reset_counter();
+    let repo = TestRepo::new();
+    repo.add_file("docs/a => b.md", "line1\n");
+    repo.commit("Initial commit");
+
+    std::fs::write(repo.path().join("docs/a => b.md"), "line1\nline2\nline3\n").unwrap();
+
+    let changes = fetch_uncommitted_file_changes(repo.path(), UncommittedType::Unstaged).unwrap();
+
+    assert_eq!(changes.len(), 1);
+    assert_eq!(changes[0].path, "docs/a => b.md");
+    assert_eq!(changes[0].additions, 2);
+    assert_eq!(changes[0].deletions, 0);
+}
