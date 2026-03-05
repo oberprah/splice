@@ -418,6 +418,7 @@ mod tests {
     fn make_file(path: &str, additions: u32, deletions: u32) -> FileChange {
         FileChange {
             path: path.to_string(),
+            old_path: None,
             status: FileStatus::Modified,
             additions,
             deletions,

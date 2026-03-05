@@ -89,6 +89,7 @@ impl FileStatus {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FileChange {
     pub path: String,
+    pub old_path: Option<String>,
     pub status: FileStatus,
     pub additions: u32,
     pub deletions: u32,

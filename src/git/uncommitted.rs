@@ -9,9 +9,9 @@ pub fn fetch_uncommitted_file_changes(
     uncommitted_type: UncommittedType,
 ) -> Result<Vec<FileChange>, String> {
     let args: Vec<&str> = match uncommitted_type {
-        UncommittedType::Unstaged => vec!["diff"],
-        UncommittedType::Staged => vec!["diff", "--staged"],
-        UncommittedType::All => vec!["diff", "HEAD"],
+        UncommittedType::Unstaged => vec!["diff", "-M"],
+        UncommittedType::Staged => vec!["diff", "--staged", "-M"],
+        UncommittedType::All => vec!["diff", "HEAD", "-M"],
     };
 
     let numstat_output = git_command(repo_path)

@@ -276,5 +276,12 @@ fn format_file_spans(
     };
     spans.push(Span::styled(file_node.name.clone(), name_style));
 
+    if let Some(old_path) = &file.old_path {
+        spans.push(Span::styled(
+            format!(" (moved from {})", old_path),
+            muted_style,
+        ));
+    }
+
     spans
 }
