@@ -29,11 +29,13 @@ pub fn wrap_line(text: &str, tokens: &[TokenSpan], width: usize) -> Vec<WrappedS
         }];
     }
 
+    let orig_chars: Vec<char> = text.chars().collect();
+    let chars_len = orig_chars.len();
     let mut segments = Vec::with_capacity(wrapped.len());
     let mut char_offset = 0;
 
     for wrapped_line in wrapped {
-        let wrapped_text = wrapped_line.to_string();
+        let wrapped_text = wrapped_line.into_owned();
         let wrapped_len = wrapped_text.chars().count();
 
         let segment_tokens = map_tokens_for_segment(tokens, char_offset, wrapped_len);
@@ -45,8 +47,7 @@ pub fn wrap_line(text: &str, tokens: &[TokenSpan], width: usize) -> Vec<WrappedS
         });
 
         char_offset += wrapped_len;
-
-        if char_offset < text.chars().count() {
+        while char_offset < chars_len && orig_chars[char_offset].is_whitespace() {
             char_offset += 1;
         }
     }
@@ -143,14 +144,12 @@ mod tests {
 
         let result = wrap_line("hello world", &tokens, 6);
 
-        assert!(result.len() >= 1);
+        assert!(!result.is_empty());
 
-        if result.len() >= 1 {
-            assert!(result[0]
-                .tokens
-                .iter()
-                .any(|t| t.kind == HighlightKind::Keyword));
-        }
+        assert!(result[0]
+            .tokens
+            .iter()
+            .any(|t| t.kind == HighlightKind::Keyword));
 
         if result.len() >= 2 {
             assert!(result[1]
@@ -173,5 +172,66 @@ mod tests {
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].start_col, 3);
         assert_eq!(result[0].end_col, 5);
+    }
+
+    #[test]
+    fn wrap_double_space_correctly_tracks_char_offset() {
+        let tokens = vec![TokenSpan {
+            start_col: 7,
+            end_col: 12,
+            kind: HighlightKind::Keyword,
+        }];
+        let result = wrap_line("hello  world", &tokens, 8);
+
+        assert_eq!(
+            result.len(),
+            2,
+            "expected 2 segments from 'hello  world' at width 8"
+        );
+        assert_eq!(
+            result[1].char_offset, 7,
+            "second segment should start at char 7"
+        );
+        assert_eq!(result[1].tokens.len(), 1);
+        assert_eq!(result[1].tokens[0].start_col, 0);
+        assert_eq!(result[1].tokens[0].end_col, 5);
+    }
+
+    #[test]
+    fn wrap_cjk_with_space_correctly_tracks_char_offset() {
+        let tokens = vec![TokenSpan {
+            start_col: 3,
+            end_col: 8,
+            kind: HighlightKind::Keyword,
+        }];
+        let result = wrap_line("你好 world", &tokens, 5);
+
+        assert_eq!(result.len(), 2, "expected 2 segments");
+        assert_eq!(result[1].char_offset, 3);
+        assert_eq!(result[1].tokens[0].start_col, 0);
+        assert_eq!(result[1].tokens[0].end_col, 5);
+    }
+
+    #[test]
+    fn wrap_cjk_no_space_does_not_skip_chars_at_split() {
+        let tokens = vec![TokenSpan {
+            start_col: 2,
+            end_col: 4,
+            kind: HighlightKind::Keyword,
+        }];
+        let result = wrap_line("你好世界", &tokens, 4);
+
+        assert_eq!(
+            result.len(),
+            2,
+            "expected 2 segments from '你好世界' at width 4"
+        );
+        assert_eq!(
+            result[1].char_offset, 2,
+            "second segment must start at char 2, not 3"
+        );
+        assert_eq!(result[1].tokens.len(), 1);
+        assert_eq!(result[1].tokens[0].start_col, 0);
+        assert_eq!(result[1].tokens[0].end_col, 2);
     }
 }

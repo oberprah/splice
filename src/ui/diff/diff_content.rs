@@ -2,9 +2,10 @@ use crate::app::DiffView;
 use crate::core::{DiffSource, UncommittedType};
 use crate::domain::diff::{ChangeBlock, DiffBlock, UnchangedBlock};
 use crate::domain::highlight::TokenSpan;
-use crate::ui::diff::{wrap_line, WrappedSegment};
+use crate::domain::wrap::{wrap_line, WrappedSegment};
 use crate::ui::theme::{DiffColors, Theme};
 use ratatui::{prelude::*, widgets::Paragraph};
+use unicode_width::UnicodeWidthChar;
 
 struct Layout {
     x: u16,
@@ -40,7 +41,7 @@ pub fn render_diff_view(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Them
         "{} · {} · +{} -{}",
         range_display, diff.file.path, diff.file.additions, diff.file.deletions
     );
-    let header = truncate_to_width(&header, width);
+    let header = pad_or_trim(&header, width);
     let header_widget = Paragraph::new(header).style(theme.text_muted);
     f.render_widget(header_widget, Rect::new(area.x, y, area.width, 1));
     y = y.saturating_add(1);
@@ -172,7 +173,7 @@ fn render_unchanged_block(
         let left_tokens = diff.highlights.old.line_tokens(old_num);
         let right_tokens = diff.highlights.new.line_tokens(new_num);
 
-        let left_rows = format_cell_with_tokens(
+        let left_rows = format_cell(
             old_num,
             ' ',
             line,
@@ -181,7 +182,7 @@ fn render_unchanged_block(
             left_tokens,
             theme,
         );
-        let right_rows = format_cell_with_tokens(
+        let right_rows = format_cell(
             new_num,
             ' ',
             line,
@@ -357,10 +358,6 @@ fn pad_or_trim(input: &str, width: usize) -> String {
     result
 }
 
-fn truncate_to_width(input: &str, width: usize) -> String {
-    pad_or_trim(input, width)
-}
-
 fn format_cell_styled(
     line_num: u32,
     sign: char,
@@ -370,9 +367,28 @@ fn format_cell_styled(
     tokens: Option<&[TokenSpan]>,
     theme: &Theme,
 ) -> Vec<Vec<Span<'static>>> {
+    format_cell(
+        line_num,
+        sign,
+        text,
+        width,
+        Style::new().bg(colors.bg).fg(colors.fg),
+        tokens,
+        theme,
+    )
+}
+
+fn format_cell(
+    line_num: u32,
+    sign: char,
+    text: &str,
+    width: usize,
+    style: Style,
+    tokens: Option<&[TokenSpan]>,
+    theme: &Theme,
+) -> Vec<Vec<Span<'static>>> {
     let line_num_str = format!("{:>3} ", line_num);
     let sign_str = sign.to_string();
-    let style = Style::new().bg(colors.bg).fg(colors.fg);
     let prefix_width = line_num_str.chars().count() + sign_str.chars().count();
     let content_width = width.saturating_sub(prefix_width);
 
@@ -401,45 +417,6 @@ fn format_cell_styled(
     rows
 }
 
-fn format_cell_with_tokens(
-    line_num: u32,
-    sign: char,
-    text: &str,
-    width: usize,
-    base_style: Style,
-    tokens: Option<&[TokenSpan]>,
-    theme: &Theme,
-) -> Vec<Vec<Span<'static>>> {
-    let line_num_str = format!("{:>3} ", line_num);
-    let sign_str = sign.to_string();
-    let prefix_width = line_num_str.chars().count() + sign_str.chars().count();
-    let content_width = width.saturating_sub(prefix_width);
-
-    let segments = wrap_line(text, tokens.unwrap_or(&[]), content_width);
-
-    let mut rows = Vec::new();
-    for (i, segment) in segments.into_iter().enumerate() {
-        let mut spans = Vec::new();
-
-        if i == 0 {
-            spans.push(Span::styled(line_num_str.clone(), theme.diff_line_number));
-        } else {
-            spans.push(Span::styled("  ↪ ", theme.diff_line_number));
-        }
-        spans.push(Span::styled(sign_str.clone(), base_style));
-        spans.extend(render_wrapped_segment(
-            &segment,
-            content_width,
-            base_style,
-            theme,
-        ));
-
-        rows.push(spans);
-    }
-
-    rows
-}
-
 fn render_wrapped_segment(
     segment: &WrappedSegment,
     content_width: usize,
@@ -450,8 +427,19 @@ fn render_wrapped_segment(
         return Vec::new();
     }
 
-    let chars: Vec<char> = segment.text.chars().collect();
-    let visible = chars.len().min(content_width.saturating_sub(1));
+    let max_content_cols = content_width.saturating_sub(1);
+    let mut chars: Vec<char> = Vec::new();
+    let mut cols_used = 0usize;
+    for ch in segment.text.chars() {
+        let ch_width = UnicodeWidthChar::width(ch).unwrap_or(1);
+        if cols_used + ch_width > max_content_cols {
+            break;
+        }
+        cols_used += ch_width;
+        chars.push(ch);
+    }
+
+    let visible = chars.len();
     let mut char_kinds = vec![None; visible];
 
     for token in &segment.tokens {
@@ -479,10 +467,10 @@ fn render_wrapped_segment(
         }
     }
 
-    let used_width = 1 + visible;
-    if used_width < content_width {
+    let used_cols = 1 + cols_used;
+    if used_cols < content_width {
         spans.push(Span::styled(
-            " ".repeat(content_width - used_width),
+            " ".repeat(content_width - used_cols),
             base_style,
         ));
     }
@@ -524,6 +512,25 @@ fn render_styled_row(
 mod tests {
     use super::*;
     use crate::domain::highlight::HighlightKind;
+
+    #[test]
+    fn render_wrapped_segment_cjk_does_not_exceed_content_width() {
+        let theme = crate::ui::theme::Theme::dark();
+        let segment = crate::domain::wrap::WrappedSegment {
+            text: "你好世界".to_string(),
+            char_offset: 0,
+            tokens: vec![],
+        };
+        let spans = render_wrapped_segment(&segment, 6, Style::default(), &theme);
+        let total_display_width: usize = spans
+            .iter()
+            .map(|s| unicode_width::UnicodeWidthStr::width(s.content.as_ref()))
+            .sum();
+        assert!(
+            total_display_width <= 6,
+            "display width {total_display_width} exceeds content_width 6"
+        );
+    }
 
     #[test]
     fn render_wrapped_segment_applies_syntax_foreground() {

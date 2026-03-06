@@ -1,7 +1,7 @@
 use crate::core::{DiffSource, FileChange};
 use crate::domain::diff::{DiffBlock, FileDiff};
 use crate::domain::highlight::DiffHighlights;
-use crate::ui::diff::wrap_line;
+use crate::domain::wrap::wrap_line;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct ChangeRange {
@@ -24,6 +24,7 @@ pub struct DiffView {
     pub viewport_height: usize,
     pub viewport_width: usize,
     cumulative_screen_rows: Vec<usize>,
+    cached_change_ranges: Vec<ChangeRange>,
 }
 
 impl DiffView {
@@ -42,6 +43,7 @@ impl DiffView {
             viewport_height: 0,
             viewport_width: 0,
             cumulative_screen_rows: Vec::new(),
+            cached_change_ranges: Vec::new(),
         }
     }
 
@@ -58,22 +60,54 @@ impl DiffView {
     fn recompute_screen_rows(&mut self) {
         if self.viewport_width == 0 {
             self.cumulative_screen_rows.clear();
+            self.cached_change_ranges.clear();
             return;
         }
 
         let separator_width = 3;
         let available = self.viewport_width.saturating_sub(separator_width);
         let cell_width = available / 2;
-        let prefix_width = 5;
+        let max_line_num = self
+            .diff
+            .blocks
+            .iter()
+            .map(|b| match b {
+                DiffBlock::Unchanged(u) => u.new_start + u.lines.len() as u32,
+                DiffBlock::Change(c) => (c.old_start + c.old_lines.len() as u32)
+                    .max(c.new_start + c.new_lines.len() as u32),
+            })
+            .max()
+            .unwrap_or(0);
+        // Mirror format_cell: "{:>3} " + sign char
+        let prefix_width = format!("{:>3} ", max_line_num).chars().count() + 1;
         let content_width = cell_width.saturating_sub(prefix_width);
 
         let mut cumulative = Vec::new();
         let mut total = 0usize;
+        let mut change_ranges = Vec::new();
 
         for block in &self.diff.blocks {
             let line_count = match block {
                 DiffBlock::Unchanged(unchanged) => unchanged.lines.len(),
-                DiffBlock::Change(change) => change.old_lines.len().max(change.new_lines.len()),
+                DiffBlock::Change(change) => {
+                    let len = change.old_lines.len().max(change.new_lines.len());
+                    let start_screen = total;
+                    for i in 0..len {
+                        let line = self.get_line_text(block, i);
+                        let rows = if content_width == 0 {
+                            1
+                        } else {
+                            wrap_line(line, &[], content_width).len().max(1)
+                        };
+                        total += rows;
+                        cumulative.push(total);
+                    }
+                    change_ranges.push(ChangeRange {
+                        start: start_screen,
+                        end: total,
+                    });
+                    continue;
+                }
             };
 
             for i in 0..line_count {
@@ -81,8 +115,7 @@ impl DiffView {
                 let rows = if content_width == 0 {
                     1
                 } else {
-                    let segments = wrap_line(line, &[], content_width);
-                    segments.len().max(1)
+                    wrap_line(line, &[], content_width).len().max(1)
                 };
                 total += rows;
                 cumulative.push(total);
@@ -90,6 +123,7 @@ impl DiffView {
         }
 
         self.cumulative_screen_rows = cumulative;
+        self.cached_change_ranges = change_ranges;
     }
 
     fn get_line_text<'a>(&self, block: &'a DiffBlock, index: usize) -> &'a str {
@@ -104,16 +138,6 @@ impl DiffView {
                 .or_else(|| change.old_lines.get(index).map(|s| s.as_str()))
                 .unwrap_or(""),
         }
-    }
-
-    fn logical_line_to_screen_row(&self, logical_line: usize) -> usize {
-        if logical_line == 0 {
-            return 0;
-        }
-        self.cumulative_screen_rows
-            .get(logical_line.saturating_sub(1))
-            .copied()
-            .unwrap_or(0)
     }
 
     fn screen_row_to_logical_line(&self, screen_row: usize) -> usize {
@@ -291,32 +315,8 @@ impl DiffView {
             .max(range.start)
     }
 
-    fn change_ranges(&self) -> Vec<ChangeRange> {
-        if self.cumulative_screen_rows.is_empty() {
-            return Vec::new();
-        }
-
-        let mut ranges = Vec::new();
-        let mut logical_row = 0;
-
-        for block in &self.diff.blocks {
-            let len = match block {
-                DiffBlock::Unchanged(unchanged) => unchanged.lines.len(),
-                DiffBlock::Change(change) => {
-                    let block_len = change.old_lines.len().max(change.new_lines.len());
-                    let start_screen = self.logical_line_to_screen_row(logical_row);
-                    let end_screen = self.logical_line_to_screen_row(logical_row + block_len);
-                    ranges.push(ChangeRange {
-                        start: start_screen,
-                        end: end_screen,
-                    });
-                    block_len
-                }
-            };
-            logical_row += len;
-        }
-
-        ranges
+    fn change_ranges(&self) -> &[ChangeRange] {
+        &self.cached_change_ranges
     }
 
     fn focus_line_for_range_start(&self, range: ChangeRange) -> usize {
