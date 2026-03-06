@@ -37,7 +37,8 @@ pub fn render(f: &mut Frame, app: &mut App) {
         View::Log(_) => area.height.saturating_sub(2) as usize,
         _ => area.height.saturating_sub(1) as usize,
     };
-    app.set_viewport_height(viewport_height);
+    let viewport_width = area.width as usize;
+    app.set_viewport_size(viewport_height, viewport_width);
 
     let theme = match app.theme_mode {
         ThemeMode::Auto => CACHED_THEME.get_or_init(Theme::detect_theme),

@@ -31,7 +31,7 @@ impl Harness {
         let backend = TestBackend::new(width, height);
         let terminal = Terminal::new(backend).unwrap();
         let mut app = App::with_repo_path_and_log_spec(repo.path(), spec);
-        app.set_viewport_height(height.saturating_sub(1) as usize);
+        app.set_viewport_size(height.saturating_sub(1) as usize, width as usize);
         Self { terminal, app }
     }
 
@@ -49,7 +49,7 @@ impl Harness {
         let backend = TestBackend::new(width, height);
         let terminal = Terminal::new(backend).unwrap();
         let mut app = App::with_diff_source(repo.path().to_path_buf(), source, files);
-        app.set_viewport_height(height.saturating_sub(1) as usize);
+        app.set_viewport_size(height.saturating_sub(1) as usize, width as usize);
         Ok(Self { terminal, app })
     }
 
