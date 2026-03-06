@@ -93,11 +93,20 @@ impl DiffView {
                     let len = change.old_lines.len().max(change.new_lines.len());
                     let start_screen = total;
                     for i in 0..len {
-                        let line = self.get_line_text(block, i);
                         let rows = if content_width == 0 {
                             1
                         } else {
-                            wrap_line(line, &[], content_width).len().max(1)
+                            let old_rows = change
+                                .old_lines
+                                .get(i)
+                                .map(|l| wrap_line(l, &[], content_width).len())
+                                .unwrap_or(0);
+                            let new_rows = change
+                                .new_lines
+                                .get(i)
+                                .map(|l| wrap_line(l, &[], content_width).len())
+                                .unwrap_or(0);
+                            old_rows.max(new_rows).max(1)
                         };
                         total += rows;
                         cumulative.push(total);

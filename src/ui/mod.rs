@@ -1,4 +1,4 @@
-pub mod diff;
+mod diff;
 mod files;
 mod log;
 mod theme;
