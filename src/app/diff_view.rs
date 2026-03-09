@@ -296,7 +296,13 @@ impl DiffView {
     }
 
     fn max_scroll_offset(&self) -> usize {
+        // The renderer shifts visible content up by focus_offset rows and uses one fewer
+        // row than viewport_height (the diff header consumes one row beyond the help bar).
+        // We add focus_offset again so the bottom mirrors the top: at max scroll the last
+        // line sits focus_offset rows from the bottom, matching the top padding at scroll=0.
+        let focus_offset = self.viewport_height / 4;
         self.total_screen_rows()
+            .saturating_add(2 * focus_offset + 1)
             .saturating_sub(self.viewport_height)
     }
 
@@ -430,7 +436,9 @@ mod tests {
         assert!(view.navigate_next_diff());
         assert_eq!(view.scroll_offset, 3);
         assert!(view.navigate_next_diff());
-        assert_eq!(view.scroll_offset, 4);
+        assert_eq!(view.scroll_offset, 6);
+        assert!(view.navigate_next_diff());
+        assert_eq!(view.scroll_offset, 7);
         assert!(!view.navigate_next_diff());
     }
 
@@ -475,7 +483,7 @@ mod tests {
         );
 
         assert!(view.jump_to_last_diff());
-        assert_eq!(view.scroll_offset, 7);
+        assert_eq!(view.scroll_offset, 14);
     }
 
     #[test]
@@ -498,7 +506,8 @@ mod tests {
         );
 
         view.scroll_offset = 8;
-        assert!(!view.navigate_next_diff());
+        assert!(view.navigate_next_diff());
+        assert_eq!(view.scroll_offset, 15);
     }
 
     #[test]

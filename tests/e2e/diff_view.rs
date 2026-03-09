@@ -337,11 +337,6 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
     h.assert_snapshot(
         r#"
 "  331f884 · src/large.txt · +20 -20                                             "
-"    5 - old line 5                    │   5 + new line 5                        "
-"    6 - old line 6                    │   6 + new line 6                        "
-"    7 - old line 7                    │   7 + new line 7                        "
-"    8 - old line 8                    │   8 + new line 8                        "
-"    9 - old line 9                    │   9 + new line 9                        "
 "   10 - old line 10                   │  10 + new line 10                       "
 "   11 - old line 11                   │  11 + new line 11                       "
 "   12 - old line 12                   │  12 + new line 12                       "
@@ -349,6 +344,31 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
 "   14 - old line 14                   │  14 + new line 14                       "
 "   15 - old line 15                   │  15 + new line 15                       "
 "   16 - old line 16                   │  16 + new line 16                       "
+"   17 - old line 17                   │  17 + new line 17                       "
+"   18 - old line 18                   │  18 + new line 18                       "
+"   19 - old line 19                   │  19 + new line 19                       "
+"   20 - old line 20                   │  20 + new line 20                       "
+"                                      │                                         "
+"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"#,
+    );
+
+    h.press(KeyCode::Char('n'));
+    h.assert_snapshot(
+        r#"
+"  331f884 · src/large.txt · +20 -20                                             "
+"   12 - old line 12                   │  12 + new line 12                       "
+"   13 - old line 13                   │  13 + new line 13                       "
+"   14 - old line 14                   │  14 + new line 14                       "
+"   15 - old line 15                   │  15 + new line 15                       "
+"   16 - old line 16                   │  16 + new line 16                       "
+"   17 - old line 17                   │  17 + new line 17                       "
+"   18 - old line 18                   │  18 + new line 18                       "
+"   19 - old line 19                   │  19 + new line 19                       "
+"   20 - old line 20                   │  20 + new line 20                       "
+"                                      │                                         "
+"                                      │                                         "
+"                                      │                                         "
 "  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
@@ -377,18 +397,18 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
     h.assert_snapshot(
         r#"
 "  331f884 · src/large.txt · +20 -20                                             "
-"    5 - old line 5                    │   5 + new line 5                        "
-"    6 - old line 6                    │   6 + new line 6                        "
-"    7 - old line 7                    │   7 + new line 7                        "
-"    8 - old line 8                    │   8 + new line 8                        "
-"    9 - old line 9                    │   9 + new line 9                        "
-"   10 - old line 10                   │  10 + new line 10                       "
-"   11 - old line 11                   │  11 + new line 11                       "
 "   12 - old line 12                   │  12 + new line 12                       "
 "   13 - old line 13                   │  13 + new line 13                       "
 "   14 - old line 14                   │  14 + new line 14                       "
 "   15 - old line 15                   │  15 + new line 15                       "
 "   16 - old line 16                   │  16 + new line 16                       "
+"   17 - old line 17                   │  17 + new line 17                       "
+"   18 - old line 18                   │  18 + new line 18                       "
+"   19 - old line 19                   │  19 + new line 19                       "
+"   20 - old line 20                   │  20 + new line 20                       "
+"                                      │                                         "
+"                                      │                                         "
+"                                      │                                         "
 "  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
@@ -485,18 +505,18 @@ fn diff_view_handles_close_hunks_and_bottom_additions() {
     h.assert_snapshot(
         r#"
 "  bb76eb0 · a.txt · +3 -2                                                       "
-"    4   line 4                        │   4   line 4                            "
-"    5 - line 5                        │   5 + line 5 changed                    "
-"    6   line 6                        │   6   line 6                            "
-"    7   line 7                        │   7   line 7                            "
-"    8   line 8                        │   8   line 8                            "
-"    9   line 9                        │   9   line 9                            "
-"   10   line 10                       │  10   line 10                           "
 "   11   line 11                       │  11   line 11                           "
 "   12   line 12                       │  12   line 12                           "
 "   13   line 13                       │  13   line 13                           "
 "   14   line 14                       │  14   line 14                           "
 "   15   line 15                       │  15   line 15                           "
+"   16   line 16                       │  16   line 16                           "
+"   17   line 17                       │  17   line 17                           "
+"   18   line 18                       │  18   line 18                           "
+"                                      │  19 + line 19 added                     "
+"                                      │                                         "
+"                                      │                                         "
+"                                      │                                         "
 "  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
@@ -667,8 +687,6 @@ fn diff_view_prev_from_below_last_hunk_stays_in_file() {
     h.assert_snapshot(
         r#"
 "  7dd25c4 · a.txt · +2 -2                                                       "
-"    5   line 5                        │   5   line 5                            "
-"    6   line 6                        │   6   line 6                            "
 "    7   line 7                        │   7   line 7                            "
 "    8   line 8                        │   8   line 8                            "
 "    9   line 9                        │   9   line 9                            "
@@ -679,6 +697,75 @@ fn diff_view_prev_from_below_last_hunk_stays_in_file() {
 "   14   line 14                       │  14   line 14                           "
 "   15   line 15                       │  15   line 15                           "
 "   16   line 16                       │  16   line 16                           "
+"   17   line 17                       │  17   line 17                           "
+"   18   line 18                       │  18   line 18                           "
+"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"#,
+    );
+}
+
+#[test]
+#[serial]
+fn diff_view_can_scroll_to_last_lines_of_purely_added_file() {
+    reset_counter();
+
+    let repo = TestRepo::new();
+    // 20 lines added in a single commit — the entire file is new (+20 -0).
+    // This replicates the bug where purely-added files couldn't be scrolled to the end.
+    let content: String = (1..=20).map(|n| format!("line {n}\n")).collect();
+
+    repo.commit("Initial commit");
+    repo.add_file("new_file.txt", &content);
+    repo.commit("Add new file");
+
+    // Height 14: viewport_height=13, content_height=12, focus_offset=3.
+    // max_scroll = 20 + 2*3 + 1 - 13 = 14.  At scroll=14 the last line is visible with bottom padding.
+    let mut h = Harness::with_repo_and_screen_size(&repo, 80, 14);
+    h.press(KeyCode::Enter); // open files for "Add new file" commit
+    h.press(KeyCode::Char('j')); // navigate to new_file.txt (file_1.txt counter file is first)
+    h.press(KeyCode::Enter); // open diff for new_file.txt
+
+    // Establish a known viewport by rendering first, confirming the file is at the top.
+    h.assert_snapshot(
+        r#"
+"  0be46d7 · new_file.txt · +20 -0                                               "
+"                                      │                                         "
+"                                      │                                         "
+"                                      │                                         "
+"                                      │   1 + line 1                            "
+"                                      │   2 + line 2                            "
+"                                      │   3 + line 3                            "
+"                                      │   4 + line 4                            "
+"                                      │   5 + line 5                            "
+"                                      │   6 + line 6                            "
+"                                      │   7 + line 7                            "
+"                                      │   8 + line 8                            "
+"                                      │   9 + line 9                            "
+"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"#,
+    );
+
+    // Scroll far enough to reach the bottom (more than max_scroll to confirm clamping works).
+    for _ in 0..20 {
+        h.press(KeyCode::Char('j'));
+    }
+
+    // The last line (line 20) must be visible, with bottom padding below it.
+    h.assert_snapshot(
+        r#"
+"  0be46d7 · new_file.txt · +20 -0                                               "
+"                                      │  12 + line 12                           "
+"                                      │  13 + line 13                           "
+"                                      │  14 + line 14                           "
+"                                      │  15 + line 15                           "
+"                                      │  16 + line 16                           "
+"                                      │  17 + line 17                           "
+"                                      │  18 + line 18                           "
+"                                      │  19 + line 19                           "
+"                                      │  20 + line 20                           "
+"                                      │                                         "
+"                                      │                                         "
+"                                      │                                         "
 "  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
