@@ -18,8 +18,6 @@ use std::process::Command;
 
 use crate::core::{Commit, CommitRange, DiffSource, FileChange, LogSpec};
 
-const MAX_COMMITS: usize = 100;
-
 fn git_command(repo_path: &Path) -> Command {
     let mut cmd = Command::new("git");
     cmd.current_dir(repo_path)
@@ -45,9 +43,6 @@ pub fn fetch_commits(repo_path: &Path, spec: LogSpec) -> Result<Vec<Commit>, Str
         LogSpec::All => args.push("--all".to_string()),
         LogSpec::Rev(rev) => args.push(rev),
     }
-
-    args.push("-n".to_string());
-    args.push(MAX_COMMITS.to_string());
 
     let output = git_command(repo_path)
         .args(&args)
