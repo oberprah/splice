@@ -1,3 +1,4 @@
+use chrono::{DateTime, TimeZone, Utc};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{backend::TestBackend, Terminal};
 use splice_rust::{action_from_event, git, render, Action, App, DiffSource, LogSpec};
@@ -10,6 +11,10 @@ pub struct Harness {
 }
 
 impl Harness {
+    fn fixed_now() -> DateTime<Utc> {
+        Utc.with_ymd_and_hms(2020, 1, 3, 0, 0, 0).unwrap()
+    }
+
     pub fn with_repo(repo: &TestRepo) -> Self {
         Self::with_repo_and_log_spec_and_screen_size(repo, LogSpec::Head, 80, 24)
     }
@@ -30,7 +35,8 @@ impl Harness {
     ) -> Self {
         let backend = TestBackend::new(width, height);
         let terminal = Terminal::new(backend).unwrap();
-        let mut app = App::with_repo_path_and_log_spec(repo.path(), spec);
+        let mut app =
+            App::with_repo_path_and_log_spec_and_now(repo.path(), spec, Self::fixed_now());
         app.set_viewport_size(height.saturating_sub(1) as usize, width as usize);
         Self { terminal, app }
     }
@@ -48,7 +54,12 @@ impl Harness {
         let files = git::fetch_file_changes_for_source(repo.path(), &source)?;
         let backend = TestBackend::new(width, height);
         let terminal = Terminal::new(backend).unwrap();
-        let mut app = App::with_diff_source(repo.path().to_path_buf(), source, files);
+        let mut app = App::with_diff_source_and_now(
+            repo.path().to_path_buf(),
+            source,
+            files,
+            Self::fixed_now(),
+        );
         app.set_viewport_size(height.saturating_sub(1) as usize, width as usize);
         Ok(Self { terminal, app })
     }

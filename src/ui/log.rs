@@ -1,7 +1,8 @@
 use crate::app::LogSummary;
-use crate::core::{is_in_selection, Commit, CursorState, RefInfo, RefType};
+use crate::core::{format_relative_time, is_in_selection, Commit, CursorState, RefInfo, RefType};
 use crate::domain::graph::{render_row, Layout};
 use crate::ui::theme::Theme;
+use chrono::{DateTime, Utc};
 use ratatui::{
     prelude::*,
     widgets::{List, ListItem, Paragraph},
@@ -63,6 +64,7 @@ pub fn render_log_view(
     summary: &LogSummary,
     cursor: &CursorState,
     scroll_offset: usize,
+    now: DateTime<Utc>,
     area: Rect,
     theme: &Theme,
 ) {
@@ -161,6 +163,15 @@ pub fn render_log_view(
 
             spans.push(Span::styled(" ", message_style));
             spans.push(Span::styled(&commit.message, message_style));
+
+            let author_style = theme.author.bold_if(is_highlighted);
+            let time_style = theme.time.bold_if(is_highlighted);
+            let relative_time = format_relative_time(commit.date, now);
+
+            spans.push(Span::styled(" · ", message_style));
+            spans.push(Span::styled(&commit.author, author_style));
+            spans.push(Span::styled(" · ", message_style));
+            spans.push(Span::styled(relative_time, time_style));
 
             ListItem::new(Line::from(spans))
         })

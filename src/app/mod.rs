@@ -9,6 +9,8 @@ pub use log_view::{LogSummary, LogView};
 use std::path::PathBuf;
 use std::process::Command;
 
+use chrono::{DateTime, Utc};
+
 use crate::core::{DiffSource, FileChange, LogSpec};
 use crate::git;
 use crate::input::Action;
@@ -41,6 +43,7 @@ pub struct App {
     pub error: Option<String>,
     pub theme_mode: ThemeMode,
     viewport_width: usize,
+    now: Option<DateTime<Utc>>,
 }
 
 impl Default for App {
@@ -58,14 +61,43 @@ impl App {
             error: None,
             theme_mode: ThemeMode::Auto,
             viewport_width: 0,
+            now: None,
+        }
+    }
+
+    pub fn new_with_now(now: DateTime<Utc>) -> Self {
+        Self {
+            repo_path: None,
+            view: View::Log(LogView::new(Vec::new())),
+            view_stack: Vec::new(),
+            error: None,
+            theme_mode: ThemeMode::Auto,
+            viewport_width: 0,
+            now: Some(now),
         }
     }
 
     pub fn with_repo_path(path: impl Into<PathBuf>) -> Self {
-        Self::with_repo_path_and_log_spec(path, LogSpec::Head)
+        Self::with_repo_path_and_log_spec_with_now(path, LogSpec::Head, None)
     }
 
     pub fn with_repo_path_and_log_spec(path: impl Into<PathBuf>, spec: LogSpec) -> Self {
+        Self::with_repo_path_and_log_spec_with_now(path, spec, None)
+    }
+
+    pub fn with_repo_path_and_log_spec_and_now(
+        path: impl Into<PathBuf>,
+        spec: LogSpec,
+        now: DateTime<Utc>,
+    ) -> Self {
+        Self::with_repo_path_and_log_spec_with_now(path, spec, Some(now))
+    }
+
+    fn with_repo_path_and_log_spec_with_now(
+        path: impl Into<PathBuf>,
+        spec: LogSpec,
+        now: Option<DateTime<Utc>>,
+    ) -> Self {
         let repo_path = path.into();
         match git::fetch_commits(&repo_path, spec) {
             Ok(commits) => Self {
@@ -86,6 +118,7 @@ impl App {
                 error: None,
                 theme_mode: ThemeMode::Auto,
                 viewport_width: 0,
+                now,
             },
             Err(e) => Self {
                 repo_path: Some(repo_path),
@@ -94,6 +127,7 @@ impl App {
                 error: Some(e),
                 theme_mode: ThemeMode::Auto,
                 viewport_width: 0,
+                now,
             },
         }
     }
@@ -103,6 +137,24 @@ impl App {
         source: DiffSource,
         files: Vec<FileChange>,
     ) -> Self {
+        Self::with_diff_source_with_now(repo_path, source, files, None)
+    }
+
+    pub fn with_diff_source_and_now(
+        repo_path: PathBuf,
+        source: DiffSource,
+        files: Vec<FileChange>,
+        now: DateTime<Utc>,
+    ) -> Self {
+        Self::with_diff_source_with_now(repo_path, source, files, Some(now))
+    }
+
+    fn with_diff_source_with_now(
+        repo_path: PathBuf,
+        source: DiffSource,
+        files: Vec<FileChange>,
+        now: Option<DateTime<Utc>>,
+    ) -> Self {
         let files_view = FilesView::new(source, files);
         Self {
             repo_path: Some(repo_path),
@@ -111,11 +163,20 @@ impl App {
             error: None,
             theme_mode: ThemeMode::Auto,
             viewport_width: 0,
+            now,
         }
     }
 
     pub fn set_theme_mode(&mut self, theme_mode: ThemeMode) {
         self.theme_mode = theme_mode;
+    }
+
+    pub fn set_now(&mut self, now: DateTime<Utc>) {
+        self.now = Some(now);
+    }
+
+    pub fn now(&self) -> DateTime<Utc> {
+        self.now.unwrap_or_else(Utc::now)
     }
 
     pub fn set_viewport_height(&mut self, height: usize) {

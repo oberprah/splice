@@ -18,8 +18,8 @@ fn renamed_file_displays_as_renamed() {
     h.assert_snapshot(
         r#"
     "      Working tree clean                                                        "
-    "  → ├ 70e9905 (main) Rename file                                                "
-    "    ├ 62f6d2f Add file                                                          "
+    "  → ├ 70e9905 (main) Rename file · Test · 2d ago                                "
+    "    ├ 62f6d2f Add file · Test · 2d ago                                          "
     "                                                                                "
     "                                                                                "
     "                                                                                "

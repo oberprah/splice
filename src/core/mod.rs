@@ -2,11 +2,13 @@ mod commit_range;
 mod cursor;
 mod diff_source;
 mod log_spec;
+mod relative_time;
 
 pub use commit_range::CommitRange;
 pub use cursor::{is_in_selection, selection_range, CursorState};
 pub use diff_source::{DiffSource, UncommittedType};
 pub use log_spec::LogSpec;
+pub use relative_time::format_relative_time;
 
 use chrono::{DateTime, Utc};
 
