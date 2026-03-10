@@ -4,6 +4,65 @@ use serial_test::serial;
 
 #[test]
 #[serial]
+fn files_view_scroll_long_file_list() {
+    reset_counter();
+
+    let repo = TestRepo::new();
+    // Add 20 files so that together with the auto-added file_0.txt the total (21)
+    // exceeds the visible list area of 20 rows.
+    for i in 1..=20 {
+        repo.add_file(&format!("b_{:02}.txt", i), "x\n");
+    }
+    repo.commit("Add many files");
+
+    let mut h = Harness::with_repo(&repo);
+
+    h.press(KeyCode::Enter);
+    // Trigger a render so the viewport height is initialised before navigating.
+    h.snapshot();
+
+    // Navigate to the last file (index 20, file_0.txt).
+    for _ in 0..20 {
+        h.press(KeyCode::Char('j'));
+    }
+
+    // With the correct scroll behaviour the view must shift by one row so that
+    // file_0.txt (index 20) is visible with the → cursor on the last list line.
+    // The buggy implementation keeps scroll_offset at 0 (viewport_height is set
+    // to the full area height minus 1 rather than the actual list height), so
+    // file_0.txt ends up off-screen and no cursor is visible.
+    h.assert_snapshot(
+        r#"
+        "  539d384 Add many files                                                        "
+        "                                                                                "
+        "  21 files · +21 -0                                                             "
+        "   ├── A +1 -0  b_02.txt                                                        "
+        "   ├── A +1 -0  b_03.txt                                                        "
+        "   ├── A +1 -0  b_04.txt                                                        "
+        "   ├── A +1 -0  b_05.txt                                                        "
+        "   ├── A +1 -0  b_06.txt                                                        "
+        "   ├── A +1 -0  b_07.txt                                                        "
+        "   ├── A +1 -0  b_08.txt                                                        "
+        "   ├── A +1 -0  b_09.txt                                                        "
+        "   ├── A +1 -0  b_10.txt                                                        "
+        "   ├── A +1 -0  b_11.txt                                                        "
+        "   ├── A +1 -0  b_12.txt                                                        "
+        "   ├── A +1 -0  b_13.txt                                                        "
+        "   ├── A +1 -0  b_14.txt                                                        "
+        "   ├── A +1 -0  b_15.txt                                                        "
+        "   ├── A +1 -0  b_16.txt                                                        "
+        "   ├── A +1 -0  b_17.txt                                                        "
+        "   ├── A +1 -0  b_18.txt                                                        "
+        "   ├── A +1 -0  b_19.txt                                                        "
+        "   ├── A +1 -0  b_20.txt                                                        "
+        "  →└── A +1 -0  file_0.txt                                                      "
+        "  j/k: navigate  Enter/space: toggle/open  ←/→: collapse/expand  q: back        "
+        "#,
+    );
+}
+
+#[test]
+#[serial]
 fn files_view_navigation_with_modifications() {
     reset_counter();
 
