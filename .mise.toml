@@ -8,3 +8,14 @@ http_timeout = "300"
 go = "1.25.2"
 golangci-lint = "2.8.0"
 rust = "1.93.1"
+
+[tasks.install-local]
+description = "Build release binary and install ./splice safely"
+run = [
+  "cargo build --release --bin splice-rust",
+  "rm -f ./splice.new",
+  "cp target/release/splice-rust ./splice.new",
+  "chmod +x ./splice.new",
+  "mv -f ./splice.new ./splice",
+  "ls -l ./splice",
+]
