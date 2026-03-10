@@ -35,6 +35,9 @@ pub fn render(f: &mut Frame, app: &mut App) {
 
     let viewport_height = match &app.view {
         View::Log(_) => area.height.saturating_sub(2) as usize,
+        // Files view uses 3 rows above the list (header + empty + stats) and 1
+        // row below (help bar), so the visible list area is area.height - 4.
+        View::Files(_) => area.height.saturating_sub(4) as usize,
         _ => area.height.saturating_sub(1) as usize,
     };
     let viewport_width = area.width as usize;
