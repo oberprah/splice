@@ -164,12 +164,9 @@ pub fn render_log_view(
             spans.push(Span::styled(" ", message_style));
             spans.push(Span::styled(&commit.message, message_style));
 
-            let author_style = theme.author.bold_if(is_highlighted);
             let time_style = theme.time.bold_if(is_highlighted);
             let relative_time = format_relative_time(commit.date, now);
 
-            spans.push(Span::styled(" · ", message_style));
-            spans.push(Span::styled(&commit.author, author_style));
             spans.push(Span::styled(" · ", message_style));
             spans.push(Span::styled(relative_time, time_style));
 

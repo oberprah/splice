@@ -4,7 +4,7 @@ pub fn format_relative_time(date: DateTime<Utc>, now: DateTime<Utc>) -> String {
     let seconds = now.signed_duration_since(date).num_seconds().max(0);
 
     if seconds < 60 {
-        return format!("{seconds}s ago");
+        return "just now".to_string();
     }
 
     let minutes = seconds / 60;
@@ -37,10 +37,10 @@ mod tests {
     use chrono::TimeZone;
 
     #[test]
-    fn formats_seconds() {
+    fn formats_sub_minute_as_just_now() {
         let now = Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 10).unwrap();
         let date = Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap();
-        assert_eq!(format_relative_time(date, now), "10s ago");
+        assert_eq!(format_relative_time(date, now), "just now");
     }
 
     #[test]
@@ -93,9 +93,9 @@ mod tests {
     }
 
     #[test]
-    fn clamps_future_dates_to_zero() {
+    fn formats_future_dates_as_just_now() {
         let now = Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap();
         let date = Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 10).unwrap();
-        assert_eq!(format_relative_time(date, now), "0s ago");
+        assert_eq!(format_relative_time(date, now), "just now");
     }
 }
