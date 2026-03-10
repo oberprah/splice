@@ -114,6 +114,9 @@ impl LogView {
             {
                 self.scroll_offset = commit_index - self.viewport_height + 1;
             }
+        } else {
+            // Cursor is on the uncommitted changes row; always show from the top.
+            self.scroll_offset = 0;
         }
     }
 
