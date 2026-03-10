@@ -55,6 +55,7 @@ pub fn render(f: &mut Frame, app: &mut App) {
                 &log.summary,
                 &log.cursor,
                 log.scroll_offset,
+                app.now(),
                 area,
                 theme,
             );

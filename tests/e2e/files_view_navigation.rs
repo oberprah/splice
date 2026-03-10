@@ -20,8 +20,8 @@ fn files_view_navigation_with_modifications() {
     h.assert_snapshot(
         r#"
     "      Working tree clean                                                        "
-    "  → ├ e2af8ce (main) Modify and add files                                       "
-    "    ├ c500da6 Initial commit                                                    "
+    "  → ├ e2af8ce (main) Modify and add files · 2d ago                              "
+    "    ├ c500da6 Initial commit · 2d ago                                           "
     "                                                                                "
     "                                                                                "
     "                                                                                "
@@ -110,8 +110,8 @@ fn files_view_navigation_with_modifications() {
     h.assert_snapshot(
         r#"
     "      Working tree clean                                                        "
-    "  → ├ e2af8ce (main) Modify and add files                                       "
-    "    ├ c500da6 Initial commit                                                    "
+    "  → ├ e2af8ce (main) Modify and add files · 2d ago                              "
+    "    ├ c500da6 Initial commit · 2d ago                                           "
     "                                                                                "
     "                                                                                "
     "                                                                                "

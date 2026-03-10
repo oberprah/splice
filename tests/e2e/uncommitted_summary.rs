@@ -16,7 +16,7 @@ fn log_view_clean_summary_not_selectable() {
     h.assert_snapshot(
         r#"
     "      Working tree clean                                                        "
-    "  → ├ be4f0b7 (main) Initial commit                                             "
+    "  → ├ be4f0b7 (main) Initial commit · 2d ago                                    "
     "                                                                                "
     "                                                                                "
     "                                                                                "
@@ -30,7 +30,7 @@ fn log_view_clean_summary_not_selectable() {
     h.assert_snapshot(
         r#"
     "      Working tree clean                                                        "
-    "  → ├ be4f0b7 (main) Initial commit                                             "
+    "  → ├ be4f0b7 (main) Initial commit · 2d ago                                    "
     "                                                                                "
     "                                                                                "
     "                                                                                "
@@ -57,7 +57,7 @@ fn log_view_uncommitted_summary_opens_files_view() {
     h.assert_snapshot(
         r#"
     "  →   Unstaged changes · 1 file                                                 "
-    "    ├ be4f0b7 (main) Initial commit                                             "
+    "    ├ be4f0b7 (main) Initial commit · 2d ago                                    "
     "                                                                                "
     "                                                                                "
     "                                                                                "
