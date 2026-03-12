@@ -70,7 +70,7 @@ fn renamed_file_displays_as_renamed() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Enter/space: toggle/open  ←/→: collapse/expand  q: back        "
+    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  q: back                   "
     "#,
     );
 }
@@ -117,7 +117,7 @@ fn moved_folder_displays_renamed_files() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Enter/space: toggle/open  ←/→: collapse/expand  q: back        "
+    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  q: back                   "
     "#,
     );
 }

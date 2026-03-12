@@ -49,6 +49,7 @@ mod tests {
             parent_hashes: vec![],
             refs: vec![],
             message: message.to_string(),
+            body: None,
             author: "test author".to_string(),
             date: Utc.timestamp_opt(0, 0).unwrap(),
         }

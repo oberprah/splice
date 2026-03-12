@@ -8,6 +8,29 @@ use ratatui::{
     widgets::{List, ListItem, Paragraph},
 };
 
+fn source_header_line(source: &DiffSource, width: usize, theme: &Theme) -> Line<'static> {
+    if let DiffSource::CommitRange(range) = source {
+        if range.is_single_commit() {
+            let hash = range.end.short_hash().to_owned();
+            let hash_len = hash.chars().count();
+            let msg: String = range
+                .end
+                .message
+                .chars()
+                .take(width.saturating_sub(hash_len + 1))
+                .collect();
+            return Line::from(vec![
+                Span::styled(hash, theme.hash),
+                Span::raw(" "),
+                Span::styled(msg, theme.text.add_modifier(Modifier::BOLD)),
+            ]);
+        }
+    }
+    let header = source.header_text();
+    let truncated: String = header.chars().take(width).collect();
+    Line::from(Span::styled(truncated, theme.text_muted))
+}
+
 pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect, theme: &Theme) {
     let mut y = area.y;
     let width = area.width as usize;
@@ -15,9 +38,44 @@ pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect, theme: &T
     render_source_header(f, &files.source, area.x, y, width, theme);
     y += 1;
 
-    let empty = Paragraph::new("");
-    f.render_widget(empty, Rect::new(area.x, y, area.width, 1));
-    y += 1;
+    // Body panel or blank gap between header and stats.
+    match files.body_display_info() {
+        None => {
+            // No body: preserve the blank row between header and stats.
+            f.render_widget(Paragraph::new(""), Rect::new(area.x, y, area.width, 1));
+            y += 1;
+        }
+        Some(body_info) => {
+            // Blank line between the header and the body.
+            f.render_widget(Paragraph::new(""), Rect::new(area.x, y, area.width, 1));
+            y += 1;
+            // Body lines — indented by 2 spaces relative to the header.
+            // The last line is rendered muted when it is a hint (overflow indicator or "show less").
+            let last = body_info.shown_lines.len().saturating_sub(1);
+            for (i, line) in body_info.shown_lines.iter().enumerate() {
+                let content: String = format!(
+                    "  {}",
+                    line.chars()
+                        .take(width.saturating_sub(2))
+                        .collect::<String>()
+                );
+                let is_hint = body_info.last_line_is_hint && i == last;
+                let style = if is_hint {
+                    theme.text_muted
+                } else {
+                    theme.text
+                };
+                f.render_widget(
+                    Paragraph::new(content).style(style),
+                    Rect::new(area.x, y, area.width, 1),
+                );
+                y += 1;
+            }
+            // Blank separator between body and stats.
+            f.render_widget(Paragraph::new(""), Rect::new(area.x, y, area.width, 1));
+            y += 1;
+        }
+    }
 
     let total_additions = files.total_additions();
     let total_deletions = files.total_deletions();
@@ -44,10 +102,16 @@ pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect, theme: &T
         theme,
     );
 
-    let help =
-        Paragraph::new("j/k: navigate  Enter/space: toggle/open  ←/→: collapse/expand  q: back")
-            .style(theme.text_muted)
-            .alignment(Alignment::Left);
+    let help_text = if files.message_expanded {
+        "j/k: navigate  Enter/space: toggle/open  ←/→: fold  m: collapse  q: back"
+    } else if files.has_expandable_body() {
+        "j/k: navigate  Enter/space: toggle/open  ←/→: fold  m: expand  q: back"
+    } else {
+        "j/k: navigate  Enter/space: toggle/open  ←/→: fold  q: back"
+    };
+    let help = Paragraph::new(help_text)
+        .style(theme.text_muted)
+        .alignment(Alignment::Left);
     let help_area = Rect::new(
         area.x,
         area.y + area.height.saturating_sub(1),
@@ -65,9 +129,8 @@ fn render_source_header(
     width: usize,
     theme: &Theme,
 ) {
-    let header = source.header_text();
-    let truncated: String = header.chars().take(width).collect();
-    let para = Paragraph::new(truncated).style(theme.text_muted);
+    let line = source_header_line(source, width, theme);
+    let para = Paragraph::new(line);
     f.render_widget(para, Rect::new(x, y, width as u16, 1));
 }
 

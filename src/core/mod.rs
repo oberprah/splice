@@ -55,6 +55,7 @@ pub struct Commit {
     pub parent_hashes: Vec<String>,
     pub refs: Vec<RefInfo>,
     pub message: String,
+    pub body: Option<String>,
     pub author: String,
     pub date: DateTime<Utc>,
 }

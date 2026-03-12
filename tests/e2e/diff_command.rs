@@ -43,7 +43,7 @@ fn diff_command_commit_range_and_quit() {
 "                                                                                "
 "                                                                                "
 "                                                                                "
-"  j/k: navigate  Enter/space: toggle/open  ←/→: collapse/expand  q: back        "
+"  j/k: navigate  Enter/space: toggle/open  ←/→: fold  q: back                   "
 "#,
     );
 
@@ -85,7 +85,7 @@ fn diff_command_uncommitted_views() {
 "                                                                                "
 "                                                                                "
 "                                                                                "
-"  j/k: navigate  Enter/space: toggle/open  ←/→: collapse/expand  q: back        "
+"  j/k: navigate  Enter/space: toggle/open  ←/→: fold  q: back                   "
 "#,
     );
 
@@ -131,7 +131,7 @@ fn diff_command_uncommitted_views() {
 "                                                                                "
 "                                                                                "
 "                                                                                "
-"  j/k: navigate  Enter/space: toggle/open  ←/→: collapse/expand  q: back        "
+"  j/k: navigate  Enter/space: toggle/open  ←/→: fold  q: back                   "
 "#,
     );
 }

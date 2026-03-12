@@ -15,8 +15,8 @@ pub fn parse_log_output(output: &str) -> Result<Vec<Commit>, String> {
             continue;
         }
 
-        let fields: Vec<&str> = record.splitn(6, '\0').collect();
-        if fields.len() != 6 {
+        let fields: Vec<&str> = record.splitn(7, '\0').collect();
+        if fields.len() != 7 {
             continue;
         }
 
@@ -40,12 +40,21 @@ pub fn parse_log_output(output: &str) -> Result<Vec<Commit>, String> {
         };
 
         let message = fields[5].to_string();
+        let body = {
+            let raw = fields[6].trim_end();
+            if raw.is_empty() {
+                None
+            } else {
+                Some(raw.to_string())
+            }
+        };
 
         commits.push(Commit {
             hash,
             parent_hashes,
             refs,
             message,
+            body,
             author,
             date,
         });
@@ -122,20 +131,51 @@ mod tests {
 
     #[test]
     fn test_parse_single_commit() {
-        let input = "abc123\0\0\0Alice\02024-01-01T10:00:00Z\0Initial commit";
+        let input = "abc123\0\0\0Alice\02024-01-01T10:00:00Z\0Initial commit\0";
         let commits = parse_log_output(input).unwrap();
 
         assert_eq!(commits.len(), 1);
         assert_eq!(commits[0].hash, "abc123");
         assert_eq!(commits[0].message, "Initial commit");
+        assert_eq!(commits[0].body, None);
         assert_eq!(commits[0].author, "Alice");
         assert!(commits[0].refs.is_empty());
         assert!(commits[0].parent_hashes.is_empty());
     }
 
     #[test]
+    fn test_parse_commit_with_body() {
+        let input =
+            "abc123\0\0\0Alice\02024-01-01T10:00:00Z\0Fix thing\0This is the body.\nLine 2.";
+        let commits = parse_log_output(input).unwrap();
+
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].message, "Fix thing");
+        assert_eq!(
+            commits[0].body,
+            Some("This is the body.\nLine 2.".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_commit_body_trims_trailing_newline() {
+        let input = "abc123\0\0\0Alice\02024-01-01T10:00:00Z\0Fix thing\0Body text.\n";
+        let commits = parse_log_output(input).unwrap();
+
+        assert_eq!(commits[0].body, Some("Body text.".to_string()));
+    }
+
+    #[test]
+    fn test_parse_commit_with_whitespace_only_body() {
+        let input = "abc123\0\0\0Alice\02024-01-01T10:00:00Z\0Fix thing\0\n\n";
+        let commits = parse_log_output(input).unwrap();
+
+        assert_eq!(commits[0].body, None);
+    }
+
+    #[test]
     fn test_parse_commit_with_single_parent() {
-        let input = "child123\0parent456\0\0Bob\02024-01-02T10:00:00Z\0Second commit";
+        let input = "child123\0parent456\0\0Bob\02024-01-02T10:00:00Z\0Second commit\0";
         let commits = parse_log_output(input).unwrap();
 
         assert_eq!(commits.len(), 1);
@@ -145,7 +185,7 @@ mod tests {
 
     #[test]
     fn test_parse_merge_commit_with_multiple_parents() {
-        let input = "merge123\0parent1 parent2\0\0Carol\02024-01-03T10:00:00Z\0Merge commit";
+        let input = "merge123\0parent1 parent2\0\0Carol\02024-01-03T10:00:00Z\0Merge commit\0";
         let commits = parse_log_output(input).unwrap();
 
         assert_eq!(commits.len(), 1);
@@ -154,7 +194,7 @@ mod tests {
 
     #[test]
     fn test_parse_multiple_commits() {
-        let input = "hash1\0\0\0Alice\02024-01-01T10:00:00Z\0First\x1ehash2\0\0\0Bob\02024-01-02T10:00:00Z\0Second";
+        let input = "hash1\0\0\0Alice\02024-01-01T10:00:00Z\0First\0\x1ehash2\0\0\0Bob\02024-01-02T10:00:00Z\0Second\0";
         let commits = parse_log_output(input).unwrap();
 
         assert_eq!(commits.len(), 2);
@@ -166,7 +206,7 @@ mod tests {
 
     #[test]
     fn test_parse_skips_malformed_records() {
-        let input = "valid\0\0\0Alice\02024-01-01T10:00:00Z\0Valid\x1einvalid\x1ealso\0\0\0Bob\02024-01-02T10:00:00Z\0Also valid";
+        let input = "valid\0\0\0Alice\02024-01-01T10:00:00Z\0Valid\0\x1einvalid\x1ealso\0\0\0Bob\02024-01-02T10:00:00Z\0Also valid\0";
         let commits = parse_log_output(input).unwrap();
 
         assert_eq!(commits.len(), 2);
@@ -176,7 +216,7 @@ mod tests {
 
     #[test]
     fn test_parse_skips_empty_hash() {
-        let input = "\0\0\0Alice\02024-01-01T10:00:00Z\0No hash\x1ehash2\0\0\0Bob\02024-01-01T10:00:00Z\0Valid";
+        let input = "\0\0\0Alice\02024-01-01T10:00:00Z\0No hash\0\x1ehash2\0\0\0Bob\02024-01-01T10:00:00Z\0Valid\0";
         let commits = parse_log_output(input).unwrap();
 
         assert_eq!(commits.len(), 1);
@@ -185,7 +225,7 @@ mod tests {
 
     #[test]
     fn test_parse_skips_invalid_date() {
-        let input = "hash1\0\0\0Alice\0invalid-date\0Message1\x1ehash2\0\0\0Bob\02024-01-01T10:00:00Z\0Message2";
+        let input = "hash1\0\0\0Alice\0invalid-date\0Message1\0\x1ehash2\0\0\0Bob\02024-01-01T10:00:00Z\0Message2\0";
         let commits = parse_log_output(input).unwrap();
 
         assert_eq!(commits.len(), 1);
@@ -194,7 +234,7 @@ mod tests {
 
     #[test]
     fn test_parse_commit_with_refs() {
-        let input = "abc123\0\0 (HEAD -> main, tag: v1.0)\0Alice\02024-01-01T10:00:00Z\0Message";
+        let input = "abc123\0\0 (HEAD -> main, tag: v1.0)\0Alice\02024-01-01T10:00:00Z\0Message\0";
         let commits = parse_log_output(input).unwrap();
 
         assert_eq!(commits.len(), 1);
