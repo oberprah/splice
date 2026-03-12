@@ -1,3 +1,4 @@
+mod commit_message_body;
 mod diff_command;
 mod diff_view;
 mod files_view_navigation;

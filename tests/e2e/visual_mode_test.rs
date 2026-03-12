@@ -110,7 +110,7 @@ fn visual_mode() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Enter/space: toggle/open  ←/→: collapse/expand  q: back        "
+    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  q: back                   "
     "#,
     );
 

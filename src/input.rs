@@ -16,6 +16,7 @@ pub enum Action {
     NextDiff,
     PrevDiff,
     OpenInEditor,
+    ToggleMessage,
     Resize { width: u16, height: u16 },
     None,
 }
@@ -45,6 +46,7 @@ fn action_from_key(key: KeyEvent) -> Action {
         KeyCode::Char('n') => Action::NextDiff,
         KeyCode::Char('p') => Action::PrevDiff,
         KeyCode::Char('o') => Action::OpenInEditor,
+        KeyCode::Char('m') => Action::ToggleMessage,
         _ => Action::None,
     }
 }
@@ -76,5 +78,11 @@ mod tests {
     fn test_o_key_maps_to_open_in_editor() {
         let event = Event::Key(KeyEvent::from(KeyCode::Char('o')));
         assert_eq!(action_from_event(event), Action::OpenInEditor);
+    }
+
+    #[test]
+    fn test_m_key_maps_to_toggle_message() {
+        let event = Event::Key(KeyEvent::from(KeyCode::Char('m')));
+        assert_eq!(action_from_event(event), Action::ToggleMessage);
     }
 }

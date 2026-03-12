@@ -34,7 +34,7 @@ pub fn fetch_commits(repo_path: &Path, spec: LogSpec) -> Result<Vec<Commit>, Str
     let mut args = vec![
         "log".to_string(),
         "--topo-order".to_string(),
-        "--pretty=format:%H%x00%P%x00%d%x00%an%x00%ad%x00%s%x1e".to_string(),
+        "--pretty=format:%H%x00%P%x00%d%x00%an%x00%ad%x00%s%x00%b%x1e".to_string(),
         "--date=iso-strict".to_string(),
     ];
 
@@ -212,6 +212,7 @@ mod tests {
             parent_hashes: vec![],
             refs: vec![],
             message: "test".to_string(),
+            body: None,
             author: "test".to_string(),
             date: chrono::Utc::now(),
         };

@@ -244,6 +244,11 @@ impl App {
             Action::NextDiff => self.navigate_diff(1),
             Action::PrevDiff => self.navigate_diff(-1),
             Action::OpenInEditor => {}
+            Action::ToggleMessage => {
+                if let View::Files(files) = &mut self.view {
+                    files.toggle_message();
+                }
+            }
             Action::Resize { .. } | Action::None => {}
         }
 
@@ -261,7 +266,7 @@ impl App {
     fn viewport_height(&self) -> usize {
         match &self.view {
             View::Log(log) => log.viewport_height,
-            View::Files(files) => files.viewport_height,
+            View::Files(files) => files.list_viewport_height(),
             View::Diff(diff) => diff.viewport_height,
         }
     }

@@ -116,7 +116,7 @@ fn resolve_ref(repo_path: &Path, ref_name: &str) -> Result<Commit, String> {
         .args([
             "log",
             "-1",
-            "--format=%H%n%s%n%an%n%aI%n%P",
+            "--format=%H%x00%s%x00%an%x00%aI%x00%P%x00%b",
             ref_name.trim(),
         ])
         .output()
@@ -133,23 +133,34 @@ fn resolve_ref(repo_path: &Path, ref_name: &str) -> Result<Commit, String> {
 }
 
 fn parse_commit_output(output: &str) -> Result<Commit, String> {
-    let lines: Vec<&str> = output.trim().lines().collect();
-    if lines.len() < 4 {
+    let fields: Vec<&str> = output.trim().splitn(6, '\0').collect();
+    if fields.len() < 5 {
         return Err("unexpected git log output".to_string());
     }
 
-    let hash = lines[0].to_string();
-    let message = lines[1].to_string();
-    let author = lines[2].to_string();
+    let hash = fields[0].to_string();
+    let message = fields[1].to_string();
+    let author = fields[2].to_string();
 
-    let date = chrono::DateTime::parse_from_rfc3339(lines[3].trim())
+    let date = chrono::DateTime::parse_from_rfc3339(fields[3].trim())
         .map_err(|e| format!("error parsing date: {}", e))?
         .with_timezone(&chrono::Utc);
 
-    let parent_hashes = if lines.len() >= 5 && !lines[4].is_empty() {
-        lines[4].split_whitespace().map(String::from).collect()
+    let parent_hashes = if !fields[4].is_empty() {
+        fields[4].split_whitespace().map(String::from).collect()
     } else {
         vec![]
+    };
+
+    let body = if fields.len() >= 6 {
+        let raw = fields[5].trim_end();
+        if raw.is_empty() {
+            None
+        } else {
+            Some(raw.to_string())
+        }
+    } else {
+        None
     };
 
     Ok(Commit {
@@ -157,6 +168,7 @@ fn parse_commit_output(output: &str) -> Result<Commit, String> {
         parent_hashes,
         refs: vec![],
         message,
+        body,
         author,
         date,
     })

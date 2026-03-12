@@ -135,7 +135,7 @@ fn log_view_uncommitted_summary_opens_files_view() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Enter/space: toggle/open  ←/→: collapse/expand  q: back        "
+    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  q: back                   "
     "#,
     );
 }
