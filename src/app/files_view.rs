@@ -1,11 +1,12 @@
 use crate::core::{DiffSource, FileChange};
 use crate::domain::filetree::{self, TreeNode, VisibleTreeItem};
 
+const FIXED_ROWS: usize = 4;
+const COLLAPSED_BODY_LIMIT: usize = 3;
+const MIN_VISIBLE_FILES: usize = 3;
+
 pub struct BodyDisplayInfo {
-    /// Body lines to render. When `last_line_is_hint`, the last entry is a muted hint line.
     pub shown_lines: Vec<String>,
-    /// True when the last entry of `shown_lines` should be rendered as muted hint text
-    /// (either an overflow indicator or the "show less" collapse line).
     pub last_line_is_hint: bool,
 }
 
@@ -16,7 +17,6 @@ pub struct FilesView {
     pub visible_items: Vec<VisibleTreeItem>,
     pub selected: usize,
     pub scroll_offset: usize,
-    /// Full area height passed from the render loop (area.height, not the list viewport).
     total_height: usize,
     pub message_expanded: bool,
 }
@@ -37,23 +37,16 @@ impl FilesView {
         }
     }
 
-    /// Called from the render loop with the full area height (not the list sub-area).
     pub fn set_viewport_height(&mut self, height: usize) {
         self.total_height = height;
         self.clamp_scroll_offset();
     }
 
-    /// Height available for the file tree list.
     pub fn list_viewport_height(&self) -> usize {
-        // 4 fixed rows: header + blank/separator + stats + help.
-        // When a body panel is shown, body_section_lines() counts the blank row before
-        // the body plus the shown lines; the blank separator after the body takes the
-        // place of the fixed blank row in the 4-row overhead.
         self.total_height
-            .saturating_sub(4 + self.body_section_lines())
+            .saturating_sub(FIXED_ROWS + self.body_section_lines())
     }
 
-    /// Body text for a single-commit source, None otherwise.
     fn body(&self) -> Option<&str> {
         match &self.source {
             DiffSource::CommitRange(range) if range.is_single_commit() => range.end.body.as_deref(),
@@ -61,27 +54,27 @@ impl FilesView {
         }
     }
 
-    /// Max body lines to show based on expansion state.
     fn body_cap(&self) -> usize {
         if self.message_expanded {
-            // total-9: reserves blank-before + show-less + 4 fixed overhead + 3 min list rows
-            self.total_height.saturating_sub(9).max(1)
+            let blank_before_body = 1;
+            let show_less_line = 1;
+            let reserved = FIXED_ROWS + MIN_VISIBLE_FILES + blank_before_body + show_less_line;
+            self.total_height.saturating_sub(reserved).max(1)
         } else {
-            3
+            COLLAPSED_BODY_LIMIT
         }
     }
 
-    /// Total rows the body panel occupies: one blank row before the body plus the
-    /// shown lines. The blank separator after the body is part of the fixed 4-row
-    /// overhead and is not counted here. Returns 0 when there is no body to show.
     pub fn body_section_lines(&self) -> usize {
         match self.body_display_info() {
             None => 0,
-            Some(info) => info.shown_lines.len() + 1, // +1 for blank row before body
+            Some(info) => {
+                let blank_before_body = 1;
+                blank_before_body + info.shown_lines.len()
+            }
         }
     }
 
-    /// Returns display info for the body panel, or None if there is nothing to show.
     pub fn body_display_info(&self) -> Option<BodyDisplayInfo> {
         if self.total_height == 0 {
             return None;
@@ -93,12 +86,11 @@ impl FilesView {
         }
 
         let cap = self.body_cap();
-        let collapsed_cap = 3_usize;
+        let collapsed_cap = COLLAPSED_BODY_LIMIT;
         let is_truncated = all_lines.len() > cap;
         let has_expandable = all_lines.len() > collapsed_cap;
 
         let (shown_lines, last_line_is_hint) = if is_truncated {
-            // Use the last visible slot for the overflow indicator.
             let shown_count = cap.saturating_sub(1).max(1);
             let mut lines: Vec<String> = all_lines[..shown_count.min(all_lines.len())]
                 .iter()
@@ -123,16 +115,13 @@ impl FilesView {
         })
     }
 
-    /// Returns true if the body has more lines than the collapsed cap (i.e., `m` does something).
     pub fn has_expandable_body(&self) -> bool {
         let Some(body) = self.body() else {
             return false;
         };
-        let line_count = body.lines().count();
-        line_count > 3
+        body.lines().count() > COLLAPSED_BODY_LIMIT
     }
 
-    /// Toggles expanded/collapsed state. Returns true if the toggle had an effect.
     pub fn toggle_message(&mut self) -> bool {
         if !self.has_expandable_body() {
             return false;

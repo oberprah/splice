@@ -38,19 +38,14 @@ pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect, theme: &T
     render_source_header(f, &files.source, area.x, y, width, theme);
     y += 1;
 
-    // Body panel or blank gap between header and stats.
     match files.body_display_info() {
         None => {
-            // No body: preserve the blank row between header and stats.
             f.render_widget(Paragraph::new(""), Rect::new(area.x, y, area.width, 1));
             y += 1;
         }
         Some(body_info) => {
-            // Blank line between the header and the body.
             f.render_widget(Paragraph::new(""), Rect::new(area.x, y, area.width, 1));
             y += 1;
-            // Body lines — indented by 2 spaces relative to the header.
-            // The last line is rendered muted when it is a hint (overflow indicator or "show less").
             let last = body_info.shown_lines.len().saturating_sub(1);
             for (i, line) in body_info.shown_lines.iter().enumerate() {
                 let content: String = format!(
@@ -71,7 +66,6 @@ pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect, theme: &T
                 );
                 y += 1;
             }
-            // Blank separator between body and stats.
             f.render_widget(Paragraph::new(""), Rect::new(area.x, y, area.width, 1));
             y += 1;
         }
