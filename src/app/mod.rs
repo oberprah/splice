@@ -432,7 +432,7 @@ impl App {
             &full_diff.new_content,
         );
 
-        let file_diff = match crate::domain::diff::build_file_diff_full(
+        let file_diff = match crate::domain::diff::build_file_diff(
             file,
             &full_diff.old_content,
             &full_diff.new_content,
