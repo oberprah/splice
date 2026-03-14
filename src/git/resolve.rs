@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::core::{Commit, CommitRange, DiffSource, UncommittedType};
+use crate::core::{Commit, CommitRange, DiffRef, UncommittedType};
 
 use super::git_command;
 
@@ -179,14 +179,14 @@ pub struct DiffSpec {
     pub uncommitted_type: Option<UncommittedType>,
 }
 
-pub fn resolve_diff_source(repo_path: &Path, spec: DiffSpec) -> Result<DiffSource, String> {
+pub fn resolve_diff_source(repo_path: &Path, spec: DiffSpec) -> Result<DiffRef, String> {
     if let Some(uncommitted_type) = spec.uncommitted_type {
-        return Ok(DiffSource::Uncommitted(uncommitted_type));
+        return Ok(DiffRef::Uncommitted(uncommitted_type));
     }
 
     if let Some(raw) = spec.raw {
         let range = resolve_commit_range(repo_path, &raw)?;
-        return Ok(DiffSource::CommitRange(range));
+        return Ok(DiffRef::CommitRange(range));
     }
 
     Err("no spec provided".to_string())

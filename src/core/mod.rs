@@ -1,12 +1,12 @@
 mod commit_range;
 mod cursor;
-mod diff_source;
+mod diff_ref;
 mod log_spec;
 mod relative_time;
 
 pub use commit_range::CommitRange;
 pub use cursor::{is_in_selection, selection_range, CursorState};
-pub use diff_source::{DiffSource, UncommittedType};
+pub use diff_ref::{DiffRef, UncommittedType};
 pub use log_spec::LogSpec;
 pub use relative_time::format_relative_time;
 
@@ -90,7 +90,7 @@ impl FileStatus {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FileChange {
+pub struct FileDiffInfo {
     pub path: String,
     pub old_path: Option<String>,
     pub status: FileStatus,

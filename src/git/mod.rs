@@ -16,7 +16,7 @@ pub use uncommitted::{fetch_uncommitted_file_changes, fetch_uncommitted_summary}
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use crate::core::{Commit, CommitRange, DiffSource, FileChange, LogSpec};
+use crate::core::{Commit, CommitRange, DiffRef, FileDiffInfo, LogSpec};
 
 fn git_command(repo_path: &Path) -> Command {
     let mut cmd = Command::new("git");
@@ -63,7 +63,7 @@ pub fn fetch_commits(repo_path: &Path, spec: LogSpec) -> Result<Vec<Commit>, Str
 pub fn fetch_file_changes(
     repo_path: &Path,
     range: &CommitRange,
-) -> Result<Vec<FileChange>, String> {
+) -> Result<Vec<FileDiffInfo>, String> {
     if range.is_single_commit() {
         fetch_file_changes_single(repo_path, &range.end.hash)
     } else {
@@ -74,7 +74,7 @@ pub fn fetch_file_changes(
 fn fetch_file_changes_single(
     repo_path: &Path,
     commit_hash: &str,
-) -> Result<Vec<FileChange>, String> {
+) -> Result<Vec<FileDiffInfo>, String> {
     let numstat_output = git_command(repo_path)
         .args([
             "diff-tree",
@@ -124,7 +124,7 @@ fn fetch_file_changes_single(
 fn fetch_file_changes_range(
     repo_path: &Path,
     range: &CommitRange,
-) -> Result<Vec<FileChange>, String> {
+) -> Result<Vec<FileDiffInfo>, String> {
     let range_spec = range.to_diff_spec();
 
     let numstat_output = git_command(repo_path)
@@ -159,11 +159,11 @@ fn fetch_file_changes_range(
 
 pub fn fetch_file_changes_for_source(
     repo_path: &Path,
-    source: &DiffSource,
-) -> Result<Vec<FileChange>, String> {
-    match source {
-        DiffSource::CommitRange(range) => fetch_file_changes(repo_path, range),
-        DiffSource::Uncommitted(uncommitted_type) => {
+    diff_ref: &DiffRef,
+) -> Result<Vec<FileDiffInfo>, String> {
+    match diff_ref {
+        DiffRef::CommitRange(range) => fetch_file_changes(repo_path, range),
+        DiffRef::Uncommitted(uncommitted_type) => {
             fetch_uncommitted_file_changes(repo_path, *uncommitted_type)
         }
     }
@@ -188,12 +188,12 @@ pub fn repository_root(repo_path: &Path) -> Result<PathBuf, String> {
 
 pub fn fetch_full_file_diff_for_source(
     repo_path: &Path,
-    source: &DiffSource,
+    diff_ref: &DiffRef,
     path: &str,
 ) -> Result<FullFileDiff, String> {
-    match source {
-        DiffSource::CommitRange(range) => fetch_full_file_diff(repo_path, range, path),
-        DiffSource::Uncommitted(uncommitted_type) => {
+    match diff_ref {
+        DiffRef::CommitRange(range) => fetch_full_file_diff(repo_path, range, path),
+        DiffRef::Uncommitted(uncommitted_type) => {
             fetch_full_uncommitted_file_diff(repo_path, *uncommitted_type, path)
         }
     }
@@ -222,8 +222,8 @@ mod tests {
             count: 1,
             include_start: true,
         };
-        let source = DiffSource::CommitRange(range);
-        let result = fetch_file_changes_for_source(repo_path, &source);
+        let diff_ref = DiffRef::CommitRange(range);
+        let result = fetch_file_changes_for_source(repo_path, &diff_ref);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("git diff-tree"));
     }
@@ -231,8 +231,8 @@ mod tests {
     #[test]
     fn fetch_file_changes_for_source_dispatches_to_uncommitted() {
         let repo_path = Path::new("/nonexistent");
-        let source = DiffSource::Uncommitted(UncommittedType::Staged);
-        let result = fetch_file_changes_for_source(repo_path, &source);
+        let diff_ref = DiffRef::Uncommitted(UncommittedType::Staged);
+        let result = fetch_file_changes_for_source(repo_path, &diff_ref);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("git diff"));
     }

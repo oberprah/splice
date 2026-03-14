@@ -11,7 +11,7 @@ use std::process::Command;
 
 use chrono::{DateTime, Utc};
 
-use crate::core::{DiffSource, FileChange, LogSpec};
+use crate::core::{DiffRef, FileDiffInfo, LogSpec};
 use crate::git;
 use crate::input::Action;
 
@@ -134,28 +134,28 @@ impl App {
 
     pub fn with_diff_source(
         repo_path: PathBuf,
-        source: DiffSource,
-        files: Vec<FileChange>,
+        diff_ref: DiffRef,
+        files: Vec<FileDiffInfo>,
     ) -> Self {
-        Self::with_diff_source_with_now(repo_path, source, files, None)
+        Self::with_diff_source_with_now(repo_path, diff_ref, files, None)
     }
 
     pub fn with_diff_source_and_now(
         repo_path: PathBuf,
-        source: DiffSource,
-        files: Vec<FileChange>,
+        diff_ref: DiffRef,
+        files: Vec<FileDiffInfo>,
         now: DateTime<Utc>,
     ) -> Self {
-        Self::with_diff_source_with_now(repo_path, source, files, Some(now))
+        Self::with_diff_source_with_now(repo_path, diff_ref, files, Some(now))
     }
 
     fn with_diff_source_with_now(
         repo_path: PathBuf,
-        source: DiffSource,
-        files: Vec<FileChange>,
+        diff_ref: DiffRef,
+        files: Vec<FileDiffInfo>,
         now: Option<DateTime<Utc>>,
     ) -> Self {
-        let files_view = FilesView::new(source, files);
+        let files_view = FilesView::new(diff_ref, files);
         Self {
             repo_path: Some(repo_path),
             view: View::Files(files_view),
@@ -304,10 +304,10 @@ impl App {
                     None => return,
                 };
 
-                let source = DiffSource::Uncommitted(uncommitted_type);
-                match git::fetch_file_changes_for_source(&repo_path, &source) {
+                let diff_ref = DiffRef::Uncommitted(uncommitted_type);
+                match git::fetch_file_changes_for_source(&repo_path, &diff_ref) {
                     Ok(files) => {
-                        let files_view = FilesView::new(source, files);
+                        let files_view = FilesView::new(diff_ref, files);
                         let old_view = std::mem::replace(&mut self.view, View::Files(files_view));
                         self.view_stack.push(old_view);
                     }
@@ -323,7 +323,7 @@ impl App {
 
                 match git::fetch_file_changes(&repo_path, &range) {
                     Ok(files) => {
-                        let files_view = FilesView::new(DiffSource::CommitRange(range), files);
+                        let files_view = FilesView::new(DiffRef::CommitRange(range), files);
                         let old_view = std::mem::replace(&mut self.view, View::Files(files_view));
                         self.view_stack.push(old_view);
                     }
@@ -337,8 +337,8 @@ impl App {
                 files.toggle_folder(false, false);
             } else if let Some(file) = files.selected_file() {
                 let file = file.clone();
-                let source = files.source.clone();
-                self.open_file_diff(source, file, true, DiffEntryPoint::Top);
+                let diff_ref = files.diff_ref.clone();
+                self.open_file_diff(diff_ref, file, true, DiffEntryPoint::Top);
             }
         }
     }
@@ -367,8 +367,8 @@ impl App {
     }
 
     fn open_adjacent_diff_file(&mut self, direction: isize) {
-        let (source, current_path) = match &self.view {
-            View::Diff(diff) => (diff.source.clone(), diff.file.path.clone()),
+        let (diff_ref, current_path) = match &self.view {
+            View::Diff(diff) => (diff.diff_ref.clone(), diff.file.info.path.clone()),
             _ => return,
         };
 
@@ -382,12 +382,12 @@ impl App {
             DiffEntryPoint::LastDiff
         };
 
-        if self.open_file_diff(source, file.clone(), false, entry) {
+        if self.open_file_diff(diff_ref, file.clone(), false, entry) {
             self.sync_files_selection(&file.path);
         }
     }
 
-    fn adjacent_file(&self, current_path: &str, direction: isize) -> Option<FileChange> {
+    fn adjacent_file(&self, current_path: &str, direction: isize) -> Option<FileDiffInfo> {
         let files = self.view_stack.iter().rev().find_map(|view| match view {
             View::Files(files) => Some(files),
             _ => None,
@@ -407,8 +407,8 @@ impl App {
 
     fn open_file_diff(
         &mut self,
-        source: DiffSource,
-        file: FileChange,
+        diff_ref: DiffRef,
+        file: FileDiffInfo,
         push_previous: bool,
         entry_point: DiffEntryPoint,
     ) -> bool {
@@ -417,26 +417,28 @@ impl App {
             None => return false,
         };
 
-        let full_diff = match git::fetch_full_file_diff_for_source(&repo_path, &source, &file.path)
-        {
-            Ok(diff) => diff,
-            Err(e) => {
-                self.error = Some(e);
-                return false;
-            }
-        };
+        let full_diff =
+            match git::fetch_full_file_diff_for_source(&repo_path, &diff_ref, &file.path) {
+                Ok(diff) => diff,
+                Err(e) => {
+                    self.error = Some(e);
+                    return false;
+                }
+            };
 
-        let meta = crate::domain::diff::DiffMeta {
-            path: file.path.clone(),
-            additions: file.additions,
-            deletions: file.deletions,
-        };
+        let highlights = crate::domain::highlight::highlight_diff_sides(
+            &file.path,
+            &full_diff.old_content,
+            &full_diff.new_content,
+        );
 
-        let diff = match crate::domain::diff::build_file_diff_full(
-            meta,
+        let file_diff = match crate::domain::diff::build_file_diff_full(
+            file,
             &full_diff.old_content,
             &full_diff.new_content,
             &full_diff.diff_output,
+            &highlights.old,
+            &highlights.new,
         ) {
             Ok(diff) => diff,
             Err(e) => {
@@ -445,13 +447,7 @@ impl App {
             }
         };
 
-        let highlights = crate::domain::highlight::highlight_diff_sides(
-            &file.path,
-            &full_diff.old_content,
-            &full_diff.new_content,
-        );
-
-        let mut diff_view = DiffView::new(source, file, diff, highlights);
+        let mut diff_view = DiffView::new(diff_ref, file_diff);
         diff_view.set_viewport_dimensions(self.viewport_height(), self.viewport_width);
         let old_view = std::mem::replace(&mut self.view, View::Diff(diff_view));
         if push_previous {
@@ -478,11 +474,11 @@ impl App {
             return Ok(());
         };
 
-        if diff.file.is_binary {
+        if diff.file.info.is_binary {
             return Err("cannot open binary file in editor".to_string());
         }
 
-        if diff.file.status == crate::core::FileStatus::Deleted {
+        if diff.file.info.status == crate::core::FileStatus::Deleted {
             return Err("cannot open: file has been deleted".to_string());
         }
 
@@ -498,7 +494,7 @@ impl App {
             .ok_or_else(|| "missing repository path".to_string())?;
         let repo_root = git::repository_root(repo_path)
             .map_err(|err| format!("failed to determine repository root: {err}"))?;
-        let absolute_path = repo_root.join(&diff.file.path);
+        let absolute_path = repo_root.join(&diff.file.info.path);
 
         if !absolute_path.exists() {
             return Err("cannot open: file not found".to_string());

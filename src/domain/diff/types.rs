@@ -1,13 +1,33 @@
+use crate::core::FileDiffInfo;
+use crate::domain::highlight::TokenSpan;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DiffMeta {
-    pub path: String,
-    pub additions: u32,
-    pub deletions: u32,
+pub struct DiffLine {
+    pub number: u32,
+    pub text: String,
+    pub tokens: Vec<TokenSpan>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UnchangedLine {
+    pub old_number: u32,
+    pub new_number: u32,
+    pub text: String,
+    pub tokens: Vec<TokenSpan>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DiffBlock {
+    Unchanged(Vec<UnchangedLine>),
+    Change {
+        old: Vec<DiffLine>,
+        new: Vec<DiffLine>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FileDiff {
-    pub meta: DiffMeta,
+    pub info: FileDiffInfo,
     pub blocks: Vec<DiffBlock>,
 }
 
@@ -16,30 +36,9 @@ impl FileDiff {
         self.blocks
             .iter()
             .map(|block| match block {
-                DiffBlock::Unchanged(unchanged) => unchanged.lines.len(),
-                DiffBlock::Change(change) => change.old_lines.len().max(change.new_lines.len()),
+                DiffBlock::Unchanged(lines) => lines.len(),
+                DiffBlock::Change { old, new } => old.len().max(new.len()),
             })
             .sum()
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DiffBlock {
-    Unchanged(UnchangedBlock),
-    Change(ChangeBlock),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UnchangedBlock {
-    pub old_start: u32,
-    pub new_start: u32,
-    pub lines: Vec<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ChangeBlock {
-    pub old_start: u32,
-    pub new_start: u32,
-    pub old_lines: Vec<String>,
-    pub new_lines: Vec<String>,
 }

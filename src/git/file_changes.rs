@@ -1,7 +1,7 @@
-use crate::core::{FileChange, FileStatus};
+use crate::core::{FileDiffInfo, FileStatus};
 use std::collections::HashMap;
 
-pub fn parse_file_changes(numstat: &str, name_status: &str) -> Result<Vec<FileChange>, String> {
+pub fn parse_file_changes(numstat: &str, name_status: &str) -> Result<Vec<FileDiffInfo>, String> {
     let entries = parse_name_status_entries(name_status);
     let rename_new_paths: std::collections::HashSet<&str> = entries
         .iter()
@@ -58,7 +58,7 @@ pub fn parse_file_changes(numstat: &str, name_status: &str) -> Result<Vec<FileCh
             .map(|(a, d, b)| (a.unwrap_or(0), d.unwrap_or(0), *b))
             .unwrap_or((0, 0, false));
 
-        changes.push(FileChange {
+        changes.push(FileDiffInfo {
             path: entry.path,
             old_path: entry.old_path,
             status: entry.status,

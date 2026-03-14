@@ -1,7 +1,7 @@
 use crate::core::CommitRange;
 
 #[derive(Clone)]
-pub enum DiffSource {
+pub enum DiffRef {
     CommitRange(CommitRange),
     Uncommitted(UncommittedType),
 }
@@ -13,10 +13,10 @@ pub enum UncommittedType {
     All,
 }
 
-impl DiffSource {
+impl DiffRef {
     pub fn header_text(&self) -> String {
         match self {
-            DiffSource::CommitRange(range) => {
+            DiffRef::CommitRange(range) => {
                 if range.is_single_commit() {
                     format!("{} {}", range.end.short_hash(), range.end.message)
                 } else {
@@ -28,7 +28,7 @@ impl DiffSource {
                     )
                 }
             }
-            DiffSource::Uncommitted(uncommitted_type) => match uncommitted_type {
+            DiffRef::Uncommitted(uncommitted_type) => match uncommitted_type {
                 UncommittedType::Staged => "Staged changes".to_string(),
                 UncommittedType::Unstaged => "Unstaged changes".to_string(),
                 UncommittedType::All => "Uncommitted changes".to_string(),
@@ -64,8 +64,8 @@ mod tests {
             count: 1,
             include_start: true,
         };
-        let source = DiffSource::CommitRange(range);
-        assert_eq!(source.header_text(), "abc123d Initial commit");
+        let diff_ref = DiffRef::CommitRange(range);
+        assert_eq!(diff_ref.header_text(), "abc123d Initial commit");
     }
 
     #[test]
@@ -76,25 +76,25 @@ mod tests {
             count: 3,
             include_start: true,
         };
-        let source = DiffSource::CommitRange(range);
-        assert_eq!(source.header_text(), "start12..end4567 (3 commits)");
+        let diff_ref = DiffRef::CommitRange(range);
+        assert_eq!(diff_ref.header_text(), "start12..end4567 (3 commits)");
     }
 
     #[test]
     fn header_text_for_staged_changes() {
-        let source = DiffSource::Uncommitted(UncommittedType::Staged);
-        assert_eq!(source.header_text(), "Staged changes");
+        let diff_ref = DiffRef::Uncommitted(UncommittedType::Staged);
+        assert_eq!(diff_ref.header_text(), "Staged changes");
     }
 
     #[test]
     fn header_text_for_unstaged_changes() {
-        let source = DiffSource::Uncommitted(UncommittedType::Unstaged);
-        assert_eq!(source.header_text(), "Unstaged changes");
+        let diff_ref = DiffRef::Uncommitted(UncommittedType::Unstaged);
+        assert_eq!(diff_ref.header_text(), "Unstaged changes");
     }
 
     #[test]
     fn header_text_for_all_uncommitted_changes() {
-        let source = DiffSource::Uncommitted(UncommittedType::All);
-        assert_eq!(source.header_text(), "Uncommitted changes");
+        let diff_ref = DiffRef::Uncommitted(UncommittedType::All);
+        assert_eq!(diff_ref.header_text(), "Uncommitted changes");
     }
 }

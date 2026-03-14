@@ -1,7 +1,7 @@
 use crate::common::{reset_counter, Harness, TestRepo};
 use crossterm::event::KeyCode;
 use serial_test::serial;
-use splice_rust::core::{DiffSource, UncommittedType};
+use splice_rust::core::{DiffRef, UncommittedType};
 use splice_rust::git;
 
 #[test]
@@ -25,7 +25,7 @@ fn diff_command_commit_range_and_quit() {
     repo.commit("Fourth commit");
 
     let range = git::resolve_commit_range(repo.path(), "HEAD~2..HEAD").unwrap();
-    let range = DiffSource::CommitRange(range);
+    let range = DiffRef::CommitRange(range);
     let mut h = Harness::with_diff_source_and_screen_size(&repo, range, 80, 14).unwrap();
 
     h.assert_snapshot(
@@ -66,7 +66,7 @@ fn diff_command_uncommitted_views() {
     )
     .unwrap();
 
-    let unstaged = DiffSource::Uncommitted(UncommittedType::Unstaged);
+    let unstaged = DiffRef::Uncommitted(UncommittedType::Unstaged);
     let mut unstaged_h =
         Harness::with_diff_source_and_screen_size(&repo, unstaged, 80, 14).unwrap();
 
@@ -95,25 +95,25 @@ fn diff_command_uncommitted_views() {
     unstaged_h.assert_snapshot(
         r#"
 "  Unstaged changes · src/main.rs · +3 -1                                        "
-"                                      │                                         "
-"                                      │                                         "
-"                                      │                                         "
 "    1 - fn main() {}                  │   1 + fn main() {                       "
 "                                      │   2 +     println!("hello");            "
 "                                      │   3 + }                                 "
-"                                      │                                         "
-"                                      │                                         "
-"                                      │                                         "
-"                                      │                                         "
-"                                      │                                         "
-"                                      │                                         "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
 "  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
 
     repo.stage_file("src/main.rs");
 
-    let staged = DiffSource::Uncommitted(UncommittedType::Staged);
+    let staged = DiffRef::Uncommitted(UncommittedType::Staged);
     let mut staged_h = Harness::with_diff_source_and_screen_size(&repo, staged, 80, 14).unwrap();
 
     staged_h.assert_snapshot(

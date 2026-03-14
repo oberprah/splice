@@ -1,6 +1,5 @@
-use crate::core::{DiffSource, FileChange};
+use crate::core::DiffRef;
 use crate::domain::diff::{DiffBlock, FileDiff};
-use crate::domain::highlight::DiffHighlights;
 use crate::domain::wrap::wrap_line;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -16,34 +15,27 @@ impl ChangeRange {
 }
 
 pub struct DiffView {
-    pub source: DiffSource,
-    pub file: FileChange,
-    pub diff: FileDiff,
-    pub highlights: DiffHighlights,
+    pub diff_ref: DiffRef,
+    pub file: FileDiff,
     pub scroll_offset: usize,
     pub viewport_height: usize,
     pub viewport_width: usize,
     cumulative_screen_rows: Vec<usize>,
     cached_change_ranges: Vec<ChangeRange>,
+    focused_change_idx: Option<usize>,
 }
 
 impl DiffView {
-    pub fn new(
-        source: DiffSource,
-        file: FileChange,
-        diff: FileDiff,
-        highlights: DiffHighlights,
-    ) -> Self {
+    pub fn new(diff_ref: DiffRef, file: FileDiff) -> Self {
         Self {
-            source,
+            diff_ref,
             file,
-            diff,
-            highlights,
             scroll_offset: 0,
             viewport_height: 0,
             viewport_width: 0,
             cumulative_screen_rows: Vec::new(),
             cached_change_ranges: Vec::new(),
+            focused_change_idx: None,
         }
     }
 
@@ -68,13 +60,16 @@ impl DiffView {
         let available = self.viewport_width.saturating_sub(separator_width);
         let cell_width = available / 2;
         let max_line_num = self
-            .diff
+            .file
             .blocks
             .iter()
             .map(|b| match b {
-                DiffBlock::Unchanged(u) => u.new_start + u.lines.len() as u32,
-                DiffBlock::Change(c) => (c.old_start + c.old_lines.len() as u32)
-                    .max(c.new_start + c.new_lines.len() as u32),
+                DiffBlock::Unchanged(lines) => lines.last().map(|l| l.new_number).unwrap_or(0),
+                DiffBlock::Change { old, new } => {
+                    let old_max = old.last().map(|l| l.number).unwrap_or(0);
+                    let new_max = new.last().map(|l| l.number).unwrap_or(0);
+                    old_max.max(new_max)
+                }
             })
             .max()
             .unwrap_or(0);
@@ -86,25 +81,23 @@ impl DiffView {
         let mut total = 0usize;
         let mut change_ranges = Vec::new();
 
-        for block in &self.diff.blocks {
+        for block in &self.file.blocks {
             let line_count = match block {
-                DiffBlock::Unchanged(unchanged) => unchanged.lines.len(),
-                DiffBlock::Change(change) => {
-                    let len = change.old_lines.len().max(change.new_lines.len());
+                DiffBlock::Unchanged(lines) => lines.len(),
+                DiffBlock::Change { old, new } => {
+                    let len = old.len().max(new.len());
                     let start_screen = total;
                     for i in 0..len {
                         let rows = if content_width == 0 {
                             1
                         } else {
-                            let old_rows = change
-                                .old_lines
+                            let old_rows = old
                                 .get(i)
-                                .map(|l| wrap_line(l, &[], content_width).len())
+                                .map(|l| wrap_line(&l.text, &[], content_width).len())
                                 .unwrap_or(0);
-                            let new_rows = change
-                                .new_lines
+                            let new_rows = new
                                 .get(i)
-                                .map(|l| wrap_line(l, &[], content_width).len())
+                                .map(|l| wrap_line(&l.text, &[], content_width).len())
                                 .unwrap_or(0);
                             old_rows.max(new_rows).max(1)
                         };
@@ -137,14 +130,11 @@ impl DiffView {
 
     fn get_line_text<'a>(&self, block: &'a DiffBlock, index: usize) -> &'a str {
         match block {
-            DiffBlock::Unchanged(unchanged) => {
-                unchanged.lines.get(index).map(|s| s.as_str()).unwrap_or("")
-            }
-            DiffBlock::Change(change) => change
-                .new_lines
+            DiffBlock::Unchanged(lines) => lines.get(index).map(|l| l.text.as_str()).unwrap_or(""),
+            DiffBlock::Change { old, new } => new
                 .get(index)
-                .map(|s| s.as_str())
-                .or_else(|| change.old_lines.get(index).map(|s| s.as_str()))
+                .map(|l| l.text.as_str())
+                .or_else(|| old.get(index).map(|l| l.text.as_str()))
                 .unwrap_or(""),
         }
     }
@@ -180,15 +170,37 @@ impl DiffView {
         let current_range = ranges[current_idx];
 
         if focus < current_range.start {
-            return self.set_focus_line(self.focus_line_for_range_start(current_range));
+            let target = self.focus_line_for_range_start(current_range);
+            if self.set_focus_line(target) {
+                self.focused_change_idx = Some(current_idx);
+                return true;
+            }
+            // Scroll was already clamped at max and couldn't reach range.start.
+            // If we haven't yet "arrived" at this hunk, lock in now and return true
+            // so the caller doesn't cross to the next file prematurely.
+            if self.focused_change_idx != Some(current_idx) {
+                self.focused_change_idx = Some(current_idx);
+                return true;
+            }
+            return false;
         }
 
         if self.should_advance_within_range(current_range) {
-            return self.set_focus_line(self.next_focus_line_within_range(current_range));
+            let target = self.next_focus_line_within_range(current_range);
+            if self.set_focus_line(target) {
+                self.focused_change_idx = Some(current_idx);
+                return true;
+            }
+            return false;
         }
 
-        if let Some(next_range) = ranges.get(current_idx + 1) {
-            return self.set_focus_line(self.focus_line_for_range_start(*next_range));
+        if let Some(next_range) = ranges.get(current_idx + 1).copied() {
+            let target = self.focus_line_for_range_start(next_range);
+            if self.set_focus_line(target) {
+                self.focused_change_idx = Some(current_idx + 1);
+                return true;
+            }
+            return false;
         }
 
         false
@@ -207,11 +219,21 @@ impl DiffView {
 
         let current_range = ranges[current_idx];
         if focus >= current_range.end {
-            return self.set_focus_line(self.focus_line_for_range_start(current_range));
+            let target = self.focus_line_for_range_start(current_range);
+            if self.set_focus_line(target) {
+                self.focused_change_idx = Some(current_idx);
+                return true;
+            }
+            return false;
         }
 
         if focus < current_range.end && self.should_rewind_within_range(current_range) {
-            return self.set_focus_line(self.prev_focus_line_within_range(current_range));
+            let target = self.prev_focus_line_within_range(current_range);
+            if self.set_focus_line(target) {
+                self.focused_change_idx = Some(current_idx);
+                return true;
+            }
+            return false;
         }
 
         if current_idx == 0 {
@@ -219,21 +241,29 @@ impl DiffView {
         }
 
         let previous_range = ranges[current_idx - 1];
-
-        self.set_focus_line(self.focus_line_for_range_start(previous_range))
+        if self.set_focus_line(self.focus_line_for_range_start(previous_range)) {
+            self.focused_change_idx = Some(current_idx - 1);
+            return true;
+        }
+        false
     }
 
     pub fn jump_to_first_diff(&mut self) -> bool {
         let Some(first_range) = self.change_ranges().first().copied() else {
             return false;
         };
-        self.set_focus_line(self.focus_line_for_range_start(first_range))
+        let target = self.focus_line_for_range_start(first_range);
+        self.set_focus_line(target);
+        self.focused_change_idx = Some(0);
+        true
     }
 
     pub fn jump_to_last_diff(&mut self) -> bool {
-        let Some(last_range) = self.change_ranges().last().copied() else {
+        let ranges = self.change_ranges();
+        let Some(last_range) = ranges.last().copied() else {
             return false;
         };
+        let last_idx = ranges.len() - 1;
 
         let target = if self.viewport_height > 0 && last_range.len() > self.viewport_height {
             self.max_focus_line_for_large_range(last_range)
@@ -241,15 +271,21 @@ impl DiffView {
             self.focus_line_for_range_start(last_range)
         };
 
-        self.set_focus_line(target)
+        self.set_focus_line(target);
+        self.focused_change_idx = Some(last_idx);
+        true
+    }
+
+    pub fn focused_change_idx(&self) -> Option<usize> {
+        self.focused_change_idx
     }
 
     pub fn current_file_line_number(&self) -> Result<u32, String> {
-        if self.diff.blocks.is_empty() {
+        if self.file.blocks.is_empty() {
             return Err("diff has no blocks".to_string());
         }
 
-        let total_lines = self.diff.total_line_count();
+        let total_lines = self.file.total_line_count();
         if total_lines == 0 {
             return Err("diff has no lines".to_string());
         }
@@ -260,22 +296,22 @@ impl DiffView {
         }
 
         let mut row = 0;
-        for block in &self.diff.blocks {
+        for block in &self.file.blocks {
             match block {
-                DiffBlock::Unchanged(unchanged) => {
-                    for i in 0..unchanged.lines.len() {
+                DiffBlock::Unchanged(lines) => {
+                    for line in lines {
                         if row == logical_line {
-                            return Ok(unchanged.new_start + i as u32);
+                            return Ok(line.new_number);
                         }
                         row += 1;
                     }
                 }
-                DiffBlock::Change(change) => {
-                    let len = change.old_lines.len().max(change.new_lines.len());
+                DiffBlock::Change { old, new } => {
+                    let len = old.len().max(new.len());
                     for i in 0..len {
                         if row == logical_line {
-                            if i < change.new_lines.len() {
-                                return Ok(change.new_start + i as u32);
+                            if let Some(new_line) = new.get(i) {
+                                return Ok(new_line.number);
                             }
                             return self.find_next_new_line_number(row + 1);
                         }
@@ -296,14 +332,9 @@ impl DiffView {
     }
 
     fn max_scroll_offset(&self) -> usize {
-        // The renderer shifts visible content up by focus_offset rows and uses one fewer
-        // row than viewport_height (the diff header consumes one row beyond the help bar).
-        // We add focus_offset again so the bottom mirrors the top: at max scroll the last
-        // line sits focus_offset rows from the bottom, matching the top padding at scroll=0.
+        // At max scroll the last real line sits at the focus point (¼ from top).
         let focus_offset = self.viewport_height / 4;
-        self.total_screen_rows()
-            .saturating_add(2 * focus_offset + 1)
-            .saturating_sub(self.viewport_height)
+        (self.total_screen_rows() + focus_offset).saturating_sub(self.viewport_height)
     }
 
     fn should_advance_within_range(&self, range: ChangeRange) -> bool {
@@ -360,21 +391,23 @@ impl DiffView {
 
     fn find_next_new_line_number(&self, start_logical_row: usize) -> Result<u32, String> {
         let mut row = 0;
-        for block in &self.diff.blocks {
+        for block in &self.file.blocks {
             match block {
-                DiffBlock::Unchanged(unchanged) => {
-                    for i in 0..unchanged.lines.len() {
+                DiffBlock::Unchanged(lines) => {
+                    for line in lines {
                         if row >= start_logical_row {
-                            return Ok(unchanged.new_start + i as u32);
+                            return Ok(line.new_number);
                         }
                         row += 1;
                     }
                 }
-                DiffBlock::Change(change) => {
-                    let len = change.old_lines.len().max(change.new_lines.len());
+                DiffBlock::Change { old, new } => {
+                    let len = old.len().max(new.len());
                     for i in 0..len {
-                        if row >= start_logical_row && i < change.new_lines.len() {
-                            return Ok(change.new_start + i as u32);
+                        if row >= start_logical_row {
+                            if let Some(new_line) = new.get(i) {
+                                return Ok(new_line.number);
+                            }
                         }
                         row += 1;
                     }
@@ -389,33 +422,40 @@ impl DiffView {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::FileStatus;
-    use crate::domain::diff::{ChangeBlock, DiffMeta, UnchangedBlock};
+    use crate::core::{FileDiffInfo, FileStatus};
+    use crate::domain::diff::{DiffLine, UnchangedLine};
 
-    fn file_change(path: &str) -> FileChange {
-        FileChange {
-            path: path.to_string(),
-            old_path: None,
-            status: FileStatus::Modified,
-            additions: 1,
-            deletions: 1,
-            is_binary: false,
+    fn unchanged_line(old_number: u32, new_number: u32, text: &str) -> UnchangedLine {
+        UnchangedLine {
+            old_number,
+            new_number,
+            text: text.to_string(),
+            tokens: vec![],
+        }
+    }
+
+    fn diff_line(number: u32, text: &str) -> DiffLine {
+        DiffLine {
+            number,
+            text: text.to_string(),
+            tokens: vec![],
         }
     }
 
     fn view_with_blocks(blocks: Vec<DiffBlock>, viewport_height: usize) -> DiffView {
         let mut view = DiffView::new(
-            DiffSource::Uncommitted(crate::core::UncommittedType::All),
-            file_change("src/main.rs"),
+            DiffRef::Uncommitted(crate::core::UncommittedType::All),
             FileDiff {
-                meta: DiffMeta {
+                info: FileDiffInfo {
                     path: "src/main.rs".to_string(),
+                    old_path: None,
+                    status: FileStatus::Modified,
                     additions: 1,
                     deletions: 1,
+                    is_binary: false,
                 },
                 blocks,
             },
-            DiffHighlights::default(),
         );
         view.set_viewport_dimensions(viewport_height, 80);
         view
@@ -424,21 +464,17 @@ mod tests {
     #[test]
     fn next_diff_advances_within_large_change_block_before_jumping() {
         let mut view = view_with_blocks(
-            vec![DiffBlock::Change(ChangeBlock {
-                old_start: 1,
-                new_start: 1,
-                old_lines: vec!["a".to_string(); 10],
-                new_lines: vec!["b".to_string(); 10],
-            })],
+            vec![DiffBlock::Change {
+                old: (1..=10).map(|n| diff_line(n, "a")).collect(),
+                new: (1..=10).map(|n| diff_line(n, "b")).collect(),
+            }],
             6,
         );
 
         assert!(view.navigate_next_diff());
         assert_eq!(view.scroll_offset, 3);
         assert!(view.navigate_next_diff());
-        assert_eq!(view.scroll_offset, 6);
-        assert!(view.navigate_next_diff());
-        assert_eq!(view.scroll_offset, 7);
+        assert_eq!(view.scroll_offset, 5);
         assert!(!view.navigate_next_diff());
     }
 
@@ -446,17 +482,11 @@ mod tests {
     fn prev_diff_rewinds_within_large_change_block_before_previous() {
         let mut view = view_with_blocks(
             vec![
-                DiffBlock::Unchanged(UnchangedBlock {
-                    old_start: 1,
-                    new_start: 1,
-                    lines: vec!["ctx".to_string(); 4],
-                }),
-                DiffBlock::Change(ChangeBlock {
-                    old_start: 5,
-                    new_start: 5,
-                    old_lines: vec!["a".to_string(); 10],
-                    new_lines: vec!["b".to_string(); 10],
-                }),
+                DiffBlock::Unchanged((1..=4).map(|n| unchanged_line(n, n, "ctx")).collect()),
+                DiffBlock::Change {
+                    old: (5..=14).map(|n| diff_line(n, "a")).collect(),
+                    new: (5..=14).map(|n| diff_line(n, "b")).collect(),
+                },
             ],
             6,
         );
@@ -473,63 +503,45 @@ mod tests {
     #[test]
     fn jump_to_last_diff_lands_on_trailing_page_of_large_hunk() {
         let mut view = view_with_blocks(
-            vec![DiffBlock::Change(ChangeBlock {
-                old_start: 1,
-                new_start: 1,
-                old_lines: vec!["a".to_string(); 20],
-                new_lines: vec!["b".to_string(); 20],
-            })],
+            vec![DiffBlock::Change {
+                old: (1..=20).map(|n| diff_line(n, "a")).collect(),
+                new: (1..=20).map(|n| diff_line(n, "b")).collect(),
+            }],
             13,
         );
 
         assert!(view.jump_to_last_diff());
-        assert_eq!(view.scroll_offset, 14);
+        assert_eq!(view.scroll_offset, 10);
     }
 
     #[test]
     fn next_diff_can_still_align_bottom_visible_hunk_with_padding() {
         let mut view = view_with_blocks(
             vec![
-                DiffBlock::Unchanged(UnchangedBlock {
-                    old_start: 1,
-                    new_start: 1,
-                    lines: vec!["ctx".to_string(); 20],
-                }),
-                DiffBlock::Change(ChangeBlock {
-                    old_start: 21,
-                    new_start: 21,
-                    old_lines: Vec::new(),
-                    new_lines: vec!["added".to_string()],
-                }),
+                DiffBlock::Unchanged((1..=20).map(|n| unchanged_line(n, n, "ctx")).collect()),
+                DiffBlock::Change {
+                    old: vec![],
+                    new: vec![diff_line(21, "added")],
+                },
             ],
             13,
         );
 
         view.scroll_offset = 8;
         assert!(view.navigate_next_diff());
-        assert_eq!(view.scroll_offset, 15);
+        assert_eq!(view.scroll_offset, 11);
     }
 
     #[test]
     fn next_diff_aligns_hunk_near_quarter_screen() {
         let mut view = view_with_blocks(
             vec![
-                DiffBlock::Unchanged(UnchangedBlock {
-                    old_start: 1,
-                    new_start: 1,
-                    lines: vec!["ctx".to_string(); 20],
-                }),
-                DiffBlock::Change(ChangeBlock {
-                    old_start: 21,
-                    new_start: 21,
-                    old_lines: vec!["old".to_string()],
-                    new_lines: vec!["new".to_string()],
-                }),
-                DiffBlock::Unchanged(UnchangedBlock {
-                    old_start: 22,
-                    new_start: 22,
-                    lines: vec!["tail".to_string(); 20],
-                }),
+                DiffBlock::Unchanged((1..=20).map(|n| unchanged_line(n, n, "ctx")).collect()),
+                DiffBlock::Change {
+                    old: vec![diff_line(21, "old")],
+                    new: vec![diff_line(21, "new")],
+                },
+                DiffBlock::Unchanged((22..=41).map(|n| unchanged_line(n, n, "tail")).collect()),
             ],
             12,
         );
@@ -542,33 +554,17 @@ mod tests {
     fn next_diff_does_not_jump_back_when_hunks_are_close() {
         let mut view = view_with_blocks(
             vec![
-                DiffBlock::Unchanged(UnchangedBlock {
-                    old_start: 1,
-                    new_start: 1,
-                    lines: vec!["ctx".to_string(); 2],
-                }),
-                DiffBlock::Change(ChangeBlock {
-                    old_start: 3,
-                    new_start: 3,
-                    old_lines: vec!["a".to_string()],
-                    new_lines: vec!["b".to_string()],
-                }),
-                DiffBlock::Unchanged(UnchangedBlock {
-                    old_start: 4,
-                    new_start: 4,
-                    lines: vec!["ctx".to_string(); 1],
-                }),
-                DiffBlock::Change(ChangeBlock {
-                    old_start: 5,
-                    new_start: 5,
-                    old_lines: vec!["c".to_string()],
-                    new_lines: vec!["d".to_string()],
-                }),
-                DiffBlock::Unchanged(UnchangedBlock {
-                    old_start: 6,
-                    new_start: 6,
-                    lines: vec!["tail".to_string(); 20],
-                }),
+                DiffBlock::Unchanged((1..=2).map(|n| unchanged_line(n, n, "ctx")).collect()),
+                DiffBlock::Change {
+                    old: vec![diff_line(3, "a")],
+                    new: vec![diff_line(3, "b")],
+                },
+                DiffBlock::Unchanged(vec![unchanged_line(4, 4, "ctx")]),
+                DiffBlock::Change {
+                    old: vec![diff_line(5, "c")],
+                    new: vec![diff_line(5, "d")],
+                },
+                DiffBlock::Unchanged((6..=25).map(|n| unchanged_line(n, n, "tail")).collect()),
             ],
             12,
         );
@@ -586,33 +582,17 @@ mod tests {
     fn prev_diff_from_below_last_hunk_lands_on_last_hunk() {
         let mut view = view_with_blocks(
             vec![
-                DiffBlock::Unchanged(UnchangedBlock {
-                    old_start: 1,
-                    new_start: 1,
-                    lines: vec!["ctx".to_string(); 4],
-                }),
-                DiffBlock::Change(ChangeBlock {
-                    old_start: 5,
-                    new_start: 5,
-                    old_lines: vec!["a".to_string()],
-                    new_lines: vec!["b".to_string()],
-                }),
-                DiffBlock::Unchanged(UnchangedBlock {
-                    old_start: 6,
-                    new_start: 6,
-                    lines: vec!["ctx".to_string(); 4],
-                }),
-                DiffBlock::Change(ChangeBlock {
-                    old_start: 10,
-                    new_start: 10,
-                    old_lines: vec!["c".to_string()],
-                    new_lines: vec!["d".to_string()],
-                }),
-                DiffBlock::Unchanged(UnchangedBlock {
-                    old_start: 11,
-                    new_start: 11,
-                    lines: vec!["tail".to_string(); 10],
-                }),
+                DiffBlock::Unchanged((1..=4).map(|n| unchanged_line(n, n, "ctx")).collect()),
+                DiffBlock::Change {
+                    old: vec![diff_line(5, "a")],
+                    new: vec![diff_line(5, "b")],
+                },
+                DiffBlock::Unchanged((6..=9).map(|n| unchanged_line(n, n, "ctx")).collect()),
+                DiffBlock::Change {
+                    old: vec![diff_line(10, "c")],
+                    new: vec![diff_line(10, "d")],
+                },
+                DiffBlock::Unchanged((11..=20).map(|n| unchanged_line(n, n, "tail")).collect()),
             ],
             12,
         );
@@ -626,17 +606,14 @@ mod tests {
     fn current_file_line_number_uses_new_side_for_unchanged_and_added_rows() {
         let mut view = view_with_blocks(
             vec![
-                DiffBlock::Unchanged(UnchangedBlock {
-                    old_start: 10,
-                    new_start: 20,
-                    lines: vec!["a".to_string(), "b".to_string()],
-                }),
-                DiffBlock::Change(ChangeBlock {
-                    old_start: 12,
-                    new_start: 22,
-                    old_lines: vec!["old".to_string()],
-                    new_lines: vec!["new".to_string(), "newer".to_string()],
-                }),
+                DiffBlock::Unchanged(vec![
+                    unchanged_line(10, 20, "a"),
+                    unchanged_line(11, 21, "b"),
+                ]),
+                DiffBlock::Change {
+                    old: vec![diff_line(12, "old")],
+                    new: vec![diff_line(22, "new"), diff_line(23, "newer")],
+                },
             ],
             8,
         );
@@ -652,17 +629,11 @@ mod tests {
     fn current_file_line_number_for_removed_row_falls_forward() {
         let mut view = view_with_blocks(
             vec![
-                DiffBlock::Change(ChangeBlock {
-                    old_start: 1,
-                    new_start: 1,
-                    old_lines: vec!["removed".to_string()],
-                    new_lines: Vec::new(),
-                }),
-                DiffBlock::Unchanged(UnchangedBlock {
-                    old_start: 2,
-                    new_start: 1,
-                    lines: vec!["kept".to_string()],
-                }),
+                DiffBlock::Change {
+                    old: vec![diff_line(1, "removed")],
+                    new: vec![],
+                },
+                DiffBlock::Unchanged(vec![unchanged_line(2, 1, "kept")]),
             ],
             8,
         );

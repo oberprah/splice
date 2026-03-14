@@ -1,7 +1,7 @@
 use chrono::{DateTime, TimeZone, Utc};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{backend::TestBackend, Terminal};
-use splice_rust::{action_from_event, git, render, Action, App, DiffSource, LogSpec};
+use splice_rust::{action_from_event, git, render, Action, App, DiffRef, LogSpec};
 
 use super::{snapshot::assert_snapshot, TestRepo};
 
@@ -41,22 +41,22 @@ impl Harness {
         Self { terminal, app }
     }
 
-    pub fn with_diff_source(repo: &TestRepo, source: DiffSource) -> Result<Self, String> {
-        Self::with_diff_source_and_screen_size(repo, source, 80, 24)
+    pub fn with_diff_source(repo: &TestRepo, diff_ref: DiffRef) -> Result<Self, String> {
+        Self::with_diff_source_and_screen_size(repo, diff_ref, 80, 24)
     }
 
     pub fn with_diff_source_and_screen_size(
         repo: &TestRepo,
-        source: DiffSource,
+        diff_ref: DiffRef,
         width: u16,
         height: u16,
     ) -> Result<Self, String> {
-        let files = git::fetch_file_changes_for_source(repo.path(), &source)?;
+        let files = git::fetch_file_changes_for_source(repo.path(), &diff_ref)?;
         let backend = TestBackend::new(width, height);
         let terminal = Terminal::new(backend).unwrap();
         let mut app = App::with_diff_source_and_now(
             repo.path().to_path_buf(),
-            source,
+            diff_ref,
             files,
             Self::fixed_now(),
         );

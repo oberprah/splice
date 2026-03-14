@@ -1,6 +1,6 @@
 use crate::app::DiffView;
-use crate::core::{DiffSource, UncommittedType};
-use crate::domain::diff::{ChangeBlock, DiffBlock, UnchangedBlock};
+use crate::core::{DiffRef, UncommittedType};
+use crate::domain::diff::DiffBlock;
 use crate::domain::highlight::TokenSpan;
 use crate::domain::wrap::{wrap_line, WrappedSegment};
 use crate::ui::theme::{DiffColors, Theme};
@@ -31,15 +31,15 @@ struct RenderContext {
     state: RenderState,
 }
 
-pub fn render_diff_view(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Theme) {
+pub fn render_diff_view(f: &mut Frame, view: &DiffView, area: Rect, theme: &Theme) {
     let mut y = area.y;
     let width = area.width as usize;
 
-    let range_display = diff_header_prefix(&diff.source);
+    let range_display = diff_header_prefix(&view.diff_ref);
 
     let header = format!(
         "{} · {} · +{} -{}",
-        range_display, diff.file.path, diff.file.additions, diff.file.deletions
+        range_display, view.file.info.path, view.file.info.additions, view.file.info.deletions
     );
     let header = pad_or_trim(&header, width);
     let header_widget = Paragraph::new(header).style(theme.text_muted);
@@ -49,7 +49,7 @@ pub fn render_diff_view(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Them
     let content_height = area.height.saturating_sub(y - area.y).saturating_sub(1) as usize;
     let content_area = Rect::new(area.x, y, area.width, content_height as u16);
 
-    render_diff_lines(f, diff, content_area, theme);
+    render_diff_lines(f, view, content_area, theme);
 
     let help = Paragraph::new("j/k: scroll  n/p: next/prev diff  o: open  q: back")
         .style(theme.text_muted)
@@ -63,16 +63,16 @@ pub fn render_diff_view(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Them
     f.render_widget(help, help_area);
 }
 
-fn diff_header_prefix(source: &DiffSource) -> String {
-    match source {
-        DiffSource::CommitRange(range) => {
+fn diff_header_prefix(diff_ref: &DiffRef) -> String {
+    match diff_ref {
+        DiffRef::CommitRange(range) => {
             if range.is_single_commit() {
                 range.end.short_hash().to_string()
             } else {
                 format!("{}..{}", range.end.short_hash(), range.start.short_hash())
             }
         }
-        DiffSource::Uncommitted(uncommitted_type) => match uncommitted_type {
+        DiffRef::Uncommitted(uncommitted_type) => match uncommitted_type {
             UncommittedType::Unstaged => "Unstaged changes".to_string(),
             UncommittedType::Staged => "Staged changes".to_string(),
             UncommittedType::All => "Uncommitted changes".to_string(),
@@ -80,8 +80,8 @@ fn diff_header_prefix(source: &DiffSource) -> String {
     }
 }
 
-fn render_diff_lines(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Theme) {
-    if diff.diff.blocks.is_empty() {
+fn render_diff_lines(f: &mut Frame, view: &DiffView, area: Rect, theme: &Theme) {
+    if view.file.blocks.is_empty() {
         let msg = Paragraph::new("No changes")
             .style(Style::default().fg(Color::Gray))
             .alignment(Alignment::Center);
@@ -96,7 +96,7 @@ fn render_diff_lines(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Theme) 
         .saturating_sub(separator.len())
         .saturating_sub(left_width);
 
-    let focus_offset = diff.viewport_height / 4;
+    let focus_offset = view.viewport_height / 4;
     let ctx = &mut RenderContext {
         layout: Layout {
             x: area.x,
@@ -106,7 +106,7 @@ fn render_diff_lines(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Theme) 
         },
         viewport: Viewport {
             height: area.height as usize,
-            content_start: diff.scroll_offset.saturating_sub(focus_offset),
+            content_start: view.scroll_offset.saturating_sub(focus_offset),
         },
         state: RenderState {
             y: area.y,
@@ -115,80 +115,49 @@ fn render_diff_lines(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Theme) 
         },
     };
 
-    let top_padding = focus_offset.saturating_sub(diff.scroll_offset);
-    while ctx.state.rendered < ctx.viewport.height && ctx.state.rendered < top_padding {
-        render_row(
-            f,
-            ctx.state.y,
-            blank_cell(ctx.layout.left_width),
-            blank_cell(ctx.layout.right_width),
-            ctx.layout.x,
-            ctx.layout.width,
-            theme,
-        );
-        ctx.state.y = ctx.state.y.saturating_add(1);
-        ctx.state.rendered += 1;
-    }
-
-    for block in &diff.diff.blocks {
+    let focused_change_idx = view.focused_change_idx();
+    let mut change_block_counter = 0usize;
+    for block in &view.file.blocks {
         match block {
-            DiffBlock::Unchanged(unchanged) => {
-                if !render_unchanged_block(f, unchanged, ctx, diff, theme) {
+            DiffBlock::Unchanged(lines) => {
+                if !render_unchanged_block(f, lines, ctx, theme) {
                     return;
                 }
             }
-            DiffBlock::Change(change) => {
-                if !render_change_block(f, change, ctx, diff, theme) {
+            DiffBlock::Change { old, new } => {
+                let idx = change_block_counter;
+                change_block_counter += 1;
+                if !render_change_block(f, old, new, ctx, theme, idx, focused_change_idx) {
                     return;
                 }
             }
         }
     }
-
-    while ctx.state.rendered < ctx.viewport.height {
-        render_row(
-            f,
-            ctx.state.y,
-            blank_cell(ctx.layout.left_width),
-            blank_cell(ctx.layout.right_width),
-            ctx.layout.x,
-            ctx.layout.width,
-            theme,
-        );
-        ctx.state.y = ctx.state.y.saturating_add(1);
-        ctx.state.rendered += 1;
-    }
 }
 
 fn render_unchanged_block(
     f: &mut Frame,
-    block: &UnchangedBlock,
+    lines: &[crate::domain::diff::UnchangedLine],
     ctx: &mut RenderContext,
-    diff: &DiffView,
     theme: &Theme,
 ) -> bool {
-    for (i, line) in block.lines.iter().enumerate() {
-        let old_num = block.old_start + i as u32;
-        let new_num = block.new_start + i as u32;
-        let left_tokens = diff.highlights.old.line_tokens(old_num);
-        let right_tokens = diff.highlights.new.line_tokens(new_num);
-
+    for line in lines {
         let left_rows = format_cell(
-            old_num,
+            line.old_number,
             ' ',
-            line,
+            &line.text,
             ctx.layout.left_width,
             Style::default(),
-            left_tokens,
+            Some(&line.tokens),
             theme,
         );
         let right_rows = format_cell(
-            new_num,
+            line.new_number,
             ' ',
-            line,
+            &line.text,
             ctx.layout.right_width,
             Style::default(),
-            right_tokens,
+            Some(&line.tokens),
             theme,
         );
 
@@ -233,50 +202,69 @@ fn render_unchanged_block(
 
 fn render_change_block(
     f: &mut Frame,
-    block: &ChangeBlock,
+    old_lines: &[crate::domain::diff::DiffLine],
+    new_lines: &[crate::domain::diff::DiffLine],
     ctx: &mut RenderContext,
-    diff: &DiffView,
     theme: &Theme,
+    change_block_idx: usize,
+    focused_idx: Option<usize>,
 ) -> bool {
-    let max_len = block.old_lines.len().max(block.new_lines.len());
+    let is_focused = focused_idx == Some(change_block_idx);
+    let max_len = old_lines.len().max(new_lines.len());
 
     for i in 0..max_len {
-        let left_rows = block.old_lines.get(i).map(|text| {
-            let line_num = block.old_start + i as u32;
-            let has_new_line = block.new_lines.get(i).is_some();
-            let colors = if has_new_line {
+        let left_rows = old_lines.get(i).map(|line| {
+            let has_new_line = new_lines.get(i).is_some();
+            let base_colors = if has_new_line {
                 &theme.diff_changed
             } else {
                 &theme.diff_removed
             };
-            let tokens = diff.highlights.old.line_tokens(line_num);
+            let colors = if is_focused {
+                use crate::ui::theme::DiffColors;
+                &DiffColors {
+                    bg: base_colors.bg_bright,
+                    bg_bright: base_colors.bg_bright,
+                    fg: base_colors.fg,
+                }
+            } else {
+                base_colors
+            };
             format_cell_styled(
-                line_num,
+                line.number,
                 '-',
-                text,
+                &line.text,
                 ctx.layout.left_width,
                 colors,
-                tokens,
+                Some(&line.tokens),
                 theme,
             )
         });
 
-        let right_rows = block.new_lines.get(i).map(|text| {
-            let line_num = block.new_start + i as u32;
-            let has_old_line = block.old_lines.get(i).is_some();
-            let colors = if has_old_line {
+        let right_rows = new_lines.get(i).map(|line| {
+            let has_old_line = old_lines.get(i).is_some();
+            let base_colors = if has_old_line {
                 &theme.diff_changed
             } else {
                 &theme.diff_added
             };
-            let tokens = diff.highlights.new.line_tokens(line_num);
+            let colors = if is_focused {
+                use crate::ui::theme::DiffColors;
+                &DiffColors {
+                    bg: base_colors.bg_bright,
+                    bg_bright: base_colors.bg_bright,
+                    fg: base_colors.fg,
+                }
+            } else {
+                base_colors
+            };
             format_cell_styled(
-                line_num,
+                line.number,
                 '+',
-                text,
+                &line.text,
                 ctx.layout.right_width,
                 colors,
-                tokens,
+                Some(&line.tokens),
                 theme,
             )
         });
@@ -320,24 +308,6 @@ fn render_change_block(
     }
 
     true
-}
-
-fn render_row(
-    f: &mut Frame,
-    y: u16,
-    left: String,
-    right: String,
-    x: u16,
-    width: u16,
-    theme: &Theme,
-) {
-    let left_span = Span::raw(left);
-    let divider = Span::styled(" │ ", theme.diff_divider);
-    let right_span = Span::raw(right);
-    let line = Line::from(vec![left_span, divider, right_span]);
-    let para = Paragraph::new(line);
-    let area = Rect::new(x, y, width, 1);
-    f.render_widget(para, area);
 }
 
 fn blank_cell(width: usize) -> String {
