@@ -267,7 +267,7 @@ impl App {
         match &self.view {
             View::Log(log) => log.viewport_height,
             View::Files(files) => files.list_viewport_height(),
-            View::Diff(diff) => diff.viewport_height,
+            View::Diff(diff) => diff.viewport_height(),
         }
     }
 
