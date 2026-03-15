@@ -1,10 +1,12 @@
 mod diff_view;
 mod files_view;
 mod log_view;
+pub mod viewport;
 
-pub use diff_view::{DiffView, ViewportAction};
+pub use diff_view::DiffView;
 pub use files_view::FilesView;
 pub use log_view::{LogSummary, LogView};
+pub use viewport::{Viewport, ViewportAction, VisibleContent};
 
 use std::path::PathBuf;
 use std::process::Command;
