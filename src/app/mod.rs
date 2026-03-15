@@ -2,7 +2,7 @@ mod diff_view;
 mod files_view;
 mod log_view;
 
-pub use diff_view::DiffView;
+pub use diff_view::{DiffView, ViewportAction};
 pub use files_view::FilesView;
 pub use log_view::{LogSummary, LogView};
 
@@ -275,7 +275,9 @@ impl App {
         match &mut self.view {
             View::Log(log) => log.move_down(amount),
             View::Files(files) => files.move_down(amount),
-            View::Diff(diff) => diff.move_down(amount),
+            View::Diff(diff) => {
+                diff.update(ViewportAction::ScrollDown(amount));
+            }
         }
     }
 
@@ -283,7 +285,9 @@ impl App {
         match &mut self.view {
             View::Log(log) => log.move_up(amount),
             View::Files(files) => files.move_up(amount),
-            View::Diff(diff) => diff.move_up(amount),
+            View::Diff(diff) => {
+                diff.update(ViewportAction::ScrollUp(amount));
+            }
         }
     }
 
@@ -353,9 +357,9 @@ impl App {
         let moved_in_file = match &mut self.view {
             View::Diff(diff) => {
                 if direction > 0 {
-                    diff.navigate_next_diff()
+                    diff.update(ViewportAction::NextHunk)
                 } else {
-                    diff.navigate_prev_diff()
+                    diff.update(ViewportAction::PrevHunk)
                 }
             }
             _ => false,
@@ -458,10 +462,10 @@ impl App {
             match entry_point {
                 DiffEntryPoint::Top => {}
                 DiffEntryPoint::FirstDiff => {
-                    diff.jump_to_first_diff();
+                    diff.update(ViewportAction::JumpToFirstHunk);
                 }
                 DiffEntryPoint::LastDiff => {
-                    diff.jump_to_last_diff();
+                    diff.update(ViewportAction::JumpToLastHunk);
                 }
             }
         }

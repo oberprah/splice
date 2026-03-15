@@ -58,10 +58,9 @@ fn render_diff_rows(
         .saturating_sub(separator.len())
         .saturating_sub(left_width);
 
-    let visible = view.visible_rows();
-    let row_offset = view.visible_row_offset();
+    let content = view.visible_content();
 
-    if visible.is_empty() {
+    if content.rows.is_empty() {
         let msg = Paragraph::new("No changes")
             .style(Style::default().fg(Color::Gray))
             .alignment(Alignment::Center);
@@ -69,12 +68,14 @@ fn render_diff_rows(
         return;
     }
 
-    for (i, row) in visible.iter().enumerate() {
+    for (i, row) in content.rows.iter().enumerate() {
         if i >= content_height {
             break;
         }
-        let abs_row = row_offset + i;
-        let in_active_hunk = view.is_row_in_active_hunk(abs_row);
+        let abs_row = content.row_offset + i;
+        let in_active_hunk = content
+            .active_hunk_range
+            .is_some_and(|r| abs_row >= r.start && abs_row < r.end);
 
         let left_spans = render_cell(&row.left, left_width, in_active_hunk, true, theme);
         let right_spans = render_cell(&row.right, right_width, in_active_hunk, false, theme);
