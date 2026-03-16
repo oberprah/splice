@@ -106,7 +106,7 @@ impl DiffView {
     }
 }
 
-// Expose scroll_offset as a public field-like accessor for tests that set it directly
+#[cfg(test)]
 impl DiffView {
     pub fn set_scroll_offset_for_test(&mut self, offset: usize) {
         self.viewport.scroll_offset = offset;
