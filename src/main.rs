@@ -159,6 +159,10 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, mut app: App) 
             let action = action_from_event(event::read()?);
             if action != Action::None {
                 should_render = true;
+                if app.error.take().is_some() {
+                    continue;
+                }
+
                 if action == Action::OpenInEditor {
                     if let Some(err) = open_diff_in_editor(terminal, &mut app)? {
                         app.error = Some(err);
