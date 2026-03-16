@@ -11,7 +11,7 @@ pub struct DiffView {
     pub diff_ref: DiffRef,
     pub file: FileDiff,
     rows: Vec<ScreenRow>,
-    hunks: Vec<crate::domain::diff::layout::HunkRange>,
+    hunks: Vec<crate::domain::diff::HunkRange>,
     pub viewport: Viewport,
 }
 
@@ -114,12 +114,13 @@ impl DiffView {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::core::{FileDiffInfo, FileStatus};
-    use crate::domain::diff::{DiffBlock, DiffLine, UnchangedLine};
+pub(crate) mod test_helpers {
+    use crate::core::{DiffRef, FileDiffInfo, FileStatus, UncommittedType};
+    use crate::domain::diff::{DiffBlock, DiffLine, FileDiff, UnchangedLine};
 
-    fn unchanged_line(old_number: u32, new_number: u32, text: &str) -> UnchangedLine {
+    use super::DiffView;
+
+    pub fn unchanged_line(old_number: u32, new_number: u32, text: &str) -> UnchangedLine {
         UnchangedLine {
             old_number,
             new_number,
@@ -128,7 +129,7 @@ mod tests {
         }
     }
 
-    fn diff_line(number: u32, text: &str) -> DiffLine {
+    pub fn diff_line(number: u32, text: &str) -> DiffLine {
         DiffLine {
             number,
             text: text.to_string(),
@@ -136,9 +137,9 @@ mod tests {
         }
     }
 
-    fn view_with_blocks(blocks: Vec<DiffBlock>, viewport_height: usize) -> DiffView {
+    pub fn view_with_blocks(blocks: Vec<DiffBlock>, viewport_height: usize) -> DiffView {
         let mut view = DiffView::new(
-            DiffRef::Uncommitted(crate::core::UncommittedType::All),
+            DiffRef::Uncommitted(UncommittedType::All),
             FileDiff {
                 info: FileDiffInfo {
                     path: "src/main.rs".to_string(),
@@ -154,6 +155,12 @@ mod tests {
         view.set_viewport_dimensions(viewport_height, 80);
         view
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::test_helpers::{diff_line, unchanged_line, view_with_blocks};
+    use crate::domain::diff::DiffBlock;
 
     #[test]
     fn current_file_line_number_returns_right_side_line_number() {

@@ -311,7 +311,7 @@ impl App {
                 };
 
                 let diff_ref = DiffRef::Uncommitted(uncommitted_type);
-                match git::fetch_file_changes_for_source(&repo_path, &diff_ref) {
+                match git::fetch_file_changes_for_ref(&repo_path, &diff_ref) {
                     Ok(files) => {
                         let files_view = FilesView::new(diff_ref, files);
                         let old_view = std::mem::replace(&mut self.view, View::Files(files_view));
@@ -423,14 +423,13 @@ impl App {
             None => return false,
         };
 
-        let full_diff =
-            match git::fetch_full_file_diff_for_source(&repo_path, &diff_ref, &file.path) {
-                Ok(diff) => diff,
-                Err(e) => {
-                    self.error = Some(e);
-                    return false;
-                }
-            };
+        let full_diff = match git::fetch_full_file_diff_for_ref(&repo_path, &diff_ref, &file.path) {
+            Ok(diff) => diff,
+            Err(e) => {
+                self.error = Some(e);
+                return false;
+            }
+        };
 
         let highlights = crate::domain::highlight::highlight_diff_sides(
             &file.path,

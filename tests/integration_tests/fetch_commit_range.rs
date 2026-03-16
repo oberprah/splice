@@ -1,7 +1,7 @@
 use crate::common::{reset_counter, TestRepo};
 use serial_test::serial;
 use splice_rust::core::FileStatus;
-use splice_rust::git::{fetch_file_changes_for_source, resolve_diff_source, DiffSpec};
+use splice_rust::git::{fetch_file_changes_for_ref, resolve_diff_ref, DiffSpec};
 
 #[test]
 #[serial]
@@ -21,7 +21,7 @@ fn fetch_file_changes_three_dot_excludes_merge_base_changes() {
     repo.add_file("main.txt", "main");
     repo.commit("Main commit");
 
-    let source = resolve_diff_source(
+    let source = resolve_diff_ref(
         repo.path(),
         DiffSpec {
             raw: Some("main...feature".to_string()),
@@ -30,7 +30,7 @@ fn fetch_file_changes_three_dot_excludes_merge_base_changes() {
     )
     .unwrap();
 
-    let changes = fetch_file_changes_for_source(repo.path(), &source).unwrap();
+    let changes = fetch_file_changes_for_ref(repo.path(), &source).unwrap();
     let paths: Vec<&str> = changes.iter().map(|change| change.path.as_str()).collect();
 
     assert!(paths.contains(&"feature.txt"));
@@ -59,7 +59,7 @@ fn fetch_file_changes_single_commit_tracks_renamed_file_edits_in_moved_folder() 
     );
     repo.commit("Move components and edit button");
 
-    let source = resolve_diff_source(
+    let source = resolve_diff_ref(
         repo.path(),
         DiffSpec {
             raw: Some("HEAD".to_string()),
@@ -68,7 +68,7 @@ fn fetch_file_changes_single_commit_tracks_renamed_file_edits_in_moved_folder() 
     )
     .unwrap();
 
-    let changes = fetch_file_changes_for_source(repo.path(), &source).unwrap();
+    let changes = fetch_file_changes_for_ref(repo.path(), &source).unwrap();
     let button = changes
         .iter()
         .find(|c| c.path == "ui/components/Button.tsx")

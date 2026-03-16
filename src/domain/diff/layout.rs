@@ -1,6 +1,7 @@
+use crate::domain::diff::types::HunkRange;
 use crate::domain::diff::{DiffBlock, FileDiff};
 use crate::domain::highlight::TokenSpan;
-use crate::domain::wrap::wrap_line;
+use crate::domain::wrap::{wrap_line, WrappedSegment};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CellKind {
@@ -28,19 +29,15 @@ pub struct ScreenRow {
     pub right: Cell,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct HunkRange {
-    pub start: usize,
-    pub end: usize,
-}
-
-impl HunkRange {
-    pub fn len(&self) -> usize {
-        self.end.saturating_sub(self.start)
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
+fn wrap_or_empty(text: &str, tokens: &[TokenSpan], width: usize) -> Vec<WrappedSegment> {
+    if width == 0 {
+        vec![WrappedSegment {
+            text: String::new(),
+            char_offset: 0,
+            tokens: Vec::new(),
+        }]
+    } else {
+        wrap_line(text, tokens, width)
     }
 }
 
@@ -93,24 +90,8 @@ pub fn build_rows(file: &FileDiff, width: usize) -> (Vec<ScreenRow>, Vec<HunkRan
         match block {
             DiffBlock::Unchanged(lines) => {
                 for line in lines {
-                    let left_segs = if left_content_width == 0 {
-                        vec![crate::domain::wrap::WrappedSegment {
-                            text: String::new(),
-                            char_offset: 0,
-                            tokens: Vec::new(),
-                        }]
-                    } else {
-                        wrap_line(&line.text, &line.tokens, left_content_width)
-                    };
-                    let right_segs = if right_content_width == 0 {
-                        vec![crate::domain::wrap::WrappedSegment {
-                            text: String::new(),
-                            char_offset: 0,
-                            tokens: Vec::new(),
-                        }]
-                    } else {
-                        wrap_line(&line.text, &line.tokens, right_content_width)
-                    };
+                    let left_segs = wrap_or_empty(&line.text, &line.tokens, left_content_width);
+                    let right_segs = wrap_or_empty(&line.text, &line.tokens, right_content_width);
 
                     let max_segs = left_segs.len().max(right_segs.len());
                     for seg_idx in 0..max_segs {
@@ -157,35 +138,17 @@ pub fn build_rows(file: &FileDiff, width: usize) -> (Vec<ScreenRow>, Vec<HunkRan
                     let old_line = old.get(i);
                     let new_line = new.get(i);
 
-                    let left_segs: Vec<crate::domain::wrap::WrappedSegment> =
-                        if let Some(line) = old_line {
-                            if left_content_width == 0 {
-                                vec![crate::domain::wrap::WrappedSegment {
-                                    text: String::new(),
-                                    char_offset: 0,
-                                    tokens: Vec::new(),
-                                }]
-                            } else {
-                                wrap_line(&line.text, &line.tokens, left_content_width)
-                            }
-                        } else {
-                            Vec::new()
-                        };
+                    let left_segs: Vec<WrappedSegment> = if let Some(line) = old_line {
+                        wrap_or_empty(&line.text, &line.tokens, left_content_width)
+                    } else {
+                        Vec::new()
+                    };
 
-                    let right_segs: Vec<crate::domain::wrap::WrappedSegment> =
-                        if let Some(line) = new_line {
-                            if right_content_width == 0 {
-                                vec![crate::domain::wrap::WrappedSegment {
-                                    text: String::new(),
-                                    char_offset: 0,
-                                    tokens: Vec::new(),
-                                }]
-                            } else {
-                                wrap_line(&line.text, &line.tokens, right_content_width)
-                            }
-                        } else {
-                            Vec::new()
-                        };
+                    let right_segs: Vec<WrappedSegment> = if let Some(line) = new_line {
+                        wrap_or_empty(&line.text, &line.tokens, right_content_width)
+                    } else {
+                        Vec::new()
+                    };
 
                     let max_rows = left_segs.len().max(right_segs.len()).max(1);
 

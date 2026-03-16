@@ -10,7 +10,7 @@ pub use diff::{
 };
 pub use file_changes::parse_file_changes;
 pub use log::parse_log_output;
-pub use resolve::{resolve_commit_range, resolve_diff_source, DiffSpec};
+pub use resolve::{resolve_commit_range, resolve_diff_ref, DiffSpec};
 pub use uncommitted::{fetch_uncommitted_file_changes, fetch_uncommitted_summary};
 
 use std::path::{Path, PathBuf};
@@ -157,7 +157,7 @@ fn fetch_file_changes_range(
     parse_file_changes(&numstat, &name_status)
 }
 
-pub fn fetch_file_changes_for_source(
+pub fn fetch_file_changes_for_ref(
     repo_path: &Path,
     diff_ref: &DiffRef,
 ) -> Result<Vec<FileDiffInfo>, String> {
@@ -186,7 +186,7 @@ pub fn repository_root(repo_path: &Path) -> Result<PathBuf, String> {
     Ok(PathBuf::from(stdout.trim()))
 }
 
-pub fn fetch_full_file_diff_for_source(
+pub fn fetch_full_file_diff_for_ref(
     repo_path: &Path,
     diff_ref: &DiffRef,
     path: &str,
@@ -205,7 +205,7 @@ mod tests {
     use crate::core::UncommittedType;
 
     #[test]
-    fn fetch_file_changes_for_source_dispatches_to_commit_range() {
+    fn fetch_file_changes_for_ref_dispatches_to_commit_range() {
         let repo_path = Path::new("/nonexistent");
         let commit = crate::core::Commit {
             hash: "abc123".to_string(),
@@ -223,16 +223,16 @@ mod tests {
             include_start: true,
         };
         let diff_ref = DiffRef::CommitRange(range);
-        let result = fetch_file_changes_for_source(repo_path, &diff_ref);
+        let result = fetch_file_changes_for_ref(repo_path, &diff_ref);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("git diff-tree"));
     }
 
     #[test]
-    fn fetch_file_changes_for_source_dispatches_to_uncommitted() {
+    fn fetch_file_changes_for_ref_dispatches_to_uncommitted() {
         let repo_path = Path::new("/nonexistent");
         let diff_ref = DiffRef::Uncommitted(UncommittedType::Staged);
-        let result = fetch_file_changes_for_source(repo_path, &diff_ref);
+        let result = fetch_file_changes_for_ref(repo_path, &diff_ref);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("git diff"));
     }

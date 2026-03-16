@@ -31,14 +31,18 @@ pub struct FileDiff {
     pub blocks: Vec<DiffBlock>,
 }
 
-impl FileDiff {
-    pub fn total_line_count(&self) -> usize {
-        self.blocks
-            .iter()
-            .map(|block| match block {
-                DiffBlock::Unchanged(lines) => lines.len(),
-                DiffBlock::Change { old, new } => old.len().max(new.len()),
-            })
-            .sum()
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HunkRange {
+    pub start: usize,
+    pub end: usize,
+}
+
+impl HunkRange {
+    pub fn len(&self) -> usize {
+        self.end.saturating_sub(self.start)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }

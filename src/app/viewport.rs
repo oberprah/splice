@@ -1,4 +1,5 @@
-use crate::domain::diff::layout::{HunkRange, ScreenRow};
+use crate::domain::diff::layout::ScreenRow;
+use crate::domain::diff::HunkRange;
 
 #[derive(Clone, Copy)]
 pub struct Viewport {
@@ -362,46 +363,8 @@ pub fn update_viewport(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::diff_view::DiffView;
-    use crate::core::DiffRef;
-    use crate::core::{FileDiffInfo, FileStatus, UncommittedType};
-    use crate::domain::diff::{DiffBlock, DiffLine, FileDiff, UnchangedLine};
-
-    fn unchanged_line(old_number: u32, new_number: u32, text: &str) -> UnchangedLine {
-        UnchangedLine {
-            old_number,
-            new_number,
-            text: text.to_string(),
-            tokens: vec![],
-        }
-    }
-
-    fn diff_line(number: u32, text: &str) -> DiffLine {
-        DiffLine {
-            number,
-            text: text.to_string(),
-            tokens: vec![],
-        }
-    }
-
-    fn view_with_blocks(blocks: Vec<DiffBlock>, viewport_height: usize) -> DiffView {
-        let mut view = DiffView::new(
-            DiffRef::Uncommitted(UncommittedType::All),
-            FileDiff {
-                info: FileDiffInfo {
-                    path: "src/main.rs".to_string(),
-                    old_path: None,
-                    status: FileStatus::Modified,
-                    additions: 1,
-                    deletions: 1,
-                    is_binary: false,
-                },
-                blocks,
-            },
-        );
-        view.set_viewport_dimensions(viewport_height, 80);
-        view
-    }
+    use crate::app::diff_view::test_helpers::{diff_line, unchanged_line, view_with_blocks};
+    use crate::domain::diff::DiffBlock;
 
     #[test]
     fn move_down_clears_active_hunk() {

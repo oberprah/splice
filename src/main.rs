@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 uncommitted_type: spec.uncommitted_type,
             };
 
-            let diff_ref = match git::resolve_diff_source(&repo_path, diff_spec) {
+            let diff_ref = match git::resolve_diff_ref(&repo_path, diff_spec) {
                 Ok(s) => s,
                 Err(e) => {
                     eprintln!("Error: {}", e);
@@ -39,7 +39,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             };
 
-            let files = match git::fetch_file_changes_for_source(&repo_path, &diff_ref) {
+            let files = match git::fetch_file_changes_for_ref(&repo_path, &diff_ref) {
                 Ok(f) => f,
                 Err(e) => {
                     eprintln!("Error: {}", e);

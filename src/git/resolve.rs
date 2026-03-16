@@ -179,7 +179,7 @@ pub struct DiffSpec {
     pub uncommitted_type: Option<UncommittedType>,
 }
 
-pub fn resolve_diff_source(repo_path: &Path, spec: DiffSpec) -> Result<DiffRef, String> {
+pub fn resolve_diff_ref(repo_path: &Path, spec: DiffSpec) -> Result<DiffRef, String> {
     if let Some(uncommitted_type) = spec.uncommitted_type {
         return Ok(DiffRef::Uncommitted(uncommitted_type));
     }

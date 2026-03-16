@@ -51,7 +51,7 @@ impl Harness {
         width: u16,
         height: u16,
     ) -> Result<Self, String> {
-        let files = git::fetch_file_changes_for_source(repo.path(), &diff_ref)?;
+        let files = git::fetch_file_changes_for_ref(repo.path(), &diff_ref)?;
         let backend = TestBackend::new(width, height);
         let terminal = Terminal::new(backend).unwrap();
         let mut app = App::with_diff_source_and_now(
