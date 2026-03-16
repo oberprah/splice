@@ -153,6 +153,23 @@ pub fn update_viewport(
                                 true,
                             );
                         }
+                    } else if viewport.scroll_offset >= hunk.start
+                        && viewport.scroll_offset < hunk.end
+                    {
+                        // Scroll is inside this hunk but it wasn't activated (user scrolled
+                        // manually). Activate it and position to hunk start. Only skip to
+                        // the next hunk if we're already at the target position.
+                        let target = scroll_for_hunk_start(viewport, hunk.start);
+                        if viewport.scroll_offset != target {
+                            return (
+                                Viewport {
+                                    scroll_offset: target,
+                                    active_hunk: Some(idx),
+                                    ..*viewport
+                                },
+                                true,
+                            );
+                        }
                     }
 
                     let next_idx = idx + 1;
@@ -490,6 +507,47 @@ mod tests {
         assert!(view.update(ViewportAction::NextHunk));
         assert_eq!(view.viewport.scroll_offset, 0); // clamped by max_scroll=0
         assert_eq!(view.viewport.active_hunk, Some(0));
+    }
+
+    #[test]
+    fn next_hunk_activates_current_hunk_when_scrolled_inside_it() {
+        // Layout: 5 context lines, 1-line change hunk, 5 more context lines.
+        // Total rows = 11, viewport height = 10, max_scroll = 1.
+        // Hunk 0: start=5, end=6. scroll_for_hunk_start = min(5 - 10/4, max_scroll=1) = min(3,1) = 1.
+        // Manually scroll into the hunk (scroll_offset=1, hunk.start=5? No — let's recalculate.)
+        //
+        // Actually with 5 unchanged + 1 change + 5 unchanged = 11 rows, max_scroll=1.
+        // hunk.start=5, target = scroll_for_hunk_start = min(5-2, 1) = 1.
+        // If we set scroll_offset=1 (inside range because scroll >= hunk.start is false — 1 < 5).
+        // We need scroll_offset inside [hunk.start, hunk.end), i.e. inside [5,6).
+        // But max_scroll=1 prevents reaching 5. Use a taller layout so we can scroll there.
+        //
+        // Layout: 10 context + 1 change + 10 context = 21 rows, viewport=10, max_scroll=11.
+        // Hunk 0: start=10, end=11.
+        // scroll_for_hunk_start = min(10 - 2, 11) = 8.
+        // Set scroll_offset=10 (inside hunk: 10 >= 10 && 10 < 11), active_hunk=None.
+        // Calling NextHunk: should activate hunk 0 and move scroll to 8, NOT jump to next hunk.
+        let mut view = view_with_blocks(
+            vec![
+                DiffBlock::Unchanged((1..=10).map(|n| unchanged_line(n, n, "ctx")).collect()),
+                DiffBlock::Change {
+                    old: vec![diff_line(11, "a")],
+                    new: vec![diff_line(11, "b")],
+                },
+                DiffBlock::Unchanged((12..=21).map(|n| unchanged_line(n, n, "ctx")).collect()),
+            ],
+            10,
+        );
+        // 10 + 1 + 10 = 21 rows, max_scroll=11. Hunk 0: start=10, end=11.
+        // Simulate the user having manually scrolled into the hunk.
+        view.viewport.scroll_offset = 10;
+        view.viewport.active_hunk = None;
+
+        assert!(view.update(ViewportAction::NextHunk));
+        // Must activate hunk 0, not skip past it.
+        assert_eq!(view.viewport.active_hunk, Some(0));
+        // scroll_for_hunk_start(10) = min(10 - 10/4, 11) = min(10-2, 11) = 8
+        assert_eq!(view.viewport.scroll_offset, 8);
     }
 
     #[test]
