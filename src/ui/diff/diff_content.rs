@@ -1,420 +1,187 @@
 use crate::app::DiffView;
-use crate::core::{DiffSource, UncommittedType};
-use crate::domain::diff::{ChangeBlock, DiffBlock, UnchangedBlock};
-use crate::domain::highlight::TokenSpan;
-use crate::domain::wrap::{wrap_line, WrappedSegment};
-use crate::ui::theme::{DiffColors, Theme};
+use crate::core::{DiffRef, UncommittedType};
+use crate::domain::diff::layout::{Cell, CellKind};
+use crate::domain::wrap::WrappedSegment;
+use crate::ui::theme::Theme;
 use ratatui::{prelude::*, widgets::Paragraph};
 use unicode_width::UnicodeWidthChar;
 
-struct Layout {
-    x: u16,
-    width: u16,
-    left_width: usize,
-    right_width: usize,
-}
-
-struct Viewport {
-    height: usize,
-    content_start: usize,
-}
-
-struct RenderState {
-    y: u16,
-    rendered: usize,
-    row_index: usize,
-}
-
-struct RenderContext {
-    layout: Layout,
-    viewport: Viewport,
-    state: RenderState,
-}
-
-pub fn render_diff_view(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Theme) {
+pub fn render_diff_view(f: &mut Frame, view: &DiffView, area: Rect, theme: &Theme) {
     let mut y = area.y;
     let width = area.width as usize;
 
-    let range_display = diff_header_prefix(&diff.source);
-
     let header = format!(
         "{} · {} · +{} -{}",
-        range_display, diff.file.path, diff.file.additions, diff.file.deletions
+        diff_header_prefix(&view.diff_ref),
+        view.file.info.path,
+        view.file.info.additions,
+        view.file.info.deletions
     );
     let header = pad_or_trim(&header, width);
-    let header_widget = Paragraph::new(header).style(theme.text_muted);
-    f.render_widget(header_widget, Rect::new(area.x, y, area.width, 1));
+    f.render_widget(
+        Paragraph::new(header).style(theme.text_muted),
+        Rect::new(area.x, y, area.width, 1),
+    );
     y = y.saturating_add(1);
 
     let content_height = area.height.saturating_sub(y - area.y).saturating_sub(1) as usize;
-    let content_area = Rect::new(area.x, y, area.width, content_height as u16);
 
-    render_diff_lines(f, diff, content_area, theme);
+    render_diff_rows(f, view, area.x, y, area.width, content_height, theme);
 
     let help = Paragraph::new("j/k: scroll  n/p: next/prev diff  o: open  q: back")
         .style(theme.text_muted)
         .alignment(Alignment::Left);
-    let help_area = Rect::new(
-        area.x,
-        area.y + area.height.saturating_sub(1),
-        area.width,
-        1,
+    f.render_widget(
+        help,
+        Rect::new(
+            area.x,
+            area.y + area.height.saturating_sub(1),
+            area.width,
+            1,
+        ),
     );
-    f.render_widget(help, help_area);
 }
 
-fn diff_header_prefix(source: &DiffSource) -> String {
-    match source {
-        DiffSource::CommitRange(range) => {
-            if range.is_single_commit() {
-                range.end.short_hash().to_string()
-            } else {
-                format!("{}..{}", range.end.short_hash(), range.start.short_hash())
-            }
-        }
-        DiffSource::Uncommitted(uncommitted_type) => match uncommitted_type {
-            UncommittedType::Unstaged => "Unstaged changes".to_string(),
-            UncommittedType::Staged => "Staged changes".to_string(),
-            UncommittedType::All => "Uncommitted changes".to_string(),
-        },
-    }
-}
-
-fn render_diff_lines(f: &mut Frame, diff: &DiffView, area: Rect, theme: &Theme) {
-    if diff.diff.blocks.is_empty() {
-        let msg = Paragraph::new("No changes")
-            .style(Style::default().fg(Color::Gray))
-            .alignment(Alignment::Center);
-        f.render_widget(msg, area);
-        return;
-    }
-
-    let width = area.width as usize;
+fn render_diff_rows(
+    f: &mut Frame,
+    view: &DiffView,
+    x: u16,
+    y: u16,
+    width: u16,
+    content_height: usize,
+    theme: &Theme,
+) {
+    let total_width = width as usize;
     let separator = " │ ";
-    let left_width = width.saturating_sub(separator.len()) / 2;
-    let right_width = width
+    let left_width = total_width.saturating_sub(separator.len()) / 2;
+    let right_width = total_width
         .saturating_sub(separator.len())
         .saturating_sub(left_width);
 
-    let focus_offset = diff.viewport_height / 4;
-    let ctx = &mut RenderContext {
-        layout: Layout {
-            x: area.x,
-            width: area.width,
-            left_width,
-            right_width,
-        },
-        viewport: Viewport {
-            height: area.height as usize,
-            content_start: diff.scroll_offset.saturating_sub(focus_offset),
-        },
-        state: RenderState {
-            y: area.y,
-            rendered: 0,
-            row_index: 0,
-        },
-    };
+    let content = view.visible_content();
 
-    let top_padding = focus_offset.saturating_sub(diff.scroll_offset);
-    while ctx.state.rendered < ctx.viewport.height && ctx.state.rendered < top_padding {
-        render_row(
-            f,
-            ctx.state.y,
-            blank_cell(ctx.layout.left_width),
-            blank_cell(ctx.layout.right_width),
-            ctx.layout.x,
-            ctx.layout.width,
-            theme,
-        );
-        ctx.state.y = ctx.state.y.saturating_add(1);
-        ctx.state.rendered += 1;
+    if content.rows.is_empty() {
+        let msg = Paragraph::new("No changes")
+            .style(Style::default().fg(Color::Gray))
+            .alignment(Alignment::Center);
+        f.render_widget(msg, Rect::new(x, y, width, content_height as u16));
+        return;
     }
 
-    for block in &diff.diff.blocks {
-        match block {
-            DiffBlock::Unchanged(unchanged) => {
-                if !render_unchanged_block(f, unchanged, ctx, diff, theme) {
-                    return;
-                }
-            }
-            DiffBlock::Change(change) => {
-                if !render_change_block(f, change, ctx, diff, theme) {
-                    return;
-                }
-            }
+    for (i, row) in content.rows.iter().enumerate() {
+        if i >= content_height {
+            break;
         }
-    }
+        let abs_row = content.row_offset + i;
+        let in_active_hunk = content
+            .active_hunk_range
+            .is_some_and(|r| abs_row >= r.start && abs_row < r.end);
 
-    while ctx.state.rendered < ctx.viewport.height {
-        render_row(
-            f,
-            ctx.state.y,
-            blank_cell(ctx.layout.left_width),
-            blank_cell(ctx.layout.right_width),
-            ctx.layout.x,
-            ctx.layout.width,
-            theme,
+        let left_spans = render_cell(&row.left, left_width, in_active_hunk, true, theme);
+        let right_spans = render_cell(&row.right, right_width, in_active_hunk, false, theme);
+
+        let mut spans: Vec<Span> = left_spans;
+        spans.push(Span::styled(separator, theme.diff_divider));
+        spans.extend(right_spans);
+
+        f.render_widget(
+            Paragraph::new(Line::from(spans)),
+            Rect::new(x, y + i as u16, width, 1),
         );
-        ctx.state.y = ctx.state.y.saturating_add(1);
-        ctx.state.rendered += 1;
     }
 }
 
-fn render_unchanged_block(
-    f: &mut Frame,
-    block: &UnchangedBlock,
-    ctx: &mut RenderContext,
-    diff: &DiffView,
-    theme: &Theme,
-) -> bool {
-    for (i, line) in block.lines.iter().enumerate() {
-        let old_num = block.old_start + i as u32;
-        let new_num = block.new_start + i as u32;
-        let left_tokens = diff.highlights.old.line_tokens(old_num);
-        let right_tokens = diff.highlights.new.line_tokens(new_num);
-
-        let left_rows = format_cell(
-            old_num,
-            ' ',
-            line,
-            ctx.layout.left_width,
-            Style::default(),
-            left_tokens,
-            theme,
-        );
-        let right_rows = format_cell(
-            new_num,
-            ' ',
-            line,
-            ctx.layout.right_width,
-            Style::default(),
-            right_tokens,
-            theme,
-        );
-
-        let max_rows = left_rows.len().max(right_rows.len());
-
-        for row_idx in 0..max_rows {
-            if ctx.state.row_index < ctx.viewport.content_start {
-                ctx.state.row_index += 1;
-                continue;
-            }
-            if ctx.state.rendered >= ctx.viewport.height {
-                return false;
-            }
-
-            let left = left_rows
-                .get(row_idx)
-                .cloned()
-                .unwrap_or_else(|| vec![Span::raw(blank_cell(ctx.layout.left_width))]);
-            let right = right_rows
-                .get(row_idx)
-                .cloned()
-                .unwrap_or_else(|| vec![Span::raw(blank_cell(ctx.layout.right_width))]);
-
-            render_styled_row(
-                f,
-                ctx.state.y,
-                left,
-                right,
-                ctx.layout.x,
-                ctx.layout.width,
-                theme,
-            );
-
-            ctx.state.y = ctx.state.y.saturating_add(1);
-            ctx.state.rendered += 1;
-            ctx.state.row_index += 1;
-        }
-    }
-
-    true
-}
-
-fn render_change_block(
-    f: &mut Frame,
-    block: &ChangeBlock,
-    ctx: &mut RenderContext,
-    diff: &DiffView,
-    theme: &Theme,
-) -> bool {
-    let max_len = block.old_lines.len().max(block.new_lines.len());
-
-    for i in 0..max_len {
-        let left_rows = block.old_lines.get(i).map(|text| {
-            let line_num = block.old_start + i as u32;
-            let has_new_line = block.new_lines.get(i).is_some();
-            let colors = if has_new_line {
-                &theme.diff_changed
-            } else {
-                &theme.diff_removed
-            };
-            let tokens = diff.highlights.old.line_tokens(line_num);
-            format_cell_styled(
-                line_num,
-                '-',
-                text,
-                ctx.layout.left_width,
-                colors,
-                tokens,
-                theme,
-            )
-        });
-
-        let right_rows = block.new_lines.get(i).map(|text| {
-            let line_num = block.new_start + i as u32;
-            let has_old_line = block.old_lines.get(i).is_some();
-            let colors = if has_old_line {
-                &theme.diff_changed
-            } else {
-                &theme.diff_added
-            };
-            let tokens = diff.highlights.new.line_tokens(line_num);
-            format_cell_styled(
-                line_num,
-                '+',
-                text,
-                ctx.layout.right_width,
-                colors,
-                tokens,
-                theme,
-            )
-        });
-
-        let left_rows = left_rows.unwrap_or_default();
-        let right_rows = right_rows.unwrap_or_default();
-        let max_rows = left_rows.len().max(right_rows.len());
-
-        for row_idx in 0..max_rows {
-            if ctx.state.row_index < ctx.viewport.content_start {
-                ctx.state.row_index += 1;
-                continue;
-            }
-            if ctx.state.rendered >= ctx.viewport.height {
-                return false;
-            }
-
-            let left = left_rows
-                .get(row_idx)
-                .cloned()
-                .unwrap_or_else(|| vec![Span::raw(blank_cell(ctx.layout.left_width))]);
-            let right = right_rows
-                .get(row_idx)
-                .cloned()
-                .unwrap_or_else(|| vec![Span::raw(blank_cell(ctx.layout.right_width))]);
-
-            render_styled_row(
-                f,
-                ctx.state.y,
-                left,
-                right,
-                ctx.layout.x,
-                ctx.layout.width,
-                theme,
-            );
-
-            ctx.state.y = ctx.state.y.saturating_add(1);
-            ctx.state.rendered += 1;
-            ctx.state.row_index += 1;
-        }
-    }
-
-    true
-}
-
-fn render_row(
-    f: &mut Frame,
-    y: u16,
-    left: String,
-    right: String,
-    x: u16,
-    width: u16,
-    theme: &Theme,
-) {
-    let left_span = Span::raw(left);
-    let divider = Span::styled(" │ ", theme.diff_divider);
-    let right_span = Span::raw(right);
-    let line = Line::from(vec![left_span, divider, right_span]);
-    let para = Paragraph::new(line);
-    let area = Rect::new(x, y, width, 1);
-    f.render_widget(para, area);
-}
-
-fn blank_cell(width: usize) -> String {
-    " ".repeat(width)
-}
-
-fn pad_or_trim(input: &str, width: usize) -> String {
-    let mut chars: Vec<char> = input.chars().collect();
-    if chars.len() > width {
-        chars.truncate(width);
-        return chars.into_iter().collect();
-    }
-    let mut result: String = chars.into_iter().collect();
-    let result_len = result.chars().count();
-    if result_len < width {
-        result.push_str(&" ".repeat(width - result_len));
-    }
-    result
-}
-
-fn format_cell_styled(
-    line_num: u32,
-    sign: char,
-    text: &str,
+fn render_cell(
+    cell: &Cell,
     width: usize,
-    colors: &DiffColors,
-    tokens: Option<&[TokenSpan]>,
+    in_active_hunk: bool,
+    is_left: bool,
     theme: &Theme,
-) -> Vec<Vec<Span<'static>>> {
-    format_cell(
-        line_num,
-        sign,
-        text,
-        width,
-        Style::new().bg(colors.bg).fg(colors.fg),
-        tokens,
-        theme,
-    )
+) -> Vec<Span<'static>> {
+    match cell.kind {
+        CellKind::Empty => vec![Span::raw(blank_cell(width))],
+        _ => {
+            let (base_style, sign) = cell_style_and_sign(cell, in_active_hunk, is_left, theme);
+
+            let line_num_str = match cell.line_number {
+                Some(n) => format!("{:>3} ", n),
+                None => "  \u{21aa} ".to_string(), // "  ↪ "
+            };
+            let sign_str = sign.to_string();
+            let prefix_width = line_num_str.chars().count() + sign_str.chars().count();
+            let content_width = width.saturating_sub(prefix_width);
+
+            let mut spans: Vec<Span<'static>> = vec![
+                Span::styled(line_num_str, theme.diff_line_number),
+                Span::styled(sign_str, base_style),
+            ];
+
+            let segment = WrappedSegment {
+                text: cell.text.clone(),
+                char_offset: 0,
+                tokens: cell.tokens.clone(),
+            };
+            spans.extend(render_text_with_tokens(
+                &segment,
+                content_width,
+                base_style,
+                theme,
+            ));
+
+            spans
+        }
+    }
 }
 
-fn format_cell(
-    line_num: u32,
-    sign: char,
-    text: &str,
-    width: usize,
-    style: Style,
-    tokens: Option<&[TokenSpan]>,
+fn cell_style_and_sign(
+    cell: &Cell,
+    in_active_hunk: bool,
+    is_left: bool,
     theme: &Theme,
-) -> Vec<Vec<Span<'static>>> {
-    let line_num_str = format!("{:>3} ", line_num);
-    let sign_str = sign.to_string();
-    let prefix_width = line_num_str.chars().count() + sign_str.chars().count();
-    let content_width = width.saturating_sub(prefix_width);
-
-    let segments = wrap_line(text, tokens.unwrap_or(&[]), content_width);
-
-    let mut rows = Vec::new();
-    for (i, segment) in segments.into_iter().enumerate() {
-        let mut spans = Vec::new();
-
-        if i == 0 {
-            spans.push(Span::styled(line_num_str.clone(), theme.diff_line_number));
-        } else {
-            spans.push(Span::styled("  ↪ ", theme.diff_line_number));
+) -> (Style, char) {
+    match cell.kind {
+        CellKind::Context => (Style::default(), ' '),
+        CellKind::Removed => {
+            let colors = &theme.diff_removed;
+            let bg = if in_active_hunk {
+                colors.bg_bright
+            } else {
+                colors.bg
+            };
+            (Style::new().bg(bg).fg(colors.fg), '-')
         }
-        spans.push(Span::styled(sign_str.clone(), style));
-        spans.extend(render_wrapped_segment(
-            &segment,
-            content_width,
-            style,
-            theme,
-        ));
-
-        rows.push(spans);
+        CellKind::Added => {
+            let colors = &theme.diff_added;
+            let bg = if in_active_hunk {
+                colors.bg_bright
+            } else {
+                colors.bg
+            };
+            (Style::new().bg(bg).fg(colors.fg), '+')
+        }
+        CellKind::Changed => {
+            // Both old and new line exist at this pair index — use changed (blue) color
+            let colors = &theme.diff_changed;
+            let bg = if in_active_hunk {
+                colors.bg_bright
+            } else {
+                colors.bg
+            };
+            // Left side is the old (removed) half, right side is the new (added) half
+            let sign = if is_left { '-' } else { '+' };
+            (Style::new().bg(bg).fg(colors.fg), sign)
+        }
+        CellKind::Empty => (Style::default(), ' '),
     }
+}
 
-    rows
+fn render_text_with_tokens(
+    segment: &WrappedSegment,
+    content_width: usize,
+    base_style: Style,
+    theme: &Theme,
+) -> Vec<Span<'static>> {
+    render_wrapped_segment(segment, content_width, base_style, theme)
 }
 
 fn render_wrapped_segment(
@@ -489,29 +256,45 @@ fn char_style(
     }
 }
 
-fn render_styled_row(
-    f: &mut Frame,
-    y: u16,
-    left: Vec<Span<'_>>,
-    right: Vec<Span<'_>>,
-    x: u16,
-    width: u16,
-    theme: &Theme,
-) {
-    let mut spans: Vec<Span<'_>> = left;
-    spans.push(Span::styled(" │ ", theme.diff_divider));
-    spans.extend(right);
+fn blank_cell(width: usize) -> String {
+    " ".repeat(width)
+}
 
-    let line = Line::from(spans);
-    let para = Paragraph::new(line);
-    let area = Rect::new(x, y, width, 1);
-    f.render_widget(para, area);
+fn pad_or_trim(input: &str, width: usize) -> String {
+    let mut chars: Vec<char> = input.chars().collect();
+    if chars.len() > width {
+        chars.truncate(width);
+        return chars.into_iter().collect();
+    }
+    let mut result: String = chars.into_iter().collect();
+    let result_len = result.chars().count();
+    if result_len < width {
+        result.push_str(&" ".repeat(width - result_len));
+    }
+    result
+}
+
+fn diff_header_prefix(diff_ref: &DiffRef) -> String {
+    match diff_ref {
+        DiffRef::CommitRange(range) => {
+            if range.is_single_commit() {
+                range.end.short_hash().to_string()
+            } else {
+                format!("{}..{}", range.end.short_hash(), range.start.short_hash())
+            }
+        }
+        DiffRef::Uncommitted(uncommitted_type) => match uncommitted_type {
+            UncommittedType::Unstaged => "Unstaged changes".to_string(),
+            UncommittedType::Staged => "Staged changes".to_string(),
+            UncommittedType::All => "Uncommitted changes".to_string(),
+        },
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::highlight::HighlightKind;
+    use crate::domain::highlight::{HighlightKind, TokenSpan};
 
     #[test]
     fn render_wrapped_segment_cjk_does_not_exceed_content_width() {
@@ -554,6 +337,26 @@ mod tests {
                 span.style.fg == Some(theme.syntax.keyword) && span.content.contains("fn")
             }),
             "Expected a keyword-colored span for `fn`"
+        );
+    }
+
+    #[test]
+    fn render_text_with_tokens_delegates_to_wrapped_segment() {
+        let theme = Theme::dark();
+        let tokens = vec![TokenSpan {
+            start_col: 0,
+            end_col: 2,
+            kind: HighlightKind::Keyword,
+        }];
+        let segment = WrappedSegment {
+            text: "fn foo".to_string(),
+            char_offset: 0,
+            tokens,
+        };
+        let spans = render_text_with_tokens(&segment, 10, Style::default(), &theme);
+        assert!(
+            spans.iter().any(|span| span.content.contains("fn")),
+            "Expected fn to appear in spans"
         );
     }
 }

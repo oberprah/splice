@@ -1,4 +1,4 @@
-use crate::core::{DiffSource, FileChange};
+use crate::core::{DiffRef, FileDiffInfo};
 use crate::domain::filetree::{self, TreeNode, VisibleTreeItem};
 
 const FIXED_ROWS: usize = 4;
@@ -11,8 +11,8 @@ pub struct BodyDisplayInfo {
 }
 
 pub struct FilesView {
-    pub source: DiffSource,
-    pub files: Vec<FileChange>,
+    pub diff_ref: DiffRef,
+    pub files: Vec<FileDiffInfo>,
     pub root: TreeNode,
     pub visible_items: Vec<VisibleTreeItem>,
     pub selected: usize,
@@ -22,11 +22,11 @@ pub struct FilesView {
 }
 
 impl FilesView {
-    pub fn new(source: DiffSource, files: Vec<FileChange>) -> Self {
+    pub fn new(diff_ref: DiffRef, files: Vec<FileDiffInfo>) -> Self {
         let (root, visible_items) = filetree::build_visible_tree(&files);
 
         Self {
-            source,
+            diff_ref,
             files,
             root,
             visible_items,
@@ -48,8 +48,8 @@ impl FilesView {
     }
 
     fn body(&self) -> Option<&str> {
-        match &self.source {
-            DiffSource::CommitRange(range) if range.is_single_commit() => range.end.body.as_deref(),
+        match &self.diff_ref {
+            DiffRef::CommitRange(range) if range.is_single_commit() => range.end.body.as_deref(),
             _ => None,
         }
     }
@@ -166,7 +166,7 @@ impl FilesView {
         (self.list_viewport_height() / 2).max(1)
     }
 
-    pub fn selected_file(&self) -> Option<&FileChange> {
+    pub fn selected_file(&self) -> Option<&FileDiffInfo> {
         let item = self.visible_items.get(self.selected)?;
         if let TreeNode::File(file_node) = &item.node {
             Some(&file_node.file)
@@ -215,8 +215,8 @@ impl FilesView {
         &self,
         current_path: &str,
         direction: isize,
-    ) -> Option<FileChange> {
-        let visible_files: Vec<&FileChange> = self
+    ) -> Option<FileDiffInfo> {
+        let visible_files: Vec<&FileDiffInfo> = self
             .visible_items
             .iter()
             .filter_map(|item| match &item.node {
@@ -277,8 +277,8 @@ mod tests {
         }
     }
 
-    fn single_commit_source(commit: Commit) -> DiffSource {
-        DiffSource::CommitRange(CommitRange {
+    fn single_commit_source(commit: Commit) -> DiffRef {
+        DiffRef::CommitRange(CommitRange {
             start: commit.clone(),
             end: commit,
             count: 1,
@@ -304,7 +304,7 @@ mod tests {
     #[test]
     fn body_section_lines_is_zero_for_uncommitted_source() {
         use crate::core::UncommittedType;
-        let source = DiffSource::Uncommitted(UncommittedType::All);
+        let source = DiffRef::Uncommitted(UncommittedType::All);
         let mut view = FilesView::new(source, vec![]);
         view.set_viewport_height(24);
         assert_eq!(view.body_section_lines(), 0);

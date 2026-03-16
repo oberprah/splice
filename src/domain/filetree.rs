@@ -1,4 +1,4 @@
-use crate::core::FileChange;
+use crate::core::FileDiffInfo;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct FolderStats {
@@ -20,7 +20,7 @@ pub struct FolderNode {
 pub struct FileNode {
     pub name: String,
     pub depth: i32,
-    pub file: FileChange,
+    pub file: FileDiffInfo,
 }
 
 #[derive(Debug, Clone)]
@@ -56,7 +56,7 @@ pub struct VisibleTreeItem {
     pub parent_lines: Vec<bool>,
 }
 
-pub fn build_tree(files: &[FileChange]) -> TreeNode {
+pub fn build_tree(files: &[FileDiffInfo]) -> TreeNode {
     let mut root = FolderNode {
         name: String::new(),
         depth: -1,
@@ -73,7 +73,7 @@ pub fn build_tree(files: &[FileChange]) -> TreeNode {
     TreeNode::Folder(root)
 }
 
-fn insert_file(root: &mut FolderNode, file: FileChange) {
+fn insert_file(root: &mut FolderNode, file: FileDiffInfo) {
     let parts: Vec<&str> = file.path.split('/').collect();
     let mut current = root;
 
@@ -402,7 +402,7 @@ fn collect_visible_items_recursive(
     }
 }
 
-pub fn build_visible_tree(files: &[FileChange]) -> (TreeNode, Vec<VisibleTreeItem>) {
+pub fn build_visible_tree(files: &[FileDiffInfo]) -> (TreeNode, Vec<VisibleTreeItem>) {
     let mut root = build_tree(files);
     root = collapse_paths(root);
     apply_stats(&mut root);
@@ -415,8 +415,8 @@ mod tests {
     use super::*;
     use crate::core::FileStatus;
 
-    fn make_file(path: &str, additions: u32, deletions: u32) -> FileChange {
-        FileChange {
+    fn make_file(path: &str, additions: u32, deletions: u32) -> FileDiffInfo {
+        FileDiffInfo {
             path: path.to_string(),
             old_path: None,
             status: FileStatus::Modified,

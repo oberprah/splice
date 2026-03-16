@@ -272,7 +272,7 @@ fn files_view_no_body_panel_for_multi_commit_range() {
     // a multi-commit range (e.g. the kind produced when navigating a merge row).
     // The body panel must not appear for multi-commit ranges.
     let single_range = git::resolve_commit_range(repo.path(), "HEAD~1..HEAD").unwrap();
-    let multi_source = splice_rust::DiffSource::CommitRange(splice_rust::core::CommitRange {
+    let multi_source = splice_rust::DiffRef::CommitRange(splice_rust::core::CommitRange {
         start: single_range.start.clone(),
         end: single_range.end.clone(),
         count: 2,

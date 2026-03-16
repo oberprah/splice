@@ -1,13 +1,13 @@
 use std::path::Path;
 
-use crate::core::{FileChange, UncommittedType};
+use crate::core::{FileDiffInfo, UncommittedType};
 
 use super::{git_command, parse_file_changes};
 
 pub fn fetch_uncommitted_file_changes(
     repo_path: &Path,
     uncommitted_type: UncommittedType,
-) -> Result<Vec<FileChange>, String> {
+) -> Result<Vec<FileDiffInfo>, String> {
     let args: Vec<&str> = match uncommitted_type {
         UncommittedType::Unstaged => vec!["diff", "-M"],
         UncommittedType::Staged => vec!["diff", "--staged", "-M"],

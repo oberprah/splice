@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 uncommitted_type: spec.uncommitted_type,
             };
 
-            let source = match git::resolve_diff_source(&repo_path, diff_spec) {
+            let diff_ref = match git::resolve_diff_ref(&repo_path, diff_spec) {
                 Ok(s) => s,
                 Err(e) => {
                     eprintln!("Error: {}", e);
@@ -39,7 +39,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             };
 
-            let files = match git::fetch_file_changes_for_source(&repo_path, &source) {
+            let files = match git::fetch_file_changes_for_ref(&repo_path, &diff_ref) {
                 Ok(f) => f,
                 Err(e) => {
                     eprintln!("Error: {}", e);
@@ -52,7 +52,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 std::process::exit(1);
             }
 
-            run_diff_app(repo_path, source, files)
+            run_diff_app(repo_path, diff_ref, files)
         }
     }
 }
@@ -113,8 +113,8 @@ fn run_log_app(
 
 fn run_diff_app(
     repo_path: PathBuf,
-    source: splice_rust::core::DiffSource,
-    files: Vec<splice_rust::core::FileChange>,
+    diff_ref: splice_rust::core::DiffRef,
+    files: Vec<splice_rust::core::FileDiffInfo>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     terminal::enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -131,7 +131,7 @@ fn run_diff_app(
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let app = App::with_diff_source(repo_path, source, files);
+    let app = App::with_diff_source(repo_path, diff_ref, files);
     let res = run_app(&mut terminal, app);
 
     if let Err(err) = res {

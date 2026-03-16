@@ -1,21 +1,26 @@
 use std::collections::HashMap;
 
-use super::{ChangeBlock, DiffBlock, DiffMeta, FileDiff, UnchangedBlock};
+use super::{DiffBlock, DiffLine, FileDiff, UnchangedLine};
+use crate::core::FileDiffInfo;
+use crate::domain::highlight::HighlightedFile;
 
-pub fn build_file_diff(meta: DiffMeta, diff_output: &str) -> Result<FileDiff, String> {
-    let blocks = parse_blocks(diff_output)?;
-    Ok(FileDiff { meta, blocks })
-}
-
-pub fn build_file_diff_full(
-    meta: DiffMeta,
+pub fn build_file_diff(
+    info: FileDiffInfo,
     old_content: &str,
     new_content: &str,
     diff_output: &str,
+    old_highlights: &HighlightedFile,
+    new_highlights: &HighlightedFile,
 ) -> Result<FileDiff, String> {
     let parsed_diff = parse_unified_diff(diff_output);
-    let blocks = build_blocks(old_content, new_content, &parsed_diff);
-    Ok(FileDiff { meta, blocks })
+    let blocks = build_blocks(
+        old_content,
+        new_content,
+        &parsed_diff,
+        old_highlights,
+        new_highlights,
+    );
+    Ok(FileDiff { info, blocks })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -109,7 +114,13 @@ fn parse_unified_diff(raw: &str) -> ParsedDiff {
     ParsedDiff { lines }
 }
 
-fn build_blocks(old_content: &str, new_content: &str, parsed_diff: &ParsedDiff) -> Vec<DiffBlock> {
+fn build_blocks(
+    old_content: &str,
+    new_content: &str,
+    parsed_diff: &ParsedDiff,
+    old_highlights: &HighlightedFile,
+    new_highlights: &HighlightedFile,
+) -> Vec<DiffBlock> {
     let old_lines: Vec<&str> = old_content.lines().collect();
     let new_lines: Vec<&str> = new_content.lines().collect();
 
@@ -126,62 +137,46 @@ fn build_blocks(old_content: &str, new_content: &str, parsed_diff: &ParsedDiff) 
     }
 
     let mut blocks = Vec::new();
-    let mut current_unchanged: Option<(u32, u32, Vec<String>)> = None;
-    let mut current_change: Option<(u32, u32, Vec<String>, Vec<String>)> = None;
-    let mut hunk_removed: Vec<(u32, String)> = Vec::new();
-    let mut hunk_added: Vec<(u32, String)> = Vec::new();
+    let mut current_unchanged: Option<Vec<UnchangedLine>> = None;
+    let mut current_change: Option<(Vec<DiffLine>, Vec<DiffLine>)> = None;
+    let mut hunk_removed: Vec<DiffLine> = Vec::new();
+    let mut hunk_added: Vec<DiffLine> = Vec::new();
 
     let mut left_idx = 0usize;
     let mut right_idx = 0usize;
 
-    let flush_unchanged =
-        |blocks: &mut Vec<DiffBlock>, current: &mut Option<(u32, u32, Vec<String>)>| {
-            if let Some((old_start, new_start, lines)) = current.take() {
-                if !lines.is_empty() {
-                    blocks.push(DiffBlock::Unchanged(UnchangedBlock {
-                        old_start,
-                        new_start,
-                        lines,
-                    }));
-                }
+    let flush_unchanged = |blocks: &mut Vec<DiffBlock>,
+                           current: &mut Option<Vec<UnchangedLine>>| {
+        if let Some(lines) = current.take() {
+            if !lines.is_empty() {
+                blocks.push(DiffBlock::Unchanged(lines));
             }
-        };
+        }
+    };
 
     let flush_hunk =
-        |hunk_removed: &mut Vec<(u32, String)>,
-         hunk_added: &mut Vec<(u32, String)>,
-         current_change: &mut Option<(u32, u32, Vec<String>, Vec<String>)>| {
+        |hunk_removed: &mut Vec<DiffLine>,
+         hunk_added: &mut Vec<DiffLine>,
+         current_change: &mut Option<(Vec<DiffLine>, Vec<DiffLine>)>| {
             if hunk_removed.is_empty() && hunk_added.is_empty() {
                 return;
             }
 
             if current_change.is_none() {
-                let old_start = hunk_removed.first().map(|(n, _)| *n).unwrap_or(1);
-                let new_start = hunk_added.first().map(|(n, _)| *n).unwrap_or(1);
-                *current_change = Some((old_start, new_start, Vec::new(), Vec::new()));
+                *current_change = Some((Vec::new(), Vec::new()));
             }
 
-            if let Some((_, _, ref mut old_lines, ref mut new_lines)) = current_change {
-                for (_, line) in hunk_removed.drain(..) {
-                    old_lines.push(line);
-                }
-                for (_, line) in hunk_added.drain(..) {
-                    new_lines.push(line);
-                }
+            if let Some((ref mut old_lines, ref mut new_lines)) = current_change {
+                old_lines.append(hunk_removed);
+                new_lines.append(hunk_added);
             }
         };
 
     let flush_changed =
-        |blocks: &mut Vec<DiffBlock>,
-         current: &mut Option<(u32, u32, Vec<String>, Vec<String>)>| {
-            if let Some((old_start, new_start, old_lines, new_lines)) = current.take() {
-                if !old_lines.is_empty() || !new_lines.is_empty() {
-                    blocks.push(DiffBlock::Change(ChangeBlock {
-                        old_start,
-                        new_start,
-                        old_lines,
-                        new_lines,
-                    }));
+        |blocks: &mut Vec<DiffBlock>, current: &mut Option<(Vec<DiffLine>, Vec<DiffLine>)>| {
+            if let Some((old, new)) = current.take() {
+                if !old.is_empty() || !new.is_empty() {
+                    blocks.push(DiffBlock::Change { old, new });
                 }
             }
         };
@@ -208,10 +203,18 @@ fn build_blocks(old_content: &str, new_content: &str, parsed_diff: &ParsedDiff) 
             flush_changed(&mut blocks, &mut current_change);
 
             if current_unchanged.is_none() {
-                current_unchanged = Some((left_line_no, right_line_no, Vec::new()));
+                current_unchanged = Some(Vec::new());
             }
-            if let Some((_, _, ref mut lines)) = current_unchanged {
-                lines.push(old_lines[left_idx].to_string());
+            if let Some(ref mut lines) = current_unchanged {
+                lines.push(UnchangedLine {
+                    old_number: left_line_no,
+                    new_number: right_line_no,
+                    text: old_lines[left_idx].to_string(),
+                    tokens: new_highlights
+                        .line_tokens(right_line_no)
+                        .unwrap_or_default()
+                        .to_vec(),
+                });
             }
             left_idx += 1;
             right_idx += 1;
@@ -221,20 +224,41 @@ fn build_blocks(old_content: &str, new_content: &str, parsed_diff: &ParsedDiff) 
         flush_unchanged(&mut blocks, &mut current_unchanged);
 
         if left_idx < old_lines.len() && left_in_diff && left_type == Some(LineType::Remove) {
-            hunk_removed.push((left_line_no, old_lines[left_idx].to_string()));
+            hunk_removed.push(DiffLine {
+                number: left_line_no,
+                text: old_lines[left_idx].to_string(),
+                tokens: old_highlights
+                    .line_tokens(left_line_no)
+                    .unwrap_or_default()
+                    .to_vec(),
+            });
             left_idx += 1;
             continue;
         }
 
         if right_idx < new_lines.len() && right_in_diff && right_type == Some(LineType::Add) {
-            hunk_added.push((right_line_no, new_lines[right_idx].to_string()));
+            hunk_added.push(DiffLine {
+                number: right_line_no,
+                text: new_lines[right_idx].to_string(),
+                tokens: new_highlights
+                    .line_tokens(right_line_no)
+                    .unwrap_or_default()
+                    .to_vec(),
+            });
             right_idx += 1;
             continue;
         }
 
         if left_idx >= old_lines.len() && right_idx < new_lines.len() {
             if right_in_diff && right_type == Some(LineType::Add) {
-                hunk_added.push((right_line_no, new_lines[right_idx].to_string()));
+                hunk_added.push(DiffLine {
+                    number: right_line_no,
+                    text: new_lines[right_idx].to_string(),
+                    tokens: new_highlights
+                        .line_tokens(right_line_no)
+                        .unwrap_or_default()
+                        .to_vec(),
+                });
             }
             right_idx += 1;
             continue;
@@ -242,7 +266,14 @@ fn build_blocks(old_content: &str, new_content: &str, parsed_diff: &ParsedDiff) 
 
         if right_idx >= new_lines.len() && left_idx < old_lines.len() {
             if left_in_diff && left_type == Some(LineType::Remove) {
-                hunk_removed.push((left_line_no, old_lines[left_idx].to_string()));
+                hunk_removed.push(DiffLine {
+                    number: left_line_no,
+                    text: old_lines[left_idx].to_string(),
+                    tokens: old_highlights
+                        .line_tokens(left_line_no)
+                        .unwrap_or_default()
+                        .to_vec(),
+                });
             }
             left_idx += 1;
             continue;
@@ -257,156 +288,6 @@ fn build_blocks(old_content: &str, new_content: &str, parsed_diff: &ParsedDiff) 
     flush_unchanged(&mut blocks, &mut current_unchanged);
 
     blocks
-}
-
-fn parse_blocks(diff_output: &str) -> Result<Vec<DiffBlock>, String> {
-    let mut blocks = Vec::new();
-    let mut in_hunk = false;
-
-    let mut old_line = 0u32;
-    let mut new_line = 0u32;
-
-    let mut current: Option<CurrentBlock> = None;
-
-    for line in diff_output.lines() {
-        if line.starts_with("@@ ") {
-            if let Some(block) = current.take() {
-                push_block(&mut blocks, block);
-            }
-            if let Some((old_start, new_start)) = parse_hunk_header(line) {
-                in_hunk = true;
-                old_line = old_start;
-                new_line = new_start;
-            } else {
-                in_hunk = false;
-            }
-            continue;
-        }
-
-        if !in_hunk {
-            continue;
-        }
-
-        if line.starts_with('\\') {
-            continue;
-        }
-
-        let mut chars = line.chars();
-        let prefix = chars.next().unwrap_or(' ');
-        let content = chars.as_str().to_string();
-
-        match prefix {
-            ' ' => {
-                let start_new_block = !matches!(current, Some(CurrentBlock::Unchanged { .. }));
-                if start_new_block {
-                    if let Some(block) = current.take() {
-                        push_block(&mut blocks, block);
-                    }
-                    current = Some(CurrentBlock::Unchanged {
-                        old_start: old_line,
-                        new_start: new_line,
-                        lines: Vec::new(),
-                    });
-                }
-                if let Some(CurrentBlock::Unchanged { lines, .. }) = &mut current {
-                    lines.push(content);
-                }
-                old_line = old_line.saturating_add(1);
-                new_line = new_line.saturating_add(1);
-            }
-
-            '-' => {
-                let start_new_block = !matches!(current, Some(CurrentBlock::Change { .. }));
-                if start_new_block {
-                    if let Some(block) = current.take() {
-                        push_block(&mut blocks, block);
-                    }
-                    current = Some(CurrentBlock::Change {
-                        old_start: old_line,
-                        new_start: new_line,
-                        old_lines: Vec::new(),
-                        new_lines: Vec::new(),
-                    });
-                }
-                if let Some(CurrentBlock::Change { old_lines, .. }) = &mut current {
-                    old_lines.push(content);
-                }
-                old_line = old_line.saturating_add(1);
-            }
-            '+' => {
-                let start_new_block = !matches!(current, Some(CurrentBlock::Change { .. }));
-                if start_new_block {
-                    if let Some(block) = current.take() {
-                        push_block(&mut blocks, block);
-                    }
-                    current = Some(CurrentBlock::Change {
-                        old_start: old_line,
-                        new_start: new_line,
-                        old_lines: Vec::new(),
-                        new_lines: Vec::new(),
-                    });
-                }
-                if let Some(CurrentBlock::Change { new_lines, .. }) = &mut current {
-                    new_lines.push(content);
-                }
-                new_line = new_line.saturating_add(1);
-            }
-            _ => {}
-        }
-    }
-
-    if let Some(block) = current.take() {
-        push_block(&mut blocks, block);
-    }
-
-    Ok(blocks)
-}
-
-enum CurrentBlock {
-    Unchanged {
-        old_start: u32,
-        new_start: u32,
-        lines: Vec<String>,
-    },
-    Change {
-        old_start: u32,
-        new_start: u32,
-        old_lines: Vec<String>,
-        new_lines: Vec<String>,
-    },
-}
-
-fn push_block(blocks: &mut Vec<DiffBlock>, block: CurrentBlock) {
-    match block {
-        CurrentBlock::Unchanged {
-            old_start,
-            new_start,
-            lines,
-        } => {
-            if !lines.is_empty() {
-                blocks.push(DiffBlock::Unchanged(UnchangedBlock {
-                    old_start,
-                    new_start,
-                    lines,
-                }));
-            }
-        }
-        CurrentBlock::Change {
-            old_start,
-            new_start,
-            old_lines,
-            new_lines,
-        } => {
-            if !old_lines.is_empty() || !new_lines.is_empty() {
-                blocks.push(DiffBlock::Change(ChangeBlock {
-                    old_start,
-                    new_start,
-                    old_lines,
-                    new_lines,
-                }));
-            }
-        }
-    }
 }
 
 fn parse_hunk_header(line: &str) -> Option<(u32, u32)> {
@@ -435,98 +316,27 @@ fn parse_range(range: &str) -> Option<u32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::FileDiffInfo;
 
-    #[test]
-    fn parses_unchanged_and_change_blocks() {
-        let diff = "@@ -1,3 +1,3 @@\n line1\n-line2\n+line two\n line3\n";
-        let meta = DiffMeta {
-            path: "file.txt".to_string(),
-            additions: 1,
-            deletions: 1,
-        };
-
-        let file_diff = build_file_diff(meta, diff).expect("diff parse should succeed");
-
-        assert_eq!(file_diff.blocks.len(), 3);
-        assert_eq!(
-            file_diff.blocks[0],
-            DiffBlock::Unchanged(UnchangedBlock {
-                old_start: 1,
-                new_start: 1,
-                lines: vec!["line1".to_string()],
-            })
-        );
-        assert_eq!(
-            file_diff.blocks[1],
-            DiffBlock::Change(ChangeBlock {
-                old_start: 2,
-                new_start: 2,
-                old_lines: vec!["line2".to_string()],
-                new_lines: vec!["line two".to_string()],
-            })
-        );
-        assert_eq!(
-            file_diff.blocks[2],
-            DiffBlock::Unchanged(UnchangedBlock {
-                old_start: 3,
-                new_start: 3,
-                lines: vec!["line3".to_string()],
-            })
-        );
+    fn no_highlights() -> HighlightedFile {
+        HighlightedFile::default()
     }
 
-    #[test]
-    fn preserves_blank_lines_in_unchanged_blocks() {
-        let diff = "@@ -1,3 +1,3 @@\n line1\n \n line3\n";
-        let meta = DiffMeta {
-            path: "file.txt".to_string(),
-            additions: 0,
-            deletions: 0,
-        };
-
-        let file_diff = build_file_diff(meta, diff).expect("diff parse should succeed");
-
-        assert_eq!(file_diff.blocks.len(), 1);
-        assert_eq!(
-            file_diff.blocks[0],
-            DiffBlock::Unchanged(UnchangedBlock {
-                old_start: 1,
-                new_start: 1,
-                lines: vec!["line1".to_string(), "".to_string(), "line3".to_string()],
-            })
-        );
+    fn unchanged_line(old_number: u32, new_number: u32, text: &str) -> UnchangedLine {
+        UnchangedLine {
+            old_number,
+            new_number,
+            text: text.to_string(),
+            tokens: vec![],
+        }
     }
 
-    #[test]
-    fn parses_add_only_and_remove_only_hunks() {
-        let diff = "@@ -1,2 +1,1 @@\n-removed a\n-removed b\n@@ -5,0 +4,2 @@\n+added a\n+added b\n";
-        let meta = DiffMeta {
-            path: "file.txt".to_string(),
-            additions: 2,
-            deletions: 2,
-        };
-
-        let file_diff = build_file_diff(meta, diff).expect("diff parse should succeed");
-
-        assert_eq!(file_diff.blocks.len(), 2);
-        assert_eq!(
-            file_diff.blocks[0],
-            DiffBlock::Change(ChangeBlock {
-                old_start: 1,
-                new_start: 1,
-                old_lines: vec!["removed a".to_string(), "removed b".to_string()],
-                new_lines: Vec::new(),
-            })
-        );
-        assert_eq!(
-            file_diff.blocks[1],
-            DiffBlock::Change(ChangeBlock {
-                old_start: 5,
-                new_start: 4,
-                old_lines: Vec::new(),
-                new_lines: vec!["added a".to_string(), "added b".to_string()],
-            })
-        );
+    fn diff_line(number: u32, text: &str) -> DiffLine {
+        DiffLine {
+            number,
+            text: text.to_string(),
+            tokens: vec![],
+        }
     }
 
     #[test]
@@ -535,47 +345,47 @@ mod tests {
         let new_content = "line1\nmodified\nline3\nline4\nline5\n";
         let diff_output = "--- a/file.txt\n+++ b/file.txt\n@@ -1,5 +1,5 @@\n line1\n-line2\n+modified\n line3\n line4\n line5\n";
 
-        let meta = DiffMeta {
+        let info = FileDiffInfo {
             path: "file.txt".to_string(),
+            old_path: None,
+            status: crate::core::FileStatus::Modified,
             additions: 1,
             deletions: 1,
+            is_binary: false,
         };
 
-        let file_diff = build_file_diff_full(meta, old_content, new_content, diff_output)
-            .expect("diff parse should succeed");
+        let file_diff = build_file_diff(
+            info,
+            old_content,
+            new_content,
+            diff_output,
+            &no_highlights(),
+            &no_highlights(),
+        )
+        .expect("diff parse should succeed");
 
         assert_eq!(file_diff.blocks.len(), 3);
 
         assert_eq!(
             file_diff.blocks[0],
-            DiffBlock::Unchanged(UnchangedBlock {
-                old_start: 1,
-                new_start: 1,
-                lines: vec!["line1".to_string()],
-            })
+            DiffBlock::Unchanged(vec![unchanged_line(1, 1, "line1")])
         );
 
         assert_eq!(
             file_diff.blocks[1],
-            DiffBlock::Change(ChangeBlock {
-                old_start: 2,
-                new_start: 2,
-                old_lines: vec!["line2".to_string()],
-                new_lines: vec!["modified".to_string()],
-            })
+            DiffBlock::Change {
+                old: vec![diff_line(2, "line2")],
+                new: vec![diff_line(2, "modified")],
+            }
         );
 
         assert_eq!(
             file_diff.blocks[2],
-            DiffBlock::Unchanged(UnchangedBlock {
-                old_start: 3,
-                new_start: 3,
-                lines: vec![
-                    "line3".to_string(),
-                    "line4".to_string(),
-                    "line5".to_string()
-                ],
-            })
+            DiffBlock::Unchanged(vec![
+                unchanged_line(3, 3, "line3"),
+                unchanged_line(4, 4, "line4"),
+                unchanged_line(5, 5, "line5"),
+            ])
         );
     }
 }

@@ -1,5 +1,5 @@
 use crate::app::FilesView;
-use crate::core::{DiffSource, FileStatus};
+use crate::core::{DiffRef, FileStatus};
 use crate::domain::filetree::{FolderNode, TreeNode};
 use crate::ui::theme::Theme;
 use ratatui::{
@@ -8,8 +8,8 @@ use ratatui::{
     widgets::{List, ListItem, Paragraph},
 };
 
-fn source_header_line(source: &DiffSource, width: usize, theme: &Theme) -> Line<'static> {
-    if let DiffSource::CommitRange(range) = source {
+fn source_header_line(diff_ref: &DiffRef, width: usize, theme: &Theme) -> Line<'static> {
+    if let DiffRef::CommitRange(range) = diff_ref {
         if range.is_single_commit() {
             let hash = range.end.short_hash().to_owned();
             let hash_len = hash.chars().count();
@@ -26,7 +26,7 @@ fn source_header_line(source: &DiffSource, width: usize, theme: &Theme) -> Line<
             ]);
         }
     }
-    let header = source.header_text();
+    let header = diff_ref.header_text();
     let truncated: String = header.chars().take(width).collect();
     Line::from(Span::styled(truncated, theme.text_muted))
 }
@@ -35,7 +35,7 @@ pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect, theme: &T
     let mut y = area.y;
     let width = area.width as usize;
 
-    render_source_header(f, &files.source, area.x, y, width, theme);
+    render_source_header(f, &files.diff_ref, area.x, y, width, theme);
     y += 1;
 
     match files.body_display_info() {
@@ -117,13 +117,13 @@ pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect, theme: &T
 
 fn render_source_header(
     f: &mut Frame,
-    source: &DiffSource,
+    diff_ref: &DiffRef,
     x: u16,
     y: u16,
     width: usize,
     theme: &Theme,
 ) {
-    let line = source_header_line(source, width, theme);
+    let line = source_header_line(diff_ref, width, theme);
     let para = Paragraph::new(line);
     f.render_widget(para, Rect::new(x, y, width as u16, 1));
 }
