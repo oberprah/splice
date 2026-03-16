@@ -199,6 +199,10 @@ impl App {
     }
 
     pub fn update(&mut self, action: Action) -> bool {
+        if self.error.take().is_some() {
+            return false;
+        }
+
         match action {
             Action::Quit => {
                 if let View::Log(log) = &mut self.view {
@@ -528,4 +532,40 @@ fn configured_editor() -> Option<String> {
                 .ok()
                 .filter(|value| !value.is_empty())
         })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::input::Action;
+
+    #[test]
+    fn error_is_cleared_on_any_keypress() {
+        let mut app = App::new();
+        app.error = Some("some error".to_string());
+
+        let quit = app.update(Action::MoveDown);
+
+        assert!(!quit, "should not quit");
+        assert!(
+            app.error.is_none(),
+            "error should be cleared after keypress"
+        );
+    }
+
+    #[test]
+    fn error_clears_without_performing_action() {
+        let mut app = App::new();
+        app.set_viewport_size(10, 80);
+        app.error = Some("some error".to_string());
+
+        // Quit action should be consumed to dismiss the error, not actually quit
+        let quit = app.update(Action::Quit);
+
+        assert!(
+            !quit,
+            "should not quit — keypress should only dismiss error"
+        );
+        assert!(app.error.is_none());
+    }
 }
