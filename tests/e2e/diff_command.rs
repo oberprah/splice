@@ -33,8 +33,8 @@ fn diff_command_commit_range_and_quit() {
 "  a19fbff..3f5a73d (2 commits)                                                  "
 "                                                                                "
 "  6 files · +8 -1                                                               "
-"  →├── src/                                                                     "
-"   │   ├── A +1 -0  extra.rs                                                    "
+"   ├── src/                                                                     "
+"  →│   ├── A +1 -0  extra.rs                                                    "
 "   │   ├── M +3 -1  main.rs                                                     "
 "   │   └── A +1 -0  new.rs                                                      "
 "   ├── A +1 -0  file_1.txt                                                      "
@@ -75,8 +75,8 @@ fn diff_command_uncommitted_views() {
 "  Unstaged changes                                                              "
 "                                                                                "
 "  1 files · +3 -1                                                               "
-"  →└── src/                                                                     "
-"       └── M +3 -1  main.rs                                                     "
+"   └── src/                                                                     "
+"  →    └── M +3 -1  main.rs                                                     "
 "                                                                                "
 "                                                                                "
 "                                                                                "
@@ -89,7 +89,6 @@ fn diff_command_uncommitted_views() {
 "#,
     );
 
-    unstaged_h.press(KeyCode::Char('j'));
     unstaged_h.press(KeyCode::Enter);
 
     unstaged_h.assert_snapshot(
@@ -121,8 +120,8 @@ fn diff_command_uncommitted_views() {
 "  Staged changes                                                                "
 "                                                                                "
 "  1 files · +3 -1                                                               "
-"  →└── src/                                                                     "
-"       └── M +3 -1  main.rs                                                     "
+"   └── src/                                                                     "
+"  →    └── M +3 -1  main.rs                                                     "
 "                                                                                "
 "                                                                                "
 "                                                                                "

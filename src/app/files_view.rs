@@ -25,12 +25,17 @@ impl FilesView {
     pub fn new(diff_ref: DiffRef, files: Vec<FileDiffInfo>) -> Self {
         let (root, visible_items) = filetree::build_visible_tree(&files);
 
+        let first_file = visible_items
+            .iter()
+            .position(|item| matches!(item.node, TreeNode::File(_)))
+            .unwrap_or(0);
+
         Self {
             diff_ref,
             files,
             root,
             visible_items,
-            selected: 0,
+            selected: first_file,
             scroll_offset: 0,
             total_height: 0,
             message_expanded: false,
