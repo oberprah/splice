@@ -19,10 +19,28 @@ pub fn render(f: &mut Frame, app: &mut App) {
     let size = f.area();
 
     if let Some(ref error) = app.error {
+        let theme = match app.theme_mode {
+            ThemeMode::Auto => CACHED_THEME.get_or_init(Theme::detect_theme),
+            ThemeMode::Dark => &Theme::dark(),
+            ThemeMode::Light => &Theme::light(),
+        };
+
+        let error_area = Rect::new(0, size.height / 2, size.width, 1);
         let msg = Paragraph::new(format!("Error: {}", error))
             .style(Style::default().fg(Color::Red))
             .alignment(Alignment::Center);
-        f.render_widget(msg, size);
+        f.render_widget(msg, error_area);
+
+        let help_area = Rect::new(
+            LOG_AREA_X,
+            size.height.saturating_sub(1),
+            size.width.saturating_sub(LOG_AREA_RIGHT_MARGIN),
+            1,
+        );
+        let help = Paragraph::new("press any key to dismiss")
+            .style(theme.text_muted)
+            .alignment(Alignment::Left);
+        f.render_widget(help, help_area);
         return;
     }
 
