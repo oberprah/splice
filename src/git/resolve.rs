@@ -133,7 +133,11 @@ fn resolve_ref(repo_path: &Path, ref_name: &str) -> Result<Commit, String> {
 }
 
 fn parse_commit_output(output: &str) -> Result<Commit, String> {
-    let fields: Vec<&str> = output.trim_end_matches('\0').trim().splitn(6, '\0').collect();
+    let fields: Vec<&str> = output
+        .trim_end_matches('\0')
+        .trim()
+        .splitn(6, '\0')
+        .collect();
     if fields.len() < 5 {
         return Err("unexpected git log output".to_string());
     }

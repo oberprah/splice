@@ -48,8 +48,8 @@ impl FilesView {
     }
 
     fn body(&self) -> Option<&str> {
-        match &self.source {
-            DiffSource::CommitRange(range) if range.is_single_commit() => range.end.body.as_deref(),
+        match &self.diff_ref {
+            DiffRef::CommitRange(range) if range.is_single_commit() => range.end.body.as_deref(),
             _ => None,
         }
     }
@@ -277,8 +277,8 @@ mod tests {
         }
     }
 
-    fn single_commit_source(commit: Commit) -> DiffSource {
-        DiffSource::CommitRange(CommitRange {
+    fn single_commit_source(commit: Commit) -> DiffRef {
+        DiffRef::CommitRange(CommitRange {
             start: commit.clone(),
             end: commit,
             count: 1,
@@ -304,7 +304,7 @@ mod tests {
     #[test]
     fn body_section_lines_is_zero_for_uncommitted_source() {
         use crate::core::UncommittedType;
-        let source = DiffSource::Uncommitted(UncommittedType::All);
+        let source = DiffRef::Uncommitted(UncommittedType::All);
         let mut view = FilesView::new(source, vec![]);
         view.set_viewport_height(24);
         assert_eq!(view.body_section_lines(), 0);
