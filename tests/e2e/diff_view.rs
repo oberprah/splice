@@ -87,7 +87,6 @@ impl Calculator {
     let mut h = Harness::with_repo(&repo);
 
     h.press(KeyCode::Enter);
-    h.press(KeyCode::Char('j'));
     h.press(KeyCode::Enter);
 
     h.assert_snapshot(
@@ -244,8 +243,6 @@ fn diff_view_separator_with_wide_glyphs() {
 
     let mut h = Harness::with_repo_and_screen_size(&repo, 120, 10);
     h.press(KeyCode::Enter);
-    h.press(KeyCode::Right);
-    h.press(KeyCode::Char('j'));
     h.press(KeyCode::Enter);
 
     h.assert_snapshot(
@@ -291,7 +288,6 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
 
     let mut h = Harness::with_repo_and_screen_size(&repo, 80, 14);
     h.press(KeyCode::Enter);
-    h.press(KeyCode::Char('j'));
     h.press(KeyCode::Enter);
 
     h.assert_snapshot(
@@ -568,7 +564,6 @@ fn diff_view_soft_wrap_long_lines() {
 
     let mut h = Harness::with_repo_and_screen_size(&repo, 60, 14);
     h.press(KeyCode::Enter);
-    h.press(KeyCode::Char('j'));
     h.press(KeyCode::Enter);
 
     h.assert_snapshot(

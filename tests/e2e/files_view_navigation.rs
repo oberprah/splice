@@ -111,8 +111,8 @@ fn files_view_navigation_with_modifications() {
     "  e2af8ce Modify and add files                                                  "
     "                                                                                "
     "  3 files · +5 -1                                                               "
-    "  →├── src/                                                                     "
-    "   │   ├── M +3 -1  main.rs                                                     "
+    "   ├── src/                                                                     "
+    "  →│   ├── M +3 -1  main.rs                                                     "
     "   │   └── A +1 -0  new.rs                                                      "
     "   └── A +1 -0  file_1.txt                                                      "
     "                                                                                "
@@ -142,8 +142,8 @@ fn files_view_navigation_with_modifications() {
     "                                                                                "
     "  3 files · +5 -1                                                               "
     "   ├── src/                                                                     "
-    "  →│   ├── M +3 -1  main.rs                                                     "
-    "   │   └── A +1 -0  new.rs                                                      "
+    "   │   ├── M +3 -1  main.rs                                                     "
+    "  →│   └── A +1 -0  new.rs                                                      "
     "   └── A +1 -0  file_1.txt                                                      "
     "                                                                                "
     "                                                                                "
@@ -215,9 +215,9 @@ fn files_view_folder_collapse_expand() {
     "  01e0c9d Add nested files                                                      "
     "                                                                                "
     "  4 files · +4 -0                                                               "
-    "  →├── src/                                                                     "
+    "   ├── src/                                                                     "
     "   │   ├── components/                                                          "
-    "   │   │   ├── A +1 -0  Button.tsx                                              "
+    "  →│   │   ├── A +1 -0  Button.tsx                                              "
     "   │   │   └── A +1 -0  Input.tsx                                               "
     "   │   └── utils/                                                               "
     "   │       └── A +1 -0  helper.ts                                               "
@@ -239,6 +239,9 @@ fn files_view_folder_collapse_expand() {
     "#,
     );
 
+    // Navigate up to the src/ folder so we can test collapse/expand
+    h.press(KeyCode::Char('k'));
+    h.press(KeyCode::Char('k'));
     h.press(KeyCode::Left);
     h.assert_snapshot(
         r#"
