@@ -13,6 +13,9 @@ pub struct DiffView {
     rows: Vec<ScreenRow>,
     hunks: Vec<crate::domain::diff::HunkRange>,
     pub viewport: Viewport,
+    /// When set, the viewport is animating toward this scroll offset.
+    /// Each call to `advance_animation` steps `viewport.scroll_offset` closer.
+    animation_target: Option<usize>,
 }
 
 impl DiffView {
@@ -29,6 +32,7 @@ impl DiffView {
                 active_hunk: None,
                 total_rows: 0,
             },
+            animation_target: None,
         }
     }
 
@@ -49,10 +53,86 @@ impl DiffView {
     /// Apply a viewport action and store the new viewport state.
     /// Returns `true` if navigation happened (for hunk actions: whether it moved;
     /// for scroll actions: always `true`).
+    ///
+    /// Single-line moves (`ScrollDown(1)` / `ScrollUp(1)`) are applied immediately
+    /// and cancel any running animation. All other actions set an animation target
+    /// that `advance_animation` steps toward over multiple frames.
     pub fn update(&mut self, action: ViewportAction) -> bool {
-        let (new_viewport, did_navigate) = update_viewport(&self.viewport, action, &self.hunks);
-        self.viewport = new_viewport;
-        did_navigate
+        let is_single_step = matches!(
+            action,
+            ViewportAction::ScrollDown(1) | ViewportAction::ScrollUp(1)
+        );
+
+        if is_single_step {
+            // j/k: cancel animation, apply immediately from current position
+            self.animation_target = None;
+            let (new_viewport, did_navigate) = update_viewport(&self.viewport, action, &self.hunks);
+            self.viewport = new_viewport;
+            did_navigate
+        } else {
+            // Compute from target state so rapid presses accumulate correctly
+            let base_offset = self.animation_target.unwrap_or(self.viewport.scroll_offset);
+            let virtual_viewport = Viewport {
+                scroll_offset: base_offset,
+                ..self.viewport
+            };
+            let (new_viewport, did_navigate) =
+                update_viewport(&virtual_viewport, action, &self.hunks);
+
+            // Apply non-scroll state immediately (hunk highlight appears right away)
+            self.viewport.active_hunk = new_viewport.active_hunk;
+
+            // Set animation target (or clear if already there)
+            if new_viewport.scroll_offset != self.viewport.scroll_offset {
+                self.animation_target = Some(new_viewport.scroll_offset);
+            } else {
+                self.animation_target = None;
+            }
+
+            did_navigate
+        }
+    }
+
+    /// Step the scroll offset toward the animation target.
+    /// Returns `true` if the offset changed (and a re-render is needed).
+    pub fn advance_animation(&mut self) -> bool {
+        let target = match self.animation_target {
+            Some(t) => t,
+            None => return false,
+        };
+
+        let current = self.viewport.scroll_offset;
+        if current == target {
+            self.animation_target = None;
+            return false;
+        }
+
+        let distance = current.abs_diff(target);
+        let step = (distance / 3).max(1);
+
+        self.viewport.scroll_offset = if current < target {
+            (current + step).min(target)
+        } else {
+            current.saturating_sub(step).max(target)
+        };
+
+        if self.viewport.scroll_offset == target {
+            self.animation_target = None;
+        }
+
+        true
+    }
+
+    /// Returns `true` when a scroll animation is in progress.
+    pub fn is_animating(&self) -> bool {
+        self.animation_target.is_some()
+    }
+
+    /// Instantly complete any running animation (useful for tests).
+    pub fn settle_animation(&mut self) {
+        if let Some(target) = self.animation_target.take() {
+            self.viewport.scroll_offset = target;
+        }
     }
 
     pub fn visible_content(&self) -> VisibleContent<'_> {
@@ -160,6 +240,7 @@ pub(crate) mod test_helpers {
 #[cfg(test)]
 mod tests {
     use super::test_helpers::{diff_line, unchanged_line, view_with_blocks};
+    use crate::app::viewport::ViewportAction;
     use crate::domain::diff::DiffBlock;
 
     #[test]
@@ -199,5 +280,133 @@ mod tests {
         // Row 0: left=Removed(1), right=Empty -> no right line_number, falls through to row 1
         // Row 1: right has line_number=1
         assert_eq!(view.current_file_line_number().unwrap(), 1);
+    }
+
+    #[test]
+    fn animation_steps_toward_target_with_ease_out() {
+        // 30 unchanged + 1 change = 31 rows, viewport=10, max_scroll=21
+        let mut view = view_with_blocks(
+            vec![
+                DiffBlock::Unchanged((1..=30).map(|n| unchanged_line(n, n, "ctx")).collect()),
+                DiffBlock::Change {
+                    old: vec![diff_line(31, "a")],
+                    new: vec![diff_line(31, "b")],
+                },
+            ],
+            10,
+        );
+
+        // Navigate to hunk — sets animation target
+        view.update(ViewportAction::NextHunk);
+        assert!(view.is_animating());
+        // active_hunk is set immediately
+        assert!(view.viewport.active_hunk.is_some());
+        // scroll_offset hasn't moved yet
+        assert_eq!(view.viewport.scroll_offset, 0);
+
+        // Advance animation — should take multiple frames with decreasing step
+        let mut frames = 0;
+        let mut offsets = vec![0usize];
+        while view.advance_animation() {
+            frames += 1;
+            offsets.push(view.viewport.scroll_offset);
+            assert!(frames < 100, "animation should converge");
+        }
+
+        // Must have taken multiple frames (ease-out)
+        assert!(frames > 1, "expected multi-frame animation, got {frames}");
+        // Must have arrived at the target
+        assert!(!view.is_animating());
+        // Steps should be monotonically increasing (scrolling down)
+        for w in offsets.windows(2) {
+            assert!(w[1] >= w[0], "offsets should be non-decreasing");
+        }
+        // Steps should decrease over time (ease-out characteristic)
+        let steps: Vec<usize> = offsets.windows(2).map(|w| w[1] - w[0]).collect();
+        let first_step = steps[0];
+        let last_step = *steps.last().unwrap();
+        assert!(
+            first_step >= last_step,
+            "first step ({first_step}) should be >= last step ({last_step})"
+        );
+    }
+
+    #[test]
+    fn single_line_scroll_cancels_animation() {
+        let mut view = view_with_blocks(
+            vec![
+                DiffBlock::Unchanged((1..=30).map(|n| unchanged_line(n, n, "ctx")).collect()),
+                DiffBlock::Change {
+                    old: vec![diff_line(31, "a")],
+                    new: vec![diff_line(31, "b")],
+                },
+            ],
+            10,
+        );
+
+        // Start animation
+        view.update(ViewportAction::NextHunk);
+        assert!(view.is_animating());
+
+        // Single-line scroll cancels animation and moves immediately
+        view.update(ViewportAction::ScrollDown(1));
+        assert!(!view.is_animating());
+        assert_eq!(view.viewport.scroll_offset, 1);
+    }
+
+    #[test]
+    fn rapid_hunk_navigation_retargets_correctly() {
+        // Layout: hunk at row 10, hunk at row 25
+        let mut view = view_with_blocks(
+            vec![
+                DiffBlock::Unchanged((1..=10).map(|n| unchanged_line(n, n, "ctx")).collect()),
+                DiffBlock::Change {
+                    old: vec![diff_line(11, "a")],
+                    new: vec![diff_line(11, "b")],
+                },
+                DiffBlock::Unchanged((12..=25).map(|n| unchanged_line(n, n, "ctx")).collect()),
+                DiffBlock::Change {
+                    old: vec![diff_line(26, "c")],
+                    new: vec![diff_line(26, "d")],
+                },
+            ],
+            10,
+        );
+        // 10 + 1 + 14 + 1 = 26 rows, max_scroll=16
+
+        // First n: targets hunk 0
+        view.update(ViewportAction::NextHunk);
+        assert_eq!(view.viewport.active_hunk, Some(0));
+        assert!(view.is_animating());
+
+        // Second n without settling: retargets to hunk 1
+        view.update(ViewportAction::NextHunk);
+        assert_eq!(view.viewport.active_hunk, Some(1));
+
+        // Settle to final position
+        view.settle_animation();
+        assert!(!view.is_animating());
+    }
+
+    #[test]
+    fn settle_animation_jumps_to_target() {
+        let mut view = view_with_blocks(
+            vec![
+                DiffBlock::Unchanged((1..=30).map(|n| unchanged_line(n, n, "ctx")).collect()),
+                DiffBlock::Change {
+                    old: vec![diff_line(31, "a")],
+                    new: vec![diff_line(31, "b")],
+                },
+            ],
+            10,
+        );
+
+        view.update(ViewportAction::NextHunk);
+        assert!(view.is_animating());
+
+        view.settle_animation();
+        assert!(!view.is_animating());
+        // Should be at the computed target position
+        assert!(view.viewport.scroll_offset > 0);
     }
 }

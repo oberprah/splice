@@ -67,12 +67,14 @@ impl Harness {
     pub fn press(&mut self, key: KeyCode) -> &mut Self {
         let event = Event::Key(KeyEvent::new(key, KeyModifiers::NONE));
         self.apply_event(event);
+        self.app.settle_animation();
         self
     }
 
     pub fn press_ctrl(&mut self, key: KeyCode) -> &mut Self {
         let event = Event::Key(KeyEvent::new(key, KeyModifiers::CONTROL));
         self.apply_event(event);
+        self.app.settle_animation();
         self
     }
 

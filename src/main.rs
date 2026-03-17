@@ -143,6 +143,7 @@ fn run_diff_app(
 
 fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, mut app: App) -> io::Result<()> {
     let tick_rate = Duration::from_millis(250);
+    let animation_rate = Duration::from_millis(16); // ~60 fps during animation
     let mut last_tick = Instant::now();
     let mut should_render = true;
 
@@ -154,7 +155,12 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, mut app: App) 
             should_render = false;
         }
 
-        let timeout = tick_rate.saturating_sub(last_tick.elapsed());
+        let timeout = if app.is_animating() {
+            animation_rate
+        } else {
+            tick_rate.saturating_sub(last_tick.elapsed())
+        };
+
         if event::poll(timeout)? {
             let action = action_from_event(event::read()?);
             if action != Action::None {
@@ -174,6 +180,11 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, mut app: App) 
                     return Ok(());
                 }
             }
+        }
+
+        // Advance scroll animation each tick
+        if app.advance_scroll_animation() {
+            should_render = true;
         }
 
         if last_tick.elapsed() >= tick_rate {
