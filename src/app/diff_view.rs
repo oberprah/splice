@@ -3,8 +3,8 @@ use crate::domain::diff::layout::{build_rows, ScreenRow};
 use crate::domain::diff::FileDiff;
 
 use super::viewport::{
-    clamp_scroll_offset, page_step, update_viewport, visible_content, Viewport, ViewportAction,
-    VisibleContent,
+    clamp_scroll_offset, max_scroll_offset, page_step, update_viewport, visible_content, Viewport,
+    ViewportAction, VisibleContent,
 };
 
 pub struct DiffView {
@@ -48,6 +48,17 @@ impl DiffView {
         }
         let clamped = clamp_scroll_offset(&self.viewport);
         self.viewport.scroll_offset = clamped;
+
+        // Clamp or cancel animation target after resize — total_rows may have changed
+        if let Some(target) = self.animation_target {
+            let max = max_scroll_offset(&self.viewport);
+            let clamped_target = target.min(max);
+            if clamped_target == self.viewport.scroll_offset {
+                self.animation_target = None;
+            } else {
+                self.animation_target = Some(clamped_target);
+            }
+        }
     }
 
     /// Apply a viewport action and store the new viewport state.
@@ -408,5 +419,44 @@ mod tests {
         assert!(!view.is_animating());
         // Should be at the computed target position
         assert!(view.viewport.scroll_offset > 0);
+    }
+
+    #[test]
+    fn resize_during_animation_clamps_target() {
+        // 30 unchanged + 1 change = 31 rows, viewport=10, max_scroll=21
+        let mut view = view_with_blocks(
+            vec![
+                DiffBlock::Unchanged((1..=30).map(|n| unchanged_line(n, n, "ctx")).collect()),
+                DiffBlock::Change {
+                    old: vec![diff_line(31, "a")],
+                    new: vec![diff_line(31, "b")],
+                },
+            ],
+            10,
+        );
+
+        // Start animation toward the hunk (target is near max_scroll=21)
+        view.update(ViewportAction::NextHunk);
+        assert!(view.is_animating());
+
+        // Advance a few frames so scroll_offset moves partway
+        view.advance_animation();
+        view.advance_animation();
+        let mid_offset = view.viewport.scroll_offset;
+        assert!(mid_offset > 0);
+
+        // Simulate resize to a much taller viewport — reduces max_scroll
+        // With height=28, max_scroll = 31-28 = 3, which is less than mid_offset
+        view.set_viewport_dimensions(28, 80);
+
+        // Animation target should be clamped to new max_scroll
+        let max = view.viewport.total_rows.saturating_sub(28);
+        if view.is_animating() {
+            view.settle_animation();
+            assert!(view.viewport.scroll_offset <= max);
+        } else {
+            // Animation was cancelled because clamped target == clamped offset
+            assert!(view.viewport.scroll_offset <= max);
+        }
     }
 }
