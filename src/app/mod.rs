@@ -489,9 +489,11 @@ impl App {
                 DiffEntryPoint::Top => {}
                 DiffEntryPoint::FirstDiff => {
                     diff.update(ViewportAction::JumpToFirstHunk);
+                    diff.settle_animation();
                 }
                 DiffEntryPoint::LastDiff => {
                     diff.update(ViewportAction::JumpToLastHunk);
+                    diff.settle_animation();
                 }
             }
         }
