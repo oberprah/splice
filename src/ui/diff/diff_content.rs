@@ -6,6 +6,9 @@ use crate::ui::theme::Theme;
 use ratatui::{prelude::*, widgets::Paragraph};
 use unicode_width::UnicodeWidthChar;
 
+/// Fixed rows used by the diff view chrome (header + footer).
+pub const DIFF_CHROME_ROWS: u16 = 2;
+
 pub fn render_diff_view(f: &mut Frame, view: &DiffView, area: Rect, theme: &Theme) {
     let mut y = area.y;
     let width = area.width as usize;
@@ -24,7 +27,7 @@ pub fn render_diff_view(f: &mut Frame, view: &DiffView, area: Rect, theme: &Them
     );
     y = y.saturating_add(1);
 
-    let content_height = area.height.saturating_sub(y - area.y).saturating_sub(1) as usize;
+    let content_height = view.viewport_height();
 
     render_diff_rows(f, view, area.x, y, area.width, content_height, theme);
 

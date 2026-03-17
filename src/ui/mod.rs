@@ -56,7 +56,7 @@ pub fn render(f: &mut Frame, app: &mut App) {
         // Files view manages its own list height based on total area height,
         // accounting for any body panel that is displayed.
         View::Files(_) => area.height as usize,
-        _ => area.height.saturating_sub(1) as usize,
+        View::Diff(_) => area.height.saturating_sub(diff::DIFF_CHROME_ROWS) as usize,
     };
     let viewport_width = area.width as usize;
     app.set_viewport_size(viewport_height, viewport_width);

@@ -333,7 +333,6 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
     h.assert_snapshot(
         r#"
 "  331f884 · src/large.txt · +20 -20                                             "
-"    8 - old line 8                    │   8 + new line 8                        "
 "    9 - old line 9                    │   9 + new line 9                        "
 "   10 - old line 10                   │  10 + new line 10                       "
 "   11 - old line 11                   │  11 + new line 11                       "
@@ -345,6 +344,7 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
 "   17 - old line 17                   │  17 + new line 17                       "
 "   18 - old line 18                   │  18 + new line 18                       "
 "   19 - old line 19                   │  19 + new line 19                       "
+"   20 - old line 20                   │  20 + new line 20                       "
 "  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
@@ -501,7 +501,6 @@ fn diff_view_handles_close_hunks_and_bottom_additions() {
     h.assert_snapshot(
         r#"
 "  bb76eb0 · a.txt · +3 -2                                                       "
-"    7   line 7                        │   7   line 7                            "
 "    8   line 8                        │   8   line 8                            "
 "    9   line 9                        │   9   line 9                            "
 "   10   line 10                       │  10   line 10                           "
@@ -513,6 +512,7 @@ fn diff_view_handles_close_hunks_and_bottom_additions() {
 "   16   line 16                       │  16   line 16                           "
 "   17   line 17                       │  17   line 17                           "
 "   18   line 18                       │  18   line 18                           "
+"                                      │  19 + line 19 added                     "
 "  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
@@ -682,7 +682,6 @@ fn diff_view_prev_from_below_last_hunk_stays_in_file() {
     h.assert_snapshot(
         r#"
 "  7dd25c4 · a.txt · +2 -2                                                       "
-"    8   line 8                        │   8   line 8                            "
 "    9   line 9                        │   9   line 9                            "
 "   10 - line 10                       │  10 + line 10 changed                   "
 "   11   line 11                       │  11   line 11                           "
@@ -694,6 +693,7 @@ fn diff_view_prev_from_below_last_hunk_stays_in_file() {
 "   17   line 17                       │  17   line 17                           "
 "   18   line 18                       │  18   line 18                           "
 "   19   line 19                       │  19   line 19                           "
+"   20   line 20                       │  20   line 20                           "
 "  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
@@ -754,7 +754,6 @@ fn diff_view_n_does_not_skip_last_hunk_when_scroll_clamped() {
     h.assert_snapshot(
         r#"
 "  159c9a8 · a.txt · +2 -2                                                       "
-"    8   line 8                        │   8   line 8                            "
 "    9   line 9                        │   9   line 9                            "
 "   10   line 10                       │  10   line 10                           "
 "   11   line 11                       │  11   line 11                           "
@@ -766,6 +765,7 @@ fn diff_view_n_does_not_skip_last_hunk_when_scroll_clamped() {
 "   17   line 17                       │  17   line 17                           "
 "   18   line 18                       │  18   line 18                           "
 "   19 - line 19                       │  19 + line 19 changed                   "
+"   20 - line 20                       │  20 + line 20 changed                   "
 "  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
@@ -832,7 +832,6 @@ fn diff_view_can_scroll_to_last_lines_of_purely_added_file() {
     h.assert_snapshot(
         r#"
 "  0be46d7 · new_file.txt · +20 -0                                               "
-"                                      │   8 + line 8                            "
 "                                      │   9 + line 9                            "
 "                                      │  10 + line 10                           "
 "                                      │  11 + line 11                           "
@@ -844,6 +843,7 @@ fn diff_view_can_scroll_to_last_lines_of_purely_added_file() {
 "                                      │  17 + line 17                           "
 "                                      │  18 + line 18                           "
 "                                      │  19 + line 19                           "
+"                                      │  20 + line 20                           "
 "  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
