@@ -190,11 +190,12 @@ pub fn fetch_full_file_diff_for_ref(
     repo_path: &Path,
     diff_ref: &DiffRef,
     path: &str,
+    old_path: Option<&str>,
 ) -> Result<FullFileDiff, String> {
     match diff_ref {
-        DiffRef::CommitRange(range) => fetch_full_file_diff(repo_path, range, path),
+        DiffRef::CommitRange(range) => fetch_full_file_diff(repo_path, range, path, old_path),
         DiffRef::Uncommitted(uncommitted_type) => {
-            fetch_full_uncommitted_file_diff(repo_path, *uncommitted_type, path)
+            fetch_full_uncommitted_file_diff(repo_path, *uncommitted_type, path, old_path)
         }
     }
 }

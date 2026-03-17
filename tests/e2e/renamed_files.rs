@@ -4,6 +4,57 @@ use serial_test::serial;
 
 #[test]
 #[serial]
+fn renamed_file_diff_shows_old_content() {
+    reset_counter();
+
+    let repo = TestRepo::new();
+    repo.add_file("old_name.txt", "line one\nline two\nline three\n");
+    repo.commit("Add file");
+    repo.rename_file("old_name.txt", "new_name.txt");
+    repo.add_file("new_name.txt", "line one\nline 2\nline three\nline four\n");
+    repo.commit("Rename and modify file");
+
+    let mut h = Harness::with_repo(&repo);
+
+    // Enter files view
+    h.press(KeyCode::Enter);
+    // Navigate to the renamed file (skip file_1.txt)
+    h.press(KeyCode::Char('j'));
+    // Enter diff view
+    h.press(KeyCode::Enter);
+
+    h.assert_snapshot(
+        r#"
+    "  71a76ef · new_name.txt · +2 -1                                                "
+    "    1   line one                      │   1   line one                          "
+    "    2 - line two                      │   2 + line 2                            "
+    "    3   line three                    │   3   line three                        "
+    "                                      │   4 + line four                         "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "                                                                                "
+    "  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+    "#,
+    );
+}
+
+#[test]
+#[serial]
 fn renamed_file_displays_as_renamed() {
     reset_counter();
 
