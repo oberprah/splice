@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use super::git_command;
-use crate::core::{CommitRange, UncommittedType};
+use crate::core::{CommitRange, FileDiffInfo, UncommittedType};
 
 pub fn fetch_file_diff(repo_path: &Path, commit_hash: &str, path: &str) -> Result<String, String> {
     let output = git_command(repo_path)
@@ -87,13 +87,12 @@ pub struct FullFileDiff {
 pub fn fetch_full_file_diff(
     repo_path: &Path,
     range: &CommitRange,
-    path: &str,
-    old_path: Option<&str>,
+    file: &FileDiffInfo,
 ) -> Result<FullFileDiff, String> {
-    let base_path = old_path.unwrap_or(path);
-    let old_content = fetch_file_content(repo_path, &range.diff_base_spec(), base_path)?;
-    let new_content = fetch_file_content(repo_path, &range.end.hash, path)?;
-    let diff_output = fetch_file_diff_range(repo_path, range, path, old_path)?;
+    let old_content = fetch_file_content(repo_path, &range.diff_base_spec(), file.base_path())?;
+    let new_content = fetch_file_content(repo_path, &range.end.hash, &file.path)?;
+    let diff_output =
+        fetch_file_diff_range(repo_path, range, &file.path, file.old_path.as_deref())?;
 
     Ok(FullFileDiff {
         old_content,
@@ -105,26 +104,29 @@ pub fn fetch_full_file_diff(
 pub fn fetch_full_uncommitted_file_diff(
     repo_path: &Path,
     uncommitted_type: UncommittedType,
-    path: &str,
-    old_path: Option<&str>,
+    file: &FileDiffInfo,
 ) -> Result<FullFileDiff, String> {
-    let base_path = old_path.unwrap_or(path);
     let (old_content, new_content) = match uncommitted_type {
         UncommittedType::Unstaged => (
-            fetch_index_file_content(repo_path, base_path)?,
-            fetch_working_tree_content(repo_path, path)?,
+            fetch_index_file_content(repo_path, file.base_path())?,
+            fetch_working_tree_content(repo_path, &file.path)?,
         ),
         UncommittedType::Staged => (
-            fetch_file_content(repo_path, "HEAD", base_path)?,
-            fetch_index_file_content(repo_path, path)?,
+            fetch_file_content(repo_path, "HEAD", file.base_path())?,
+            fetch_index_file_content(repo_path, &file.path)?,
         ),
         UncommittedType::All => (
-            fetch_file_content(repo_path, "HEAD", base_path)?,
-            fetch_working_tree_content(repo_path, path)?,
+            fetch_file_content(repo_path, "HEAD", file.base_path())?,
+            fetch_working_tree_content(repo_path, &file.path)?,
         ),
     };
 
-    let diff_output = fetch_file_diff_uncommitted(repo_path, uncommitted_type, path, old_path)?;
+    let diff_output = fetch_file_diff_uncommitted(
+        repo_path,
+        uncommitted_type,
+        &file.path,
+        file.old_path.as_deref(),
+    )?;
 
     Ok(FullFileDiff {
         old_content,

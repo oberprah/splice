@@ -448,12 +448,7 @@ impl App {
             None => return false,
         };
 
-        let full_diff = match git::fetch_full_file_diff_for_ref(
-            &repo_path,
-            &diff_ref,
-            &file.path,
-            file.old_path.as_deref(),
-        ) {
+        let full_diff = match git::fetch_full_file_diff_for_ref(&repo_path, &diff_ref, &file) {
             Ok(diff) => diff,
             Err(e) => {
                 self.error = Some(e);
