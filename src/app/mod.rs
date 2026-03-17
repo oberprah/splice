@@ -169,6 +169,27 @@ impl App {
         }
     }
 
+    /// Returns `true` when the diff view has a scroll animation in progress.
+    pub fn is_animating(&self) -> bool {
+        matches!(&self.view, View::Diff(diff) if diff.is_animating())
+    }
+
+    /// Advance the scroll animation by one frame. Returns `true` if the
+    /// scroll offset changed (caller should re-render).
+    pub fn advance_scroll_animation(&mut self) -> bool {
+        match &mut self.view {
+            View::Diff(diff) => diff.advance_animation(),
+            _ => false,
+        }
+    }
+
+    /// Instantly complete any running scroll animation.
+    pub fn settle_animation(&mut self) {
+        if let View::Diff(diff) = &mut self.view {
+            diff.settle_animation();
+        }
+    }
+
     pub fn set_theme_mode(&mut self, theme_mode: ThemeMode) {
         self.theme_mode = theme_mode;
     }
@@ -468,9 +489,11 @@ impl App {
                 DiffEntryPoint::Top => {}
                 DiffEntryPoint::FirstDiff => {
                     diff.update(ViewportAction::JumpToFirstHunk);
+                    diff.settle_animation();
                 }
                 DiffEntryPoint::LastDiff => {
                     diff.update(ViewportAction::JumpToLastHunk);
+                    diff.settle_animation();
                 }
             }
         }
