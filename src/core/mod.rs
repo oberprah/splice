@@ -98,3 +98,11 @@ pub struct FileDiffInfo {
     pub deletions: u32,
     pub is_binary: bool,
 }
+
+impl FileDiffInfo {
+    /// Returns the path where this file existed before the current change.
+    /// For renames, this is the old path; for everything else, it's the current path.
+    pub fn base_path(&self) -> &str {
+        self.old_path.as_deref().unwrap_or(&self.path)
+    }
+}
