@@ -6,17 +6,7 @@
 
 # Build artifacts
 /splice
-/tape-runner
 target/
 
 # Test output
 /.test-output/
-
-# Test coverage
-coverage.out
-
-# Sandbox agent persistent data (deprecated - not used anymore)
-.sandbox-agent-data/
-
-# Sandbox docker-compose (user-specific config)
-sandbox/docker-compose.yml

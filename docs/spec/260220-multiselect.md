@@ -8,7 +8,7 @@ Implement vim-style visual mode for selecting multiple commits in the log view. 
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| Selection model | Visual mode (vim-style) | Matches Go implementation, familiar to vim users |
+| Selection model | Visual mode (vim-style) | Familiar to vim users |
 | Preview panel | Not included | Keep scope minimal, matches user preference |
 | Range representation | CommitRange struct | Normalizes older→newer ordering, single struct for both cases |
 

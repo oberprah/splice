@@ -8,9 +8,9 @@ Support launching directly into the diff view via CLI commands like `splice diff
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| Abstraction | `DiffSource` enum | Matches Go implementation, cleanly handles both commit ranges and uncommitted changes |
+| Abstraction | `DiffSource` enum | Cleanly handles both commit ranges and uncommitted changes |
 | CLI parsing | Manual (no clap) | Keeps dependencies minimal, consistent with existing approach |
-| Validation phase | Pre-TUI validation | Exit early with error message if spec is invalid, matches Go |
+| Validation phase | Pre-TUI validation | Exit early with error message if spec is invalid |
 | Initial state | Direct to FilesView | No loading state needed since we validate before entering TUI |
 
 ## Command Examples
