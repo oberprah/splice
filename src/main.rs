@@ -21,6 +21,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
     let command = cli::parse_args(&args);
 
+    match command {
+        cli::Command::Help => {
+            println!("{}", cli::help_text());
+            return Ok(());
+        }
+        cli::Command::Version => {
+            println!("{}", cli::version_text());
+            return Ok(());
+        }
+        _ => {}
+    }
+
     let repo_path = resolve_repo_path(&command)?;
 
     match command {
@@ -54,6 +66,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             run_diff_app(repo_path, diff_ref, files)
         }
+        cli::Command::Help | cli::Command::Version => unreachable!(),
     }
 }
 
@@ -61,6 +74,7 @@ fn resolve_repo_path(command: &cli::Command) -> Result<PathBuf, Box<dyn std::err
     let path_arg = match command {
         cli::Command::Log(log_args) => log_args.path.clone(),
         cli::Command::Diff(_) => None,
+        cli::Command::Help | cli::Command::Version => None,
     };
 
     match path_arg {

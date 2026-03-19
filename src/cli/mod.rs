@@ -2,6 +2,8 @@ use crate::core::{LogSpec, UncommittedType};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Command {
+    Help,
+    Version,
     Log(LogArgs),
     Diff(DiffSpec),
 }
@@ -19,6 +21,14 @@ pub struct DiffSpec {
 }
 
 pub fn parse_args(args: &[String]) -> Command {
+    if args.len() >= 2 {
+        match args[1].as_str() {
+            "--help" | "-h" => return Command::Help,
+            "--version" | "-V" => return Command::Version,
+            _ => {}
+        }
+    }
+
     if args.len() < 2 {
         return Command::Log(LogArgs {
             spec: LogSpec::Head,
@@ -104,6 +114,29 @@ pub fn parse_diff_args(args: &[String]) -> Result<DiffSpec, String> {
             })
         }
     }
+}
+
+pub fn help_text() -> &'static str {
+    "\
+splice - terminal-native git log/diff viewer
+
+Usage: splice [<revision> | <path> | --all]
+       splice diff [<range> | --staged | HEAD]
+
+Options:
+  -h, --help         Show this help message
+  -V, --version      Show version
+
+Examples:
+  splice                        Log view for current repo
+  splice --all                  All branches
+  splice diff                   Unstaged changes
+  splice diff --staged          Staged changes
+  splice diff main..feature     Compare two refs"
+}
+
+pub fn version_text() -> String {
+    format!("splice {}", env!("CARGO_PKG_VERSION"))
 }
 
 fn split_args_on_separator<'a>(
@@ -270,6 +303,29 @@ mod tests {
                     path: Some(path),
                 })
             );
+        }
+
+        #[test]
+        fn help_flag() {
+            assert_eq!(parse_args(&args(&["splice", "--help"])), Command::Help);
+        }
+
+        #[test]
+        fn help_short_flag() {
+            assert_eq!(parse_args(&args(&["splice", "-h"])), Command::Help);
+        }
+
+        #[test]
+        fn version_flag() {
+            assert_eq!(
+                parse_args(&args(&["splice", "--version"])),
+                Command::Version
+            );
+        }
+
+        #[test]
+        fn version_short_flag() {
+            assert_eq!(parse_args(&args(&["splice", "-V"])), Command::Version);
         }
 
         #[test]
