@@ -1,4 +1,5 @@
 mod builder;
+pub mod inline_diff;
 pub mod layout;
 mod types;
 

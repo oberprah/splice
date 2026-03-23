@@ -1,3 +1,6 @@
+use crate::domain::diff::inline_diff::{
+    compute_inline_spans, map_emphasis_for_segment, InlineSpan,
+};
 use crate::domain::diff::types::HunkRange;
 use crate::domain::diff::{DiffBlock, FileDiff};
 use crate::domain::highlight::TokenSpan;
@@ -21,6 +24,7 @@ pub struct Cell {
     pub line_number: Option<u32>,
     pub text: String,
     pub tokens: Vec<TokenSpan>,
+    pub emphasis: Vec<InlineSpan>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -47,6 +51,7 @@ fn empty_cell() -> Cell {
         line_number: None,
         text: String::new(),
         tokens: Vec::new(),
+        emphasis: Vec::new(),
     }
 }
 
@@ -105,6 +110,7 @@ pub fn build_rows(file: &FileDiff, width: usize) -> (Vec<ScreenRow>, Vec<HunkRan
                                 },
                                 text: seg.text.clone(),
                                 tokens: seg.tokens.clone(),
+                                emphasis: Vec::new(),
                             }
                         } else {
                             empty_cell()
@@ -119,6 +125,7 @@ pub fn build_rows(file: &FileDiff, width: usize) -> (Vec<ScreenRow>, Vec<HunkRan
                                 },
                                 text: seg.text.clone(),
                                 tokens: seg.tokens.clone(),
+                                emphasis: Vec::new(),
                             }
                         } else {
                             empty_cell()
@@ -137,6 +144,13 @@ pub fn build_rows(file: &FileDiff, width: usize) -> (Vec<ScreenRow>, Vec<HunkRan
                 for i in 0..pair_count {
                     let old_line = old.get(i);
                     let new_line = new.get(i);
+
+                    let (old_emphasis, new_emphasis) = match (old_line, new_line) {
+                        (Some(old_l), Some(new_l)) => {
+                            compute_inline_spans(&old_l.text, &new_l.text)
+                        }
+                        _ => (Vec::new(), Vec::new()),
+                    };
 
                     let left_segs: Vec<WrappedSegment> = if let Some(line) = old_line {
                         wrap_or_empty(&line.text, &line.tokens, left_content_width)
@@ -178,6 +192,11 @@ pub fn build_rows(file: &FileDiff, width: usize) -> (Vec<ScreenRow>, Vec<HunkRan
                                     },
                                     text: seg.text.clone(),
                                     tokens: seg.tokens.clone(),
+                                    emphasis: map_emphasis_for_segment(
+                                        &old_emphasis,
+                                        seg.char_offset,
+                                        seg.text.chars().count(),
+                                    ),
                                 }
                             } else {
                                 empty_cell()
@@ -197,6 +216,11 @@ pub fn build_rows(file: &FileDiff, width: usize) -> (Vec<ScreenRow>, Vec<HunkRan
                                     },
                                     text: seg.text.clone(),
                                     tokens: seg.tokens.clone(),
+                                    emphasis: map_emphasis_for_segment(
+                                        &new_emphasis,
+                                        seg.char_offset,
+                                        seg.text.chars().count(),
+                                    ),
                                 }
                             } else {
                                 empty_cell()
@@ -385,5 +409,37 @@ mod tests {
         let (rows, hunks) = build_rows(&file, 0);
         assert!(rows.is_empty());
         assert!(hunks.is_empty());
+    }
+
+    #[test]
+    fn changed_cells_have_emphasis_spans() {
+        let file = make_file(vec![DiffBlock::Change {
+            old: vec![diff_line(1, "hello world")],
+            new: vec![diff_line(1, "hello earth")],
+        }]);
+        let (rows, _) = build_rows(&file, 80);
+        assert_eq!(rows[0].left.kind, CellKind::Changed);
+        assert_eq!(rows[0].right.kind, CellKind::Changed);
+        // "world" vs "earth" — emphasis should be non-empty on both sides
+        assert!(!rows[0].left.emphasis.is_empty());
+        assert!(!rows[0].right.emphasis.is_empty());
+    }
+
+    #[test]
+    fn pure_add_remove_cells_have_no_emphasis() {
+        let file = make_file(vec![DiffBlock::Change {
+            old: vec![diff_line(1, "removed")],
+            new: vec![],
+        }]);
+        let (rows, _) = build_rows(&file, 80);
+        assert!(rows[0].left.emphasis.is_empty());
+    }
+
+    #[test]
+    fn context_cells_have_no_emphasis() {
+        let file = make_file(vec![DiffBlock::Unchanged(vec![unchanged(1, 1, "context")])]);
+        let (rows, _) = build_rows(&file, 80);
+        assert!(rows[0].left.emphasis.is_empty());
+        assert!(rows[0].right.emphasis.is_empty());
     }
 }

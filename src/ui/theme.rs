@@ -49,6 +49,7 @@ pub struct Theme {
 pub struct DiffColors {
     pub bg: Color,
     pub bg_bright: Color,
+    pub bg_emphasis: Color,
     pub fg: Color,
 }
 
@@ -102,16 +103,19 @@ impl Theme {
             diff_added: DiffColors {
                 bg: Color::Rgb(0x1e, 0x3a, 0x1e),
                 bg_bright: Color::Rgb(0x26, 0x4d, 0x26),
+                bg_emphasis: Color::Rgb(0x30, 0x55, 0x30),
                 fg: Color::Rgb(0x52, 0xff, 0x52),
             },
             diff_removed: DiffColors {
                 bg: Color::Rgb(0x3a, 0x1e, 0x1e),
                 bg_bright: Color::Rgb(0x4d, 0x26, 0x26),
+                bg_emphasis: Color::Rgb(0x55, 0x30, 0x30),
                 fg: Color::Rgb(0xff, 0x52, 0x52),
             },
             diff_changed: DiffColors {
                 bg: Color::Rgb(0x1e, 0x2a, 0x3a),
                 bg_bright: Color::Rgb(0x26, 0x36, 0x4d),
+                bg_emphasis: Color::Rgb(0x30, 0x45, 0x65),
                 fg: Color::Rgb(0x52, 0x9c, 0xff),
             },
             diff_line_number: Style::default().fg(Color::Gray),
@@ -170,16 +174,19 @@ impl Theme {
             diff_added: DiffColors {
                 bg: Color::Rgb(0xe8, 0xf5, 0xe9),
                 bg_bright: Color::Rgb(0xc8, 0xe6, 0xc9),
+                bg_emphasis: Color::Rgb(0xa5, 0xd6, 0xa7),
                 fg: Color::Rgb(0x1b, 0x5e, 0x20),
             },
             diff_removed: DiffColors {
                 bg: Color::Rgb(0xff, 0xeb, 0xee),
                 bg_bright: Color::Rgb(0xff, 0xcd, 0xd2),
+                bg_emphasis: Color::Rgb(0xef, 0x9a, 0x9a),
                 fg: Color::Rgb(0xb7, 0x1c, 0x1c),
             },
             diff_changed: DiffColors {
                 bg: Color::Rgb(0xe3, 0xf2, 0xfd),
                 bg_bright: Color::Rgb(0xbb, 0xde, 0xfb),
+                bg_emphasis: Color::Rgb(0x90, 0xca, 0xf9),
                 fg: Color::Rgb(0x0d, 0x47, 0xa1),
             },
             diff_line_number: Style::default().fg(Color::Gray),
