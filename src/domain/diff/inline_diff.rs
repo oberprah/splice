@@ -12,6 +12,18 @@ struct Token {
     offset: usize,
 }
 
+/// Used by the word-level LCS to classify tokens as common or changed.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum TokenState {
+    Common,
+    Changed,
+}
+
+/// Maximum character count for inline diff computation. Inputs longer than
+/// this are skipped to avoid expensive O(n*m) LCS on minified files or
+/// large joined blocks.
+const MAX_INLINE_CHARS: usize = 1000;
+
 /// Computes inline diff spans using a two-level approach:
 ///
 /// 1. **Word-level**: tokenize both lines, run LCS on tokens to find which
@@ -29,13 +41,13 @@ pub fn compute_inline_spans(old_text: &str, new_text: &str) -> (Vec<InlineSpan>,
     let old_chars: Vec<char> = old_text.chars().collect();
     let new_chars: Vec<char> = new_text.chars().collect();
 
-    if old_chars.len() > 500 || new_chars.len() > 500 {
+    if old_chars.len() > MAX_INLINE_CHARS || new_chars.len() > MAX_INLINE_CHARS {
         return (Vec::new(), Vec::new());
     }
 
     // Character-level similarity check upfront: if the lines share fewer than
     // 20% common characters, they're too different for inline highlighting.
-    let char_lcs_len = char_lcs_length(&old_chars, &new_chars);
+    let char_lcs_len = lcs_length(&old_chars, &new_chars);
     let min_char_len = old_chars.len().min(new_chars.len());
     if min_char_len > 0 && char_lcs_len * 5 < min_char_len {
         return (Vec::new(), Vec::new());
@@ -44,39 +56,10 @@ pub fn compute_inline_spans(old_text: &str, new_text: &str) -> (Vec<InlineSpan>,
     let old_tokens = tokenize(&old_chars);
     let new_tokens = tokenize(&new_chars);
 
-    // Word-level LCS
-    let n = old_tokens.len();
-    let m = new_tokens.len();
-
-    let mut dp = vec![vec![0usize; m + 1]; n + 1];
-    for i in 1..=n {
-        for j in 1..=m {
-            if old_tokens[i - 1].text == new_tokens[j - 1].text {
-                dp[i][j] = dp[i - 1][j - 1] + 1;
-            } else {
-                dp[i][j] = dp[i - 1][j].max(dp[i][j - 1]);
-            }
-        }
-    }
-
-    // Backtrack to classify each token as common or changed
-    let mut old_states = vec![TokenState::Changed; n];
-    let mut new_states = vec![TokenState::Changed; m];
-
-    let mut i = n;
-    let mut j = m;
-    while i > 0 && j > 0 {
-        if old_tokens[i - 1].text == new_tokens[j - 1].text {
-            old_states[i - 1] = TokenState::Common;
-            new_states[j - 1] = TokenState::Common;
-            i -= 1;
-            j -= 1;
-        } else if dp[i - 1][j] >= dp[i][j - 1] {
-            i -= 1;
-        } else {
-            j -= 1;
-        }
-    }
+    // Word-level LCS — find which tokens are common vs changed
+    let token_texts_old: Vec<&[char]> = old_tokens.iter().map(|t| t.text.as_slice()).collect();
+    let token_texts_new: Vec<&[char]> = new_tokens.iter().map(|t| t.text.as_slice()).collect();
+    let (old_states, new_states) = lcs_classify(&token_texts_old, &token_texts_new);
 
     // Collect changed token groups and pair them for character-level refinement.
     // A "group" is a maximal run of consecutive Changed tokens on each side,
@@ -125,13 +108,12 @@ pub fn compute_inline_spans(old_text: &str, new_text: &str) -> (Vec<InlineSpan>,
     (old_spans, new_spans)
 }
 
-/// Computes just the LCS length between two char slices (no backtracking needed).
-fn char_lcs_length(a: &[char], b: &[char]) -> usize {
-    let n = a.len();
+/// Computes the LCS length between two slices using O(n) space (two-row DP).
+fn lcs_length<T: PartialEq>(a: &[T], b: &[T]) -> usize {
     let m = b.len();
     let mut prev = vec![0usize; m + 1];
     let mut curr = vec![0usize; m + 1];
-    for i in 1..=n {
+    for i in 1..=a.len() {
         for j in 1..=m {
             if a[i - 1] == b[j - 1] {
                 curr[j] = prev[j - 1] + 1;
@@ -143,6 +125,45 @@ fn char_lcs_length(a: &[char], b: &[char]) -> usize {
         curr.fill(0);
     }
     prev[m]
+}
+
+/// Runs LCS on two slices and classifies each element as Common or Changed.
+/// Returns `(old_states, new_states)`.
+fn lcs_classify<T: PartialEq>(a: &[T], b: &[T]) -> (Vec<TokenState>, Vec<TokenState>) {
+    let n = a.len();
+    let m = b.len();
+
+    // Full DP table (needed for backtracking)
+    let mut dp = vec![vec![0usize; m + 1]; n + 1];
+    for i in 1..=n {
+        for j in 1..=m {
+            if a[i - 1] == b[j - 1] {
+                dp[i][j] = dp[i - 1][j - 1] + 1;
+            } else {
+                dp[i][j] = dp[i - 1][j].max(dp[i][j - 1]);
+            }
+        }
+    }
+
+    let mut old_states = vec![TokenState::Changed; n];
+    let mut new_states = vec![TokenState::Changed; m];
+
+    let mut i = n;
+    let mut j = m;
+    while i > 0 && j > 0 {
+        if a[i - 1] == b[j - 1] {
+            old_states[i - 1] = TokenState::Common;
+            new_states[j - 1] = TokenState::Common;
+            i -= 1;
+            j -= 1;
+        } else if dp[i - 1][j] >= dp[i][j - 1] {
+            i -= 1;
+        } else {
+            j -= 1;
+        }
+    }
+
+    (old_states, new_states)
 }
 
 /// Tokenizes a char slice into words and whitespace/punctuation separators.
@@ -229,18 +250,11 @@ fn refine_group(
     }
 
     // Character-level LCS within the group
-    let mut dp = vec![vec![0usize; m + 1]; n + 1];
-    for i in 1..=n {
-        for j in 1..=m {
-            if old_slice[i - 1] == new_slice[j - 1] {
-                dp[i][j] = dp[i - 1][j - 1] + 1;
-            } else {
-                dp[i][j] = dp[i - 1][j].max(dp[i][j - 1]);
-            }
-        }
-    }
-
-    let lcs_len = dp[n][m];
+    let (old_states, new_states) = lcs_classify(old_slice, new_slice);
+    let lcs_len = old_states
+        .iter()
+        .filter(|s| **s == TokenState::Common)
+        .count();
     let min_len = n.min(m);
 
     // If chars are too different within this group, highlight the whole group
@@ -256,24 +270,15 @@ fn refine_group(
         return;
     }
 
-    // Backtrack
-    let mut old_in_lcs = vec![false; n];
-    let mut new_in_lcs = vec![false; m];
-
-    let mut i = n;
-    let mut j = m;
-    while i > 0 && j > 0 {
-        if old_slice[i - 1] == new_slice[j - 1] {
-            old_in_lcs[i - 1] = true;
-            new_in_lcs[j - 1] = true;
-            i -= 1;
-            j -= 1;
-        } else if dp[i - 1][j] >= dp[i][j - 1] {
-            i -= 1;
-        } else {
-            j -= 1;
-        }
-    }
+    // Convert states to boolean mask (Common = true = "in LCS")
+    let old_in_lcs: Vec<bool> = old_states
+        .iter()
+        .map(|s| *s == TokenState::Common)
+        .collect();
+    let new_in_lcs: Vec<bool> = new_states
+        .iter()
+        .map(|s| *s == TokenState::Common)
+        .collect();
 
     let old_local = group_non_common_spans(&old_in_lcs);
     let new_local = group_non_common_spans(&new_in_lcs);
@@ -368,13 +373,6 @@ pub fn map_emphasis_for_segment(
     }
 
     result
-}
-
-// Need this in scope for collect_changed_groups
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum TokenState {
-    Common,
-    Changed,
 }
 
 #[cfg(test)]
@@ -478,7 +476,7 @@ mod tests {
 
     #[test]
     fn long_line_returns_empty_spans() {
-        let long = "a".repeat(501);
+        let long = "a".repeat(MAX_INLINE_CHARS + 1);
         let (old, new) = compute_inline_spans(&long, "hello");
         assert!(old.is_empty());
         assert!(new.is_empty());
@@ -626,12 +624,9 @@ mod tests {
             "    let output = compute_total(items);",
         );
         // Should produce clean word-level spans, not scattered fragments
-        // "result" is at col 8..14, "calculate_total" at col 17..32
-        // "output" is at col 8..14, "compute_total" at col 17..30
         assert!(!old.is_empty());
         assert!(!new.is_empty());
-        // Should be exactly 2 spans on each side (the two renamed words)
-        // and no scattered single-char fragments
+        // No scattered single-char fragments
         for span in &old {
             assert!(
                 span.end_col - span.start_col >= 2,
@@ -672,7 +667,7 @@ mod tests {
 
     #[test]
     fn added_argument() {
-        let (old, new) =
+        let (_old, new) =
             compute_inline_spans("    let x = foo(a, b);", "    let x = foo(a, b, c);");
         // Only the new side should have a span for the added ", c"
         assert!(!new.is_empty());

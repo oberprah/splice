@@ -131,7 +131,7 @@ fn render_cell(
                 char_offset: 0,
                 tokens: cell.tokens.clone(),
             };
-            spans.extend(render_text_with_tokens(
+            spans.extend(render_wrapped_segment(
                 &segment,
                 content_width,
                 base_style,
@@ -160,11 +160,7 @@ fn cell_style_and_sign(
             } else {
                 colors.bg
             };
-            (
-                Style::new().bg(bg).fg(colors.fg),
-                '-',
-                Some(colors.bg_emphasis),
-            )
+            (Style::new().bg(bg).fg(colors.fg), '-', None)
         }
         CellKind::Added => {
             let colors = &theme.diff_added;
@@ -173,11 +169,7 @@ fn cell_style_and_sign(
             } else {
                 colors.bg
             };
-            (
-                Style::new().bg(bg).fg(colors.fg),
-                '+',
-                Some(colors.bg_emphasis),
-            )
+            (Style::new().bg(bg).fg(colors.fg), '+', None)
         }
         CellKind::Changed => {
             // Both old and new line exist at this pair index — use changed (blue) color
@@ -197,24 +189,6 @@ fn cell_style_and_sign(
         }
         CellKind::Empty => (Style::default(), ' ', None),
     }
-}
-
-fn render_text_with_tokens(
-    segment: &WrappedSegment,
-    content_width: usize,
-    base_style: Style,
-    emphasis: &[InlineSpan],
-    emphasis_bg: Option<Color>,
-    theme: &Theme,
-) -> Vec<Span<'static>> {
-    render_wrapped_segment(
-        segment,
-        content_width,
-        base_style,
-        emphasis,
-        emphasis_bg,
-        theme,
-    )
 }
 
 fn render_wrapped_segment(
@@ -399,26 +373,6 @@ mod tests {
                 span.style.fg == Some(theme.syntax.keyword) && span.content.contains("fn")
             }),
             "Expected a keyword-colored span for `fn`"
-        );
-    }
-
-    #[test]
-    fn render_text_with_tokens_delegates_to_wrapped_segment() {
-        let theme = Theme::dark();
-        let tokens = vec![TokenSpan {
-            start_col: 0,
-            end_col: 2,
-            kind: HighlightKind::Keyword,
-        }];
-        let segment = WrappedSegment {
-            text: "fn foo".to_string(),
-            char_offset: 0,
-            tokens,
-        };
-        let spans = render_text_with_tokens(&segment, 10, Style::default(), &[], None, &theme);
-        assert!(
-            spans.iter().any(|span| span.content.contains("fn")),
-            "Expected fn to appear in spans"
         );
     }
 }
