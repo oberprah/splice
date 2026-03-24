@@ -174,18 +174,14 @@ fn cell_style_and_sign(
         CellKind::Changed => {
             // Both old and new line exist at this pair index — use changed (blue) color
             let colors = &theme.diff_changed;
-            let bg = if in_active_hunk {
-                colors.bg_bright
+            let (bg, emph_bg) = if in_active_hunk {
+                (colors.bg_bright, colors.bg_bright_emphasis)
             } else {
-                colors.bg
+                (colors.bg, colors.bg_emphasis)
             };
             // Left side is the old (removed) half, right side is the new (added) half
             let sign = if is_left { '-' } else { '+' };
-            (
-                Style::new().bg(bg).fg(colors.fg),
-                sign,
-                Some(colors.bg_emphasis),
-            )
+            (Style::new().bg(bg).fg(colors.fg), sign, Some(emph_bg))
         }
         CellKind::Empty => (Style::default(), ' ', None),
     }
