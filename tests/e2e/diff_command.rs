@@ -1,8 +1,8 @@
 use crate::common::{reset_counter, Harness, TestRepo};
 use crossterm::event::KeyCode;
 use serial_test::serial;
-use splice_rust::core::{DiffRef, UncommittedType};
-use splice_rust::git;
+use splice::core::{DiffRef, UncommittedType};
+use splice::git;
 
 #[test]
 #[serial]

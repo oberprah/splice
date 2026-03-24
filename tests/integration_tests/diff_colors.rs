@@ -1,7 +1,7 @@
 use crate::common::{reset_counter, TestRepo};
 use ratatui::{backend::TestBackend, style::Color, Terminal};
 use serial_test::serial;
-use splice_rust::{render, Action, App, ThemeMode};
+use splice::{render, Action, App, ThemeMode};
 
 fn navigate_to_diff_view(app: &mut App) {
     app.update(Action::Open);

@@ -1,7 +1,7 @@
 use crate::common::{reset_counter, TestRepo};
 use serial_test::serial;
-use splice_rust::core::LogSpec;
-use splice_rust::git::fetch_commits;
+use splice::core::LogSpec;
+use splice::git::fetch_commits;
 use std::path::PathBuf;
 
 #[test]

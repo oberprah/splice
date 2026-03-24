@@ -2,7 +2,7 @@ use crossterm::event;
 use crossterm::execute;
 use crossterm::terminal::{self, EnterAlternateScreen, LeaveAlternateScreen};
 use ratatui::{backend::CrosstermBackend, Terminal};
-use splice_rust::{action_from_event, cli, git, render, Action, App};
+use splice::{action_from_event, cli, git, render, Action, App};
 use std::env;
 use std::io;
 use std::path::PathBuf;
@@ -20,6 +20,18 @@ impl Drop for TerminalGuard {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
     let command = cli::parse_args(&args);
+
+    match command {
+        cli::Command::Help => {
+            println!("{}", cli::help_text());
+            return Ok(());
+        }
+        cli::Command::Version => {
+            println!("{}", cli::version_text());
+            return Ok(());
+        }
+        _ => {}
+    }
 
     let repo_path = resolve_repo_path(&command)?;
 
@@ -54,6 +66,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             run_diff_app(repo_path, diff_ref, files)
         }
+        cli::Command::Help | cli::Command::Version => unreachable!(),
     }
 }
 
@@ -61,6 +74,7 @@ fn resolve_repo_path(command: &cli::Command) -> Result<PathBuf, Box<dyn std::err
     let path_arg = match command {
         cli::Command::Log(log_args) => log_args.path.clone(),
         cli::Command::Diff(_) => None,
+        cli::Command::Help | cli::Command::Version => None,
     };
 
     match path_arg {
@@ -82,7 +96,7 @@ fn resolve_repo_path(command: &cli::Command) -> Result<PathBuf, Box<dyn std::err
 
 fn run_log_app(
     repo_path: PathBuf,
-    log_spec: splice_rust::core::LogSpec,
+    log_spec: splice::core::LogSpec,
 ) -> Result<(), Box<dyn std::error::Error>> {
     terminal::enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -113,8 +127,8 @@ fn run_log_app(
 
 fn run_diff_app(
     repo_path: PathBuf,
-    diff_ref: splice_rust::core::DiffRef,
-    files: Vec<splice_rust::core::FileDiffInfo>,
+    diff_ref: splice::core::DiffRef,
+    files: Vec<splice::core::FileDiffInfo>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     terminal::enable_raw_mode()?;
     let mut stdout = io::stdout();

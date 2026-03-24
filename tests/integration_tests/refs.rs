@@ -1,7 +1,7 @@
 use crate::common::{reset_counter, TestRepo};
 use serial_test::serial;
-use splice_rust::core::LogSpec;
-use splice_rust::git::fetch_commits;
+use splice::core::LogSpec;
+use splice::git::fetch_commits;
 
 #[test]
 #[serial]
@@ -41,7 +41,7 @@ fn fetch_commits_includes_tag_ref() {
     assert_eq!(tag_refs.len(), 1);
     assert!(tag_refs
         .iter()
-        .all(|r| r.ref_type == splice_rust::core::RefType::Tag));
+        .all(|r| r.ref_type == splice::core::RefType::Tag));
 }
 
 #[test]

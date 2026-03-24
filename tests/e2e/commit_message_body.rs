@@ -1,7 +1,7 @@
 use crate::common::{reset_counter, Harness, TestRepo};
 use crossterm::event::KeyCode;
 use serial_test::serial;
-use splice_rust::git;
+use splice::git;
 
 fn short_body() -> &'static str {
     "This commit adds the feature.\nSee ticket #42 for details."
@@ -272,7 +272,7 @@ fn files_view_no_body_panel_for_multi_commit_range() {
     // a multi-commit range (e.g. the kind produced when navigating a merge row).
     // The body panel must not appear for multi-commit ranges.
     let single_range = git::resolve_commit_range(repo.path(), "HEAD~1..HEAD").unwrap();
-    let multi_source = splice_rust::DiffRef::CommitRange(splice_rust::core::CommitRange {
+    let multi_source = splice::DiffRef::CommitRange(splice::core::CommitRange {
         start: single_range.start.clone(),
         end: single_range.end.clone(),
         count: 2,

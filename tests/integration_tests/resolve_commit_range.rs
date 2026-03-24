@@ -1,6 +1,6 @@
 use crate::common::{reset_counter, TestRepo};
 use serial_test::serial;
-use splice_rust::git::resolve_commit_range;
+use splice::git::resolve_commit_range;
 
 #[test]
 #[serial]
