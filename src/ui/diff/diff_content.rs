@@ -1,5 +1,6 @@
 use crate::app::DiffView;
 use crate::core::{DiffRef, UncommittedType};
+use crate::domain::diff::inline_diff::InlineSpan;
 use crate::domain::diff::layout::{Cell, CellKind};
 use crate::domain::wrap::WrappedSegment;
 use crate::ui::theme::Theme;
@@ -104,7 +105,13 @@ fn render_cell(
     match cell.kind {
         CellKind::Empty => vec![Span::raw(blank_cell(width))],
         _ => {
-            let (base_style, sign) = cell_style_and_sign(cell, in_active_hunk, is_left, theme);
+            let (base_style, sign, emphasis_bg) =
+                cell_style_and_sign(cell, in_active_hunk, is_left, theme);
+
+            // Spacer cell in a modification block: no content, just fill with bg color
+            if cell.line_number.is_none() && cell.text.is_empty() {
+                return vec![Span::styled(" ".repeat(width), base_style)];
+            }
 
             let line_num_str = match cell.line_number {
                 Some(n) => format!("{:>3} ", n),
@@ -124,10 +131,12 @@ fn render_cell(
                 char_offset: 0,
                 tokens: cell.tokens.clone(),
             };
-            spans.extend(render_text_with_tokens(
+            spans.extend(render_wrapped_segment(
                 &segment,
                 content_width,
                 base_style,
+                &cell.emphasis,
+                emphasis_bg,
                 theme,
             ));
 
@@ -141,9 +150,9 @@ fn cell_style_and_sign(
     in_active_hunk: bool,
     is_left: bool,
     theme: &Theme,
-) -> (Style, char) {
+) -> (Style, char, Option<Color>) {
     match cell.kind {
-        CellKind::Context => (Style::default(), ' '),
+        CellKind::Context => (Style::default(), ' ', None),
         CellKind::Removed => {
             let colors = &theme.diff_removed;
             let bg = if in_active_hunk {
@@ -151,7 +160,7 @@ fn cell_style_and_sign(
             } else {
                 colors.bg
             };
-            (Style::new().bg(bg).fg(colors.fg), '-')
+            (Style::new().bg(bg).fg(colors.fg), '-', None)
         }
         CellKind::Added => {
             let colors = &theme.diff_added;
@@ -160,37 +169,30 @@ fn cell_style_and_sign(
             } else {
                 colors.bg
             };
-            (Style::new().bg(bg).fg(colors.fg), '+')
+            (Style::new().bg(bg).fg(colors.fg), '+', None)
         }
         CellKind::Changed => {
             // Both old and new line exist at this pair index — use changed (blue) color
             let colors = &theme.diff_changed;
-            let bg = if in_active_hunk {
-                colors.bg_bright
+            let (bg, emph_bg) = if in_active_hunk {
+                (colors.bg_bright, colors.bg_bright_emphasis)
             } else {
-                colors.bg
+                (colors.bg, colors.bg_emphasis)
             };
             // Left side is the old (removed) half, right side is the new (added) half
             let sign = if is_left { '-' } else { '+' };
-            (Style::new().bg(bg).fg(colors.fg), sign)
+            (Style::new().bg(bg).fg(colors.fg), sign, Some(emph_bg))
         }
-        CellKind::Empty => (Style::default(), ' '),
+        CellKind::Empty => (Style::default(), ' ', None),
     }
-}
-
-fn render_text_with_tokens(
-    segment: &WrappedSegment,
-    content_width: usize,
-    base_style: Style,
-    theme: &Theme,
-) -> Vec<Span<'static>> {
-    render_wrapped_segment(segment, content_width, base_style, theme)
 }
 
 fn render_wrapped_segment(
     segment: &WrappedSegment,
     content_width: usize,
     base_style: Style,
+    emphasis: &[InlineSpan],
+    emphasis_bg: Option<Color>,
     theme: &Theme,
 ) -> Vec<Span<'static>> {
     if content_width == 0 {
@@ -220,12 +222,39 @@ fn render_wrapped_segment(
         }
     }
 
+    let mut char_emphasis = vec![false; visible];
+    for span in emphasis {
+        let start = span.start_col.min(visible);
+        let end = span.end_col.min(visible);
+        for em in char_emphasis.iter_mut().take(end).skip(start) {
+            *em = true;
+        }
+    }
+
     let mut spans = vec![Span::styled(" ", base_style)];
     if visible > 0 {
+        let first_base = if char_emphasis[0] {
+            if let Some(emph_bg) = emphasis_bg {
+                base_style.bg(emph_bg)
+            } else {
+                base_style
+            }
+        } else {
+            base_style
+        };
         let mut run = String::new();
-        let mut run_style = char_style(base_style, char_kinds[0], theme);
+        let mut run_style = char_style(first_base, char_kinds[0], theme);
         for idx in 0..visible {
-            let current_style = char_style(base_style, char_kinds[idx], theme);
+            let em_base = if char_emphasis[idx] {
+                if let Some(emph_bg) = emphasis_bg {
+                    base_style.bg(emph_bg)
+                } else {
+                    base_style
+                }
+            } else {
+                base_style
+            };
+            let current_style = char_style(em_base, char_kinds[idx], theme);
             if current_style != run_style && !run.is_empty() {
                 spans.push(Span::styled(std::mem::take(&mut run), run_style));
                 run_style = current_style;
@@ -307,7 +336,7 @@ mod tests {
             char_offset: 0,
             tokens: vec![],
         };
-        let spans = render_wrapped_segment(&segment, 6, Style::default(), &theme);
+        let spans = render_wrapped_segment(&segment, 6, Style::default(), &[], None, &theme);
         let total_display_width: usize = spans
             .iter()
             .map(|s| unicode_width::UnicodeWidthStr::width(s.content.as_ref()))
@@ -333,33 +362,13 @@ mod tests {
             tokens,
         };
 
-        let spans = render_wrapped_segment(&segment, 10, Style::default(), &theme);
+        let spans = render_wrapped_segment(&segment, 10, Style::default(), &[], None, &theme);
 
         assert!(
             spans.iter().any(|span| {
                 span.style.fg == Some(theme.syntax.keyword) && span.content.contains("fn")
             }),
             "Expected a keyword-colored span for `fn`"
-        );
-    }
-
-    #[test]
-    fn render_text_with_tokens_delegates_to_wrapped_segment() {
-        let theme = Theme::dark();
-        let tokens = vec![TokenSpan {
-            start_col: 0,
-            end_col: 2,
-            kind: HighlightKind::Keyword,
-        }];
-        let segment = WrappedSegment {
-            text: "fn foo".to_string(),
-            char_offset: 0,
-            tokens,
-        };
-        let spans = render_text_with_tokens(&segment, 10, Style::default(), &theme);
-        assert!(
-            spans.iter().any(|span| span.content.contains("fn")),
-            "Expected fn to appear in spans"
         );
     }
 }

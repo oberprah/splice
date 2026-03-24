@@ -1,9 +1,12 @@
+use crate::domain::diff::inline_diff::{
+    compute_inline_spans, map_emphasis_for_segment, InlineSpan,
+};
 use crate::domain::diff::types::HunkRange;
 use crate::domain::diff::{DiffBlock, FileDiff};
 use crate::domain::highlight::TokenSpan;
 use crate::domain::wrap::{wrap_line, WrappedSegment};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CellKind {
     Context,
     /// Pure addition: new side only (no old counterpart at this pair index)
@@ -21,6 +24,7 @@ pub struct Cell {
     pub line_number: Option<u32>,
     pub text: String,
     pub tokens: Vec<TokenSpan>,
+    pub emphasis: Vec<InlineSpan>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -47,6 +51,7 @@ fn empty_cell() -> Cell {
         line_number: None,
         text: String::new(),
         tokens: Vec::new(),
+        emphasis: Vec::new(),
     }
 }
 
@@ -105,6 +110,7 @@ pub fn build_rows(file: &FileDiff, width: usize) -> (Vec<ScreenRow>, Vec<HunkRan
                                 },
                                 text: seg.text.clone(),
                                 tokens: seg.tokens.clone(),
+                                emphasis: Vec::new(),
                             }
                         } else {
                             empty_cell()
@@ -119,6 +125,7 @@ pub fn build_rows(file: &FileDiff, width: usize) -> (Vec<ScreenRow>, Vec<HunkRan
                                 },
                                 text: seg.text.clone(),
                                 tokens: seg.tokens.clone(),
+                                emphasis: Vec::new(),
                             }
                         } else {
                             empty_cell()
@@ -132,11 +139,75 @@ pub fn build_rows(file: &FileDiff, width: usize) -> (Vec<ScreenRow>, Vec<HunkRan
             }
             DiffBlock::Change { old, new } => {
                 let hunk_start = rows.len();
+
+                // A block is a "modification" when both sides have content.
+                // In that case every cell (including unpaired extras) uses
+                // CellKind::Changed (blue) to keep the block visually unified.
+                let is_modification = !old.is_empty() && !new.is_empty();
+
+                // Compute emphasis across the whole block: join all old/new
+                // line texts so that multi-line reformats get proper inline
+                // highlighting instead of only the first positional pair.
+                let (block_old_emphasis, block_new_emphasis) = if is_modification {
+                    let old_joined: String = old
+                        .iter()
+                        .map(|l| l.text.as_str())
+                        .collect::<Vec<_>>()
+                        .join("\n");
+                    let new_joined: String = new
+                        .iter()
+                        .map(|l| l.text.as_str())
+                        .collect::<Vec<_>>()
+                        .join("\n");
+                    compute_inline_spans(&old_joined, &new_joined)
+                } else {
+                    (Vec::new(), Vec::new())
+                };
+
+                // Build a mapping from block-joined char offsets to per-line
+                // offsets so we can slice emphasis spans for each line.
+                // Each line starts at cumulative offset (sum of preceding
+                // line lengths + 1 for the '\n' separator).
+                let old_line_offsets: Vec<usize> = {
+                    let mut offsets = Vec::with_capacity(old.len());
+                    let mut pos = 0;
+                    for line in old.iter() {
+                        offsets.push(pos);
+                        pos += line.text.chars().count() + 1; // +1 for '\n'
+                    }
+                    offsets
+                };
+                let new_line_offsets: Vec<usize> = {
+                    let mut offsets = Vec::with_capacity(new.len());
+                    let mut pos = 0;
+                    for line in new.iter() {
+                        offsets.push(pos);
+                        pos += line.text.chars().count() + 1;
+                    }
+                    offsets
+                };
+
                 let pair_count = old.len().max(new.len());
 
                 for i in 0..pair_count {
                     let old_line = old.get(i);
                     let new_line = new.get(i);
+
+                    // Slice block-level emphasis to this line's range
+                    let old_emphasis = if let Some(line) = old_line {
+                        let line_start = old_line_offsets[i];
+                        let line_len = line.text.chars().count();
+                        map_emphasis_for_segment(&block_old_emphasis, line_start, line_len)
+                    } else {
+                        Vec::new()
+                    };
+                    let new_emphasis = if let Some(line) = new_line {
+                        let line_start = new_line_offsets[i];
+                        let line_len = line.text.chars().count();
+                        map_emphasis_for_segment(&block_new_emphasis, line_start, line_len)
+                    } else {
+                        Vec::new()
+                    };
 
                     let left_segs: Vec<WrappedSegment> = if let Some(line) = old_line {
                         wrap_or_empty(&line.text, &line.tokens, left_content_width)
@@ -152,21 +223,20 @@ pub fn build_rows(file: &FileDiff, width: usize) -> (Vec<ScreenRow>, Vec<HunkRan
 
                     let max_rows = left_segs.len().max(right_segs.len()).max(1);
 
-                    for row_idx in 0..max_rows {
-                        // Determine if this is a modification (both sides present) or
-                        // a pure add/remove
-                        let is_modification = old_line.is_some() && new_line.is_some();
-                        let left_kind = if is_modification {
-                            CellKind::Changed
-                        } else {
-                            CellKind::Removed
-                        };
-                        let right_kind = if is_modification {
-                            CellKind::Changed
-                        } else {
-                            CellKind::Added
-                        };
+                    // Cell kinds: if it's a modification block, everything
+                    // is Changed (blue). Otherwise pure add or remove.
+                    let left_kind = if is_modification {
+                        CellKind::Changed
+                    } else {
+                        CellKind::Removed
+                    };
+                    let right_kind = if is_modification {
+                        CellKind::Changed
+                    } else {
+                        CellKind::Added
+                    };
 
+                    for row_idx in 0..max_rows {
                         let left_cell = if old_line.is_some() {
                             if let Some(seg) = left_segs.get(row_idx) {
                                 Cell {
@@ -178,12 +248,27 @@ pub fn build_rows(file: &FileDiff, width: usize) -> (Vec<ScreenRow>, Vec<HunkRan
                                     },
                                     text: seg.text.clone(),
                                     tokens: seg.tokens.clone(),
+                                    emphasis: map_emphasis_for_segment(
+                                        &old_emphasis,
+                                        seg.char_offset,
+                                        seg.text.chars().count(),
+                                    ),
                                 }
                             } else {
                                 empty_cell()
                             }
                         } else {
-                            empty_cell()
+                            Cell {
+                                kind: if is_modification {
+                                    CellKind::Changed
+                                } else {
+                                    CellKind::Empty
+                                },
+                                line_number: None,
+                                text: String::new(),
+                                tokens: Vec::new(),
+                                emphasis: Vec::new(),
+                            }
                         };
 
                         let right_cell = if new_line.is_some() {
@@ -197,12 +282,27 @@ pub fn build_rows(file: &FileDiff, width: usize) -> (Vec<ScreenRow>, Vec<HunkRan
                                     },
                                     text: seg.text.clone(),
                                     tokens: seg.tokens.clone(),
+                                    emphasis: map_emphasis_for_segment(
+                                        &new_emphasis,
+                                        seg.char_offset,
+                                        seg.text.chars().count(),
+                                    ),
                                 }
                             } else {
                                 empty_cell()
                             }
                         } else {
-                            empty_cell()
+                            Cell {
+                                kind: if is_modification {
+                                    CellKind::Changed
+                                } else {
+                                    CellKind::Empty
+                                },
+                                line_number: None,
+                                text: String::new(),
+                                tokens: Vec::new(),
+                                emphasis: Vec::new(),
+                            }
                         };
 
                         rows.push(ScreenRow {
@@ -296,9 +396,10 @@ mod tests {
         assert_eq!(rows[0].left.line_number, Some(1));
         assert_eq!(rows[0].right.line_number, Some(1));
 
-        // Second row: old side has no more lines -> Empty; new[1] exists -> Added
-        assert_eq!(rows[1].left.kind, CellKind::Empty);
-        assert_eq!(rows[1].right.kind, CellKind::Added);
+        // Second row: old side has no more lines but block is a modification,
+        // so both sides stay Changed (blue) to keep the block visually unified
+        assert_eq!(rows[1].left.kind, CellKind::Changed);
+        assert_eq!(rows[1].right.kind, CellKind::Changed);
         assert_eq!(rows[1].left.line_number, None);
         assert_eq!(rows[1].right.line_number, Some(2));
     }
@@ -385,5 +486,89 @@ mod tests {
         let (rows, hunks) = build_rows(&file, 0);
         assert!(rows.is_empty());
         assert!(hunks.is_empty());
+    }
+
+    #[test]
+    fn changed_cells_have_emphasis_spans() {
+        let file = make_file(vec![DiffBlock::Change {
+            old: vec![diff_line(1, "hello world")],
+            new: vec![diff_line(1, "hello earth")],
+        }]);
+        let (rows, _) = build_rows(&file, 80);
+        assert_eq!(rows[0].left.kind, CellKind::Changed);
+        assert_eq!(rows[0].right.kind, CellKind::Changed);
+        // "world" vs "earth" — emphasis should be non-empty on both sides
+        assert!(!rows[0].left.emphasis.is_empty());
+        assert!(!rows[0].right.emphasis.is_empty());
+    }
+
+    #[test]
+    fn pure_add_remove_cells_have_no_emphasis() {
+        let file = make_file(vec![DiffBlock::Change {
+            old: vec![diff_line(1, "removed")],
+            new: vec![],
+        }]);
+        let (rows, _) = build_rows(&file, 80);
+        assert!(rows[0].left.emphasis.is_empty());
+    }
+
+    #[test]
+    fn context_cells_have_no_emphasis() {
+        let file = make_file(vec![DiffBlock::Unchanged(vec![unchanged(1, 1, "context")])]);
+        let (rows, _) = build_rows(&file, 80);
+        assert!(rows[0].left.emphasis.is_empty());
+        assert!(rows[0].right.emphasis.is_empty());
+    }
+
+    #[test]
+    fn asymmetric_modification_uses_changed_kind_for_all_rows() {
+        // 1 old line, 3 new lines — all should be Changed (blue), not Added
+        let file = make_file(vec![DiffBlock::Change {
+            old: vec![diff_line(1, "foo(a, b, c)")],
+            new: vec![
+                diff_line(1, "foo("),
+                diff_line(2, "    a, b, c,"),
+                diff_line(3, ")"),
+            ],
+        }]);
+        let (rows, _) = build_rows(&file, 80);
+        assert_eq!(rows.len(), 3);
+        for (i, row) in rows.iter().enumerate() {
+            assert_eq!(
+                row.left.kind,
+                CellKind::Changed,
+                "row {i} left should be Changed"
+            );
+            assert_eq!(
+                row.right.kind,
+                CellKind::Changed,
+                "row {i} right should be Changed"
+            );
+        }
+        // First row has line numbers on both sides
+        assert_eq!(rows[0].left.line_number, Some(1));
+        assert_eq!(rows[0].right.line_number, Some(1));
+        // Extra rows on new side have line numbers, old side is a spacer
+        assert_eq!(rows[1].left.line_number, None);
+        assert_eq!(rows[1].right.line_number, Some(2));
+        assert!(
+            rows[1].left.text.is_empty(),
+            "spacer should have empty text"
+        );
+    }
+
+    #[test]
+    fn asymmetric_modification_has_block_level_emphasis() {
+        // Emphasis should be computed across all lines, not just the first pair
+        let file = make_file(vec![DiffBlock::Change {
+            old: vec![diff_line(1, "hello world")],
+            new: vec![diff_line(1, "hello"), diff_line(2, "earth")],
+        }]);
+        let (rows, _) = build_rows(&file, 80);
+        // "earth" on the new side should get emphasis (it replaced "world")
+        assert!(
+            !rows[1].right.emphasis.is_empty(),
+            "second new line should have emphasis from block-level diff"
+        );
     }
 }
