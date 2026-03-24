@@ -108,6 +108,11 @@ fn render_cell(
             let (base_style, sign, emphasis_bg) =
                 cell_style_and_sign(cell, in_active_hunk, is_left, theme);
 
+            // Spacer cell in a modification block: no content, just fill with bg color
+            if cell.line_number.is_none() && cell.text.is_empty() {
+                return vec![Span::styled(" ".repeat(width), base_style)];
+            }
+
             let line_num_str = match cell.line_number {
                 Some(n) => format!("{:>3} ", n),
                 None => "  \u{21aa} ".to_string(), // "  ↪ "
