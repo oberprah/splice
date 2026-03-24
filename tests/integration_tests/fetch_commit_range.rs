@@ -1,7 +1,7 @@
 use crate::common::{reset_counter, TestRepo};
 use serial_test::serial;
-use splice_rust::core::FileStatus;
-use splice_rust::git::{fetch_file_changes_for_ref, resolve_diff_ref, DiffSpec};
+use splice::core::FileStatus;
+use splice::git::{fetch_file_changes_for_ref, resolve_diff_ref, DiffSpec};
 
 #[test]
 #[serial]

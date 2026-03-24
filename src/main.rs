@@ -2,7 +2,7 @@ use crossterm::event;
 use crossterm::execute;
 use crossterm::terminal::{self, EnterAlternateScreen, LeaveAlternateScreen};
 use ratatui::{backend::CrosstermBackend, Terminal};
-use splice_rust::{action_from_event, cli, git, render, Action, App};
+use splice::{action_from_event, cli, git, render, Action, App};
 use std::env;
 use std::io;
 use std::path::PathBuf;
@@ -96,7 +96,7 @@ fn resolve_repo_path(command: &cli::Command) -> Result<PathBuf, Box<dyn std::err
 
 fn run_log_app(
     repo_path: PathBuf,
-    log_spec: splice_rust::core::LogSpec,
+    log_spec: splice::core::LogSpec,
 ) -> Result<(), Box<dyn std::error::Error>> {
     terminal::enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -127,8 +127,8 @@ fn run_log_app(
 
 fn run_diff_app(
     repo_path: PathBuf,
-    diff_ref: splice_rust::core::DiffRef,
-    files: Vec<splice_rust::core::FileDiffInfo>,
+    diff_ref: splice::core::DiffRef,
+    files: Vec<splice::core::FileDiffInfo>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     terminal::enable_raw_mode()?;
     let mut stdout = io::stdout();

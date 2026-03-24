@@ -1,6 +1,6 @@
 use crate::common::{reset_counter, TestRepo};
 use serial_test::serial;
-use splice_rust::git::fetch_file_diff;
+use splice::git::fetch_file_diff;
 
 #[test]
 #[serial]

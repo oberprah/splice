@@ -1,6 +1,6 @@
 use crate::common::{reset_counter, Harness, TestRepo};
 use serial_test::serial;
-use splice_rust::LogSpec;
+use splice::LogSpec;
 
 #[test]
 #[serial]

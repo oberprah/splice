@@ -1,7 +1,7 @@
 use crate::common::{reset_counter, TestRepo};
 use serial_test::serial;
-use splice_rust::core::UncommittedType;
-use splice_rust::git::fetch_uncommitted_file_changes;
+use splice::core::UncommittedType;
+use splice::git::fetch_uncommitted_file_changes;
 
 #[test]
 #[serial]

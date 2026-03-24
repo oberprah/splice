@@ -1,7 +1,7 @@
 use chrono::{DateTime, TimeZone, Utc};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{backend::TestBackend, Terminal};
-use splice_rust::{action_from_event, git, render, Action, App, DiffRef, LogSpec};
+use splice::{action_from_event, git, render, Action, App, DiffRef, LogSpec};
 
 use super::{snapshot::assert_snapshot, TestRepo};
 
