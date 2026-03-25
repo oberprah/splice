@@ -105,8 +105,7 @@ fn render_cell(
     match cell.kind {
         CellKind::Empty => vec![Span::raw(blank_cell(width))],
         _ => {
-            let (base_style, sign, emphasis_bg) =
-                cell_style_and_sign(cell, in_active_hunk, is_left, theme);
+            let (base_style, emphasis_bg) = cell_style(cell, in_active_hunk, is_left, theme);
 
             // Spacer cell in a modification block: no content, just fill with bg color
             if cell.line_number.is_none() && cell.text.is_empty() {
@@ -117,14 +116,11 @@ fn render_cell(
                 Some(n) => format!("{:>3} ", n),
                 None => "  \u{21aa} ".to_string(), // "  ↪ "
             };
-            let sign_str = sign.to_string();
-            let prefix_width = line_num_str.chars().count() + sign_str.chars().count();
+            let prefix_width = line_num_str.chars().count();
             let content_width = width.saturating_sub(prefix_width);
 
-            let mut spans: Vec<Span<'static>> = vec![
-                Span::styled(line_num_str, theme.diff_line_number),
-                Span::styled(sign_str, base_style),
-            ];
+            let mut spans: Vec<Span<'static>> =
+                vec![Span::styled(line_num_str, theme.diff_line_number)];
 
             let segment = WrappedSegment {
                 text: cell.text.clone(),
@@ -145,14 +141,14 @@ fn render_cell(
     }
 }
 
-fn cell_style_and_sign(
+fn cell_style(
     cell: &Cell,
     in_active_hunk: bool,
-    is_left: bool,
+    _is_left: bool,
     theme: &Theme,
-) -> (Style, char, Option<Color>) {
+) -> (Style, Option<Color>) {
     match cell.kind {
-        CellKind::Context => (Style::default(), ' ', None),
+        CellKind::Context => (Style::default(), None),
         CellKind::Removed => {
             let colors = &theme.diff_removed;
             let bg = if in_active_hunk {
@@ -160,7 +156,7 @@ fn cell_style_and_sign(
             } else {
                 colors.bg
             };
-            (Style::new().bg(bg).fg(colors.fg), '-', None)
+            (Style::new().bg(bg).fg(colors.fg), None)
         }
         CellKind::Added => {
             let colors = &theme.diff_added;
@@ -169,21 +165,18 @@ fn cell_style_and_sign(
             } else {
                 colors.bg
             };
-            (Style::new().bg(bg).fg(colors.fg), '+', None)
+            (Style::new().bg(bg).fg(colors.fg), None)
         }
         CellKind::Changed => {
-            // Both old and new line exist at this pair index — use changed (blue) color
             let colors = &theme.diff_changed;
             let (bg, emph_bg) = if in_active_hunk {
                 (colors.bg_bright, colors.bg_bright_emphasis)
             } else {
                 (colors.bg, colors.bg_emphasis)
             };
-            // Left side is the old (removed) half, right side is the new (added) half
-            let sign = if is_left { '-' } else { '+' };
-            (Style::new().bg(bg).fg(colors.fg), sign, Some(emph_bg))
+            (Style::new().bg(bg).fg(colors.fg), Some(emph_bg))
         }
-        CellKind::Empty => (Style::default(), ' ', None),
+        CellKind::Empty => (Style::default(), None),
     }
 }
 
@@ -199,12 +192,11 @@ fn render_wrapped_segment(
         return Vec::new();
     }
 
-    let max_content_cols = content_width.saturating_sub(1);
     let mut chars: Vec<char> = Vec::new();
     let mut cols_used = 0usize;
     for ch in segment.text.chars() {
         let ch_width = UnicodeWidthChar::width(ch).unwrap_or(1);
-        if cols_used + ch_width > max_content_cols {
+        if cols_used + ch_width > content_width {
             break;
         }
         cols_used += ch_width;
@@ -231,7 +223,7 @@ fn render_wrapped_segment(
         }
     }
 
-    let mut spans = vec![Span::styled(" ", base_style)];
+    let mut spans: Vec<Span<'static>> = Vec::new();
     if visible > 0 {
         let first_base = if char_emphasis[0] {
             if let Some(emph_bg) = emphasis_bg {
@@ -266,10 +258,9 @@ fn render_wrapped_segment(
         }
     }
 
-    let used_cols = 1 + cols_used;
-    if used_cols < content_width {
+    if cols_used < content_width {
         spans.push(Span::styled(
-            " ".repeat(content_width - used_cols),
+            " ".repeat(content_width - cols_used),
             base_style,
         ));
     }
@@ -369,6 +360,33 @@ mod tests {
                 span.style.fg == Some(theme.syntax.keyword) && span.content.contains("fn")
             }),
             "Expected a keyword-colored span for `fn`"
+        );
+    }
+
+    #[test]
+    fn render_cell_shows_all_wrapped_text() {
+        let theme = Theme::dark();
+        // Text is exactly 10 chars
+        let text = "abcdefghij";
+        let cell = Cell {
+            kind: CellKind::Context,
+            line_number: Some(1),
+            text: text.to_string(),
+            tokens: vec![],
+            emphasis: vec![],
+        };
+        // prefix = 4 chars ("  1 "), so content_width = width - 4 = 10
+        // The layout layer wraps text at content_width=10, so the cell can contain up to 10 chars.
+        // The renderer should display all 10 chars.
+        let width = 14; // 4 prefix + 10 content
+        let spans = render_cell(&cell, width, false, true, &theme);
+        let rendered: String = spans.iter().map(|s| s.content.as_ref()).collect();
+        // The rendered output should contain all characters of the original text
+        assert!(
+            rendered.contains(text),
+            "Expected rendered output to contain '{}', but got '{}'",
+            text,
+            rendered
         );
     }
 }

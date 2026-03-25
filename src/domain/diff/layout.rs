@@ -80,8 +80,8 @@ pub fn build_rows(file: &FileDiff, width: usize) -> (Vec<ScreenRow>, Vec<HunkRan
         .max()
         .unwrap_or(0);
 
-    // "{:>3} " (4 chars) + 1 sign char = 5 chars prefix
-    let prefix_width = format!("{:>3} ", max_line_num).chars().count() + 1;
+    // "{:>3} " (4 chars) — line number + trailing space
+    let prefix_width = format!("{:>3} ", max_line_num).chars().count();
 
     // Left and right use their respective cell widths for wrapping (matching the
     // original renderer which wrapped each side at its own visual width).
