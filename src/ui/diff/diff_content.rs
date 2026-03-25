@@ -107,9 +107,15 @@ fn render_cell(
         _ => {
             let (base_style, emphasis_bg) = cell_style(cell, in_active_hunk, is_left, theme);
 
-            // Spacer cell in a modification block: no content, just fill with bg color
+            // Spacer cell in a modification block: keep line-number area
+            // unstyled so the background doesn't bleed into it.
             if cell.line_number.is_none() && cell.text.is_empty() {
-                return vec![Span::styled(" ".repeat(width), base_style)];
+                let prefix_width = 4; // matches "{:>3} " / "  ↪ "
+                let content_width = width.saturating_sub(prefix_width);
+                return vec![
+                    Span::raw(" ".repeat(prefix_width)),
+                    Span::styled(" ".repeat(content_width), base_style),
+                ];
             }
 
             let line_num_str = match cell.line_number {
@@ -360,6 +366,40 @@ mod tests {
                 span.style.fg == Some(theme.syntax.keyword) && span.content.contains("fn")
             }),
             "Expected a keyword-colored span for `fn`"
+        );
+    }
+
+    #[test]
+    fn spacer_cell_does_not_color_line_number_area() {
+        let theme = Theme::dark();
+        // Spacer cell: Changed kind, no line number, empty text.
+        // This is what the layout layer produces for the shorter side
+        // of an asymmetric modification block.
+        let cell = Cell {
+            kind: CellKind::Changed,
+            line_number: None,
+            text: String::new(),
+            tokens: vec![],
+            emphasis: vec![],
+        };
+        let width = 14; // 4 prefix + 10 content
+        let spans = render_cell(&cell, width, true, true, &theme);
+
+        // The line number area (first 4 chars) should NOT have the
+        // changed background color. Only the content area should.
+        assert!(
+            spans.len() >= 2,
+            "Expected separate spans for line-number area and content, got {} span(s): {:?}",
+            spans.len(),
+            spans.iter().map(|s| s.content.as_ref()).collect::<Vec<_>>()
+        );
+
+        // First span (line number area) should have default/no background
+        let line_num_span = &spans[0];
+        assert_eq!(
+            line_num_span.style.bg, None,
+            "Line number area should have no background color, got {:?}",
+            line_num_span.style.bg
         );
     }
 

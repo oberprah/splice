@@ -254,6 +254,14 @@ pub fn build_rows(file: &FileDiff, width: usize) -> (Vec<ScreenRow>, Vec<HunkRan
                                         seg.text.chars().count(),
                                     ),
                                 }
+                            } else if is_modification {
+                                Cell {
+                                    kind: CellKind::Changed,
+                                    line_number: None,
+                                    text: String::new(),
+                                    tokens: Vec::new(),
+                                    emphasis: Vec::new(),
+                                }
                             } else {
                                 empty_cell()
                             }
@@ -287,6 +295,14 @@ pub fn build_rows(file: &FileDiff, width: usize) -> (Vec<ScreenRow>, Vec<HunkRan
                                         seg.char_offset,
                                         seg.text.chars().count(),
                                     ),
+                                }
+                            } else if is_modification {
+                                Cell {
+                                    kind: CellKind::Changed,
+                                    line_number: None,
+                                    text: String::new(),
+                                    tokens: Vec::new(),
+                                    emphasis: Vec::new(),
                                 }
                             } else {
                                 empty_cell()
@@ -555,6 +571,44 @@ mod tests {
             rows[1].left.text.is_empty(),
             "spacer should have empty text"
         );
+    }
+
+    #[test]
+    fn wrapped_modification_overflow_rows_use_changed_kind() {
+        // When a modification pair wraps to different row counts, the
+        // shorter side's overflow rows should be Changed (blue), not Empty.
+        // Use a narrow width so one side wraps more than the other.
+        let file = make_file(vec![DiffBlock::Change {
+            old: vec![diff_line(1, "short")],
+            new: vec![diff_line(
+                1,
+                "this text is long enough to wrap at narrow width",
+            )],
+        }]);
+        // Width 30: available=27, left=13, right=14, prefix=4,
+        // left_content=9, right_content=10
+        // "short" fits in 1 row on the left. The right text wraps to multiple rows.
+        let (rows, _) = build_rows(&file, 30);
+        assert!(
+            rows.len() > 1,
+            "expected wrapping to produce multiple rows, got {}",
+            rows.len()
+        );
+        // All rows should be Changed on both sides — not Empty on the left
+        for (i, row) in rows.iter().enumerate() {
+            assert_eq!(
+                row.left.kind,
+                CellKind::Changed,
+                "row {i} left should be Changed, not {:?}",
+                row.left.kind
+            );
+            assert_eq!(
+                row.right.kind,
+                CellKind::Changed,
+                "row {i} right should be Changed, not {:?}",
+                row.right.kind
+            );
+        }
     }
 
     #[test]
