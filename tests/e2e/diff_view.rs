@@ -92,66 +92,11 @@ impl Calculator {
     h.assert_snapshot(
         r#"
 "  0fdee5c · src/calculator.rs · +7 -11                                          "
-"    1   pub struct Calculator;        │   1   pub struct Calculator;            "
-"    2                                 │   2                                     "
-"    3   impl Calculator {             │   3   impl Calculator {                 "
-"    4       pub fn new() -> Self {    │   4       pub fn new() -> Self {        "
-"    5           Self                  │   5           Self                      "
-"    6       }                         │   6       }                             "
-"    7                                 │   7                                     "
-"    8       pub fn add(&self, a: i32, │   8       pub fn add(&self, a: i32,     "
-"    ↪   b: i32) -> i32 {              │   ↪   i32) -> i32 {                     "
-"    9           a + b                 │   9           a + b                     "
-"   10       }                         │  10       }                             "
-"   11                                 │  11                                     "
-"   12       pub fn sub(&self, a: i32, │  12       pub fn sub(&self, a: i32,     "
-"    ↪   b: i32) -> i32 {              │   ↪   i32) -> i32 {                     "
-"   13           a - b                 │  13           a - b                     "
-"   14       }                         │  14       }                             "
-"   15                                 │  15                                     "
 "   16 -     pub fn multiply(&self, a: │  16 +     pub fn mul(&self, a: i32,     "
 "    ↪ - i32, b: i32) -> i32 {         │   ↪ + i32) -> i32 {                     "
 "   17 -         a * b                 │  17 +                                   "
 "                                      │   ↪ + a.checked_mul(b).unwrap_or(0)     "
 "   18 -     }                         │                                         "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
-"#,
-    );
-
-    h.press_ctrl(KeyCode::Char('d'));
-    h.assert_snapshot(
-        r#"
-"  0fdee5c · src/calculator.rs · +7 -11                                          "
-"   11                                 │  11                                     "
-"   12       pub fn sub(&self, a: i32, │  12       pub fn sub(&self, a: i32,     "
-"    ↪   b: i32) -> i32 {              │   ↪   i32) -> i32 {                     "
-"   13           a - b                 │  13           a - b                     "
-"   14       }                         │  14       }                             "
-"   15                                 │  15                                     "
-"   16 -     pub fn multiply(&self, a: │  16 +     pub fn mul(&self, a: i32,     "
-"    ↪ - i32, b: i32) -> i32 {         │   ↪ + i32) -> i32 {                     "
-"   17 -         a * b                 │  17 +                                   "
-"                                      │   ↪ + a.checked_mul(b).unwrap_or(0)     "
-"   18 -     }                         │                                         "
-"   19 -                               │                                         "
-"   20 -     pub fn divide(&self, a:   │                                         "
-"    ↪ - i32, b: i32) -> Option<i32> { │                                         "
-"   21 -         if b == 0 {           │                                         "
-"   22 -             None              │                                         "
-"   23 -         } else {              │                                         "
-"   24 -             Some(a / b)       │                                         "
-"   25 -         }                     │                                         "
-"   26       }                         │  18       }                             "
-"   27                                 │  19                                     "
-"   28       pub fn sum(&self, values: │  20       pub fn sum(&self, values:     "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
-"#,
-    );
-
-    h.press_ctrl(KeyCode::Char('d'));
-    h.assert_snapshot(
-        r#"
-"  0fdee5c · src/calculator.rs · +7 -11                                          "
 "   19 -                               │                                         "
 "   20 -     pub fn divide(&self, a:   │                                         "
 "    ↪ - i32, b: i32) -> Option<i32> { │                                         "
@@ -169,11 +114,36 @@ impl Calculator {
 "   31                                 │  23                                     "
 "                                      │  24 +     pub fn pow(&self, base: i3    "
 "                                      │   ↪ + exp: u32) -> i32 {                "
+"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"#,
+    );
+
+    h.press_ctrl(KeyCode::Char('d'));
+    h.assert_snapshot(
+        r#"
+"  0fdee5c · src/calculator.rs · +7 -11                                          "
+"   23 -         } else {              │                                         "
+"   24 -             Some(a / b)       │                                         "
+"   25 -         }                     │                                         "
+"   26       }                         │  18       }                             "
+"   27                                 │  19                                     "
+"   28       pub fn sum(&self, values: │  20       pub fn sum(&self, values:     "
+"    ↪   &[i32]) -> i32 {              │   ↪   &[i32]) -> i32 {                  "
+"   29           values.iter().sum()   │  21           values.iter().sum()       "
+"   30       }                         │  22       }                             "
+"   31                                 │  23                                     "
+"                                      │  24 +     pub fn pow(&self, base: i3    "
+"                                      │   ↪ + exp: u32) -> i32 {                "
 "                                      │  25 +         (0..exp).fold(1, |acc,    "
 "                                      │   ↪ + _| acc * base)                    "
 "                                      │  26 +     }                             "
 "                                      │  27 +                                   "
 "   32       pub fn format_result(&sel │  28       pub fn format_result(&self    "
+"    ↪   value: i32) -> String {       │   ↪   value: i32) -> String {           "
+"   33 -         format!("Result: {}", │  29 +         format!("Result:          "
+"    ↪ - value)                        │   ↪ + {value}")                         "
+"   34       }                         │  30       }                             "
+"   35   }                             │  31   }                                 "
 "  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
@@ -183,11 +153,6 @@ impl Calculator {
     h.assert_snapshot(
         r#"
 "  0fdee5c · src/calculator.rs · +7 -11                                          "
-"   12       pub fn sub(&self, a: i32, │  12       pub fn sub(&self, a: i32,     "
-"    ↪   b: i32) -> i32 {              │   ↪   i32) -> i32 {                     "
-"   13           a - b                 │  13           a - b                     "
-"   14       }                         │  14       }                             "
-"   15                                 │  15                                     "
 "   16 -     pub fn multiply(&self, a: │  16 +     pub fn mul(&self, a: i32,     "
 "    ↪ - i32, b: i32) -> i32 {         │   ↪ + i32) -> i32 {                     "
 "   17 -         a * b                 │  17 +                                   "
@@ -205,6 +170,11 @@ impl Calculator {
 "   27                                 │  19                                     "
 "   28       pub fn sum(&self, values: │  20       pub fn sum(&self, values:     "
 "    ↪   &[i32]) -> i32 {              │   ↪   &[i32]) -> i32 {                  "
+"   29           values.iter().sum()   │  21           values.iter().sum()       "
+"   30       }                         │  22       }                             "
+"   31                                 │  23                                     "
+"                                      │  24 +     pub fn pow(&self, base: i3    "
+"                                      │   ↪ + exp: u32) -> i32 {                "
 "  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );
@@ -248,7 +218,6 @@ fn diff_view_separator_with_wide_glyphs() {
     h.assert_snapshot(
         r#"
 "  b0799a4 · src/ui/log.rs · +1 -0                                                                                       "
-"    1   impl LineDisplayState {                           │   1   impl LineDisplayState {                               "
 "    2       fn prefix(&self) -> &'static str {            │   2       fn prefix(&self) -> &'static str {                "
 "    3           match self {                              │   3           match self {                                  "
 "                                                          │   4 +             LineDisplayState::None => "  ",           "
@@ -256,6 +225,7 @@ fn diff_view_separator_with_wide_glyphs() {
 "    5               LineDisplayState::Selected => "▌ ",   │   6               LineDisplayState::Selected => "▌ ",       "
 "    6           }                                         │   7           }                                             "
 "    7       }                                             │   8       }                                                 "
+"    8   }                                                 │   9   }                                                     "
 "  j/k: scroll  n/p: next/prev diff  o: open  q: back                                                                    "
 "#,
     );
@@ -457,7 +427,6 @@ fn diff_view_handles_close_hunks_and_bottom_additions() {
     h.press(KeyCode::Enter);
     h.press(KeyCode::Enter);
 
-    h.press(KeyCode::Char('n'));
     h.assert_snapshot(
         r#"
 "  bb76eb0 · a.txt · +3 -2                                                       "
@@ -569,26 +538,6 @@ fn diff_view_soft_wrap_long_lines() {
     h.assert_snapshot(
         r#"
 "  e65f008 · src/main.rs · +3 -1                             "
-"    1   fn main() {         │   1   fn main() {             "
-"    2 -     let             │   2 +     let                 "
-"    ↪ - very_long_variable_ │   ↪ + very_long_variable_n    "
-"    ↪ - me_that_definitely_ │   ↪ + e_that_definitely_ex    "
-"    ↪ - ceeds_screen_width  │   ↪ + eds_screen_width =      "
-"    ↪ - "this is an extreme │   ↪ + "this is an updated     "
-"    ↪ - long string value   │   ↪ + extremely long strin    "
-"    ↪ - that should wrap    │   ↪ + value that should wr    "
-"    ↪ - across multiple lin │   ↪ + across multiple line    "
-"    ↪ - when displayed in t │   ↪ + when displayed in th    "
-"    ↪ - diff view";         │   ↪ + diff view";             "
-"                            │   3 +     let                 "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back        "
-"#,
-    );
-
-    h.press(KeyCode::Char('j'));
-    h.assert_snapshot(
-        r#"
-"  e65f008 · src/main.rs · +3 -1                             "
 "    2 -     let             │   2 +     let                 "
 "    ↪ - very_long_variable_ │   ↪ + very_long_variable_n    "
 "    ↪ - me_that_definitely_ │   ↪ + e_that_definitely_ex    "
@@ -605,11 +554,30 @@ fn diff_view_soft_wrap_long_lines() {
 "#,
     );
 
+    h.press(KeyCode::Char('j'));
+    h.assert_snapshot(
+        r#"
+"  e65f008 · src/main.rs · +3 -1                             "
+"    ↪ - very_long_variable_ │   ↪ + very_long_variable_n    "
+"    ↪ - me_that_definitely_ │   ↪ + e_that_definitely_ex    "
+"    ↪ - ceeds_screen_width  │   ↪ + eds_screen_width =      "
+"    ↪ - "this is an extreme │   ↪ + "this is an updated     "
+"    ↪ - long string value   │   ↪ + extremely long strin    "
+"    ↪ - that should wrap    │   ↪ + value that should wr    "
+"    ↪ - across multiple lin │   ↪ + across multiple line    "
+"    ↪ - when displayed in t │   ↪ + when displayed in th    "
+"    ↪ - diff view";         │   ↪ + diff view";             "
+"                            │   3 +     let                 "
+"                            │   ↪ + another_long_variabl    "
+"                            │   ↪ + name_for_testing =      "
+"  j/k: scroll  n/p: next/prev diff  o: open  q: back        "
+"#,
+    );
+
     h.press(KeyCode::Char('k'));
     h.assert_snapshot(
         r#"
 "  e65f008 · src/main.rs · +3 -1                             "
-"    1   fn main() {         │   1   fn main() {             "
 "    2 -     let             │   2 +     let                 "
 "    ↪ - very_long_variable_ │   ↪ + very_long_variable_n    "
 "    ↪ - me_that_definitely_ │   ↪ + e_that_definitely_ex    "
@@ -621,6 +589,7 @@ fn diff_view_soft_wrap_long_lines() {
 "    ↪ - when displayed in t │   ↪ + when displayed in th    "
 "    ↪ - diff view";         │   ↪ + diff view";             "
 "                            │   3 +     let                 "
+"                            │   ↪ + another_long_variabl    "
 "  j/k: scroll  n/p: next/prev diff  o: open  q: back        "
 "#,
     );
@@ -730,18 +699,18 @@ fn diff_view_n_does_not_skip_last_hunk_when_scroll_clamped() {
     h.assert_snapshot(
         r#"
 "  159c9a8 · a.txt · +2 -2                                                       "
-"    1   line 1                        │   1   line 1                            "
-"    2   line 2                        │   2   line 2                            "
-"    3   line 3                        │   3   line 3                            "
-"    4   line 4                        │   4   line 4                            "
-"    5   line 5                        │   5   line 5                            "
-"    6   line 6                        │   6   line 6                            "
-"    7   line 7                        │   7   line 7                            "
-"    8   line 8                        │   8   line 8                            "
 "    9   line 9                        │   9   line 9                            "
 "   10   line 10                       │  10   line 10                           "
 "   11   line 11                       │  11   line 11                           "
 "   12   line 12                       │  12   line 12                           "
+"   13   line 13                       │  13   line 13                           "
+"   14   line 14                       │  14   line 14                           "
+"   15   line 15                       │  15   line 15                           "
+"   16   line 16                       │  16   line 16                           "
+"   17   line 17                       │  17   line 17                           "
+"   18   line 18                       │  18   line 18                           "
+"   19 - line 19                       │  19 + line 19 changed                   "
+"   20 - line 20                       │  20 + line 20 changed                   "
 "  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
 "#,
     );

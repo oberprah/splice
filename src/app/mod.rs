@@ -33,7 +33,6 @@ pub enum View {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum DiffEntryPoint {
-    Top,
     FirstDiff,
     LastDiff,
 }
@@ -369,7 +368,7 @@ impl App {
             } else if let Some(file) = files.selected_file() {
                 let file = file.clone();
                 let diff_ref = files.diff_ref.clone();
-                self.open_file_diff(diff_ref, file, true, DiffEntryPoint::Top);
+                self.open_file_diff(diff_ref, file, true, DiffEntryPoint::FirstDiff);
             }
         }
     }
@@ -486,7 +485,6 @@ impl App {
 
         if let View::Diff(diff) = &mut self.view {
             match entry_point {
-                DiffEntryPoint::Top => {}
                 DiffEntryPoint::FirstDiff => {
                     diff.update(ViewportAction::JumpToFirstHunk);
                     diff.settle_animation();

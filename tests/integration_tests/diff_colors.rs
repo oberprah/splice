@@ -44,7 +44,7 @@ fn diff_view_shows_removed_lines_with_red_background() {
     terminal.draw(|f| render(f, &mut app)).unwrap();
 
     let buffer = terminal.backend().buffer();
-    let diff_removed_bg = Color::Rgb(0x3a, 0x1e, 0x1e);
+    let diff_removed_bg = Color::Rgb(0x4d, 0x26, 0x26);
 
     let colors = collect_background_colors(buffer);
 
@@ -77,7 +77,7 @@ fn diff_view_shows_added_lines_with_green_background() {
     terminal.draw(|f| render(f, &mut app)).unwrap();
 
     let buffer = terminal.backend().buffer();
-    let diff_added_bg = Color::Rgb(0x1e, 0x3a, 0x1e);
+    let diff_added_bg = Color::Rgb(0x26, 0x4d, 0x26);
 
     let colors = collect_background_colors(buffer);
 
@@ -110,7 +110,7 @@ fn diff_view_shows_changed_lines_with_blue_background() {
     terminal.draw(|f| render(f, &mut app)).unwrap();
 
     let buffer = terminal.backend().buffer();
-    let diff_changed_bg = Color::Rgb(0x1e, 0x2a, 0x3a);
+    let diff_changed_bg = Color::Rgb(0x26, 0x36, 0x4d);
 
     let colors = collect_background_colors(buffer);
 
@@ -146,7 +146,7 @@ fn diff_view_has_removed_and_added_colors_for_pure_changes() {
     let colors = collect_background_colors(buffer);
 
     let diff_added_bg = Color::Rgb(0x1e, 0x3a, 0x1e);
-    let diff_removed_bg = Color::Rgb(0x3a, 0x1e, 0x1e);
+    let diff_removed_bg = Color::Rgb(0x4d, 0x26, 0x26);
 
     assert!(
         colors.contains(&Some(diff_removed_bg)),
@@ -183,7 +183,7 @@ fn diff_view_uses_changed_color_for_line_modification() {
     let buffer = terminal.backend().buffer();
     let colors = collect_background_colors(buffer);
 
-    let diff_changed_bg = Color::Rgb(0x1e, 0x2a, 0x3a);
+    let diff_changed_bg = Color::Rgb(0x26, 0x36, 0x4d);
 
     assert!(
         colors.contains(&Some(diff_changed_bg)),
