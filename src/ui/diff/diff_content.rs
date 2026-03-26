@@ -198,8 +198,8 @@ fn render_unified_rows(
 
         if row.cell.kind == CellKind::Empty {
             spans = vec![Span::raw(" ".repeat(total_width))];
-        } else if row.cell.text.is_empty() && row.cell.line_number.is_none() {
-            // Spacer-like cell (shouldn't happen in unified, but be safe)
+        } else if row.cell.text.is_empty() {
+            // Empty text with a valid prefix (e.g. spacer row)
             spans.push(Span::styled(" ".repeat(content_width), base_style));
         } else {
             let segment = WrappedSegment {

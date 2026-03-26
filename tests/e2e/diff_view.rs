@@ -899,6 +899,91 @@ fn diff_view_focused_hunk_set_when_crossing_to_new_file() {
 
 #[test]
 #[serial]
+fn diff_view_unified_layout_persists_across_file_navigation() {
+    reset_counter();
+
+    let repo = TestRepo::new();
+    repo.add_file("a.txt", "one\ntwo\n");
+    repo.add_file("b.txt", "alpha\nbeta\n");
+    repo.commit("Initial");
+    repo.modify_file("a.txt", "ONE\ntwo\n");
+    repo.modify_file("b.txt", "alpha\nBETA\n");
+    repo.commit("Modify both files");
+
+    let mut h = Harness::with_repo(&repo);
+
+    // Navigate: log → files → diff (opens a.txt)
+    h.press(KeyCode::Enter);
+    h.press(KeyCode::Enter);
+
+    // Toggle to unified view
+    h.press(KeyCode::Char('v'));
+
+    // Verify we're in unified mode on a.txt
+    h.assert_snapshot(
+        r#"
+"  23b3e91 · a.txt · +1 -1                                                       "
+"    1     one                                                                   "
+"        1 ONE                                                                   "
+"    2   2 two                                                                   "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"  j/k: scroll  n/p: next/prev diff  v: split  o: open  q: back                  "
+"#,
+    );
+
+    // Navigate to next file (b.txt) — layout should persist as unified
+    h.press(KeyCode::Char('n'));
+
+    h.assert_snapshot(
+        r#"
+"  23b3e91 · b.txt · +1 -1                                                       "
+"    1   1 alpha                                                                 "
+"    2     beta                                                                  "
+"        2 BETA                                                                  "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"  j/k: scroll  n/p: next/prev diff  v: split  o: open  q: back                  "
+"#,
+    );
+}
+
+#[test]
+#[serial]
 fn diff_view_unified_toggle() {
     reset_counter();
 

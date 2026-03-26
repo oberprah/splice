@@ -264,7 +264,7 @@ impl App {
             Action::ToggleFolder => self.toggle_folder(false, false),
             Action::ExpandFolder => self.toggle_folder(true, false),
             Action::CollapseFolder => self.toggle_folder(false, true),
-            Action::ToggleVisualMode => {
+            Action::ToggleViewMode => {
                 if let View::Log(log) = &mut self.view {
                     if log.is_visual_mode() {
                         log.exit_visual_mode();

@@ -2,7 +2,7 @@ use crate::domain::diff::inline_diff::{
     compute_inline_spans, map_emphasis_for_segment, InlineSpan,
 };
 use crate::domain::diff::types::HunkRange;
-use crate::domain::diff::{DiffBlock, FileDiff};
+use crate::domain::diff::{DiffBlock, DiffLine, FileDiff};
 use crate::domain::highlight::TokenSpan;
 use crate::domain::wrap::{wrap_line, WrappedSegment};
 
@@ -61,6 +61,54 @@ pub struct UnifiedRow {
     pub new_line_number: Option<u32>,
     pub is_old_side: bool,
     pub cell: Cell,
+}
+
+/// Pre-computed emphasis spans and per-line character offsets for a change block.
+struct BlockEmphasis {
+    old_emphasis: Vec<InlineSpan>,
+    new_emphasis: Vec<InlineSpan>,
+    old_line_offsets: Vec<usize>,
+    new_line_offsets: Vec<usize>,
+}
+
+fn compute_block_emphasis(old: &[DiffLine], new: &[DiffLine]) -> BlockEmphasis {
+    let is_modification = !old.is_empty() && !new.is_empty();
+
+    let (old_emphasis, new_emphasis) = if is_modification {
+        let old_joined: String = old
+            .iter()
+            .map(|l| l.text.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        let new_joined: String = new
+            .iter()
+            .map(|l| l.text.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        compute_inline_spans(&old_joined, &new_joined)
+    } else {
+        (Vec::new(), Vec::new())
+    };
+
+    let old_line_offsets = line_char_offsets(old);
+    let new_line_offsets = line_char_offsets(new);
+
+    BlockEmphasis {
+        old_emphasis,
+        new_emphasis,
+        old_line_offsets,
+        new_line_offsets,
+    }
+}
+
+fn line_char_offsets(lines: &[DiffLine]) -> Vec<usize> {
+    let mut offsets = Vec::with_capacity(lines.len());
+    let mut pos = 0;
+    for line in lines {
+        offsets.push(pos);
+        pos += line.text.chars().count() + 1; // +1 for '\n'
+    }
+    offsets
 }
 
 pub fn build_rows(file: &FileDiff, width: usize) -> (Vec<ScreenRow>, Vec<HunkRange>) {
@@ -153,47 +201,7 @@ pub fn build_rows(file: &FileDiff, width: usize) -> (Vec<ScreenRow>, Vec<HunkRan
                 // CellKind::Changed (blue) to keep the block visually unified.
                 let is_modification = !old.is_empty() && !new.is_empty();
 
-                // Compute emphasis across the whole block: join all old/new
-                // line texts so that multi-line reformats get proper inline
-                // highlighting instead of only the first positional pair.
-                let (block_old_emphasis, block_new_emphasis) = if is_modification {
-                    let old_joined: String = old
-                        .iter()
-                        .map(|l| l.text.as_str())
-                        .collect::<Vec<_>>()
-                        .join("\n");
-                    let new_joined: String = new
-                        .iter()
-                        .map(|l| l.text.as_str())
-                        .collect::<Vec<_>>()
-                        .join("\n");
-                    compute_inline_spans(&old_joined, &new_joined)
-                } else {
-                    (Vec::new(), Vec::new())
-                };
-
-                // Build a mapping from block-joined char offsets to per-line
-                // offsets so we can slice emphasis spans for each line.
-                // Each line starts at cumulative offset (sum of preceding
-                // line lengths + 1 for the '\n' separator).
-                let old_line_offsets: Vec<usize> = {
-                    let mut offsets = Vec::with_capacity(old.len());
-                    let mut pos = 0;
-                    for line in old.iter() {
-                        offsets.push(pos);
-                        pos += line.text.chars().count() + 1; // +1 for '\n'
-                    }
-                    offsets
-                };
-                let new_line_offsets: Vec<usize> = {
-                    let mut offsets = Vec::with_capacity(new.len());
-                    let mut pos = 0;
-                    for line in new.iter() {
-                        offsets.push(pos);
-                        pos += line.text.chars().count() + 1;
-                    }
-                    offsets
-                };
+                let be = compute_block_emphasis(old, new);
 
                 let pair_count = old.len().max(new.len());
 
@@ -203,16 +211,16 @@ pub fn build_rows(file: &FileDiff, width: usize) -> (Vec<ScreenRow>, Vec<HunkRan
 
                     // Slice block-level emphasis to this line's range
                     let old_emphasis = if let Some(line) = old_line {
-                        let line_start = old_line_offsets[i];
+                        let line_start = be.old_line_offsets[i];
                         let line_len = line.text.chars().count();
-                        map_emphasis_for_segment(&block_old_emphasis, line_start, line_len)
+                        map_emphasis_for_segment(&be.old_emphasis, line_start, line_len)
                     } else {
                         Vec::new()
                     };
                     let new_emphasis = if let Some(line) = new_line {
-                        let line_start = new_line_offsets[i];
+                        let line_start = be.new_line_offsets[i];
                         let line_len = line.text.chars().count();
-                        map_emphasis_for_segment(&block_new_emphasis, line_start, line_len)
+                        map_emphasis_for_segment(&be.new_emphasis, line_start, line_len)
                     } else {
                         Vec::new()
                     };
@@ -412,42 +420,7 @@ pub fn build_unified_rows(
 
                 let is_modification = !old.is_empty() && !new.is_empty();
 
-                // Compute emphasis across the whole block
-                let (block_old_emphasis, block_new_emphasis) = if is_modification {
-                    let old_joined: String = old
-                        .iter()
-                        .map(|l| l.text.as_str())
-                        .collect::<Vec<_>>()
-                        .join("\n");
-                    let new_joined: String = new
-                        .iter()
-                        .map(|l| l.text.as_str())
-                        .collect::<Vec<_>>()
-                        .join("\n");
-                    compute_inline_spans(&old_joined, &new_joined)
-                } else {
-                    (Vec::new(), Vec::new())
-                };
-
-                // Build line offset mappings for emphasis slicing
-                let old_line_offsets: Vec<usize> = {
-                    let mut offsets = Vec::with_capacity(old.len());
-                    let mut pos = 0;
-                    for line in old.iter() {
-                        offsets.push(pos);
-                        pos += line.text.chars().count() + 1;
-                    }
-                    offsets
-                };
-                let new_line_offsets: Vec<usize> = {
-                    let mut offsets = Vec::with_capacity(new.len());
-                    let mut pos = 0;
-                    for line in new.iter() {
-                        offsets.push(pos);
-                        pos += line.text.chars().count() + 1;
-                    }
-                    offsets
-                };
+                let be = compute_block_emphasis(old, new);
 
                 let old_kind = if is_modification {
                     CellKind::Changed
@@ -463,9 +436,9 @@ pub fn build_unified_rows(
                 // All old lines first (removals)
                 for (i, line) in old.iter().enumerate() {
                     let emphasis = {
-                        let line_start = old_line_offsets[i];
+                        let line_start = be.old_line_offsets[i];
                         let line_len = line.text.chars().count();
-                        map_emphasis_for_segment(&block_old_emphasis, line_start, line_len)
+                        map_emphasis_for_segment(&be.old_emphasis, line_start, line_len)
                     };
 
                     let segs = wrap_or_empty(&line.text, &line.tokens, content_width);
@@ -496,9 +469,9 @@ pub fn build_unified_rows(
                 // Then all new lines (additions)
                 for (i, line) in new.iter().enumerate() {
                     let emphasis = {
-                        let line_start = new_line_offsets[i];
+                        let line_start = be.new_line_offsets[i];
                         let line_len = line.text.chars().count();
-                        map_emphasis_for_segment(&block_new_emphasis, line_start, line_len)
+                        map_emphasis_for_segment(&be.new_emphasis, line_start, line_len)
                     };
 
                     let segs = wrap_or_empty(&line.text, &line.tokens, content_width);

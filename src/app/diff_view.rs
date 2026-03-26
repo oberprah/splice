@@ -170,9 +170,7 @@ impl DiffView {
         let total = self.active_rows_len();
         let (start, end, active_hunk_range) = visible_slice(&self.viewport, hunks, total);
         let rows = match &self.layout {
-            ActiveLayout::SideBySide { rows, .. } => {
-                VisibleRows::SideBySide(&rows[start..end])
-            }
+            ActiveLayout::SideBySide { rows, .. } => VisibleRows::SideBySide(&rows[start..end]),
             ActiveLayout::Unified {
                 rows, prefix_width, ..
             } => VisibleRows::Unified {
@@ -291,54 +289,37 @@ impl DiffView {
 
     pub fn current_file_line_number(&self) -> Result<u32, String> {
         let start = self.viewport.scroll_offset;
-
         match &self.layout {
-            ActiveLayout::SideBySide { rows, .. } => {
-                if rows.is_empty() {
-                    return Err("diff has no rows".to_string());
-                }
-                for row in rows.get(start..).unwrap_or(&[]) {
-                    if let Some(n) = row.right.line_number {
-                        return Ok(n);
-                    }
-                    if let Some(n) = row.left.line_number {
-                        return Ok(n);
-                    }
-                }
-                for row in rows {
-                    if let Some(n) = row.right.line_number {
-                        return Ok(n);
-                    }
-                    if let Some(n) = row.left.line_number {
-                        return Ok(n);
-                    }
-                }
-                Err("no line number found in diff".to_string())
-            }
-            ActiveLayout::Unified { rows, .. } => {
-                if rows.is_empty() {
-                    return Err("diff has no rows".to_string());
-                }
-                for row in rows.get(start..).unwrap_or(&[]) {
-                    if let Some(n) = row.new_line_number {
-                        return Ok(n);
-                    }
-                    if let Some(n) = row.old_line_number {
-                        return Ok(n);
-                    }
-                }
-                for row in rows {
-                    if let Some(n) = row.new_line_number {
-                        return Ok(n);
-                    }
-                    if let Some(n) = row.old_line_number {
-                        return Ok(n);
-                    }
-                }
-                Err("no line number found in diff".to_string())
-            }
+            ActiveLayout::SideBySide { rows, .. } => find_line_number(rows, start, |row| {
+                row.right.line_number.or(row.left.line_number)
+            }),
+            ActiveLayout::Unified { rows, .. } => find_line_number(rows, start, |row| {
+                row.new_line_number.or(row.old_line_number)
+            }),
         }
     }
+}
+
+/// Scan rows starting at `start` for a line number; fall back to scanning from the beginning.
+fn find_line_number<T>(
+    rows: &[T],
+    start: usize,
+    extract: impl Fn(&T) -> Option<u32>,
+) -> Result<u32, String> {
+    if rows.is_empty() {
+        return Err("diff has no rows".to_string());
+    }
+    for row in rows.get(start..).unwrap_or(&[]) {
+        if let Some(n) = extract(row) {
+            return Ok(n);
+        }
+    }
+    for row in rows {
+        if let Some(n) = extract(row) {
+            return Ok(n);
+        }
+    }
+    Err("no line number found in diff".to_string())
 }
 
 #[cfg(test)]
