@@ -33,7 +33,7 @@ fn files_view_scroll_long_file_list() {
     // file_0.txt ends up off-screen and no cursor is visible.
     h.assert_snapshot(
         r#"
-        "  539d384 Add many files                                                        "
+        "  539d384 Add many files · Test · 2d ago                                        "
         "                                                                                "
         "  21 files · +21 -0                                                             "
         "   ├── A +1 -0  b_02.txt                                                        "
@@ -108,7 +108,7 @@ fn files_view_navigation_with_modifications() {
     h.press(KeyCode::Enter);
     h.assert_snapshot(
         r#"
-    "  e2af8ce Modify and add files                                                  "
+    "  e2af8ce Modify and add files · Test · 2d ago                                  "
     "                                                                                "
     "  3 files · +5 -1                                                               "
     "   ├── src/                                                                     "
@@ -138,7 +138,7 @@ fn files_view_navigation_with_modifications() {
     h.press(KeyCode::Char('j'));
     h.assert_snapshot(
         r#"
-    "  e2af8ce Modify and add files                                                  "
+    "  e2af8ce Modify and add files · Test · 2d ago                                  "
     "                                                                                "
     "  3 files · +5 -1                                                               "
     "   ├── src/                                                                     "
@@ -212,7 +212,7 @@ fn files_view_folder_collapse_expand() {
     h.press(KeyCode::Enter);
     h.assert_snapshot(
         r#"
-    "  01e0c9d Add nested files                                                      "
+    "  01e0c9d Add nested files · Test · 2d ago                                      "
     "                                                                                "
     "  4 files · +4 -0                                                               "
     "   ├── src/                                                                     "
@@ -245,7 +245,7 @@ fn files_view_folder_collapse_expand() {
     h.press(KeyCode::Left);
     h.assert_snapshot(
         r#"
-    "  01e0c9d Add nested files                                                      "
+    "  01e0c9d Add nested files · Test · 2d ago                                      "
     "                                                                                "
     "  4 files · +4 -0                                                               "
     "  →├── src/ +3 -0 (3 files)                                                     "
@@ -275,7 +275,7 @@ fn files_view_folder_collapse_expand() {
     h.press(KeyCode::Right);
     h.assert_snapshot(
         r#"
-    "  01e0c9d Add nested files                                                      "
+    "  01e0c9d Add nested files · Test · 2d ago                                      "
     "                                                                                "
     "  4 files · +4 -0                                                               "
     "  →├── src/                                                                     "
