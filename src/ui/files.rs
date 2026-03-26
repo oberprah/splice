@@ -1,28 +1,42 @@
 use crate::app::FilesView;
-use crate::core::{DiffRef, FileStatus};
+use crate::core::{format_relative_time, DiffRef, FileStatus};
 use crate::domain::filetree::{FolderNode, TreeNode};
 use crate::ui::theme::Theme;
+use chrono::{DateTime, Utc};
 use ratatui::{
     prelude::*,
     style::Modifier,
     widgets::{List, ListItem, Paragraph},
 };
 
-fn source_header_line(diff_ref: &DiffRef, width: usize, theme: &Theme) -> Line<'static> {
+fn source_header_line(
+    diff_ref: &DiffRef,
+    now: DateTime<Utc>,
+    width: usize,
+    theme: &Theme,
+) -> Line<'static> {
     if let DiffRef::CommitRange(range) = diff_ref {
         if range.is_single_commit() {
             let hash = range.end.short_hash().to_owned();
+            let author = range.end.author.clone();
+            let relative_time = format_relative_time(range.end.date, now);
+            let suffix = format!(" · {} · {}", author, relative_time);
             let hash_len = hash.chars().count();
+            let suffix_len = suffix.chars().count();
             let msg: String = range
                 .end
                 .message
                 .chars()
-                .take(width.saturating_sub(hash_len + 1))
+                .take(width.saturating_sub(hash_len + 1 + suffix_len))
                 .collect();
             return Line::from(vec![
                 Span::styled(hash, theme.hash),
                 Span::raw(" "),
                 Span::styled(msg, theme.text.add_modifier(Modifier::BOLD)),
+                Span::styled(" · ", theme.text_muted),
+                Span::styled(author, theme.author),
+                Span::styled(" · ", theme.text_muted),
+                Span::styled(relative_time, theme.text_muted),
             ]);
         }
     }
@@ -31,11 +45,17 @@ fn source_header_line(diff_ref: &DiffRef, width: usize, theme: &Theme) -> Line<'
     Line::from(Span::styled(truncated, theme.text_muted))
 }
 
-pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect, theme: &Theme) {
+pub fn render_files_view(
+    f: &mut Frame,
+    files: &FilesView,
+    now: DateTime<Utc>,
+    area: Rect,
+    theme: &Theme,
+) {
     let mut y = area.y;
     let width = area.width as usize;
 
-    render_source_header(f, &files.diff_ref, area.x, y, width, theme);
+    render_source_header(f, &files.diff_ref, now, area.x, y, width, theme);
     y += 1;
 
     match files.body_display_info() {
@@ -118,12 +138,13 @@ pub fn render_files_view(f: &mut Frame, files: &FilesView, area: Rect, theme: &T
 fn render_source_header(
     f: &mut Frame,
     diff_ref: &DiffRef,
+    now: DateTime<Utc>,
     x: u16,
     y: u16,
     width: usize,
     theme: &Theme,
 ) {
-    let line = source_header_line(diff_ref, width, theme);
+    let line = source_header_line(diff_ref, now, width, theme);
     let para = Paragraph::new(line);
     f.render_widget(para, Rect::new(x, y, width as u16, 1));
 }

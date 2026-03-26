@@ -98,7 +98,7 @@ fn renamed_file_displays_as_renamed() {
     h.press(KeyCode::Enter);
     h.assert_snapshot(
         r#"
-    "  70e9905 Rename file                                                           "
+    "  70e9905 Rename file · Test · 2d ago                                           "
     "                                                                                "
     "  2 files · +1 -0                                                               "
     "  →├── A +1 -0  file_1.txt                                                      "
@@ -145,7 +145,7 @@ fn moved_folder_displays_renamed_files() {
     h.press(KeyCode::Enter);
     h.assert_snapshot(
         r#"
-    "  cb6373d Move components folder                                                "
+    "  cb6373d Move components folder · Test · 2d ago                                "
     "                                                                                "
     "  3 files · +1 -0                                                               "
     "   ├── ui/components/                                                           "

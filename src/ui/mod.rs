@@ -82,7 +82,7 @@ pub fn render(f: &mut Frame, app: &mut App) {
             );
         }
         View::Files(files) => {
-            files::render_files_view(f, files, area, theme);
+            files::render_files_view(f, files, app.now(), area, theme);
         }
         View::Diff(diff) => {
             diff::render_diff_view(f, diff, area, theme);

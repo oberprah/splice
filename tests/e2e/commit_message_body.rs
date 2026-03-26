@@ -29,7 +29,7 @@ fn files_view_shows_short_body_always() {
     h.press(KeyCode::Enter);
     h.assert_snapshot(
         r#"
-    "  10a104c Add greeting                                                          "
+    "  10a104c Add greeting · Test · 2d ago                                          "
     "                                                                                "
     "    This commit adds the feature.                                               "
     "    See ticket #42 for details.                                                 "
@@ -72,7 +72,7 @@ fn files_view_no_body_layout_unchanged() {
     h.press(KeyCode::Enter);
     h.assert_snapshot(
         r#"
-    "  6765376 Update README                                                         "
+    "  6765376 Update README · Test · 2d ago                                         "
     "                                                                                "
     "  2 files · +2 -1                                                               "
     "  →├── M +1 -1  README.md                                                       "
@@ -115,7 +115,7 @@ fn files_view_long_body_truncated_with_expand_hint() {
     h.press(KeyCode::Enter);
     h.assert_snapshot(
         r#"
-    "  9902ee0 Big refactor                                                          "
+    "  9902ee0 Big refactor · Test · 2d ago                                          "
     "                                                                                "
     "    Body line 1.                                                                "
     "    Body line 2.                                                                "
@@ -160,7 +160,7 @@ fn files_view_m_expands_and_collapses_long_body() {
     h.press(KeyCode::Char('m'));
     h.assert_snapshot(
         r#"
-    "  9902ee0 Big refactor                                                          "
+    "  9902ee0 Big refactor · Test · 2d ago                                          "
     "                                                                                "
     "    Body line 1.                                                                "
     "    Body line 2.                                                                "
@@ -190,7 +190,7 @@ fn files_view_m_expands_and_collapses_long_body() {
     h.press(KeyCode::Char('m'));
     h.assert_snapshot(
         r#"
-    "  9902ee0 Big refactor                                                          "
+    "  9902ee0 Big refactor · Test · 2d ago                                          "
     "                                                                                "
     "    Body line 1.                                                                "
     "    Body line 2.                                                                "
