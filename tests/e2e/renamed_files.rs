@@ -48,7 +48,7 @@ fn renamed_file_diff_shows_old_content() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+    "  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
     "#,
     );
 }

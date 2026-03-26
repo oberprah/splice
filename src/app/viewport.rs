@@ -1,4 +1,4 @@
-use crate::domain::diff::layout::ScreenRow;
+use crate::domain::diff::layout::{ScreenRow, UnifiedRow};
 use crate::domain::diff::HunkRange;
 
 #[derive(Clone, Copy)]
@@ -19,28 +19,30 @@ pub enum ViewportAction {
     JumpToLastHunk,
 }
 
+pub enum VisibleRows<'a> {
+    SideBySide(&'a [ScreenRow]),
+    Unified {
+        rows: &'a [UnifiedRow],
+        prefix_width: usize,
+    },
+}
+
 pub struct VisibleContent<'a> {
-    pub rows: &'a [ScreenRow],
+    pub rows: VisibleRows<'a>,
     pub row_offset: usize,
     pub active_hunk_range: Option<HunkRange>,
 }
 
-pub fn visible_content<'a>(
-    rows: &'a [ScreenRow],
-    hunks: &[HunkRange],
+/// Compute the visible slice indices and active hunk range for a viewport.
+pub fn visible_slice(
     viewport: &Viewport,
-) -> VisibleContent<'a> {
+    hunks: &[HunkRange],
+    total: usize,
+) -> (usize, usize, Option<HunkRange>) {
     let start = viewport.scroll_offset;
-    let end = (start + viewport.height).min(rows.len());
-    let visible_rows = &rows[start..end];
-
+    let end = (start + viewport.height).min(total);
     let active_hunk_range = viewport.active_hunk.and_then(|idx| hunks.get(idx).copied());
-
-    VisibleContent {
-        rows: visible_rows,
-        row_offset: viewport.scroll_offset,
-        active_hunk_range,
-    }
+    (start, end, active_hunk_range)
 }
 
 // --- pure viewport helpers (free functions) ---

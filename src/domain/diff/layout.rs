@@ -55,6 +55,14 @@ fn empty_cell() -> Cell {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UnifiedRow {
+    pub old_line_number: Option<u32>,
+    pub new_line_number: Option<u32>,
+    pub is_old_side: bool,
+    pub cell: Cell,
+}
+
 pub fn build_rows(file: &FileDiff, width: usize) -> (Vec<ScreenRow>, Vec<HunkRange>) {
     if width == 0 {
         return (Vec::new(), Vec::new());
@@ -337,6 +345,196 @@ pub fn build_rows(file: &FileDiff, width: usize) -> (Vec<ScreenRow>, Vec<HunkRan
     }
 
     (rows, hunks)
+}
+
+pub fn build_unified_rows(
+    file: &FileDiff,
+    width: usize,
+) -> (Vec<UnifiedRow>, Vec<HunkRange>, usize) {
+    if width == 0 {
+        return (Vec::new(), Vec::new(), 0);
+    }
+
+    // Find max line number to determine prefix width (same logic as build_rows)
+    let max_line_num = file
+        .blocks
+        .iter()
+        .map(|b| match b {
+            DiffBlock::Unchanged(lines) => lines.last().map(|l| l.new_number).unwrap_or(0),
+            DiffBlock::Change { old, new } => {
+                let old_max = old.last().map(|l| l.number).unwrap_or(0);
+                let new_max = new.last().map(|l| l.number).unwrap_or(0);
+                old_max.max(new_max)
+            }
+        })
+        .max()
+        .unwrap_or(0);
+
+    // Two line number gutters: "{:>3} " each
+    let single_gutter = format!("{:>3} ", max_line_num).chars().count();
+    let prefix_width = single_gutter * 2;
+    let content_width = width.saturating_sub(prefix_width);
+
+    let mut rows: Vec<UnifiedRow> = Vec::new();
+    let mut hunks: Vec<HunkRange> = Vec::new();
+
+    for block in &file.blocks {
+        match block {
+            DiffBlock::Unchanged(lines) => {
+                for line in lines {
+                    let segs = wrap_or_empty(&line.text, &line.tokens, content_width);
+                    for (seg_idx, seg) in segs.iter().enumerate() {
+                        rows.push(UnifiedRow {
+                            old_line_number: if seg_idx == 0 {
+                                Some(line.old_number)
+                            } else {
+                                None
+                            },
+                            new_line_number: if seg_idx == 0 {
+                                Some(line.new_number)
+                            } else {
+                                None
+                            },
+                            is_old_side: false,
+                            cell: Cell {
+                                kind: CellKind::Context,
+                                line_number: None,
+                                text: seg.text.clone(),
+                                tokens: seg.tokens.clone(),
+                                emphasis: Vec::new(),
+                            },
+                        });
+                    }
+                }
+            }
+            DiffBlock::Change { old, new } => {
+                let hunk_start = rows.len();
+
+                let is_modification = !old.is_empty() && !new.is_empty();
+
+                // Compute emphasis across the whole block
+                let (block_old_emphasis, block_new_emphasis) = if is_modification {
+                    let old_joined: String = old
+                        .iter()
+                        .map(|l| l.text.as_str())
+                        .collect::<Vec<_>>()
+                        .join("\n");
+                    let new_joined: String = new
+                        .iter()
+                        .map(|l| l.text.as_str())
+                        .collect::<Vec<_>>()
+                        .join("\n");
+                    compute_inline_spans(&old_joined, &new_joined)
+                } else {
+                    (Vec::new(), Vec::new())
+                };
+
+                // Build line offset mappings for emphasis slicing
+                let old_line_offsets: Vec<usize> = {
+                    let mut offsets = Vec::with_capacity(old.len());
+                    let mut pos = 0;
+                    for line in old.iter() {
+                        offsets.push(pos);
+                        pos += line.text.chars().count() + 1;
+                    }
+                    offsets
+                };
+                let new_line_offsets: Vec<usize> = {
+                    let mut offsets = Vec::with_capacity(new.len());
+                    let mut pos = 0;
+                    for line in new.iter() {
+                        offsets.push(pos);
+                        pos += line.text.chars().count() + 1;
+                    }
+                    offsets
+                };
+
+                let old_kind = if is_modification {
+                    CellKind::Changed
+                } else {
+                    CellKind::Removed
+                };
+                let new_kind = if is_modification {
+                    CellKind::Changed
+                } else {
+                    CellKind::Added
+                };
+
+                // All old lines first (removals)
+                for (i, line) in old.iter().enumerate() {
+                    let emphasis = {
+                        let line_start = old_line_offsets[i];
+                        let line_len = line.text.chars().count();
+                        map_emphasis_for_segment(&block_old_emphasis, line_start, line_len)
+                    };
+
+                    let segs = wrap_or_empty(&line.text, &line.tokens, content_width);
+                    for (seg_idx, seg) in segs.iter().enumerate() {
+                        rows.push(UnifiedRow {
+                            old_line_number: if seg_idx == 0 {
+                                Some(line.number)
+                            } else {
+                                None
+                            },
+                            new_line_number: None,
+                            is_old_side: true,
+                            cell: Cell {
+                                kind: old_kind,
+                                line_number: None,
+                                text: seg.text.clone(),
+                                tokens: seg.tokens.clone(),
+                                emphasis: map_emphasis_for_segment(
+                                    &emphasis,
+                                    seg.char_offset,
+                                    seg.text.chars().count(),
+                                ),
+                            },
+                        });
+                    }
+                }
+
+                // Then all new lines (additions)
+                for (i, line) in new.iter().enumerate() {
+                    let emphasis = {
+                        let line_start = new_line_offsets[i];
+                        let line_len = line.text.chars().count();
+                        map_emphasis_for_segment(&block_new_emphasis, line_start, line_len)
+                    };
+
+                    let segs = wrap_or_empty(&line.text, &line.tokens, content_width);
+                    for (seg_idx, seg) in segs.iter().enumerate() {
+                        rows.push(UnifiedRow {
+                            old_line_number: None,
+                            new_line_number: if seg_idx == 0 {
+                                Some(line.number)
+                            } else {
+                                None
+                            },
+                            is_old_side: false,
+                            cell: Cell {
+                                kind: new_kind,
+                                line_number: None,
+                                text: seg.text.clone(),
+                                tokens: seg.tokens.clone(),
+                                emphasis: map_emphasis_for_segment(
+                                    &emphasis,
+                                    seg.char_offset,
+                                    seg.text.chars().count(),
+                                ),
+                            },
+                        });
+                    }
+                }
+
+                hunks.push(HunkRange {
+                    start: hunk_start,
+                    end: rows.len(),
+                });
+            }
+        }
+    }
+
+    (rows, hunks, prefix_width)
 }
 
 #[cfg(test)]
@@ -624,5 +822,128 @@ mod tests {
             !rows[1].right.emphasis.is_empty(),
             "second new line should have emphasis from block-level diff"
         );
+    }
+
+    // --- Unified layout tests ---
+
+    #[test]
+    fn simple_unchanged_block_unified() {
+        let file = make_file(vec![DiffBlock::Unchanged(vec![
+            unchanged(1, 1, "hello"),
+            unchanged(2, 2, "world"),
+        ])]);
+        let (rows, hunks, _prefix_width) = build_unified_rows(&file, 80);
+        assert_eq!(rows.len(), 2);
+        assert!(hunks.is_empty());
+        assert_eq!(rows[0].old_line_number, Some(1));
+        assert_eq!(rows[0].new_line_number, Some(1));
+        assert_eq!(rows[0].cell.kind, CellKind::Context);
+        assert_eq!(rows[1].old_line_number, Some(2));
+        assert_eq!(rows[1].new_line_number, Some(2));
+    }
+
+    #[test]
+    fn change_block_unified_produces_removals_then_additions() {
+        let file = make_file(vec![DiffBlock::Change {
+            old: vec![diff_line(1, "old line")],
+            new: vec![diff_line(1, "new line"), diff_line(2, "extra")],
+        }]);
+        let (rows, hunks, _prefix_width) = build_unified_rows(&file, 80);
+        // 1 old + 2 new = 3 rows
+        assert_eq!(rows.len(), 3);
+        assert_eq!(hunks.len(), 1);
+        assert_eq!(hunks[0].start, 0);
+        assert_eq!(hunks[0].end, 3);
+
+        // First row: removal (Changed because is_modification)
+        assert_eq!(rows[0].old_line_number, Some(1));
+        assert_eq!(rows[0].new_line_number, None);
+        assert_eq!(rows[0].cell.kind, CellKind::Changed);
+
+        // Second row: addition
+        assert_eq!(rows[1].old_line_number, None);
+        assert_eq!(rows[1].new_line_number, Some(1));
+        assert_eq!(rows[1].cell.kind, CellKind::Changed);
+
+        // Third row: addition
+        assert_eq!(rows[2].old_line_number, None);
+        assert_eq!(rows[2].new_line_number, Some(2));
+        assert_eq!(rows[2].cell.kind, CellKind::Changed);
+    }
+
+    #[test]
+    fn pure_addition_unified() {
+        let file = make_file(vec![DiffBlock::Change {
+            old: vec![],
+            new: vec![diff_line(5, "added")],
+        }]);
+        let (rows, hunks, _prefix_width) = build_unified_rows(&file, 80);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].old_line_number, None);
+        assert_eq!(rows[0].new_line_number, Some(5));
+        assert_eq!(rows[0].cell.kind, CellKind::Added);
+        assert_eq!(hunks[0], HunkRange { start: 0, end: 1 });
+    }
+
+    #[test]
+    fn pure_deletion_unified() {
+        let file = make_file(vec![DiffBlock::Change {
+            old: vec![diff_line(5, "removed")],
+            new: vec![],
+        }]);
+        let (rows, hunks, _prefix_width) = build_unified_rows(&file, 80);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].old_line_number, Some(5));
+        assert_eq!(rows[0].new_line_number, None);
+        assert_eq!(rows[0].cell.kind, CellKind::Removed);
+        assert_eq!(hunks[0], HunkRange { start: 0, end: 1 });
+    }
+
+    #[test]
+    fn hunk_ranges_unified() {
+        let file = make_file(vec![
+            DiffBlock::Unchanged(vec![unchanged(1, 1, "ctx"), unchanged(2, 2, "ctx")]),
+            DiffBlock::Change {
+                old: vec![diff_line(3, "a")],
+                new: vec![diff_line(3, "b")],
+            },
+            DiffBlock::Unchanged(vec![unchanged(4, 4, "ctx")]),
+            DiffBlock::Change {
+                old: vec![diff_line(5, "c"), diff_line(6, "d")],
+                new: vec![diff_line(5, "e")],
+            },
+        ]);
+        let (rows, hunks, _prefix_width) = build_unified_rows(&file, 80);
+        assert_eq!(hunks.len(), 2);
+        // First 2 rows are unchanged, then 1 old + 1 new = 2 rows
+        assert_eq!(hunks[0].start, 2);
+        assert_eq!(hunks[0].end, 4);
+        // 1 more unchanged, then 2 old + 1 new = 3 rows
+        assert_eq!(hunks[1].start, 5);
+        assert_eq!(hunks[1].end, 8);
+        assert_eq!(rows.len(), 8);
+    }
+
+    #[test]
+    fn emphasis_on_changed_lines_unified() {
+        let file = make_file(vec![DiffBlock::Change {
+            old: vec![diff_line(1, "hello world")],
+            new: vec![diff_line(1, "hello earth")],
+        }]);
+        let (rows, _, _) = build_unified_rows(&file, 80);
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].cell.kind, CellKind::Changed);
+        assert_eq!(rows[1].cell.kind, CellKind::Changed);
+        // "world" vs "earth" — emphasis should be non-empty on both
+        assert!(!rows[0].cell.emphasis.is_empty());
+        assert!(!rows[1].cell.emphasis.is_empty());
+    }
+
+    #[test]
+    fn unified_zero_width_produces_empty_rows() {
+        let file = make_file(vec![DiffBlock::Unchanged(vec![unchanged(1, 1, "hello")])]);
+        let (rows, hunks, _prefix_width) = build_unified_rows(&file, 0);
+        assert!(rows.is_empty());
+        assert!(hunks.is_empty());
     }
 }

@@ -114,7 +114,7 @@ impl Calculator {
 "   31                                 │  23                                     "
 "                                      │  24     pub fn pow(&self, base: i32,    "
 "                                      │   ↪ exp: u32) -> i32 {                  "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
 "#,
     );
 
@@ -144,7 +144,7 @@ impl Calculator {
 "    ↪ value)                          │   ↪ {value}")                           "
 "   34     }                           │  30     }                               "
 "   35 }                               │  31 }                                   "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
 "#,
     );
 
@@ -175,7 +175,7 @@ impl Calculator {
 "   31                                 │  23                                     "
 "                                      │  24     pub fn pow(&self, base: i32,    "
 "                                      │   ↪ exp: u32) -> i32 {                  "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
 "#,
     );
 }
@@ -226,7 +226,7 @@ fn diff_view_separator_with_wide_glyphs() {
 "    6         }                                           │   7         }                                               "
 "    7     }                                               │   8     }                                                   "
 "    8 }                                                   │   9 }                                                       "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                                                                    "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                                                        "
 "#,
     );
 }
@@ -275,7 +275,7 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
 "   10 old line 10                     │  10 new line 10                         "
 "   11 old line 11                     │  11 new line 11                         "
 "   12 old line 12                     │  12 new line 12                         "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
 "#,
     );
 
@@ -295,7 +295,7 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
 "   16 old line 16                     │  16 new line 16                         "
 "   17 old line 17                     │  17 new line 17                         "
 "   18 old line 18                     │  18 new line 18                         "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
 "#,
     );
 
@@ -315,7 +315,7 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
 "   18 old line 18                     │  18 new line 18                         "
 "   19 old line 19                     │  19 new line 19                         "
 "   20 old line 20                     │  20 new line 20                         "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
 "#,
     );
 
@@ -335,7 +335,7 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
 "                                                                                "
 "                                                                                "
 "                                                                                "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
 "#,
     );
 
@@ -355,7 +355,7 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
 "                                                                                "
 "                                                                                "
 "                                                                                "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
 "#,
     );
 
@@ -375,7 +375,7 @@ fn diff_view_navigates_hunks_and_jumps_between_files() {
 "                                                                                "
 "                                                                                "
 "                                                                                "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
 "#,
     );
 }
@@ -442,7 +442,7 @@ fn diff_view_handles_close_hunks_and_bottom_additions() {
 "   12 line 12                         │  12 line 12                             "
 "   13 line 13                         │  13 line 13                             "
 "   14 line 14                         │  14 line 14                             "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
 "#,
     );
 
@@ -462,7 +462,7 @@ fn diff_view_handles_close_hunks_and_bottom_additions() {
 "   11 line 11                         │  11 line 11                             "
 "   12 line 12                         │  12 line 12                             "
 "   13 line 13                         │  13 line 13                             "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
 "#,
     );
 
@@ -482,7 +482,7 @@ fn diff_view_handles_close_hunks_and_bottom_additions() {
 "   17 line 17                         │  17 line 17                             "
 "   18 line 18                         │  18 line 18                             "
 "                                      │  19 line 19 added                       "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
 "#,
     );
 
@@ -502,7 +502,7 @@ fn diff_view_handles_close_hunks_and_bottom_additions() {
 "                                                                                "
 "                                                                                "
 "                                                                                "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
 "#,
     );
 }
@@ -550,7 +550,7 @@ fn diff_view_soft_wrap_long_lines() {
 "    ↪ view";                │   ↪ view";                    "
 "                            │   3     let                   "
 "                            │   ↪ another_long_variable_    "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back        "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q  "
 "#,
     );
 
@@ -570,7 +570,7 @@ fn diff_view_soft_wrap_long_lines() {
 "                            │   3     let                   "
 "                            │   ↪ another_long_variable_    "
 "                            │   ↪ ame_for_testing =         "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back        "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q  "
 "#,
     );
 
@@ -590,7 +590,7 @@ fn diff_view_soft_wrap_long_lines() {
 "    ↪ view";                │   ↪ view";                    "
 "                            │   3     let                   "
 "                            │   ↪ another_long_variable_    "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back        "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q  "
 "#,
     );
 }
@@ -663,7 +663,7 @@ fn diff_view_prev_from_below_last_hunk_stays_in_file() {
 "   18 line 18                         │  18 line 18                             "
 "   19 line 19                         │  19 line 19                             "
 "   20 line 20                         │  20 line 20                             "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
 "#,
     );
 }
@@ -711,7 +711,7 @@ fn diff_view_n_does_not_skip_last_hunk_when_scroll_clamped() {
 "   18 line 18                         │  18 line 18                             "
 "   19 line 19                         │  19 line 19 changed                     "
 "   20 line 20                         │  20 line 20 changed                     "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
 "#,
     );
 
@@ -735,7 +735,7 @@ fn diff_view_n_does_not_skip_last_hunk_when_scroll_clamped() {
 "   18 line 18                         │  18 line 18                             "
 "   19 line 19                         │  19 line 19 changed                     "
 "   20 line 20                         │  20 line 20 changed                     "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
 "#,
     );
 
@@ -755,7 +755,7 @@ fn diff_view_n_does_not_skip_last_hunk_when_scroll_clamped() {
 "                                                                                "
 "                                                                                "
 "                                                                                "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
 "#,
     );
 }
@@ -791,7 +791,7 @@ fn diff_view_can_scroll_to_last_lines_of_purely_added_file() {
 "                                      │  10 line 10                             "
 "                                      │  11 line 11                             "
 "                                      │  12 line 12                             "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
 "#,
     );
 
@@ -813,7 +813,7 @@ fn diff_view_can_scroll_to_last_lines_of_purely_added_file() {
 "                                      │  18 line 18                             "
 "                                      │  19 line 19                             "
 "                                      │  20 line 20                             "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
 "#,
     );
 }
@@ -852,7 +852,7 @@ fn diff_view_focused_hunk_set_when_crossing_to_new_file() {
 "                                                                                "
 "                                                                                "
 "                                                                                "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
 "#,
     );
 
@@ -872,7 +872,7 @@ fn diff_view_focused_hunk_set_when_crossing_to_new_file() {
 "                                                                                "
 "                                                                                "
 "                                                                                "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
 "#,
     );
 
@@ -892,7 +892,122 @@ fn diff_view_focused_hunk_set_when_crossing_to_new_file() {
 "                                                                                "
 "                                                                                "
 "                                                                                "
-"  j/k: scroll  n/p: next/prev diff  o: open  q: back                            "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
+"#,
+    );
+}
+
+#[test]
+#[serial]
+fn diff_view_unified_toggle() {
+    reset_counter();
+
+    let repo = TestRepo::new();
+    repo.add_file("src/main.rs", "line 1\nline 2\nline 3\nline 4\nline 5\n");
+    repo.commit("Initial");
+    repo.modify_file(
+        "src/main.rs",
+        "line 1\nline 2 changed\nline 3\nline 4\nline 5\nnew line 6\n",
+    );
+    repo.commit("Modify file");
+
+    let mut h = Harness::with_repo(&repo);
+
+    // Navigate: log → files → diff
+    h.press(KeyCode::Enter);
+    h.press(KeyCode::Enter);
+
+    // Verify side-by-side view first
+    h.assert_snapshot(
+        r#"
+"  1b35a52 · src/main.rs · +2 -1                                                 "
+"    1 line 1                          │   1 line 1                              "
+"    2 line 2                          │   2 line 2 changed                      "
+"    3 line 3                          │   3 line 3                              "
+"    4 line 4                          │   4 line 4                              "
+"    5 line 5                          │   5 line 5                              "
+"                                      │   6 new line 6                          "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
+"#,
+    );
+
+    // Toggle to unified view
+    h.press(KeyCode::Char('v'));
+
+    h.assert_snapshot(
+        r#"
+"  1b35a52 · src/main.rs · +2 -1                                                 "
+"    1   1 line 1                                                                "
+"    2     line 2                                                                "
+"        2 line 2 changed                                                        "
+"    3   3 line 3                                                                "
+"    4   4 line 4                                                                "
+"    5   5 line 5                                                                "
+"        6 new line 6                                                            "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"  j/k: scroll  n/p: next/prev diff  v: split  o: open  q: back                  "
+"#,
+    );
+
+    // Toggle back to side-by-side
+    h.press(KeyCode::Char('v'));
+
+    h.assert_snapshot(
+        r#"
+"  1b35a52 · src/main.rs · +2 -1                                                 "
+"    1 line 1                          │   1 line 1                              "
+"    2 line 2                          │   2 line 2 changed                      "
+"    3 line 3                          │   3 line 3                              "
+"    4 line 4                          │   4 line 4                              "
+"    5 line 5                          │   5 line 5                              "
+"                                      │   6 new line 6                          "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
 "#,
     );
 }
