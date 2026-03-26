@@ -12,7 +12,7 @@
 
 - **Commit graph** — visual branch topology with merge lines, so you can actually follow what happened
 - **File tree** — expand any commit to see changed files with status indicators and line counts
-- **Side-by-side diffs** — additions and deletions shown in parallel, with inline highlighting for changed lines
+- **Side-by-side and unified diffs** — toggle between layouts with `v`, with inline highlighting for changed lines
 - **Smart navigation** — jump between diffs with `n`/`p`, drill into files with `Enter`, back out with `q` — always one key away
 - **Fast** — opens instantly, even on large repos. No config, no setup, no waiting
 
