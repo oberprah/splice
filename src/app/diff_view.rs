@@ -1,17 +1,35 @@
 use crate::core::DiffRef;
-use crate::domain::diff::layout::{build_rows, ScreenRow};
-use crate::domain::diff::FileDiff;
+use crate::domain::diff::layout::{build_rows, build_unified_rows, ScreenRow, UnifiedRow};
+use crate::domain::diff::{FileDiff, HunkRange};
 
 use super::viewport::{
-    clamp_scroll_offset, max_scroll_offset, page_step, update_viewport, visible_content, Viewport,
-    ViewportAction, VisibleContent,
+    clamp_scroll_offset, max_scroll_offset, page_step, update_viewport, visible_slice, Viewport,
+    ViewportAction, VisibleContent, VisibleRows,
 };
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum DiffLayout {
+    #[default]
+    SideBySide,
+    Unified,
+}
+
+enum ActiveLayout {
+    SideBySide {
+        rows: Vec<ScreenRow>,
+        hunks: Vec<HunkRange>,
+    },
+    Unified {
+        rows: Vec<UnifiedRow>,
+        hunks: Vec<HunkRange>,
+        prefix_width: usize,
+    },
+}
 
 pub struct DiffView {
     pub diff_ref: DiffRef,
     pub file: FileDiff,
-    rows: Vec<ScreenRow>,
-    hunks: Vec<crate::domain::diff::HunkRange>,
+    layout: ActiveLayout,
     pub viewport: Viewport,
     /// When set, the viewport is animating toward this scroll offset.
     /// Each call to `advance_animation` steps `viewport.scroll_offset` closer.
@@ -23,8 +41,10 @@ impl DiffView {
         Self {
             diff_ref,
             file,
-            rows: Vec::new(),
-            hunks: Vec::new(),
+            layout: ActiveLayout::SideBySide {
+                rows: Vec::new(),
+                hunks: Vec::new(),
+            },
             viewport: Viewport {
                 scroll_offset: 0,
                 height: 0,
@@ -41,10 +61,8 @@ impl DiffView {
         self.viewport.height = height;
         self.viewport.width = width;
         if width_changed {
-            let (rows, hunks) = build_rows(&self.file, width);
-            self.viewport.total_rows = rows.len();
-            self.rows = rows;
-            self.hunks = hunks;
+            self.rebuild_active_layout(width);
+            self.viewport.total_rows = self.active_rows_len();
         }
         let clamped = clamp_scroll_offset(&self.viewport);
         self.viewport.scroll_offset = clamped;
@@ -77,7 +95,8 @@ impl DiffView {
         if is_single_step {
             // j/k: cancel animation, apply immediately from current position
             self.animation_target = None;
-            let (new_viewport, did_navigate) = update_viewport(&self.viewport, action, &self.hunks);
+            let (new_viewport, did_navigate) =
+                update_viewport(&self.viewport, action, self.active_hunks());
             self.viewport = new_viewport;
             did_navigate
         } else {
@@ -88,7 +107,7 @@ impl DiffView {
                 ..self.viewport
             };
             let (new_viewport, did_navigate) =
-                update_viewport(&virtual_viewport, action, &self.hunks);
+                update_viewport(&virtual_viewport, action, self.active_hunks());
 
             // Apply non-scroll state immediately (hunk highlight appears right away)
             self.viewport.active_hunk = new_viewport.active_hunk;
@@ -147,7 +166,109 @@ impl DiffView {
     }
 
     pub fn visible_content(&self) -> VisibleContent<'_> {
-        visible_content(&self.rows, &self.hunks, &self.viewport)
+        let hunks = self.active_hunks();
+        let total = self.active_rows_len();
+        let (start, end, active_hunk_range) = visible_slice(&self.viewport, hunks, total);
+        let rows = match &self.layout {
+            ActiveLayout::SideBySide { rows, .. } => VisibleRows::SideBySide(&rows[start..end]),
+            ActiveLayout::Unified {
+                rows, prefix_width, ..
+            } => VisibleRows::Unified {
+                rows: &rows[start..end],
+                prefix_width: *prefix_width,
+            },
+        };
+        VisibleContent {
+            rows,
+            row_offset: self.viewport.scroll_offset,
+            active_hunk_range,
+        }
+    }
+
+    pub fn layout(&self) -> DiffLayout {
+        match &self.layout {
+            ActiveLayout::SideBySide { .. } => DiffLayout::SideBySide,
+            ActiveLayout::Unified { .. } => DiffLayout::Unified,
+        }
+    }
+
+    pub fn toggle_layout(&mut self) {
+        let width = self.viewport.width;
+        self.layout = match &self.layout {
+            ActiveLayout::SideBySide { .. } => {
+                let (rows, hunks, prefix_width) = build_unified_rows(&self.file, width);
+                ActiveLayout::Unified {
+                    rows,
+                    hunks,
+                    prefix_width,
+                }
+            }
+            ActiveLayout::Unified { .. } => {
+                let (rows, hunks) = build_rows(&self.file, width);
+                ActiveLayout::SideBySide { rows, hunks }
+            }
+        };
+        self.viewport.total_rows = self.active_rows_len();
+        self.viewport.scroll_offset = clamp_scroll_offset(&self.viewport);
+        self.viewport.active_hunk = None;
+        self.animation_target = None;
+    }
+
+    /// Set the layout without resetting hunk/scroll state beyond clamping.
+    /// Used when opening a new file diff to preserve the user's layout preference.
+    pub fn set_layout(&mut self, target: DiffLayout) {
+        if self.layout() != target {
+            let width = self.viewport.width;
+            self.layout = match target {
+                DiffLayout::SideBySide => {
+                    let (rows, hunks) = build_rows(&self.file, width);
+                    ActiveLayout::SideBySide { rows, hunks }
+                }
+                DiffLayout::Unified => {
+                    let (rows, hunks, prefix_width) = build_unified_rows(&self.file, width);
+                    ActiveLayout::Unified {
+                        rows,
+                        hunks,
+                        prefix_width,
+                    }
+                }
+            };
+            self.viewport.total_rows = self.active_rows_len();
+            self.viewport.scroll_offset = clamp_scroll_offset(&self.viewport);
+            self.viewport.active_hunk = None;
+            self.animation_target = None;
+        }
+    }
+
+    fn active_rows_len(&self) -> usize {
+        match &self.layout {
+            ActiveLayout::SideBySide { rows, .. } => rows.len(),
+            ActiveLayout::Unified { rows, .. } => rows.len(),
+        }
+    }
+
+    fn active_hunks(&self) -> &[HunkRange] {
+        match &self.layout {
+            ActiveLayout::SideBySide { hunks, .. } => hunks,
+            ActiveLayout::Unified { hunks, .. } => hunks,
+        }
+    }
+
+    fn rebuild_active_layout(&mut self, width: usize) {
+        self.layout = match &self.layout {
+            ActiveLayout::SideBySide { .. } => {
+                let (rows, hunks) = build_rows(&self.file, width);
+                ActiveLayout::SideBySide { rows, hunks }
+            }
+            ActiveLayout::Unified { .. } => {
+                let (rows, hunks, prefix_width) = build_unified_rows(&self.file, width);
+                ActiveLayout::Unified {
+                    rows,
+                    hunks,
+                    prefix_width,
+                }
+            }
+        };
     }
 
     pub fn page_step(&self) -> usize {
@@ -167,34 +288,38 @@ impl DiffView {
     }
 
     pub fn current_file_line_number(&self) -> Result<u32, String> {
-        if self.rows.is_empty() {
-            return Err("diff has no rows".to_string());
-        }
-
         let start = self.viewport.scroll_offset;
-
-        // Walk forward from scroll_offset to find a row with a new-side line number
-        for row in self.rows.get(start..).unwrap_or(&[]) {
-            if let Some(n) = row.right.line_number {
-                return Ok(n);
-            }
-            if let Some(n) = row.left.line_number {
-                return Ok(n);
-            }
+        match &self.layout {
+            ActiveLayout::SideBySide { rows, .. } => find_line_number(rows, start, |row| {
+                row.right.line_number.or(row.left.line_number)
+            }),
+            ActiveLayout::Unified { rows, .. } => find_line_number(rows, start, |row| {
+                row.new_line_number.or(row.old_line_number)
+            }),
         }
-
-        // Walk from beginning if nothing found forward
-        for row in &self.rows {
-            if let Some(n) = row.right.line_number {
-                return Ok(n);
-            }
-            if let Some(n) = row.left.line_number {
-                return Ok(n);
-            }
-        }
-
-        Err("no line number found in diff".to_string())
     }
+}
+
+/// Scan rows starting at `start` for a line number; fall back to scanning from the beginning.
+fn find_line_number<T>(
+    rows: &[T],
+    start: usize,
+    extract: impl Fn(&T) -> Option<u32>,
+) -> Result<u32, String> {
+    if rows.is_empty() {
+        return Err("diff has no rows".to_string());
+    }
+    for row in rows.get(start..).unwrap_or(&[]) {
+        if let Some(n) = extract(row) {
+            return Ok(n);
+        }
+    }
+    for row in rows {
+        if let Some(n) = extract(row) {
+            return Ok(n);
+        }
+    }
+    Err("no line number found in diff".to_string())
 }
 
 #[cfg(test)]

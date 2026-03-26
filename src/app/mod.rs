@@ -3,7 +3,7 @@ mod files_view;
 mod log_view;
 pub mod viewport;
 
-pub use diff_view::DiffView;
+pub use diff_view::{DiffLayout, DiffView};
 pub use files_view::FilesView;
 pub use log_view::{LogSummary, LogView};
 pub use viewport::{Viewport, ViewportAction, VisibleContent};
@@ -43,6 +43,7 @@ pub struct App {
     pub view_stack: Vec<View>,
     pub error: Option<String>,
     pub theme_mode: ThemeMode,
+    diff_layout: DiffLayout,
     viewport_width: usize,
     now: Option<DateTime<Utc>>,
 }
@@ -61,6 +62,7 @@ impl App {
             view_stack: Vec::new(),
             error: None,
             theme_mode: ThemeMode::Auto,
+            diff_layout: DiffLayout::default(),
             viewport_width: 0,
             now: None,
         }
@@ -73,6 +75,7 @@ impl App {
             view_stack: Vec::new(),
             error: None,
             theme_mode: ThemeMode::Auto,
+            diff_layout: DiffLayout::default(),
             viewport_width: 0,
             now: Some(now),
         }
@@ -118,6 +121,7 @@ impl App {
                 view_stack: Vec::new(),
                 error: None,
                 theme_mode: ThemeMode::Auto,
+                diff_layout: DiffLayout::default(),
                 viewport_width: 0,
                 now,
             },
@@ -127,6 +131,7 @@ impl App {
                 view_stack: Vec::new(),
                 error: Some(e),
                 theme_mode: ThemeMode::Auto,
+                diff_layout: DiffLayout::default(),
                 viewport_width: 0,
                 now,
             },
@@ -163,6 +168,7 @@ impl App {
             view_stack: vec![],
             error: None,
             theme_mode: ThemeMode::Auto,
+            diff_layout: DiffLayout::default(),
             viewport_width: 0,
             now,
         }
@@ -258,13 +264,16 @@ impl App {
             Action::ToggleFolder => self.toggle_folder(false, false),
             Action::ExpandFolder => self.toggle_folder(true, false),
             Action::CollapseFolder => self.toggle_folder(false, true),
-            Action::ToggleVisualMode => {
+            Action::ToggleViewMode => {
                 if let View::Log(log) = &mut self.view {
                     if log.is_visual_mode() {
                         log.exit_visual_mode();
                     } else {
                         log.enter_visual_mode();
                     }
+                } else if let View::Diff(diff) = &mut self.view {
+                    diff.toggle_layout();
+                    self.diff_layout = diff.layout();
                 }
             }
             Action::NextDiff => self.navigate_diff(1),
@@ -478,6 +487,7 @@ impl App {
 
         let mut diff_view = DiffView::new(diff_ref, file_diff);
         diff_view.set_viewport_dimensions(self.viewport_height(), self.viewport_width);
+        diff_view.set_layout(self.diff_layout);
         let old_view = std::mem::replace(&mut self.view, View::Diff(diff_view));
         if push_previous {
             self.view_stack.push(old_view);

@@ -1,7 +1,8 @@
-use crate::app::DiffView;
+use crate::app::viewport::VisibleRows;
+use crate::app::{DiffLayout, DiffView};
 use crate::core::{DiffRef, UncommittedType};
 use crate::domain::diff::inline_diff::InlineSpan;
-use crate::domain::diff::layout::{Cell, CellKind};
+use crate::domain::diff::layout::{Cell, CellKind, UnifiedRow};
 use crate::domain::wrap::WrappedSegment;
 use crate::ui::theme::Theme;
 use ratatui::{prelude::*, widgets::Paragraph};
@@ -32,9 +33,15 @@ pub fn render_diff_view(f: &mut Frame, view: &DiffView, area: Rect, theme: &Them
 
     render_diff_rows(f, view, area.x, y, area.width, content_height, theme);
 
-    let help = Paragraph::new("j/k: scroll  n/p: next/prev diff  o: open  q: back")
-        .style(theme.text_muted)
-        .alignment(Alignment::Left);
+    let layout_hint = match view.layout() {
+        DiffLayout::SideBySide => "v: unified",
+        DiffLayout::Unified => "v: split",
+    };
+    let help = Paragraph::new(format!(
+        "j/k: scroll  n/p: next/prev diff  {layout_hint}  o: open  q: back"
+    ))
+    .style(theme.text_muted)
+    .alignment(Alignment::Left);
     f.render_widget(
         help,
         Rect::new(
@@ -55,16 +62,14 @@ fn render_diff_rows(
     content_height: usize,
     theme: &Theme,
 ) {
-    let total_width = width as usize;
-    let separator = " │ ";
-    let left_width = total_width.saturating_sub(separator.len()) / 2;
-    let right_width = total_width
-        .saturating_sub(separator.len())
-        .saturating_sub(left_width);
-
     let content = view.visible_content();
 
-    if content.rows.is_empty() {
+    let is_empty = match &content.rows {
+        VisibleRows::SideBySide(rows) => rows.is_empty(),
+        VisibleRows::Unified { rows, .. } => rows.is_empty(),
+    };
+
+    if is_empty {
         let msg = Paragraph::new("No changes")
             .style(Style::default().fg(Color::Gray))
             .alignment(Alignment::Center);
@@ -72,14 +77,62 @@ fn render_diff_rows(
         return;
     }
 
-    for (i, row) in content.rows.iter().enumerate() {
+    match content.rows {
+        VisibleRows::SideBySide(rows) => {
+            render_side_by_side_rows(
+                f,
+                rows,
+                content.row_offset,
+                content.active_hunk_range,
+                x,
+                y,
+                width,
+                content_height,
+                theme,
+            );
+        }
+        VisibleRows::Unified { rows, prefix_width } => {
+            render_unified_rows(
+                f,
+                rows,
+                content.row_offset,
+                content.active_hunk_range,
+                x,
+                y,
+                width,
+                content_height,
+                prefix_width,
+                theme,
+            );
+        }
+    }
+}
+
+fn render_side_by_side_rows(
+    f: &mut Frame,
+    rows: &[crate::domain::diff::ScreenRow],
+    row_offset: usize,
+    active_hunk_range: Option<crate::domain::diff::HunkRange>,
+    x: u16,
+    y: u16,
+    width: u16,
+    content_height: usize,
+    theme: &Theme,
+) {
+    let total_width = width as usize;
+    let separator = " \u{2502} ";
+    let left_width = total_width.saturating_sub(separator.len()) / 2;
+    let right_width = total_width
+        .saturating_sub(separator.len())
+        .saturating_sub(left_width);
+
+    for (i, row) in rows.iter().enumerate() {
         if i >= content_height {
             break;
         }
-        let abs_row = content.row_offset + i;
-        let in_active_hunk = content
-            .active_hunk_range
-            .is_some_and(|r| abs_row >= r.start && abs_row < r.end);
+        let abs_row = row_offset + i;
+        let in_active_hunk =
+            active_hunk_range.is_some_and(|r| abs_row >= r.start && abs_row < r.end);
 
         let left_spans = render_cell(&row.left, left_width, in_active_hunk, true, theme);
         let right_spans = render_cell(&row.right, right_width, in_active_hunk, false, theme);
@@ -87,6 +140,82 @@ fn render_diff_rows(
         let mut spans: Vec<Span> = left_spans;
         spans.push(Span::styled(separator, theme.diff_divider));
         spans.extend(right_spans);
+
+        f.render_widget(
+            Paragraph::new(Line::from(spans)),
+            Rect::new(x, y + i as u16, width, 1),
+        );
+    }
+}
+
+fn render_unified_rows(
+    f: &mut Frame,
+    rows: &[UnifiedRow],
+    row_offset: usize,
+    active_hunk_range: Option<crate::domain::diff::HunkRange>,
+    x: u16,
+    y: u16,
+    width: u16,
+    content_height: usize,
+    prefix_width: usize,
+    theme: &Theme,
+) {
+    let total_width = width as usize;
+    let single_gutter = prefix_width / 2;
+
+    for (i, row) in rows.iter().enumerate() {
+        if i >= content_height {
+            break;
+        }
+        let abs_row = row_offset + i;
+        let in_active_hunk =
+            active_hunk_range.is_some_and(|r| abs_row >= r.start && abs_row < r.end);
+
+        let is_continuation = row.old_line_number.is_none() && row.new_line_number.is_none();
+
+        let prefix = if is_continuation {
+            // (prefix_width - 2) spaces + ↪ + space
+            format!("{}\u{21aa} ", " ".repeat(prefix_width.saturating_sub(2)))
+        } else {
+            let blank_gutter = " ".repeat(single_gutter);
+            let old_str = match row.old_line_number {
+                Some(n) => format!("{:>width$} ", n, width = single_gutter - 1),
+                None => blank_gutter.clone(),
+            };
+            let new_str = match row.new_line_number {
+                Some(n) => format!("{:>width$} ", n, width = single_gutter - 1),
+                None => blank_gutter,
+            };
+            format!("{old_str}{new_str}")
+        };
+
+        let content_width = total_width.saturating_sub(prefix_width);
+
+        let (base_style, emphasis_bg) =
+            unified_cell_style(&row.cell, row.is_old_side, in_active_hunk, theme);
+
+        let mut spans: Vec<Span<'static>> = vec![Span::styled(prefix, theme.diff_line_number)];
+
+        if row.cell.kind == CellKind::Empty {
+            spans = vec![Span::raw(" ".repeat(total_width))];
+        } else if row.cell.text.is_empty() {
+            // Empty text with a valid prefix (e.g. spacer row)
+            spans.push(Span::styled(" ".repeat(content_width), base_style));
+        } else {
+            let segment = WrappedSegment {
+                text: row.cell.text.clone(),
+                char_offset: 0,
+                tokens: row.cell.tokens.clone(),
+            };
+            spans.extend(render_wrapped_segment(
+                &segment,
+                content_width,
+                base_style,
+                &row.cell.emphasis,
+                emphasis_bg,
+                theme,
+            ));
+        }
 
         f.render_widget(
             Paragraph::new(Line::from(spans)),
@@ -183,6 +312,32 @@ fn cell_style(
             (Style::new().bg(bg).fg(colors.fg), Some(emph_bg))
         }
         CellKind::Empty => (Style::default(), None),
+    }
+}
+
+/// In unified mode, `Changed` cells should use red/green based on which side
+/// the row belongs to, rather than the blue "changed" color that works in
+/// side-by-side where both sides are visible simultaneously.
+fn unified_cell_style(
+    cell: &Cell,
+    is_old_side: bool,
+    in_active_hunk: bool,
+    theme: &Theme,
+) -> (Style, Option<Color>) {
+    if cell.kind == CellKind::Changed {
+        let colors = if is_old_side {
+            &theme.diff_removed
+        } else {
+            &theme.diff_added
+        };
+        let (bg, emph_bg) = if in_active_hunk {
+            (colors.bg_bright, colors.bg_bright_emphasis)
+        } else {
+            (colors.bg, colors.bg_emphasis)
+        };
+        (Style::new().bg(bg).fg(colors.fg), Some(emph_bg))
+    } else {
+        cell_style(cell, in_active_hunk, true, theme)
     }
 }
 

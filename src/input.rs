@@ -12,7 +12,7 @@ pub enum Action {
     ExpandFolder,
     CollapseFolder,
     ToggleFolder,
-    ToggleVisualMode,
+    ToggleViewMode,
     NextDiff,
     PrevDiff,
     OpenInEditor,
@@ -42,7 +42,7 @@ fn action_from_key(key: KeyEvent) -> Action {
         KeyCode::Char(' ') => Action::ToggleFolder,
         KeyCode::Right => Action::ExpandFolder,
         KeyCode::Left => Action::CollapseFolder,
-        KeyCode::Char('v') => Action::ToggleVisualMode,
+        KeyCode::Char('v') => Action::ToggleViewMode,
         KeyCode::Char('n') => Action::NextDiff,
         KeyCode::Char('p') => Action::PrevDiff,
         KeyCode::Char('o') => Action::OpenInEditor,
@@ -57,9 +57,9 @@ mod tests {
     use crossterm::event::KeyEvent;
 
     #[test]
-    fn test_v_key_maps_to_toggle_visual_mode() {
+    fn test_v_key_maps_to_toggle_view_mode() {
         let event = Event::Key(KeyEvent::from(KeyCode::Char('v')));
-        assert_eq!(action_from_event(event), Action::ToggleVisualMode);
+        assert_eq!(action_from_event(event), Action::ToggleViewMode);
     }
 
     #[test]
