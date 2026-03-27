@@ -120,6 +120,15 @@ mod tests {
     }
 
     #[test]
+    fn wrap_preserves_leading_whitespace() {
+        let result = wrap_line("    indented code", &[], 80);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].text, "    indented code");
+        assert_eq!(result[0].char_offset, 0);
+    }
+
+    #[test]
     fn wrap_long_text_splits_into_segments() {
         let result = wrap_line("hello world this is a test", &[], 10);
 
