@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use super::{DiffBlock, DiffLine, FileDiff, UnchangedLine};
 use crate::core::FileDiffInfo;
-use crate::domain::highlight::HighlightedFile;
+use crate::domain::highlight::{HighlightedFile, TokenSpan};
 
 pub fn build_file_diff(
     info: FileDiffInfo,
@@ -32,8 +32,6 @@ enum LineType {
 
 struct ParsedLine {
     line_type: LineType,
-    #[allow(dead_code)]
-    content: String,
     old_line_no: u32,
     new_line_no: u32,
 }
@@ -70,7 +68,6 @@ fn parse_unified_diff(raw: &str) -> ParsedDiff {
             // it as unchanged context so line counters stay in sync.
             lines.push(ParsedLine {
                 line_type: LineType::Context,
-                content: String::new(),
                 old_line_no,
                 new_line_no,
             });
@@ -83,34 +80,29 @@ fn parse_unified_diff(raw: &str) -> ParsedDiff {
             continue;
         }
 
-        let mut chars = line.chars();
-        let prefix = chars.next().unwrap_or(' ');
-        let content = chars.as_str().to_string();
+        let prefix = line.as_bytes()[0];
 
         match prefix {
-            ' ' => {
+            b' ' => {
                 lines.push(ParsedLine {
                     line_type: LineType::Context,
-                    content,
                     old_line_no,
                     new_line_no,
                 });
                 old_line_no += 1;
                 new_line_no += 1;
             }
-            '-' => {
+            b'-' => {
                 lines.push(ParsedLine {
                     line_type: LineType::Remove,
-                    content,
                     old_line_no,
                     new_line_no: 0,
                 });
                 old_line_no += 1;
             }
-            '+' => {
+            b'+' => {
                 lines.push(ParsedLine {
                     line_type: LineType::Add,
-                    content,
                     old_line_no: 0,
                     new_line_no,
                 });
@@ -147,6 +139,54 @@ fn expand_tabs(line: &str) -> String {
     result
 }
 
+/// Remap highlight token spans so their character offsets match tab-expanded text.
+///
+/// Tokens are generated against the original content where a tab is one character.
+/// After `expand_tabs`, each tab becomes multiple spaces, so token offsets must be
+/// shifted accordingly. For lines without tabs this is a no-op clone.
+fn remap_tokens_for_tabs(original: &str, tokens: &[TokenSpan]) -> Vec<TokenSpan> {
+    if tokens.is_empty() || !original.contains('\t') {
+        return tokens.to_vec();
+    }
+
+    // Build a mapping from original char index → expanded column index.
+    // The map has len()+1 entries so we can look up end positions at the
+    // string boundary.
+    let char_count = original.chars().count();
+    let mut map = Vec::with_capacity(char_count + 1);
+    let mut col = 0usize;
+    for ch in original.chars() {
+        map.push(col);
+        if ch == '\t' {
+            col += TAB_WIDTH - (col % TAB_WIDTH);
+        } else {
+            col += 1;
+        }
+    }
+    map.push(col);
+
+    tokens
+        .iter()
+        .map(|t| {
+            let start = if t.start_col < map.len() {
+                map[t.start_col]
+            } else {
+                col
+            };
+            let end = if t.end_col < map.len() {
+                map[t.end_col]
+            } else {
+                col
+            };
+            TokenSpan {
+                start_col: start,
+                end_col: end,
+                kind: t.kind,
+            }
+        })
+        .collect()
+}
+
 fn build_blocks(
     old_content: &str,
     new_content: &str,
@@ -154,8 +194,10 @@ fn build_blocks(
     old_highlights: &HighlightedFile,
     new_highlights: &HighlightedFile,
 ) -> Vec<DiffBlock> {
-    let old_lines: Vec<String> = old_content.lines().map(expand_tabs).collect();
-    let new_lines: Vec<String> = new_content.lines().map(expand_tabs).collect();
+    let old_originals: Vec<&str> = old_content.lines().collect();
+    let new_originals: Vec<&str> = new_content.lines().collect();
+    let old_lines: Vec<String> = old_originals.iter().map(|l| expand_tabs(l)).collect();
+    let new_lines: Vec<String> = new_originals.iter().map(|l| expand_tabs(l)).collect();
 
     let mut old_diff_map = HashMap::new();
     let mut new_diff_map = HashMap::new();
@@ -242,11 +284,13 @@ fn build_blocks(
                 lines.push(UnchangedLine {
                     old_number: left_line_no,
                     new_number: right_line_no,
-                    text: old_lines[left_idx].to_string(),
-                    tokens: new_highlights
-                        .line_tokens(right_line_no)
-                        .unwrap_or_default()
-                        .to_vec(),
+                    text: old_lines[left_idx].clone(),
+                    tokens: remap_tokens_for_tabs(
+                        new_originals.get(right_idx).unwrap_or(&""),
+                        new_highlights
+                            .line_tokens(right_line_no)
+                            .unwrap_or_default(),
+                    ),
                 });
             }
             left_idx += 1;
@@ -259,11 +303,13 @@ fn build_blocks(
         if left_idx < old_lines.len() && left_in_diff && left_type == Some(LineType::Remove) {
             hunk_removed.push(DiffLine {
                 number: left_line_no,
-                text: old_lines[left_idx].to_string(),
-                tokens: old_highlights
-                    .line_tokens(left_line_no)
-                    .unwrap_or_default()
-                    .to_vec(),
+                text: old_lines[left_idx].clone(),
+                tokens: remap_tokens_for_tabs(
+                    old_originals.get(left_idx).unwrap_or(&""),
+                    old_highlights
+                        .line_tokens(left_line_no)
+                        .unwrap_or_default(),
+                ),
             });
             left_idx += 1;
             continue;
@@ -272,11 +318,13 @@ fn build_blocks(
         if right_idx < new_lines.len() && right_in_diff && right_type == Some(LineType::Add) {
             hunk_added.push(DiffLine {
                 number: right_line_no,
-                text: new_lines[right_idx].to_string(),
-                tokens: new_highlights
-                    .line_tokens(right_line_no)
-                    .unwrap_or_default()
-                    .to_vec(),
+                text: new_lines[right_idx].clone(),
+                tokens: remap_tokens_for_tabs(
+                    new_originals.get(right_idx).unwrap_or(&""),
+                    new_highlights
+                        .line_tokens(right_line_no)
+                        .unwrap_or_default(),
+                ),
             });
             right_idx += 1;
             continue;
@@ -286,11 +334,13 @@ fn build_blocks(
             if right_in_diff && right_type == Some(LineType::Add) {
                 hunk_added.push(DiffLine {
                     number: right_line_no,
-                    text: new_lines[right_idx].to_string(),
-                    tokens: new_highlights
-                        .line_tokens(right_line_no)
-                        .unwrap_or_default()
-                        .to_vec(),
+                    text: new_lines[right_idx].clone(),
+                    tokens: remap_tokens_for_tabs(
+                        new_originals.get(right_idx).unwrap_or(&""),
+                        new_highlights
+                            .line_tokens(right_line_no)
+                            .unwrap_or_default(),
+                    ),
                 });
             }
             right_idx += 1;
@@ -301,11 +351,13 @@ fn build_blocks(
             if left_in_diff && left_type == Some(LineType::Remove) {
                 hunk_removed.push(DiffLine {
                     number: left_line_no,
-                    text: old_lines[left_idx].to_string(),
-                    tokens: old_highlights
-                        .line_tokens(left_line_no)
-                        .unwrap_or_default()
-                        .to_vec(),
+                    text: old_lines[left_idx].clone(),
+                    tokens: remap_tokens_for_tabs(
+                        old_originals.get(left_idx).unwrap_or(&""),
+                        old_highlights
+                            .line_tokens(left_line_no)
+                            .unwrap_or_default(),
+                    ),
                 });
             }
             left_idx += 1;
@@ -522,6 +574,70 @@ mod tests {
                 old: vec![diff_line(3, "b")],
                 new: vec![diff_line(3, "c")],
             }
+        );
+    }
+
+    #[test]
+    fn remap_tokens_no_tabs_returns_unchanged() {
+        use crate::domain::highlight::{HighlightKind, TokenSpan};
+
+        let tokens = vec![TokenSpan {
+            start_col: 0,
+            end_col: 5,
+            kind: HighlightKind::Keyword,
+        }];
+        let result = remap_tokens_for_tabs("hello", &tokens);
+        assert_eq!(result, tokens);
+    }
+
+    #[test]
+    fn remap_tokens_empty_tokens_returns_empty() {
+        let result = remap_tokens_for_tabs("\tindented", &[]);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn remap_tokens_shifts_offsets_past_tab() {
+        use crate::domain::highlight::{HighlightKind, TokenSpan};
+
+        // Original: "\thello" — tab at col 0, "hello" at char indices 1..6
+        // Expanded: "    hello" — "hello" at columns 4..9
+        let tokens = vec![TokenSpan {
+            start_col: 1,
+            end_col: 6,
+            kind: HighlightKind::Keyword,
+        }];
+        let result = remap_tokens_for_tabs("\thello", &tokens);
+        assert_eq!(
+            result,
+            vec![TokenSpan {
+                start_col: 4,
+                end_col: 9,
+                kind: HighlightKind::Keyword,
+            }]
+        );
+    }
+
+    #[test]
+    fn remap_tokens_mid_line_tab() {
+        use crate::domain::highlight::{HighlightKind, TokenSpan};
+
+        // Original: "ab\tcd" — "ab" (0..2), tab at 2, "cd" at char indices 3..5
+        // Expanded: "ab  cd" — tab at col 2 expands to 2 spaces (next stop at 4),
+        //           "cd" at columns 4..6
+        let tokens = vec![TokenSpan {
+            start_col: 3,
+            end_col: 5,
+            kind: HighlightKind::Variable,
+        }];
+        let result = remap_tokens_for_tabs("ab\tcd", &tokens);
+        assert_eq!(
+            result,
+            vec![TokenSpan {
+                start_col: 4,
+                end_col: 6,
+                kind: HighlightKind::Variable,
+            }]
         );
     }
 }
