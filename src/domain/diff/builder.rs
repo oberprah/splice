@@ -306,9 +306,7 @@ fn build_blocks(
                 text: old_lines[left_idx].clone(),
                 tokens: remap_tokens_for_tabs(
                     old_originals.get(left_idx).unwrap_or(&""),
-                    old_highlights
-                        .line_tokens(left_line_no)
-                        .unwrap_or_default(),
+                    old_highlights.line_tokens(left_line_no).unwrap_or_default(),
                 ),
             });
             left_idx += 1;
@@ -354,9 +352,7 @@ fn build_blocks(
                     text: old_lines[left_idx].clone(),
                     tokens: remap_tokens_for_tabs(
                         old_originals.get(left_idx).unwrap_or(&""),
-                        old_highlights
-                            .line_tokens(left_line_no)
-                            .unwrap_or_default(),
+                        old_highlights.line_tokens(left_line_no).unwrap_or_default(),
                     ),
                 });
             }
