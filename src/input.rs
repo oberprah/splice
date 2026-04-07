@@ -1,10 +1,12 @@
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Action {
     Quit,
     MoveDown,
     MoveUp,
+    ScrollDown,
+    ScrollUp,
     PageDown,
     PageUp,
     Open,
@@ -25,6 +27,15 @@ pub fn action_from_event(event: Event) -> Action {
     match event {
         Event::Key(key) => action_from_key(key),
         Event::Resize(width, height) => Action::Resize { width, height },
+        Event::Mouse(mouse) => action_from_mouse(mouse),
+        _ => Action::None,
+    }
+}
+
+fn action_from_mouse(mouse: MouseEvent) -> Action {
+    match mouse.kind {
+        MouseEventKind::ScrollDown => Action::ScrollDown,
+        MouseEventKind::ScrollUp => Action::ScrollUp,
         _ => Action::None,
     }
 }
@@ -54,7 +65,16 @@ fn action_from_key(key: KeyEvent) -> Action {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crossterm::event::KeyEvent;
+    use crossterm::event::{KeyEvent, KeyModifiers as KM, MouseEvent, MouseEventKind};
+
+    fn mouse_event(kind: MouseEventKind) -> Event {
+        Event::Mouse(MouseEvent {
+            kind,
+            column: 0,
+            row: 0,
+            modifiers: KM::empty(),
+        })
+    }
 
     #[test]
     fn test_v_key_maps_to_toggle_view_mode() {
@@ -84,5 +104,31 @@ mod tests {
     fn test_m_key_maps_to_toggle_message() {
         let event = Event::Key(KeyEvent::from(KeyCode::Char('m')));
         assert_eq!(action_from_event(event), Action::ToggleMessage);
+    }
+
+    #[test]
+    fn test_scroll_down_maps_to_scroll_down() {
+        assert_eq!(
+            action_from_event(mouse_event(MouseEventKind::ScrollDown)),
+            Action::ScrollDown
+        );
+    }
+
+    #[test]
+    fn test_scroll_up_maps_to_scroll_up() {
+        assert_eq!(
+            action_from_event(mouse_event(MouseEventKind::ScrollUp)),
+            Action::ScrollUp
+        );
+    }
+
+    #[test]
+    fn test_mouse_click_maps_to_none() {
+        assert_eq!(
+            action_from_event(mouse_event(MouseEventKind::Down(
+                crossterm::event::MouseButton::Left
+            ))),
+            Action::None
+        );
     }
 }

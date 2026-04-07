@@ -1,4 +1,5 @@
 use crossterm::event;
+use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use crossterm::execute;
 use crossterm::terminal::{self, EnterAlternateScreen, LeaveAlternateScreen};
 use ratatui::{backend::CrosstermBackend, Terminal};
@@ -13,7 +14,7 @@ struct TerminalGuard;
 impl Drop for TerminalGuard {
     fn drop(&mut self) {
         let _ = terminal::disable_raw_mode();
-        let _ = execute!(io::stdout(), LeaveAlternateScreen);
+        let _ = execute!(io::stdout(), DisableMouseCapture, LeaveAlternateScreen);
     }
 }
 
@@ -100,13 +101,13 @@ fn run_log_app(
 ) -> Result<(), Box<dyn std::error::Error>> {
     terminal::enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen)?;
+    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let _guard = TerminalGuard;
 
     let default_panic = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
         let _ = terminal::disable_raw_mode();
-        let _ = execute!(io::stdout(), LeaveAlternateScreen);
+        let _ = execute!(io::stdout(), DisableMouseCapture, LeaveAlternateScreen);
         default_panic(info);
     }));
 
@@ -132,13 +133,13 @@ fn run_diff_app(
 ) -> Result<(), Box<dyn std::error::Error>> {
     terminal::enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen)?;
+    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let _guard = TerminalGuard;
 
     let default_panic = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
         let _ = terminal::disable_raw_mode();
-        let _ = execute!(io::stdout(), LeaveAlternateScreen);
+        let _ = execute!(io::stdout(), DisableMouseCapture, LeaveAlternateScreen);
         default_panic(info);
     }));
 
@@ -176,22 +177,28 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, mut app: App) 
         };
 
         if event::poll(timeout)? {
-            let action = action_from_event(event::read()?);
-            if action != Action::None {
-                should_render = true;
-                if app.error.take().is_some() {
-                    continue;
-                }
-
-                if action == Action::OpenInEditor {
-                    if let Some(err) = open_diff_in_editor(terminal, &mut app)? {
-                        app.error = Some(err);
+            // Drain all immediately-available events before re-rendering.
+            // Without this, a touchpad burst (e.g. 20 events) causes 20 full
+            // redraws while the queue is being drained, blocking the UI.
+            'drain: loop {
+                let action = action_from_event(event::read()?);
+                if action != Action::None {
+                    should_render = true;
+                    if app.error.take().is_some() {
+                        break 'drain;
                     }
-                    continue;
+                    if action == Action::OpenInEditor {
+                        if let Some(err) = open_diff_in_editor(terminal, &mut app)? {
+                            app.error = Some(err);
+                        }
+                        break 'drain;
+                    }
+                    if app.update(action) {
+                        return Ok(());
+                    }
                 }
-
-                if app.update(action) {
-                    return Ok(());
+                if !event::poll(Duration::ZERO)? {
+                    break 'drain;
                 }
             }
         }
@@ -212,11 +219,11 @@ fn open_diff_in_editor(
     app: &mut App,
 ) -> io::Result<Option<String>> {
     terminal::disable_raw_mode()?;
-    execute!(io::stdout(), LeaveAlternateScreen)?;
+    execute!(io::stdout(), DisableMouseCapture, LeaveAlternateScreen)?;
 
     let editor_result = app.open_current_diff_in_editor();
 
-    execute!(io::stdout(), EnterAlternateScreen)?;
+    execute!(io::stdout(), EnterAlternateScreen, EnableMouseCapture)?;
     terminal::enable_raw_mode()?;
     terminal.clear()?;
 
