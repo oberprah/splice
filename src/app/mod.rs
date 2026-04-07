@@ -253,6 +253,24 @@ impl App {
             Action::Open => self.open_selected(),
             Action::MoveDown => self.move_down(1),
             Action::MoveUp => self.move_up(1),
+            Action::ScrollDown => {
+                // In the diff view, scroll by 3 lines to feed the easing animation.
+                // In log and files views, scroll by 1 to move the cursor one step at a time.
+                let amount = if matches!(self.view, View::Diff(_)) {
+                    3
+                } else {
+                    1
+                };
+                self.move_down(amount);
+            }
+            Action::ScrollUp => {
+                let amount = if matches!(self.view, View::Diff(_)) {
+                    3
+                } else {
+                    1
+                };
+                self.move_up(amount);
+            }
             Action::PageDown => {
                 let step = self.page_step();
                 self.move_down(step);
