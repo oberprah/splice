@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Splice pre-commit hook
 # Runs the same checks as CI pipeline to catch issues early
@@ -9,9 +9,14 @@ echo "Running pre-commit checks..."
 
 cd "$(dirname "$0")/.."
 
+# Source cargo environment if available
+if [ -f "$HOME/.cargo/env" ]; then
+    . "$HOME/.cargo/env"
+fi
+
 # Source mise if available
-if [ -f "$HOME/.local/share/mise.sh" ]; then
-    . "$HOME/.local/share/mise.sh"
+if command -v mise > /dev/null 2>&1; then
+    eval "$(mise activate bash)"
 fi
 
 # 1. Format
