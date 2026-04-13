@@ -52,7 +52,7 @@ fn files_view_shows_short_body_always() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  q: back                   "
+    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  y: copy path  q: back     "
     "#,
     );
 }
@@ -95,7 +95,7 @@ fn files_view_no_body_layout_unchanged() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  q: back                   "
+    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  y: copy path  q: back     "
     "#,
     );
 }
@@ -138,7 +138,7 @@ fn files_view_long_body_truncated_with_expand_hint() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  m: expand  q: back        "
+    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  m: expand  y: copy path   "
     "#,
     );
 }
@@ -183,7 +183,7 @@ fn files_view_m_expands_and_collapses_long_body() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  m: collapse  q: back      "
+    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  m: collapse  y: copy pat  "
     "#,
     );
 
@@ -213,7 +213,7 @@ fn files_view_m_expands_and_collapses_long_body() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  m: expand  q: back        "
+    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  m: expand  y: copy path   "
     "#,
     );
 }
@@ -305,7 +305,7 @@ fn files_view_no_body_panel_for_multi_commit_range() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  q: back                   "
+    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  y: copy path  q: back     "
     "#,
     );
 }

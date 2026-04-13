@@ -43,7 +43,7 @@ fn diff_command_commit_range_and_quit() {
 "                                                                                "
 "                                                                                "
 "                                                                                "
-"  j/k: navigate  Enter/space: toggle/open  ←/→: fold  q: back                   "
+"  j/k: navigate  Enter/space: toggle/open  ←/→: fold  y: copy path  q: back     "
 "#,
     );
 
@@ -85,7 +85,7 @@ fn diff_command_uncommitted_views() {
 "                                                                                "
 "                                                                                "
 "                                                                                "
-"  j/k: navigate  Enter/space: toggle/open  ←/→: fold  q: back                   "
+"  j/k: navigate  Enter/space: toggle/open  ←/→: fold  y: copy path  q: back     "
 "#,
     );
 
@@ -106,7 +106,7 @@ fn diff_command_uncommitted_views() {
 "                                                                                "
 "                                                                                "
 "                                                                                "
-"  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
+"  j/k: scroll  n/p: next/prev diff  v: unified  y: copy path  o: open  q: back  "
 "#,
     );
 
@@ -130,7 +130,7 @@ fn diff_command_uncommitted_views() {
 "                                                                                "
 "                                                                                "
 "                                                                                "
-"  j/k: navigate  Enter/space: toggle/open  ←/→: fold  q: back                   "
+"  j/k: navigate  Enter/space: toggle/open  ←/→: fold  y: copy path  q: back     "
 "#,
     );
 }

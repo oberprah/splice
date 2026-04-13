@@ -82,7 +82,7 @@ fn log_view_complex_graph_navigation() {
     "    ├─│─┤ 16b8252 Merge hotfix · 2d ago                                         "
     "    │ │ ├ e5790ed (hotfix) E · 2d ago                                           "
     "    ├─┼─╯ 3c1ac31 Merge feature-1 · 2d ago                                      "
-    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "  j/k: navigate  Ctrl+d/u: half-page  y: copy hash  q: quit                     "
     "###,
     );
 
@@ -112,7 +112,7 @@ fn log_view_complex_graph_navigation() {
     "    ├─│─┤ 16b8252 Merge hotfix · 2d ago                                         "
     "    │ │ ├ e5790ed (hotfix) E · 2d ago                                           "
     "    ├─┼─╯ 3c1ac31 Merge feature-1 · 2d ago                                      "
-    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "  j/k: navigate  Ctrl+d/u: half-page  y: copy hash  q: quit                     "
     "###,
     );
 
@@ -142,7 +142,7 @@ fn log_view_complex_graph_navigation() {
     "    │ │ ├ e5790ed (hotfix) E · 2d ago                                           "
     "    ├─┼─╯ 3c1ac31 Merge feature-1 · 2d ago                                      "
     "  → │ ├ e8faeba (feature-1) C · 2d ago                                          "
-    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "  j/k: navigate  Ctrl+d/u: half-page  y: copy hash  q: quit                     "
     "###,
     );
 
@@ -172,7 +172,7 @@ fn log_view_complex_graph_navigation() {
     "    ├─┼─╯ 3c1ac31 Merge feature-1 · 2d ago                                      "
     "    │ ├ e8faeba (feature-1) C · 2d ago                                          "
     "  → ├─╯ cc4032c B · 2d ago                                                      "
-    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "  j/k: navigate  Ctrl+d/u: half-page  y: copy hash  q: quit                     "
     "###,
     );
 
@@ -202,7 +202,7 @@ fn log_view_complex_graph_navigation() {
     "    ├─┼─╯ 3c1ac31 Merge feature-1 · 2d ago                                      "
     "    │ ├ e8faeba (feature-1) C · 2d ago                                          "
     "    ├─╯ cc4032c B · 2d ago                                                      "
-    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "  j/k: navigate  Ctrl+d/u: half-page  y: copy hash  q: quit                     "
     "###,
     );
 
@@ -232,7 +232,7 @@ fn log_view_complex_graph_navigation() {
     "    ├─┼─╯ 3c1ac31 Merge feature-1 · 2d ago                                      "
     "    │ ├ e8faeba (feature-1) C · 2d ago                                          "
     "    ├─╯ cc4032c B · 2d ago                                                      "
-    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "  j/k: navigate  Ctrl+d/u: half-page  y: copy hash  q: quit                     "
     "###,
     );
 }

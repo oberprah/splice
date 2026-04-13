@@ -1,3 +1,4 @@
+use arboard::Clipboard;
 use crossterm::event;
 use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use crossterm::execute;
@@ -161,6 +162,7 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, mut app: App) 
     let animation_rate = Duration::from_millis(16); // ~60 fps during animation
     let mut last_tick = Instant::now();
     let mut should_render = true;
+    let mut clipboard = Clipboard::new().ok();
 
     loop {
         if should_render {
@@ -190,6 +192,14 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, mut app: App) 
                     if action == Action::OpenInEditor {
                         if let Some(err) = open_diff_in_editor(terminal, &mut app)? {
                             app.error = Some(err);
+                        }
+                        break 'drain;
+                    }
+                    if action == Action::CopyToClipboard {
+                        if let Some(text) = app.copyable_text() {
+                            if let Some(cb) = &mut clipboard {
+                                let _ = cb.set_text(&text);
+                            }
                         }
                         break 'drain;
                     }
