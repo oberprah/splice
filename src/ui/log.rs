@@ -184,7 +184,7 @@ pub fn render_log_view(
         f.render_widget(msg, list_area);
     }
 
-    let help = Paragraph::new("j/k: navigate  Ctrl+d/u: half-page  q: quit")
+    let help = Paragraph::new("j/k: navigate  Ctrl+d/u: half-page  y: copy hash  q: quit")
         .style(theme.text_muted)
         .alignment(Alignment::Left);
     let help_area = Rect::new(

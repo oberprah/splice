@@ -56,7 +56,7 @@ fn files_view_scroll_long_file_list() {
         "   ├── A +1 -0  b_19.txt                                                        "
         "   ├── A +1 -0  b_20.txt                                                        "
         "  →└── A +1 -0  file_0.txt                                                      "
-        "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  q: back                   "
+        "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  y: copy path  q: back     "
         "#,
     );
 }
@@ -101,7 +101,7 @@ fn files_view_navigation_with_modifications() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "  j/k: navigate  Ctrl+d/u: half-page  y: copy hash  q: quit                     "
     "#,
     );
 
@@ -131,7 +131,7 @@ fn files_view_navigation_with_modifications() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  q: back                   "
+    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  y: copy path  q: back     "
     "#,
     );
 
@@ -161,7 +161,7 @@ fn files_view_navigation_with_modifications() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  q: back                   "
+    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  y: copy path  q: back     "
     "#,
     );
 
@@ -191,7 +191,7 @@ fn files_view_navigation_with_modifications() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "  j/k: navigate  Ctrl+d/u: half-page  y: copy hash  q: quit                     "
     "#,
     );
 }
@@ -235,7 +235,7 @@ fn files_view_folder_collapse_expand() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  q: back                   "
+    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  y: copy path  q: back     "
     "#,
     );
 
@@ -268,7 +268,7 @@ fn files_view_folder_collapse_expand() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  q: back                   "
+    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  y: copy path  q: back     "
     "#,
     );
 
@@ -298,7 +298,7 @@ fn files_view_folder_collapse_expand() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  q: back                   "
+    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  y: copy path  q: back     "
     "#,
     );
 }

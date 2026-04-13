@@ -48,7 +48,7 @@ fn renamed_file_diff_shows_old_content() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: scroll  n/p: next/prev diff  v: unified  o: open  q: back                "
+    "  j/k: scroll  n/p: next/prev diff  v: unified  y: copy path  o: open  q: back  "
     "#,
     );
 }
@@ -91,7 +91,7 @@ fn renamed_file_displays_as_renamed() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "  j/k: navigate  Ctrl+d/u: half-page  y: copy hash  q: quit                     "
     "#,
     );
 
@@ -121,7 +121,7 @@ fn renamed_file_displays_as_renamed() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  q: back                   "
+    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  y: copy path  q: back     "
     "#,
     );
 }
@@ -168,7 +168,7 @@ fn moved_folder_displays_renamed_files() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  q: back                   "
+    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  y: copy path  q: back     "
     "#,
     );
 }

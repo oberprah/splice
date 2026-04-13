@@ -43,7 +43,7 @@ fn ctrl_u_scroll_up_with_uncommitted_changes_resets_scroll_offset() {
     "    ├ 0198648 Commit 12 · 2d ago                                                "
     "    ├ d4ec593 Commit 11 · 2d ago                                                "
     "    ├ b33b874 Commit 10 · 2d ago                                                "
-    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "  j/k: navigate  Ctrl+d/u: half-page  y: copy hash  q: quit                     "
         "#,
     );
 }
@@ -68,7 +68,7 @@ fn log_view_clean_summary_not_selectable() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "  j/k: navigate  Ctrl+d/u: half-page  y: copy hash  q: quit                     "
     "#,
     );
 
@@ -82,7 +82,7 @@ fn log_view_clean_summary_not_selectable() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "  j/k: navigate  Ctrl+d/u: half-page  y: copy hash  q: quit                     "
     "#,
     );
 }
@@ -115,7 +115,7 @@ fn log_view_uncommitted_summary_opens_files_view() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "  j/k: navigate  Ctrl+d/u: half-page  y: copy hash  q: quit                     "
     "#,
     );
 
@@ -135,7 +135,7 @@ fn log_view_uncommitted_summary_opens_files_view() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  q: back                   "
+    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  y: copy path  q: back     "
     "#,
     );
 }

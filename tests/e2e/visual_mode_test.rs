@@ -38,7 +38,7 @@ fn visual_mode() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "  j/k: navigate  Ctrl+d/u: half-page  y: copy hash  q: quit                     "
     "#,
     );
 
@@ -62,7 +62,7 @@ fn visual_mode() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "  j/k: navigate  Ctrl+d/u: half-page  y: copy hash  q: quit                     "
     "#,
     );
 
@@ -86,7 +86,7 @@ fn visual_mode() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "  j/k: navigate  Ctrl+d/u: half-page  y: copy hash  q: quit                     "
     "#,
     );
 
@@ -110,7 +110,7 @@ fn visual_mode() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  q: back                   "
+    "  j/k: navigate  Enter/space: toggle/open  ←/→: fold  y: copy path  q: back     "
     "#,
     );
 
@@ -134,7 +134,7 @@ fn visual_mode() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "  j/k: navigate  Ctrl+d/u: half-page  y: copy hash  q: quit                     "
     "#,
     );
 
@@ -158,7 +158,7 @@ fn visual_mode() {
     "                                                                                "
     "                                                                                "
     "                                                                                "
-    "  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+    "  j/k: navigate  Ctrl+d/u: half-page  y: copy hash  q: quit                     "
     "#,
     );
 }

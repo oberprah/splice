@@ -18,6 +18,7 @@ pub enum Action {
     NextDiff,
     PrevDiff,
     OpenInEditor,
+    CopyToClipboard,
     ToggleMessage,
     Resize { width: u16, height: u16 },
     None,
@@ -57,6 +58,7 @@ fn action_from_key(key: KeyEvent) -> Action {
         KeyCode::Char('n') => Action::NextDiff,
         KeyCode::Char('p') => Action::PrevDiff,
         KeyCode::Char('o') => Action::OpenInEditor,
+        KeyCode::Char('y') => Action::CopyToClipboard,
         KeyCode::Char('m') => Action::ToggleMessage,
         _ => Action::None,
     }
@@ -104,6 +106,12 @@ mod tests {
     fn test_m_key_maps_to_toggle_message() {
         let event = Event::Key(KeyEvent::from(KeyCode::Char('m')));
         assert_eq!(action_from_event(event), Action::ToggleMessage);
+    }
+
+    #[test]
+    fn test_y_key_maps_to_copy_to_clipboard() {
+        let event = Event::Key(KeyEvent::from(KeyCode::Char('y')));
+        assert_eq!(action_from_event(event), Action::CopyToClipboard);
     }
 
     #[test]

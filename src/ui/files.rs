@@ -117,11 +117,11 @@ pub fn render_files_view(
     );
 
     let help_text = if files.message_expanded {
-        "j/k: navigate  Enter/space: toggle/open  ←/→: fold  m: collapse  q: back"
+        "j/k: navigate  Enter/space: toggle/open  ←/→: fold  m: collapse  y: copy path  q: back"
     } else if files.has_expandable_body() {
-        "j/k: navigate  Enter/space: toggle/open  ←/→: fold  m: expand  q: back"
+        "j/k: navigate  Enter/space: toggle/open  ←/→: fold  m: expand  y: copy path  q: back"
     } else {
-        "j/k: navigate  Enter/space: toggle/open  ←/→: fold  q: back"
+        "j/k: navigate  Enter/space: toggle/open  ←/→: fold  y: copy path  q: back"
     };
     let help = Paragraph::new(help_text)
         .style(theme.text_muted)

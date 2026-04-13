@@ -297,6 +297,7 @@ impl App {
             Action::NextDiff => self.navigate_diff(1),
             Action::PrevDiff => self.navigate_diff(-1),
             Action::OpenInEditor => {}
+            Action::CopyToClipboard => {}
             Action::ToggleMessage => {
                 if let View::Files(files) = &mut self.view {
                     files.toggle_message();
@@ -525,6 +526,16 @@ impl App {
         }
 
         true
+    }
+
+    /// Returns the text that should be copied to the clipboard for the
+    /// current view and selection, or `None` if nothing is copyable.
+    pub fn copyable_text(&self) -> Option<String> {
+        match &self.view {
+            View::Log(log) => log.selected_commit().map(|c| c.short_hash().to_string()),
+            View::Files(files) => files.selected_file().map(|f| f.path.clone()),
+            View::Diff(diff) => Some(diff.file.info.path.clone()),
+        }
     }
 
     pub fn open_current_diff_in_editor(&self) -> Result<(), String> {

@@ -38,7 +38,7 @@ pub fn render_diff_view(f: &mut Frame, view: &DiffView, area: Rect, theme: &Them
         DiffLayout::Unified => "v: split",
     };
     let help = Paragraph::new(format!(
-        "j/k: scroll  n/p: next/prev diff  {layout_hint}  o: open  q: back"
+        "j/k: scroll  n/p: next/prev diff  {layout_hint}  y: copy path  o: open  q: back"
     ))
     .style(theme.text_muted)
     .alignment(Alignment::Left);

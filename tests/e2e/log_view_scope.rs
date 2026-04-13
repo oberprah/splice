@@ -30,7 +30,7 @@ fn log_view_all_branches_includes_unmerged_branch() {
 "                                                                                "
 "                                                                                "
 "                                                                                "
-"  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+"  j/k: navigate  Ctrl+d/u: half-page  y: copy hash  q: quit                     "
 "#,
     );
 
@@ -47,7 +47,7 @@ fn log_view_all_branches_includes_unmerged_branch() {
 "                                                                                "
 "                                                                                "
 "                                                                                "
-"  j/k: navigate  Ctrl+d/u: half-page  q: quit                                   "
+"  j/k: navigate  Ctrl+d/u: half-page  y: copy hash  q: quit                     "
 "#,
     );
 }
