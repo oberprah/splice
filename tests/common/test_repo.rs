@@ -82,6 +82,27 @@ impl TestRepo {
         );
     }
 
+    pub fn commit_with_author(&self, message: &str, author_name: &str) {
+        let counter = COMMIT_COUNTER.fetch_add(1, Ordering::SeqCst);
+        let file_name = format!("file_{}.txt", counter);
+        let file_path = self.path.join(&file_name);
+        std::fs::write(&file_path, format!("content_{}", counter)).expect("Failed to write file");
+
+        Self::run_git(&self.path, &["add", &file_name]);
+        Self::run_git_with_env(
+            &self.path,
+            &["commit", "-m", message],
+            &[
+                ("GIT_AUTHOR_NAME", author_name),
+                ("GIT_AUTHOR_EMAIL", "test@test.com"),
+                ("GIT_COMMITTER_NAME", author_name),
+                ("GIT_COMMITTER_EMAIL", "test@test.com"),
+                ("GIT_AUTHOR_DATE", "2020-01-01T00:00:00+0000"),
+                ("GIT_COMMITTER_DATE", "2020-01-01T00:00:00+0000"),
+            ],
+        );
+    }
+
     pub fn commit_with_body(&self, subject: &str, body: &str) {
         let full_message = format!("{}\n\n{}", subject, body);
         let counter = COMMIT_COUNTER.fetch_add(1, Ordering::SeqCst);

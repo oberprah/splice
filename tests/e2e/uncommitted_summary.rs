@@ -33,16 +33,16 @@ fn ctrl_u_scroll_up_with_uncommitted_changes_resets_scroll_offset() {
     h.assert_snapshot(
         r#"
     "  →   Unstaged changes · 1 file                                                 "
-    "    ├ 15df8f3 (main) Commit 19 · 2d ago                                         "
-    "    ├ ca24928 Commit 18 · 2d ago                                                "
-    "    ├ 50c9441 Commit 17 · 2d ago                                                "
-    "    ├ b37126e Commit 16 · 2d ago                                                "
-    "    ├ 3a1959a Commit 15 · 2d ago                                                "
-    "    ├ 77f5868 Commit 14 · 2d ago                                                "
-    "    ├ 9593ccc Commit 13 · 2d ago                                                "
-    "    ├ 0198648 Commit 12 · 2d ago                                                "
-    "    ├ d4ec593 Commit 11 · 2d ago                                                "
-    "    ├ b33b874 Commit 10 · 2d ago                                                "
+    "    ├ 15df8f3 (main) Commit 19 · Test · 2d ago                                  "
+    "    ├ ca24928 Commit 18 · Test · 2d ago                                         "
+    "    ├ 50c9441 Commit 17 · Test · 2d ago                                         "
+    "    ├ b37126e Commit 16 · Test · 2d ago                                         "
+    "    ├ 3a1959a Commit 15 · Test · 2d ago                                         "
+    "    ├ 77f5868 Commit 14 · Test · 2d ago                                         "
+    "    ├ 9593ccc Commit 13 · Test · 2d ago                                         "
+    "    ├ 0198648 Commit 12 · Test · 2d ago                                         "
+    "    ├ d4ec593 Commit 11 · Test · 2d ago                                         "
+    "    ├ b33b874 Commit 10 · Test · 2d ago                                         "
     "  j/k: navigate  Ctrl+d/u: half-page  y: copy hash  q: quit                     "
         "#,
     );
@@ -62,7 +62,7 @@ fn log_view_clean_summary_not_selectable() {
     h.assert_snapshot(
         r#"
     "      Working tree clean                                                        "
-    "  → ├ be4f0b7 (main) Initial commit · 2d ago                                    "
+    "  → ├ be4f0b7 (main) Initial commit · Test · 2d ago                             "
     "                                                                                "
     "                                                                                "
     "                                                                                "
@@ -76,7 +76,7 @@ fn log_view_clean_summary_not_selectable() {
     h.assert_snapshot(
         r#"
     "      Working tree clean                                                        "
-    "  → ├ be4f0b7 (main) Initial commit · 2d ago                                    "
+    "  → ├ be4f0b7 (main) Initial commit · Test · 2d ago                             "
     "                                                                                "
     "                                                                                "
     "                                                                                "
@@ -103,7 +103,7 @@ fn log_view_uncommitted_summary_opens_files_view() {
     h.assert_snapshot(
         r#"
     "  →   Unstaged changes · 1 file                                                 "
-    "    ├ be4f0b7 (main) Initial commit · 2d ago                                    "
+    "    ├ be4f0b7 (main) Initial commit · Test · 2d ago                             "
     "                                                                                "
     "                                                                                "
     "                                                                                "

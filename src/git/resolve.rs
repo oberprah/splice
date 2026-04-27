@@ -116,7 +116,7 @@ fn resolve_ref(repo_path: &Path, ref_name: &str) -> Result<Commit, String> {
         .args([
             "log",
             "-1",
-            "--format=%H%x00%s%x00%an%x00%aI%x00%P%x00%b",
+            "--format=%H%x00%s%x00%aN%x00%aI%x00%P%x00%b",
             ref_name.trim(),
         ])
         .output()
