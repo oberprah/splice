@@ -561,9 +561,7 @@ impl App {
             .repo_path
             .as_ref()
             .ok_or_else(|| "missing repository path".to_string())?;
-        let repo_root = git::repository_root(repo_path)
-            .map_err(|err| format!("failed to determine repository root: {err}"))?;
-        let absolute_path = repo_root.join(&diff.file.info.path);
+        let absolute_path = repo_path.join(&diff.file.info.path);
 
         if !absolute_path.exists() {
             return Err("cannot open: file not found".to_string());

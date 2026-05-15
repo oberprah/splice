@@ -79,7 +79,7 @@ fn resolve_repo_path(command: &cli::Command) -> Result<PathBuf, Box<dyn std::err
         cli::Command::Help | cli::Command::Version => None,
     };
 
-    match path_arg {
+    let start_path = match path_arg {
         Some(path) => {
             let p = PathBuf::from(&path);
             if !p.exists() {
@@ -90,10 +90,15 @@ fn resolve_repo_path(command: &cli::Command) -> Result<PathBuf, Box<dyn std::err
                 eprintln!("Error: Path is not a directory: {}", path);
                 std::process::exit(1);
             }
-            Ok(p)
+            p
         }
-        None => Ok(env::current_dir()?),
-    }
+        None => env::current_dir()?,
+    };
+
+    git::repository_root(&start_path).map_err(|e| {
+        eprintln!("Error: {}", e);
+        std::process::exit(1);
+    })
 }
 
 fn run_log_app(
