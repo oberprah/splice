@@ -353,6 +353,75 @@ mod tests {
         assert_eq!(rendered, vec!["├─╮", "│ ├", "├─╯", "├"]);
     }
 
+    // Sequentially merged branches that all forked from X, whose parent M11 also
+    // receives a convergence from a lane further right (the new-font branch).
+    // At M11's row the lanes in between are already empty, but the horizontal
+    // line connecting the converging lane back to the commit must still be drawn.
+    #[test]
+    fn test_convergence_across_empty_lanes() {
+        let commits = vec![
+            GraphCommit {
+                hash: "M28".to_string(),
+                parents: vec!["M27".to_string(), "NOL".to_string()],
+            },
+            GraphCommit {
+                hash: "NOL".to_string(),
+                parents: vec!["X".to_string()],
+            },
+            GraphCommit {
+                hash: "M27".to_string(),
+                parents: vec!["M10".to_string(), "AI".to_string()],
+            },
+            GraphCommit {
+                hash: "AI".to_string(),
+                parents: vec!["X".to_string()],
+            },
+            GraphCommit {
+                hash: "M10".to_string(),
+                parents: vec!["X".to_string(), "NF".to_string()],
+            },
+            GraphCommit {
+                hash: "NF".to_string(),
+                parents: vec!["M11".to_string()],
+            },
+            GraphCommit {
+                hash: "X".to_string(),
+                parents: vec!["M11".to_string()],
+            },
+            GraphCommit {
+                hash: "M11".to_string(),
+                parents: vec!["BASE".to_string(), "DD".to_string()],
+            },
+            GraphCommit {
+                hash: "DD".to_string(),
+                parents: vec!["BASE".to_string()],
+            },
+            GraphCommit {
+                hash: "BASE".to_string(),
+                parents: vec![],
+            },
+        ];
+
+        let layout = compute_layout(&commits);
+        let rendered = render_layout(&layout);
+
+        assert_eq!(
+            rendered,
+            vec![
+                "├─╮",
+                "│ ├",
+                "├─│─╮",
+                "│ │ ├",
+                "├─│─│─╮",
+                "│ │ │ ├",
+                "├─┴─╯ │",
+                "├─┬───╯",
+                "│ ├",
+                "├─╯",
+            ]
+        );
+    }
+
     #[test]
     fn test_complex_multi_branch() {
         let commits = vec![

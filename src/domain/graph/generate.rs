@@ -65,22 +65,14 @@ pub fn generate_row_symbols(
                 *symbol = GraphSymbol::MergeJoin;
             }
         } else if merge_set.contains(&col) && !existing_lane_merge_set.contains(&col) {
-            if let Some(rm) = rightmost_merge {
-                if col < rm {
-                    *symbol = GraphSymbol::Octopus;
-                } else {
-                    *symbol = GraphSymbol::BranchTop;
-                }
+            if col < rightmost_horizontal {
+                *symbol = GraphSymbol::Octopus;
             } else {
                 *symbol = GraphSymbol::BranchTop;
             }
         } else if converge_set.contains(&col) {
-            if let Some(rc) = rightmost_converge {
-                if col < rc {
-                    *symbol = GraphSymbol::Diverge;
-                } else {
-                    *symbol = GraphSymbol::BranchBottom;
-                }
+            if col < rightmost_horizontal {
+                *symbol = GraphSymbol::Diverge;
             } else {
                 *symbol = GraphSymbol::BranchBottom;
             }
@@ -90,6 +82,10 @@ pub fn generate_row_symbols(
             } else {
                 *symbol = GraphSymbol::BranchPass;
             }
+        } else if col > commit_col && col < rightmost_horizontal {
+            // Lane already ended, but the horizontal line connecting the commit
+            // to a merge/convergence further right still passes through here.
+            *symbol = GraphSymbol::Horizontal;
         }
 
         if col == rightmost_horizontal && !existing_lanes_merge.is_empty() {

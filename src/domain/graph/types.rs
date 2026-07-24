@@ -14,6 +14,7 @@ pub struct Row {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GraphSymbol {
     Empty,
+    Horizontal,
     BranchPass,
     BranchCross,
     Commit,
@@ -30,6 +31,7 @@ impl GraphSymbol {
     pub fn as_str(&self) -> &'static str {
         match self {
             GraphSymbol::Empty => "  ",
+            GraphSymbol::Horizontal => "──",
             GraphSymbol::BranchPass => "│ ",
             GraphSymbol::BranchCross => "│─",
             GraphSymbol::Commit => "├ ",
@@ -55,6 +57,7 @@ mod tests {
     #[test]
     fn test_symbol_strings() {
         assert_eq!(GraphSymbol::Empty.as_str(), "  ");
+        assert_eq!(GraphSymbol::Horizontal.as_str(), "──");
         assert_eq!(GraphSymbol::BranchPass.as_str(), "│ ");
         assert_eq!(GraphSymbol::BranchCross.as_str(), "│─");
         assert_eq!(GraphSymbol::Commit.as_str(), "├ ");
