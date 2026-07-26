@@ -3,6 +3,7 @@ mod diff_command;
 mod diff_view;
 mod files_view_navigation;
 mod log_view_author;
+mod log_view_graph_convergence;
 mod log_view_navigation;
 mod log_view_scope;
 mod renamed_files;
